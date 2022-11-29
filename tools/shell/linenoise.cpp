@@ -155,6 +155,7 @@ struct linenoiseState {
     size_t pos;         /* Current cursor position. */
     size_t oldpos;      /* Previous refresh cursor position. */
     size_t len;         /* Current edited line length. */
+    size_t chars;       /* Number of utf-8 chars in buffer. */
     size_t cols;        /* Number of columns in terminal. */
     size_t maxrows;     /* Maximum num of rows used so far (multiline mode) */
     int history_index;  /* The history index we are currently editing. */
@@ -188,6 +189,8 @@ static void refreshLine(struct linenoiseState* l);
 
 std::string oldInput = "";
 bool inputLeft;
+
+std::string utf8store = "";
 
 /* Debugging macro. */
 #if 0
@@ -577,6 +580,7 @@ static void refreshSingleLine(struct linenoiseState* l) {
     char buf[LINENOISE_MAX_LINE];
     size_t len = l->len;
     size_t pos = l->pos;
+    size_t chars = l->chars;
     struct abuf ab;
     uint32_t renderPos = 0;
 
@@ -591,7 +595,7 @@ static void refreshSingleLine(struct linenoiseState* l) {
             uint32_t charRenderWidth = Utf8Proc::renderWidth(l->buf, charPos);
             prevPos = charPos;
             charPos = utf8proc_next_grapheme(l->buf, len, charPos);
-            totalRenderWidth += charPos - prevPos;
+            totalRenderWidth += charRenderWidth;
             if (totalRenderWidth >= remainingRenderWidth) {
                 if (prevPos >= l->pos) {
                     // We passed the cursor: break, we no longer need to render.
@@ -603,13 +607,13 @@ static void refreshSingleLine(struct linenoiseState* l) {
                     while (totalRenderWidth >= remainingRenderWidth) {
                         uint32_t startCharWidth = Utf8Proc::renderWidth(l->buf, startPos);
                         uint32_t newStart = utf8proc_next_grapheme(l->buf, len, startPos);
-                        totalRenderWidth -= newStart - startPos;
+                        totalRenderWidth -= startCharWidth;
                         startPos = newStart;
                         renderPos -= startCharWidth;
                     }
                 }
             }
-            if (prevPos < l->pos) {
+            if (totalRenderWidth <= l->pos) {
                 renderPos += charRenderWidth;
             }
         }
@@ -635,7 +639,7 @@ static void refreshSingleLine(struct linenoiseState* l) {
     /* Write the prompt and the current buffer content */
     abAppend(&ab, l->prompt, strlen(l->prompt));
     if (maskmode == 1) {
-        while (len--)
+        while (chars--)
             abAppend(&ab, "*", 1);
     } else {
         abAppend(&ab, buf, len);
@@ -646,8 +650,9 @@ static void refreshSingleLine(struct linenoiseState* l) {
     snprintf(seq, 64, "\x1b[0K");
     abAppend(&ab, seq, strlen(seq));
     /* Move cursor to original position. */
-    snprintf(seq, 64, "\r\x1b[%dC", (int)(renderPos + plen));
+    snprintf(seq, 64, "\r\x1b[%dC", (int)(l->pos + plen));
     abAppend(&ab, seq, strlen(seq));
+
     if (write(fd, ab.b, ab.len) == -1) {} /* Can't recover from write error. */
     abFree(&ab);
 }
@@ -764,56 +769,104 @@ bool pastedInput(int ifd) {
     return (isPasted != 0);
 }
 
+int getBufCharPos(struct linenoiseState* l) {
+    if (l->pos == l->chars) {
+        return l->len;
+    }
+    size_t idx = 0;
+    size_t ctr = 0;
+    while (ctr < l->pos) {
+        idx = utf8proc_next_grapheme(l->buf, l->len, idx);
+        ctr++;
+    }
+    return idx;
+}
+
 /* Insert the character 'c' at cursor current position.
  *
  * On error writing to the terminal -1 is returned, otherwise 0. */
 int linenoiseEditInsert(struct linenoiseState* l, char c) {
     if (l->len < l->buflen) {
-        if (l->len == l->pos) {
-            l->buf[l->pos] = c;
-            l->pos++;
+        if (l->chars == l->pos) {
+            l->buf[l->len] = c;
             l->len++;
             l->buf[l->len] = '\0';
-            if ((!mlmode && l->plen + l->len < l->cols && !hintsCallback)) {
+
+            if ((!mlmode && !hintsCallback)) {
                 char d = (maskmode == 1) ? '*' : c;
-                if (write(l->ofd, &d, 1) == -1)
-                    return -1;
+                if (!Utf8Proc::isValid(&d, 1)) {
+                    utf8store += d;
+                    if (Utf8Proc::isValid(utf8store.c_str(), utf8store.length())) {
+                        if (write(l->ofd, utf8store.c_str(), utf8store.length()) == -1) {
+                            return -1;
+                        } else {
+                            utf8store = "";
+                            l->chars++;
+                            l->pos++;
+                        }
+                    }
+                } else {
+                    if (write(l->ofd, &d, 1) == -1)
+                        return -1;
+                    l->chars++;
+                    l->pos++;
+                }
             }
             if (!pastedInput(l->ifd) && !inputLeft) {
                 refreshLine(l);
             }
         } else {
-            memmove(l->buf + l->pos + 1, l->buf + l->pos, l->len - l->pos);
-            l->buf[l->pos] = c;
-            l->len++;
-            l->pos++;
-            l->buf[l->len] = '\0';
-            refreshLine(l);
+            if (!Utf8Proc::isValid(&c, 1)) {
+                utf8store += c;
+                l->len++;
+            }
+            if (Utf8Proc::isValid(utf8store.c_str(), utf8store.length())) {
+                uint32_t charLoc = getBufCharPos(l);
+                uint32_t charWidth = std::max((uint32_t)utf8store.length(), 1u);
+                memmove(l->buf + charLoc + charWidth, l->buf + charLoc, l->len - charLoc);
+                if (utf8store != "") {
+                    for (auto i = 0u; i < utf8store.length(); i++) {
+                        l->buf[charLoc + i] = utf8store[i];
+                    }
+                    utf8store = "";
+                    l->pos++;
+                    l->chars++;
+                    l->buf[l->len] = '\0';
+                    refreshLine(l);
+                } else {
+                    l->buf[l->pos] = c;
+                    l->len++;
+                    l->pos++;
+                    l->chars++;
+                    l->buf[l->len] = '\0';
+                    refreshLine(l);
+                }
+            }
         }
     }
     return 0;
 }
 
 static uint32_t prevChar(struct linenoiseState* l) {
-    return Utf8Proc::previousGraphemeCluster(l->buf, l->len, l->pos);
+    return Utf8Proc::previousGraphemeCluster(l->buf, l->len, getBufCharPos(l));
 }
 
 static uint32_t nextChar(struct linenoiseState* l) {
-    return utf8proc_next_grapheme(l->buf, l->len, l->pos);
+    return utf8proc_next_grapheme(l->buf, l->len, getBufCharPos(l));
 }
 
 /* Move cursor on the left. */
 void linenoiseEditMoveLeft(struct linenoiseState* l) {
     if (l->pos > 0) {
-        l->pos = prevChar(l);
+        l->pos--;
         refreshLine(l);
     }
 }
 
 /* Move cursor on the right. */
 void linenoiseEditMoveRight(struct linenoiseState* l) {
-    if (l->pos != l->len) {
-        l->pos = nextChar(l);
+    if (l->pos != l->chars) {
+        l->pos++;
         refreshLine(l);
     }
 }
@@ -829,19 +882,19 @@ void linenoiseEditMoveWordLeft(struct linenoiseState* l) {
         return;
     }
     do {
-        l->pos = prevChar(l);
-    } while (l->pos > 0 && !isWordSeparator(l->buf[l->pos]));
+        l->pos--;
+    } while (l->pos > 0 && !isWordSeparator(l->buf[getBufCharPos(l)]));
     refreshLine(l);
 }
 
 /* Move cursor one word to the right */
 void linenoiseEditMoveWordRight(struct linenoiseState* l) {
-    if (l->pos == l->len) {
+    if (l->pos == l->chars) {
         return;
     }
     do {
-        l->pos = nextChar(l);
-    } while (l->pos != l->len && !isWordSeparator(l->buf[l->pos]));
+        l->pos++;
+    } while (l->pos != l->chars && !isWordSeparator(l->buf[getBufCharPos(l)]));
     refreshLine(l);
 }
 
@@ -855,8 +908,8 @@ void linenoiseEditMoveHome(struct linenoiseState* l) {
 
 /* Move cursor to the end of the line. */
 void linenoiseEditMoveEnd(struct linenoiseState* l) {
-    if (l->pos != l->len) {
-        l->pos = l->len;
+    if (l->pos != l->chars) {
+        l->pos = l->chars;
         refreshLine(l);
     }
 }
@@ -890,11 +943,13 @@ void linenoiseEditHistoryNext(struct linenoiseState* l, int dir) {
 /* Delete the character at the right of the cursor without altering the cursor
  * position. Basically this is what happens with the "Delete" keyboard key. */
 void linenoiseEditDelete(struct linenoiseState* l) {
-    if (l->len > 0 && l->pos < l->len) {
+    if (l->len > 0 && l->pos < l->chars) {
         uint32_t newPos = nextChar(l);
-        uint32_t charSize = newPos - l->pos;
-        memmove(l->buf + l->pos, l->buf + newPos, l->len - newPos);
+        uint32_t oldPos = getBufCharPos(l);
+        uint32_t charSize = newPos - oldPos;
+        memmove(l->buf + oldPos, l->buf + newPos, l->len - oldPos);
         l->len -= charSize;
+        l->chars--;
         l->buf[l->len] = '\0';
         refreshLine(l);
     }
@@ -904,10 +959,12 @@ void linenoiseEditDelete(struct linenoiseState* l) {
 void linenoiseEditBackspace(struct linenoiseState* l) {
     if (l->pos > 0 && l->len > 0) {
         uint32_t newPos = prevChar(l);
-        uint32_t charSize = l->pos - newPos;
-        memmove(l->buf + newPos, l->buf + l->pos, l->len - l->pos);
+        uint32_t oldPos = getBufCharPos(l);
+        uint32_t charSize = oldPos - newPos;
+        memmove(l->buf + newPos, l->buf + oldPos, l->len - newPos);
         l->len -= charSize;
-        l->pos = newPos;
+        l->pos--;
+        l->chars--;
         l->buf[l->len] = '\0';
         refreshLine(l);
     }
@@ -951,6 +1008,7 @@ static int linenoiseEdit(
     l.plen = strlen(prompt);
     l.oldpos = l.pos = 0;
     l.len = 0;
+    l.chars = 0;
     l.cols = getColumns(stdin_fd, stdout_fd);
     l.maxrows = 0;
     l.history_index = 0;

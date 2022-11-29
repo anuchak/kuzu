@@ -1,10 +1,9 @@
-#include "include/plan_mapper.h"
-
-#include "src/planner/logical_plan/logical_operator/include/logical_extend.h"
-#include "src/processor/operator/scan_column/include/adj_column_extend.h"
-#include "src/processor/operator/scan_list/include/adj_list_extend.h"
-#include "src/processor/operator/var_length_extend/include/var_length_adj_list_extend.h"
-#include "src/processor/operator/var_length_extend/include/var_length_column_extend.h"
+#include "planner/logical_plan/logical_operator/logical_extend.h"
+#include "processor/mapper/plan_mapper.h"
+#include "processor/operator/scan_column/adj_column_extend.h"
+#include "processor/operator/scan_list/adj_list_extend.h"
+#include "processor/operator/var_length_extend/var_length_adj_list_extend.h"
+#include "processor/operator/var_length_extend/var_length_column_extend.h"
 
 namespace kuzu {
 namespace processor {
@@ -15,9 +14,9 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalExtendToPhysical(
     auto boundNode = extend->getBoundNodeExpression();
     auto nbrNode = extend->getNbrNodeExpression();
     auto prevOperator = mapLogicalOperatorToPhysical(logicalOperator->getChild(0), mapperContext);
-    auto inDataPos = mapperContext.getDataPos(boundNode->getIDProperty());
-    auto outDataPos = mapperContext.getDataPos(nbrNode->getIDProperty());
-    mapperContext.addComputedExpressions(nbrNode->getIDProperty());
+    auto inDataPos = mapperContext.getDataPos(boundNode->getInternalIDPropertyName());
+    auto outDataPos = mapperContext.getDataPos(nbrNode->getInternalIDPropertyName());
+    mapperContext.addComputedExpressions(nbrNode->getInternalIDPropertyName());
     auto& relsStore = storageManager.getRelsStore();
     auto lowerBound = extend->getLowerBound();
     auto upperBound = extend->getUpperBound();

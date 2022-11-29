@@ -1,4 +1,4 @@
-#include "include/scan_rel_property_list.h"
+#include "processor/operator/scan_list/scan_rel_property_list.h"
 
 namespace kuzu {
 namespace processor {
@@ -11,15 +11,12 @@ shared_ptr<ResultSet> ScanRelPropertyList::init(ExecutionContext* context) {
     return resultSet;
 }
 
-bool ScanRelPropertyList::getNextTuples() {
-    metrics->executionTime.start();
-    if (!children[0]->getNextTuples()) {
-        metrics->executionTime.stop();
+bool ScanRelPropertyList::getNextTuplesInternal() {
+    if (!children[0]->getNextTuple()) {
         return false;
     }
     outValueVector->resetOverflowBuffer();
     lists->readValues(outValueVector, *listHandle);
-    metrics->executionTime.stop();
     return true;
 }
 

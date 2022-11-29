@@ -1,17 +1,17 @@
-#include "src/planner/include/query_planner.h"
+#include "planner/query_planner.h"
 
-#include "src/binder/query/include/bound_regular_query.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_accumulate.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_distinct.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_expressions_scan.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_extend.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_filter.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_flatten.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_scan_node_property.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_scan_rel_property.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_union.h"
-#include "src/planner/logical_plan/logical_operator/include/logical_unwind.h"
-#include "src/planner/logical_plan/logical_operator/include/sink_util.h"
+#include "binder/query/bound_regular_query.h"
+#include "planner/logical_plan/logical_operator/logical_accumulate.h"
+#include "planner/logical_plan/logical_operator/logical_distinct.h"
+#include "planner/logical_plan/logical_operator/logical_expressions_scan.h"
+#include "planner/logical_plan/logical_operator/logical_extend.h"
+#include "planner/logical_plan/logical_operator/logical_filter.h"
+#include "planner/logical_plan/logical_operator/logical_flatten.h"
+#include "planner/logical_plan/logical_operator/logical_scan_node_property.h"
+#include "planner/logical_plan/logical_operator/logical_scan_rel_property.h"
+#include "planner/logical_plan/logical_operator/logical_union.h"
+#include "planner/logical_plan/logical_operator/logical_unwind.h"
+#include "planner/logical_plan/logical_operator/sink_util.h"
 
 namespace kuzu {
 namespace planner {
@@ -154,9 +154,9 @@ static expression_vector getCorrelatedExpressions(
             result.push_back(expression);
         }
     }
-    for (auto& nodeIDExpression : collection.getNodeIDExpressions()) {
-        if (outerSchema->isExpressionInScope(*nodeIDExpression)) {
-            result.push_back(nodeIDExpression);
+    for (auto& node : collection.getQueryNodes()) {
+        if (outerSchema->isExpressionInScope(*node->getInternalIDProperty())) {
+            result.push_back(node->getInternalIDProperty());
         }
     }
     return result;
@@ -191,7 +191,7 @@ void QueryPlanner::planOptionalMatch(const QueryGraphCollection& queryGraphColle
         auto bestInnerPlan = getBestPlan(std::move(innerPlans));
         joinOrderEnumerator.exitSubquery(std::move(prevContext));
         for (auto& joinNode : joinNodes) {
-            appendFlattenIfNecessary(joinNode->getNodeIDPropertyExpression(), outerPlan);
+            appendFlattenIfNecessary(joinNode->getInternalIDProperty(), outerPlan);
         }
         JoinOrderEnumerator::planLeftHashJoin(joinNodes, outerPlan, *bestInnerPlan);
     } else {
@@ -380,7 +380,7 @@ void QueryPlanner::appendScanNodePropIfNecessary(const expression_vector& proper
     shared_ptr<NodeExpression> node, LogicalPlan& plan) {
     auto schema = plan.getSchema();
     expression_vector propertyExpressionToScan;
-    auto groupPos = schema->getGroupPos(node->getIDProperty());
+    auto groupPos = schema->getGroupPos(node->getInternalIDPropertyName());
     for (auto& propertyExpression : propertyExpressions) {
         if (schema->isExpressionInScope(*propertyExpression)) {
             continue;
@@ -409,10 +409,11 @@ void QueryPlanner::appendScanRelPropIfNecessary(shared_ptr<Expression>& expressi
         catalog.getReadOnlyVersion()->isSingleMultiplicityInDirection(rel.getTableID(), direction);
     assert(expression->expressionType == PROPERTY);
     auto property = static_pointer_cast<PropertyExpression>(expression);
-    auto scanProperty =
-        make_shared<LogicalScanRelProperty>(boundNode, nbrNode, rel.getTableID(), direction,
-            property->getUniqueName(), property->getPropertyID(), isColumn, plan.getLastOperator());
-    auto groupPos = schema->getGroupPos(nbrNode->getIDProperty());
+    auto relTableID = rel.getTableID();
+    auto scanProperty = make_shared<LogicalScanRelProperty>(boundNode, nbrNode, relTableID,
+        direction, property->getUniqueName(), property->getPropertyID(relTableID), isColumn,
+        plan.getLastOperator());
+    auto groupPos = schema->getGroupPos(nbrNode->getInternalIDPropertyName());
     schema->insertToGroupAndScope(property, groupPos);
     plan.setLastOperator(move(scanProperty));
 }

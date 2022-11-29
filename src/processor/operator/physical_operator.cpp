@@ -1,4 +1,4 @@
-#include "include/physical_operator.h"
+#include "processor/operator/physical_operator.h"
 
 #include <regex>
 
@@ -33,14 +33,6 @@ unique_ptr<PhysicalOperator> PhysicalOperator::moveUnaryChild() {
     return result;
 }
 
-PhysicalOperator* PhysicalOperator::getLeafOperator() {
-    PhysicalOperator* op = this;
-    while (op->getNumChildren()) {
-        op = op->getChild(0);
-    }
-    return op;
-}
-
 shared_ptr<ResultSet> PhysicalOperator::init(ExecutionContext* context) {
     transaction = context->transaction;
     registerProfilingMetrics(context->profiler);
@@ -48,6 +40,13 @@ shared_ptr<ResultSet> PhysicalOperator::init(ExecutionContext* context) {
         resultSet = children[0]->init(context);
     }
     return resultSet;
+}
+
+void PhysicalOperator::initGlobalState(ExecutionContext* context) {
+    for (auto& child : children) {
+        child->initGlobalState(context);
+    }
+    initGlobalStateInternal(context);
 }
 
 void PhysicalOperator::registerProfilingMetrics(Profiler* profiler) {

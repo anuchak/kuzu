@@ -1,8 +1,7 @@
-#include "include/plan_mapper.h"
-
-#include "src/planner/logical_plan/logical_operator/include/logical_scan_rel_property.h"
-#include "src/processor/operator/scan_column/include/scan_structured_property.h"
-#include "src/processor/operator/scan_list/include/scan_rel_property_list.h"
+#include "planner/logical_plan/logical_operator/logical_scan_rel_property.h"
+#include "processor/mapper/plan_mapper.h"
+#include "processor/operator/scan_column/scan_column_property.h"
+#include "processor/operator/scan_list/scan_rel_property_list.h"
 
 namespace kuzu {
 namespace processor {
@@ -12,7 +11,7 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanRelPropertyToPhysical(
     auto scanRelProperty = (LogicalScanRelProperty*)logicalOperator;
     auto boundNode = scanRelProperty->getBoundNodeExpression();
     auto prevOperator = mapLogicalOperatorToPhysical(logicalOperator->getChild(0), mapperContext);
-    auto inputNodeIDVectorPos = mapperContext.getDataPos(boundNode->getIDProperty());
+    auto inputNodeIDVectorPos = mapperContext.getDataPos(boundNode->getInternalIDPropertyName());
     auto propertyName = scanRelProperty->getPropertyName();
     auto propertyID = scanRelProperty->getPropertyID();
     auto outputPropertyVectorPos = mapperContext.getDataPos(propertyName);
@@ -22,9 +21,9 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanRelPropertyToPhysical(
     if (scanRelProperty->getIsColumn()) {
         auto column = relStore.getRelPropertyColumn(scanRelProperty->getDirection(),
             scanRelProperty->getRelTableID(), boundNode->getTableID(), propertyID);
-        return make_unique<ScanStructuredProperty>(inputNodeIDVectorPos,
-            vector<DataPos>{outputPropertyVectorPos}, vector<Column*>{column}, move(prevOperator),
-            getOperatorID(), paramsString);
+        return make_unique<ScanSingleTableProperties>(inputNodeIDVectorPos,
+            vector<DataPos>{outputPropertyVectorPos}, vector<DataType>{column->dataType},
+            vector<Column*>{column}, move(prevOperator), getOperatorID(), paramsString);
     }
     auto lists = relStore.getRelPropertyLists(scanRelProperty->getDirection(),
         boundNode->getTableID(), scanRelProperty->getRelTableID(), propertyID);

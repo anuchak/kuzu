@@ -1,7 +1,7 @@
-#include "include/hash_join_probe.h"
+#include "processor/operator/hash_join/hash_join_probe.h"
 
-#include "src/function/hash/include/vector_hash_operations.h"
-#include "src/function/hash/operations/include/hash_operations.h"
+#include "function/hash/hash_operations.h"
+#include "function/hash/vector_hash_operations.h"
 
 using namespace kuzu::function::operation;
 
@@ -26,18 +26,17 @@ shared_ptr<ResultSet> HashJoinProbe::init(ExecutionContext* context) {
         auto dataChunk = resultSet->dataChunks[pos];
         dataChunk->state = DataChunkState::getSingleValueDataChunkState();
     }
-    for (auto i = 0u; i < probeDataInfo.payloadsOutputDataPos.size(); ++i) {
-        auto probePayloadVector =
-            make_shared<ValueVector>(sharedState->getPayloadDataTypes()[i], context->memoryManager);
-        auto [dataChunkPos, valueVectorPos] = probeDataInfo.payloadsOutputDataPos[i];
+    for (auto& [dataPos, dataType] : probeDataInfo.payloadsOutPosAndType) {
+        auto probePayloadVector = make_shared<ValueVector>(dataType, context->memoryManager);
+        auto [dataChunkPos, valueVectorPos] = dataPos;
         resultSet->dataChunks[dataChunkPos]->insert(valueVectorPos, probePayloadVector);
         vectorsToReadInto.push_back(probePayloadVector);
     }
     // We only need to read nonKeys from the factorizedTable. Key columns are always kept as first k
     // columns in the factorizedTable, so we skip the first k columns.
-    assert(probeDataInfo.keysDataPos.size() + probeDataInfo.payloadsOutputDataPos.size() + 1 ==
+    assert(probeDataInfo.keysDataPos.size() + probeDataInfo.getNumPayloads() + 1 ==
            sharedState->getHashTable()->getTableSchema()->getNumColumns());
-    columnIdxsToReadFrom.resize(probeDataInfo.payloadsOutputDataPos.size());
+    columnIdxsToReadFrom.resize(probeDataInfo.getNumPayloads());
     iota(
         columnIdxsToReadFrom.begin(), columnIdxsToReadFrom.end(), probeDataInfo.keysDataPos.size());
     return resultSet;
@@ -56,7 +55,7 @@ bool HashJoinProbe::getNextBatchOfMatchedTuples() {
     }
     if (!hasMoreLeft()) {
         restoreSelVectors(keySelVectors);
-        if (!children[0]->getNextTuples()) {
+        if (!children[0]->getNextTuple()) {
             return false;
         }
         saveSelVectors(keySelVectors);
@@ -184,18 +183,15 @@ uint64_t HashJoinProbe::getNextJoinResult() {
 // 2) populate values from matched tuples into resultKeyDataChunk , buildSideFlatResultDataChunk
 // (all flat data chunks from the build side are merged into one) and buildSideVectorPtrs (each
 // VectorPtr corresponds to one unFlat build side data chunk that is appended to the resultSet).
-bool HashJoinProbe::getNextTuples() {
-    metrics->executionTime.start();
+bool HashJoinProbe::getNextTuplesInternal() {
     uint64_t numPopulatedTuples;
     do {
         if (!getNextBatchOfMatchedTuples()) {
-            metrics->executionTime.stop();
             return false;
         }
         numPopulatedTuples = getNextJoinResult();
     } while (numPopulatedTuples == 0);
     metrics->numOutputTuple.increase(numPopulatedTuples);
-    metrics->executionTime.stop();
     return true;
 }
 

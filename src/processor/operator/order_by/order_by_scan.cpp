@@ -1,4 +1,4 @@
-#include "include/order_by_scan.h"
+#include "processor/operator/order_by/order_by_scan.h"
 
 namespace kuzu {
 namespace processor {
@@ -6,25 +6,21 @@ namespace processor {
 shared_ptr<ResultSet> OrderByScan::init(ExecutionContext* context) {
     PhysicalOperator::init(context);
     resultSet = populateResultSet();
-    for (auto i = 0u; i < outDataPoses.size(); i++) {
-        auto outDataPos = outDataPoses[i];
-        auto outDataChunk = resultSet->dataChunks[outDataPos.dataChunkPos];
-        auto valueVector =
-            make_shared<ValueVector>(sharedState->getDataType(i), context->memoryManager);
-        outDataChunk->insert(outDataPos.valueVectorPos, valueVector);
+    for (auto [dataPos, dataType] : outVectorPosAndTypes) {
+        auto outDataChunk = resultSet->dataChunks[dataPos.dataChunkPos];
+        auto valueVector = make_shared<ValueVector>(dataType, context->memoryManager);
+        outDataChunk->insert(dataPos.valueVectorPos, valueVector);
         vectorsToRead.emplace_back(valueVector);
     }
-    initMergedKeyBlockScanStateIfNecessary();
+    initMergedKeyBlockScanState();
     return resultSet;
 }
 
-bool OrderByScan::getNextTuples() {
-    metrics->executionTime.start();
+bool OrderByScan::getNextTuplesInternal() {
     // If there is no more tuples to read, just return false.
     if (mergedKeyBlockScanState == nullptr ||
         mergedKeyBlockScanState->nextTupleIdxToReadInMergedKeyBlock >=
             mergedKeyBlockScanState->mergedKeyBlock->getNumTuples()) {
-        metrics->executionTime.stop();
         return false;
     } else {
         // If there is an unflat col in factorizedTable, we can only read one
@@ -81,12 +77,11 @@ bool OrderByScan::getNextTuples() {
             metrics->numOutputTuple.increase(numTuplesToRead);
             mergedKeyBlockScanState->nextTupleIdxToReadInMergedKeyBlock += numTuplesToRead;
         }
-        metrics->executionTime.stop();
         return true;
     }
 }
 
-void OrderByScan::initMergedKeyBlockScanStateIfNecessary() {
+void OrderByScan::initMergedKeyBlockScanState() {
     if (sharedState->sortedKeyBlocks->empty()) {
         return;
     }

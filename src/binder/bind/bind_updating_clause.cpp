@@ -1,11 +1,11 @@
-#include "src/binder/expression/include/literal_expression.h"
-#include "src/binder/include/binder.h"
-#include "src/binder/query/updating_clause/include/bound_create_clause.h"
-#include "src/binder/query/updating_clause/include/bound_delete_clause.h"
-#include "src/binder/query/updating_clause/include/bound_set_clause.h"
-#include "src/parser/query/updating_clause/include/create_clause.h"
-#include "src/parser/query/updating_clause/include/delete_clause.h"
-#include "src/parser/query/updating_clause/include/set_clause.h"
+#include "binder/binder.h"
+#include "binder/expression/literal_expression.h"
+#include "binder/query/updating_clause/bound_create_clause.h"
+#include "binder/query/updating_clause/bound_delete_clause.h"
+#include "binder/query/updating_clause/bound_set_clause.h"
+#include "parser/query/updating_clause/create_clause.h"
+#include "parser/query/updating_clause/delete_clause.h"
+#include "parser/query/updating_clause/set_clause.h"
 
 namespace kuzu {
 namespace binder {
@@ -22,7 +22,7 @@ unique_ptr<BoundUpdatingClause> Binder::bindUpdatingClause(const UpdatingClause&
         return bindDeleteClause(updatingClause);
     }
     default:
-        assert(false);
+        throw NotImplementedException("bindUpdatingClause().");
     }
 }
 
@@ -53,13 +53,17 @@ unique_ptr<BoundUpdatingClause> Binder::bindCreateClause(const UpdatingClause& u
 
 unique_ptr<BoundCreateNode> Binder::bindCreateNode(
     shared_ptr<NodeExpression> node, const PropertyKeyValCollection& collection) {
+    if (node->getNumTableIDs() > 1) {
+        throw BinderException(
+            "Create multi-labeled node " + node->getRawName() + "is not supported.");
+    }
     auto nodeTableSchema = catalog.getReadOnlyVersion()->getNodeTableSchema(node->getTableID());
     auto primaryKey = nodeTableSchema->getPrimaryKey();
     shared_ptr<Expression> primaryKeyExpression;
     vector<expression_pair> setItems;
     for (auto& [key, val] : collection.getPropertyKeyValPairs(*node)) {
         auto propertyExpression = static_pointer_cast<PropertyExpression>(key);
-        if (propertyExpression->getPropertyID() == primaryKey.propertyID) {
+        if (propertyExpression->getPropertyID(node->getTableID()) == primaryKey.propertyID) {
             primaryKeyExpression = val;
         }
         setItems.emplace_back(key, val);
@@ -82,8 +86,7 @@ unique_ptr<BoundCreateRel> Binder::bindCreateRel(
         if (collection.hasPropertyKeyValPair(*rel, property.name)) {
             setItems.push_back(collection.getPropertyKeyValPair(*rel, property.name));
         } else {
-            auto propertyExpression = make_shared<PropertyExpression>(
-                property.dataType, property.name, property.propertyID, rel);
+            auto propertyExpression = expressionBinder.bindRelPropertyExpression(rel, property);
             shared_ptr<Expression> nullExpression =
                 LiteralExpression::createNullLiteralExpression(getUniqueExpressionName("NULL"));
             nullExpression = ExpressionBinder::implicitCastIfNecessary(
@@ -130,9 +133,14 @@ unique_ptr<BoundUpdatingClause> Binder::bindDeleteClause(const UpdatingClause& u
 }
 
 unique_ptr<BoundDeleteNode> Binder::bindDeleteNode(shared_ptr<NodeExpression> node) {
+    if (node->getNumTableIDs() > 1) {
+        throw BinderException(
+            "Delete multi-labeled node " + node->getRawName() + "is not supported.");
+    }
     auto nodeTableSchema = catalog.getReadOnlyVersion()->getNodeTableSchema(node->getTableID());
     auto primaryKey = nodeTableSchema->getPrimaryKey();
-    auto primaryKeyExpression = expressionBinder.bindNodePropertyExpression(node, primaryKey);
+    auto primaryKeyExpression =
+        expressionBinder.bindNodePropertyExpression(node, vector<Property>{primaryKey});
     return make_unique<BoundDeleteNode>(node, primaryKeyExpression);
 }
 

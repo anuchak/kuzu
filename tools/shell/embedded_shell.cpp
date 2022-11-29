@@ -4,11 +4,10 @@
 #include <cctype>
 #include <regex>
 
-#include "third_party/utf8proc/include/utf8proc.h"
-#include "third_party/utf8proc/include/utf8proc_wrapper.h"
-
 #include "common/logging_level_utils.h"
 #include "common/type_utils.h"
+#include "utf8proc.h"
+#include "utf8proc_wrapper.h"
 
 using namespace kuzu::utf8proc;
 

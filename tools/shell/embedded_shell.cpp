@@ -147,12 +147,12 @@ void highlight(char* buffer, char* resultBuf, uint32_t maxLen, uint32_t cursorPo
             thisChar = utf8proc_next_grapheme(buffer, bufLen, thisChar);
             counter += Utf8Proc::renderWidth(buffer, thisChar);
         }
-        lineLen = thisChar;
-        while (counter >= cursorPos - maxLen) {
+        lineLen = utf8proc_next_grapheme(buffer, bufLen, thisChar) - 1;
+        while (counter > cursorPos - maxLen) {
             thisChar = Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar);
             counter -= Utf8Proc::renderWidth(buffer, thisChar);
         }
-        lineLen -= Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar + 1);
+        lineLen -= Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar);
         buf = buf.substr(thisChar, lineLen);
         bufLen = buf.length();
     } else if (buf.length() > maxLen) {

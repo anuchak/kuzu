@@ -159,8 +159,8 @@ void highlight(char* buffer, char* resultBuf, uint32_t maxLen, uint32_t cursorPo
         uint32_t counter = 0;
         uint32_t lineLen = 0;
         while (counter <= maxLen) {
-            lineLen = utf8proc_next_grapheme(buffer, bufLen, lineLen - 1);
-            counter++;
+            lineLen = utf8proc_next_grapheme(buffer, bufLen, lineLen);
+            counter += Utf8Proc::renderWidth(buffer, lineLen);
         }
         buf = buf.substr(0, lineLen);
         bufLen = buf.length();

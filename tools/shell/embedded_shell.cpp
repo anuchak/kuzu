@@ -135,32 +135,31 @@ void completion(const char* buffer, linenoiseCompletions* lc) {
 
 void highlight(char* buffer, char* resultBuf, uint32_t maxLen, uint32_t cursorPos) {
     string buf(buffer);
-    size_t bufLen = buf.length();
+    auto bufLen = buf.length();
     ostringstream highlightBuffer;
     string word;
     vector<string> tokenList;
     if (cursorPos > maxLen) {
         uint32_t counter = 0;
-        size_t thisChar = 0;
-        size_t lineLen = 0;
+        uint32_t thisChar = 0;
+        uint32_t lineLen = 0;
         while (counter < cursorPos) {
-            if (counter <= maxLen) {
-                lineLen = utf8proc_next_grapheme(buffer, bufLen, lineLen);
-            }
             thisChar = utf8proc_next_grapheme(buffer, bufLen, thisChar);
-            counter++;
+            counter += Utf8Proc::renderWidth(buffer, thisChar);
         }
+        lineLen = thisChar;
         while (counter >= cursorPos - maxLen) {
             thisChar = Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar);
-            counter--;
+            counter -= Utf8Proc::renderWidth(buffer, thisChar);
         }
+        lineLen -= Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar + 1);
         buf = buf.substr(thisChar, lineLen);
         bufLen = buf.length();
     } else if (buf.length() > maxLen) {
         uint32_t counter = 0;
-        size_t lineLen = 0;
+        uint32_t lineLen = 0;
         while (counter <= maxLen) {
-            lineLen = utf8proc_next_grapheme(buffer, bufLen, lineLen);
+            lineLen = utf8proc_next_grapheme(buffer, bufLen, lineLen - 1);
             counter++;
         }
         buf = buf.substr(0, lineLen);

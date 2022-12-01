@@ -569,6 +569,19 @@ uint32_t linenoiseComputeRenderWidth(const char* buf, size_t len) {
     return renderWidth;
 }
 
+int getBufCharPos(struct linenoiseState* l) {
+    if (l->pos == l->chars) {
+        return l->len;
+    }
+    size_t idx = 0;
+    size_t ctr = 0;
+    while (ctr < l->pos) {
+        idx = utf8proc_next_grapheme(l->buf, l->len, idx);
+        ctr++;
+    }
+    return idx;
+}
+
 /* Single line low level line refresh.
  *
  * Rewrite the currently edited line accordingly to the buffer content,
@@ -582,6 +595,7 @@ static void refreshSingleLine(struct linenoiseState* l) {
     size_t pos = l->pos;
     size_t chars = l->chars;
     struct abuf ab;
+    uint32_t renderWidth = 0;
     uint32_t renderPos = 0;
 
     if (Utf8Proc::isValid(l->buf, l->len)) {
@@ -591,13 +605,15 @@ static void refreshSingleLine(struct linenoiseState* l) {
         size_t charPos = 0;
         size_t prevPos = 0;
         size_t totalRenderWidth = 0;
+        uint32_t posCounter = 0;
         while (charPos < len) {
             uint32_t charRenderWidth = Utf8Proc::renderWidth(l->buf, charPos);
             prevPos = charPos;
             charPos = utf8proc_next_grapheme(l->buf, len, charPos);
+            posCounter++;
             totalRenderWidth += charRenderWidth;
             if (totalRenderWidth >= remainingRenderWidth) {
-                if (prevPos >= l->pos) {
+                if (prevPos >= getBufCharPos(l)) {
                     // We passed the cursor: break, we no longer need to render.
                     charPos = prevPos;
                     break;
@@ -609,15 +625,16 @@ static void refreshSingleLine(struct linenoiseState* l) {
                         uint32_t newStart = utf8proc_next_grapheme(l->buf, len, startPos);
                         totalRenderWidth -= startCharWidth;
                         startPos = newStart;
-                        renderPos -= startCharWidth;
+                        renderWidth -= startCharWidth;
                     }
                 }
             }
-            if (totalRenderWidth <= l->pos) {
+            if (posCounter <= l->pos) {
+                renderWidth += charRenderWidth;
                 renderPos += charRenderWidth;
             }
         }
-        highlightCallback(l->buf, buf, totalRenderWidth, l->pos);
+        highlightCallback(l->buf, buf, totalRenderWidth, renderPos);
         len = strlen(buf);
     } else {
         // Invalid UTF8: fallback.
@@ -629,7 +646,7 @@ static void refreshSingleLine(struct linenoiseState* l) {
         while (plen + len > l->cols) {
             len--;
         }
-        renderPos = pos;
+        renderWidth = pos;
     }
 
     abInit(&ab);
@@ -650,7 +667,7 @@ static void refreshSingleLine(struct linenoiseState* l) {
     snprintf(seq, 64, "\x1b[0K");
     abAppend(&ab, seq, strlen(seq));
     /* Move cursor to original position. */
-    snprintf(seq, 64, "\r\x1b[%dC", (int)(l->pos + plen));
+    snprintf(seq, 64, "\r\x1b[%dC", (int)(renderWidth + plen));
     abAppend(&ab, seq, strlen(seq));
 
     if (write(fd, ab.b, ab.len) == -1) {} /* Can't recover from write error. */
@@ -767,19 +784,6 @@ bool pastedInput(int ifd) {
     };
     int isPasted = poll(&fd, 1, 0);
     return (isPasted != 0);
-}
-
-int getBufCharPos(struct linenoiseState* l) {
-    if (l->pos == l->chars) {
-        return l->len;
-    }
-    size_t idx = 0;
-    size_t ctr = 0;
-    while (ctr < l->pos) {
-        idx = utf8proc_next_grapheme(l->buf, l->len, idx);
-        ctr++;
-    }
-    return idx;
 }
 
 /* Insert the character 'c' at cursor current position.
@@ -1026,7 +1030,7 @@ static int linenoiseEdit(
     while (1) {
         char c;
         int nread;
-        char seq[3];
+        char seq[5];
 
         if (inputLeft) {
             c = oldInput[0];

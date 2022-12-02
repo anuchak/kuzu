@@ -800,17 +800,15 @@ int linenoiseEditInsert(struct linenoiseState* l, char c) {
                 if (!Utf8Proc::isValid(&d, 1)) {
                     utf8store += d;
                     if (Utf8Proc::isValid(utf8store.c_str(), utf8store.length())) {
-                        if (write(l->ofd, utf8store.c_str(), utf8store.length()) == -1) {
-                            return -1;
-                        } else {
-                            utf8store = "";
-                            l->chars++;
-                            l->pos++;
-                        }
+                        utf8store = "";
+                        l->chars++;
+                        l->pos++;
                     }
                 } else {
-                    if (write(l->ofd, &d, 1) == -1)
-                        return -1;
+                    if (l->plen + l->chars < l->cols) {
+                        if (write(l->ofd, &d, 1) == -1)
+                            return -1;
+                    }
                     l->chars++;
                     l->pos++;
                 }

@@ -340,9 +340,16 @@ void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
                 if (tuple->getResultValue(i)->isNullVal()) {
                     continue;
                 }
-                uint32_t fieldLen = tuple->getResultValue(i)->toString().length() + 2;
-                colsWidth[i] =
-                    max(colsWidth[i], (fieldLen > colsWidth[i]) ? fieldLen : colsWidth[i]);
+                string tupleString = tuple->getResultValue(i)->toString();
+                uint32_t fieldLen = 0;
+                uint32_t chrIter = 0;
+                while (chrIter < tupleString.length()) {
+                    fieldLen += Utf8Proc::renderWidth(tupleString.c_str(), chrIter);
+                    chrIter =
+                        utf8proc_next_grapheme(tupleString.c_str(), tupleString.length(), chrIter);
+                }
+                fieldLen += 2;
+                colsWidth[i] = max(colsWidth[i], fieldLen);
             }
         }
         for (auto width : colsWidth) {

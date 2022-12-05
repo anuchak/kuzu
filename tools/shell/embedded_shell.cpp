@@ -144,23 +144,23 @@ void highlight(char* buffer, char* resultBuf, uint32_t maxLen, uint32_t cursorPo
         uint32_t thisChar = 0;
         uint32_t lineLen = 0;
         while (counter < cursorPos) {
-            thisChar = utf8proc_next_grapheme(buffer, bufLen, thisChar);
             counter += Utf8Proc::renderWidth(buffer, thisChar);
+            thisChar = utf8proc_next_grapheme(buffer, bufLen, thisChar);
         }
-        lineLen = utf8proc_next_grapheme(buffer, bufLen, thisChar) - 1;
-        while (counter > cursorPos - maxLen) {
-            thisChar = Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar);
+        lineLen = thisChar;
+        while (counter > cursorPos - maxLen + 1) {
             counter -= Utf8Proc::renderWidth(buffer, thisChar);
+            thisChar = Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar);
         }
-        lineLen -= Utf8Proc::previousGraphemeCluster(buffer, bufLen, thisChar);
+        lineLen -= thisChar;
         buf = buf.substr(thisChar, lineLen);
         bufLen = buf.length();
     } else if (buf.length() > maxLen) {
         uint32_t counter = 0;
         uint32_t lineLen = 0;
-        while (counter <= maxLen) {
-            lineLen = utf8proc_next_grapheme(buffer, bufLen, lineLen);
+        while (counter < maxLen) {
             counter += Utf8Proc::renderWidth(buffer, lineLen);
+            lineLen = utf8proc_next_grapheme(buffer, bufLen, lineLen);
         }
         buf = buf.substr(0, lineLen);
         bufLen = buf.length();

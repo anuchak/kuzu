@@ -118,6 +118,9 @@ std::string LogicalOperatorUtils::logicalOperatorTypeToString(LogicalOperatorTyp
     case LogicalOperatorType::UNWIND: {
         return "UNWIND";
     }
+    case LogicalOperatorType::SHORTEST_PATH: {
+        return "SHORTEST_PATH";
+    }
     default:
         throw common::NotImplementedException("LogicalOperatorTypeToString()");
     }

@@ -1,7 +1,5 @@
 #include "storage/in_mem_csv_copier/in_mem_structures_copier.h"
 
-// #include "spdlog/spdlog.h"
-
 #include "common/configs.h"
 #include "storage/storage_structure/lists/lists.h"
 

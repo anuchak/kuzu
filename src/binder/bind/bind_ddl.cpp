@@ -1,8 +1,10 @@
 #include "binder/binder.h"
+#include "binder/ddl/bound_add_property.h"
 #include "binder/ddl/bound_create_node_clause.h"
 #include "binder/ddl/bound_create_rel_clause.h"
 #include "binder/ddl/bound_drop_property.h"
 #include "binder/ddl/bound_drop_table.h"
+#include "parser/ddl/add_property.h"
 #include "parser/ddl/create_node_clause.h"
 #include "parser/ddl/create_rel_clause.h"
 #include "parser/ddl/drop_property.h"
@@ -75,6 +77,23 @@ unique_ptr<BoundStatement> Binder::bindDropProperty(const Statement& statement) 
     return make_unique<BoundDropProperty>(tableID, propertyID, tableName);
 }
 
+unique_ptr<BoundStatement> Binder::bindAddProperty(const Statement& statement) {
+    auto& addProperty = (AddProperty&)statement;
+    auto tableName = addProperty.getTableName();
+    validateTableExist(catalog, tableName);
+    auto catalogContent = catalog.getReadOnlyVersion();
+    auto tableID = catalogContent->containNodeTable(tableName) ?
+                       catalogContent->getNodeTableIDFromName(tableName) :
+                       catalogContent->getRelTableIDFromName(tableName);
+    auto dataType = Types::dataTypeFromString(addProperty.getDataType());
+    validatePropertyNameUniqueness(
+        catalogContent->getTableSchema(tableID), addProperty.getPropertyName());
+    return make_unique<BoundAddProperty>(tableID, addProperty.getPropertyName(), dataType,
+        ExpressionBinder::implicitCastIfNecessary(
+            expressionBinder.bindExpression(*addProperty.getDefaultValue()), dataType),
+        tableName);
+}
+
 vector<PropertyNameDataType> Binder::bindPropertyNameDataTypes(
     vector<pair<string, string>> propertyNameDataTypes) {
     vector<PropertyNameDataType> boundPropertyNameDataTypes;
@@ -126,6 +145,15 @@ property_id_t Binder::bindPropertyName(TableSchema* tableSchema, const string& p
     }
     throw BinderException(
         tableSchema->tableName + " table doesn't have property: " + propertyName + ".");
+}
+
+void Binder::validatePropertyNameUniqueness(TableSchema* tableSchema, string propertyName) {
+    for (auto& property : tableSchema->properties) {
+        if (property.name == propertyName) {
+            throw BinderException("Property: " + propertyName +
+                                  " already exists in table: " + tableSchema->tableName + ".");
+        }
+    }
 }
 
 } // namespace binder

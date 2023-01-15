@@ -20,6 +20,9 @@ unique_ptr<BoundStatement> Binder::bind(const Statement& statement) {
     case StatementType::DROP_PROPERTY: {
         return bindDropProperty(statement);
     }
+    case StatementType::ADD_PROPERTY: {
+        return bindAddProperty(statement);
+    }
     case StatementType::QUERY: {
         return bindQuery((const RegularQuery&)statement);
     }

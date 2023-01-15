@@ -132,6 +132,8 @@ public:
     unique_ptr<ListsUpdateIteratorsForDirection> getListsUpdateIteratorsForDirection(
         table_id_t boundNodeTableID);
     void removeProperty(property_id_t propertyID);
+    void addProperty(
+        Property& property, TableSchema* tableSchema, WAL* wal, BufferManager& bufferManager);
 
 private:
     void scanColumns(Transaction* transaction, RelTableScanState& scanState,
@@ -157,7 +159,7 @@ public:
     RelTable(const catalog::Catalog& catalog, table_id_t tableID, BufferManager& bufferManager,
         MemoryManager& memoryManager, bool isInMemoryMode, WAL* wal);
 
-    void initializeData(RelTableSchema* tableSchema, BufferManager& bufferManager);
+    void initializeData(RelTableSchema* tableSchema);
 
     inline Column* getPropertyColumn(
         RelDirection relDirection, table_id_t boundNodeTableID, property_id_t propertyId) {
@@ -216,6 +218,7 @@ public:
         const shared_ptr<ValueVector>& dstNodeIDVector, const shared_ptr<ValueVector>& relIDVector,
         const shared_ptr<ValueVector>& propertyVector, uint32_t propertyID);
     void initEmptyRelsForNewNode(nodeID_t& nodeID);
+    void addProperty(Property property, TableSchema* tableSchema);
 
 private:
     inline void addToUpdatedRelTables() { wal->addToUpdatedRelTables(tableID); }
@@ -246,6 +249,7 @@ private:
     unique_ptr<DirectedRelTableData> bwdRelTableData;
     unique_ptr<ListsUpdatesStore> listsUpdatesStore;
     WAL* wal;
+    BufferManager& bufferManager;
 };
 
 } // namespace storage

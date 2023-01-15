@@ -45,6 +45,18 @@ public:
         return inMemFile->getPage(pageIdx)->data + (posInPage * numBytesForElement);
     }
 
+    void initListsMetadataAndAllocatePages(
+        uint64_t numNodes, ListHeaders* listHeaders, ListsMetadata* listsMetadata);
+
+private:
+    void initLargeListPageLists(uint64_t numNodes, ListHeaders* listHeaders);
+
+    void allocatePagesForLargeList(
+        uint64_t numElementsInList, uint64_t numElementsPerPage, uint32_t& largeListIdx);
+
+    void calculatePagesForSmallList(uint64_t& numPages, uint64_t& offsetInPage,
+        uint64_t numElementsInList, uint64_t numElementsPerPage);
+
 public:
     unique_ptr<InMemFile> inMemFile;
 

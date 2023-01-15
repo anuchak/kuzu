@@ -384,5 +384,10 @@ void Catalog::dropProperty(table_id_t tableID, property_id_t propertyID) {
     wal->logDropPropertyRecord(tableID, propertyID);
 }
 
+void Catalog::addProperty(table_id_t tableID, string propertyName, DataType dataType) {
+    initCatalogContentForWriteTrxIfNecessary();
+    catalogContentForWriteTrx->addProperty(tableID, std::move(propertyName), std::move(dataType));
+}
+
 } // namespace catalog
 } // namespace kuzu

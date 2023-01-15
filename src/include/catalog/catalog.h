@@ -129,6 +129,9 @@ public:
     inline void dropProperty(table_id_t tableID, property_id_t propertyID) {
         getTableSchema(tableID)->dropProperty(propertyID);
     }
+    inline void addProperty(table_id_t tableID, string propertyName, DataType dataType) {
+        getTableSchema(tableID)->addProperty(std::move(propertyName), std::move(dataType));
+    }
 
     void dropTableSchema(table_id_t tableID);
 
@@ -198,6 +201,8 @@ public:
     void dropTableSchema(table_id_t tableID);
 
     void dropProperty(table_id_t tableID, property_id_t propertyID);
+
+    void addProperty(table_id_t tableID, string propertyName, DataType dataType);
 
 protected:
     unique_ptr<BuiltInVectorOperations> builtInVectorOperations;

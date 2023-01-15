@@ -26,7 +26,8 @@ PageElementCursor InMemListsUtils::calcPageElementCursor(uint32_t header, uint64
 
 InMemLists::InMemLists(
     string fName, DataType dataType, uint64_t numBytesForElement, uint64_t numNodes)
-    : fName{move(fName)}, dataType{move(dataType)}, numBytesForElement{numBytesForElement} {
+    : fName{std::move(fName)}, dataType{std::move(dataType)}, numBytesForElement{
+                                                                  numBytesForElement} {
     listsMetadataBuilder = make_unique<ListsMetadataBuilder>(this->fName);
     auto numChunks = StorageUtils::getListChunkIdx(numNodes);
     if (0 != (numNodes & (ListsMetadataConfig::LISTS_CHUNK_SIZE - 1))) {
@@ -58,6 +59,70 @@ void InMemAdjLists::setElement(
     inMemFile->getPage(cursor.pageIdx)
         ->writeNodeID(node, cursor.elemPosInPage * numBytesForElement, cursor.elemPosInPage,
             nodeIDCompressionScheme);
+}
+
+void InMemLists::initListsMetadataAndAllocatePages(
+    uint64_t numNodes, ListHeaders* listHeaders, ListsMetadata* listsMetadata) {
+    initLargeListPageLists(numNodes, listHeaders);
+    node_offset_t nodeOffset = 0u;
+    auto largeListIdx = 0u;
+    auto numElementsPerPage =
+        PageUtils::getNumElementsInAPage(numBytesForElement, true /* hasNull */);
+    auto numChunks = StorageUtils::getNumChunks(numNodes);
+    for (auto chunkIdx = 0u; chunkIdx < numChunks; chunkIdx++) {
+        uint64_t numPages = 0u, offsetInPage = 0u;
+        auto lastNodeOffsetInChunk =
+            min(nodeOffset + ListsMetadataConfig::LISTS_CHUNK_SIZE, numNodes);
+        while (nodeOffset < lastNodeOffsetInChunk) {
+            auto header = listHeaders->getHeader(nodeOffset);
+            auto numElementsInList = ListHeaders::isALargeList(header) ?
+                                         listsMetadata->getNumElementsInLargeLists(
+                                             ListHeaders::getLargeListIdx(header)) :
+                                         ListHeaders::getSmallListLen(header);
+            if (ListHeaders::isALargeList(header)) {
+                allocatePagesForLargeList(numElementsInList, numElementsPerPage, largeListIdx);
+            } else {
+                calculatePagesForSmallList(
+                    numPages, offsetInPage, numElementsInList, numElementsPerPage);
+            }
+            nodeOffset++;
+        }
+        if (offsetInPage != 0) {
+            numPages++;
+        }
+        listsMetadataBuilder->populateChunkPageList(chunkIdx, numPages, inMemFile->getNumPages());
+        inMemFile->addNewPages(numPages);
+    }
+}
+
+void InMemLists::initLargeListPageLists(uint64_t numNodes, ListHeaders* listHeaders) {
+    auto largeListIdx = 0u;
+    for (node_offset_t nodeOffset = 0; nodeOffset < numNodes; nodeOffset++) {
+        if (ListHeaders::isALargeList(listHeaders->getHeader(nodeOffset))) {
+            largeListIdx++;
+        }
+    }
+    listsMetadataBuilder->initLargeListPageLists(largeListIdx);
+}
+
+void InMemLists::allocatePagesForLargeList(
+    uint64_t numElementsInList, uint64_t numElementsPerPage, uint32_t& largeListIdx) {
+    auto numPagesForLargeList =
+        numElementsInList / numElementsPerPage + numElementsInList % numElementsPerPage ? 1 : 0;
+    listsMetadataBuilder->populateLargeListPageList(
+        largeListIdx, numPagesForLargeList, numElementsInList, inMemFile->getNumPages());
+    inMemFile->addNewPages(numPagesForLargeList);
+    largeListIdx++;
+}
+
+void InMemLists::calculatePagesForSmallList(uint64_t& numPages, uint64_t& offsetInPage,
+    uint64_t numElementsInList, uint64_t numElementsPerPage) {
+    while (numElementsInList + offsetInPage > numElementsPerPage) {
+        numElementsInList -= (numElementsPerPage - offsetInPage);
+        numPages++;
+        offsetInPage = 0;
+    }
+    offsetInPage += numElementsInList;
 }
 
 void InMemAdjLists::saveToFile() {

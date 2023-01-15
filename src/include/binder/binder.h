@@ -45,11 +45,13 @@ private:
     unique_ptr<BoundStatement> bindCreateRelClause(const Statement& statement);
     unique_ptr<BoundStatement> bindDropTable(const Statement& statement);
     unique_ptr<BoundStatement> bindDropProperty(const Statement& statement);
+    unique_ptr<BoundStatement> bindAddProperty(const Statement& statement);
 
     vector<PropertyNameDataType> bindPropertyNameDataTypes(
         vector<pair<string, string>> propertyNameDataTypes);
     uint32_t bindPrimaryKey(string pkColName, vector<pair<string, string>> propertyNameDataTypes);
     property_id_t bindPropertyName(TableSchema* tableSchema, const string& propertyName);
+    void validatePropertyNameUniqueness(TableSchema* tableSchema, string propertyName);
 
     /*** bind copy csv ***/
     unique_ptr<BoundStatement> bindCopy(const Statement& statement);

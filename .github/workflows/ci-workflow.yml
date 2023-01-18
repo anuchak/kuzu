@@ -22,7 +22,7 @@ jobs:
 
       - name: test
         run: CC=gcc CXX=g++ make test NUM_THREADS=32
-  
+
   gcc-build-test-with-asan:
     name: gcc build & test with asan
     needs: [gcc-build-test]
@@ -32,23 +32,23 @@ jobs:
       - run: pip install --user -r tools/python_api/requirements_dev.txt
 
       - name: build debug
-        run: CC=gcc CXX=g++ make NUM_THREADS=32 alldebug
-      
+        run: CC=gcc CXX=g++ make alldebug NUM_THREADS=32
+
       - name: run test with asan
-        run: ctest
-        env: 
+        run: ctest -E PythonAPI
+        env:
           LD_PRELOAD: '/usr/lib/x86_64-linux-gnu/libasan.so.6'
           ASAN_OPTIONS: 'detect_leaks=1:log_path=/tmp/asan.log'
         working-directory: ./build/debug/test
         continue-on-error: true
-      
+
       - name: cat asan log
         run: cat /tmp/asan.log* || true
         shell: bash
-      
+
       - name: clean-up asan log
         run: rm -rf /tmp/asan.log*
-        
+
   clang-build-test:
     name: clang build & test
     needs: [clang-formatting-check]

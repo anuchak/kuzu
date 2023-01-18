@@ -77,13 +77,10 @@ public:
         return relTableNameToIDMap.contains(tableName);
     }
 
-    inline table_id_t getNodeTableIDFromName(const string& tableName) const {
-        return nodeTableNameToIDMap.at(tableName);
+    inline table_id_t getTableID(const string& tableName) const {
+        return nodeTableNameToIDMap.contains(tableName) ? nodeTableNameToIDMap.at(tableName) :
+                                                          relTableNameToIDMap.at(tableName);
     }
-    inline table_id_t getRelTableIDFromName(const string& tableName) const {
-        return relTableNameToIDMap.at(tableName);
-    }
-
     inline bool isSingleMultiplicityInDirection(table_id_t tableID, RelDirection direction) const {
         return relTableSchemas.at(tableID)->isSingleMultiplicityInDirection(direction);
     }
@@ -125,12 +122,6 @@ public:
         auto relTableSchema = getRelTableSchema(relTableID);
         return direction == FWD ? relTableSchema->getUniqueSrcTableIDs() :
                                   relTableSchema->getUniqueDstTableIDs();
-    }
-    inline void dropProperty(table_id_t tableID, property_id_t propertyID) {
-        getTableSchema(tableID)->dropProperty(propertyID);
-    }
-    inline void addProperty(table_id_t tableID, string propertyName, DataType dataType) {
-        getTableSchema(tableID)->addProperty(std::move(propertyName), std::move(dataType));
     }
 
     void dropTableSchema(table_id_t tableID);

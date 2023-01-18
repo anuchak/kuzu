@@ -415,7 +415,7 @@ TEST_F(BinderErrorTest, DropPrimaryKeyColumn) {
 }
 
 TEST_F(BinderErrorTest, AddPropertyDuplicateName) {
-    string expectedException = "Binder exception: Property: fName already exists in table: person.";
+    string expectedException = "Binder exception: Property: fName already exists.";
     auto input = "alter table person add column fName STRING";
     ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
 }

@@ -51,8 +51,7 @@ unique_ptr<BoundStatement> Binder::bindDropTable(const Statement& statement) {
     validateTableExist(catalog, tableName);
     auto catalogContent = catalog.getReadOnlyVersion();
     auto isNodeTable = catalogContent->containNodeTable(tableName);
-    auto tableID = isNodeTable ? catalogContent->getNodeTableIDFromName(tableName) :
-                                 catalogContent->getRelTableIDFromName(tableName);
+    auto tableID = catalogContent->getTableID(tableName);
     if (isNodeTable) {
         validateNodeTableHasNoEdge(catalog, tableID);
     }
@@ -65,8 +64,7 @@ unique_ptr<BoundStatement> Binder::bindDropProperty(const Statement& statement) 
     validateTableExist(catalog, tableName);
     auto catalogContent = catalog.getReadOnlyVersion();
     auto isNodeTable = catalogContent->containNodeTable(tableName);
-    auto tableID = isNodeTable ? catalogContent->getNodeTableIDFromName(tableName) :
-                                 catalogContent->getRelTableIDFromName(tableName);
+    auto tableID = catalogContent->getTableID(tableName);
     auto propertyID =
         bindPropertyName(catalogContent->getTableSchema(tableID), dropProperty.getPropertyName());
     if (isNodeTable &&
@@ -82,12 +80,11 @@ unique_ptr<BoundStatement> Binder::bindAddProperty(const Statement& statement) {
     auto tableName = addProperty.getTableName();
     validateTableExist(catalog, tableName);
     auto catalogContent = catalog.getReadOnlyVersion();
-    auto tableID = catalogContent->containNodeTable(tableName) ?
-                       catalogContent->getNodeTableIDFromName(tableName) :
-                       catalogContent->getRelTableIDFromName(tableName);
+    auto tableID = catalogContent->getTableID(tableName);
     auto dataType = Types::dataTypeFromString(addProperty.getDataType());
-    validatePropertyNameUniqueness(
-        catalogContent->getTableSchema(tableID), addProperty.getPropertyName());
+    if (catalogContent->getTableSchema(tableID)->containProperty(addProperty.getPropertyName())) {
+        throw BinderException("Property: " + addProperty.getPropertyName() + " already exists.");
+    }
     return make_unique<BoundAddProperty>(tableID, addProperty.getPropertyName(), dataType,
         ExpressionBinder::implicitCastIfNecessary(
             expressionBinder.bindExpression(*addProperty.getDefaultValue()), dataType),
@@ -145,15 +142,6 @@ property_id_t Binder::bindPropertyName(TableSchema* tableSchema, const string& p
     }
     throw BinderException(
         tableSchema->tableName + " table doesn't have property: " + propertyName + ".");
-}
-
-void Binder::validatePropertyNameUniqueness(TableSchema* tableSchema, string propertyName) {
-    for (auto& property : tableSchema->properties) {
-        if (property.name == propertyName) {
-            throw BinderException("Property: " + propertyName +
-                                  " already exists in table: " + tableSchema->tableName + ".");
-        }
-    }
 }
 
 } // namespace binder

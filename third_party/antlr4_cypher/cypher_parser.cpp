@@ -1006,12 +1006,12 @@ CypherParser::KU_AlterOptionsContext::KU_AlterOptionsContext(ParserRuleContext *
   : ParserRuleContext(parent, invokingState) {
 }
 
-CypherParser::KU_AddColumnContext* CypherParser::KU_AlterOptionsContext::kU_AddColumn() {
-  return getRuleContext<CypherParser::KU_AddColumnContext>(0);
+CypherParser::KU_AddPropertyContext* CypherParser::KU_AlterOptionsContext::kU_AddProperty() {
+  return getRuleContext<CypherParser::KU_AddPropertyContext>(0);
 }
 
-CypherParser::KU_DropColumnContext* CypherParser::KU_AlterOptionsContext::kU_DropColumn() {
-  return getRuleContext<CypherParser::KU_DropColumnContext>(0);
+CypherParser::KU_DropPropertyContext* CypherParser::KU_AlterOptionsContext::kU_DropProperty() {
+  return getRuleContext<CypherParser::KU_DropPropertyContext>(0);
 }
 
 
@@ -1038,14 +1038,14 @@ CypherParser::KU_AlterOptionsContext* CypherParser::kU_AlterOptions() {
       case CypherParser::ADD: {
         enterOuterAlt(_localctx, 1);
         setState(384);
-        kU_AddColumn();
+        kU_AddProperty();
         break;
       }
 
       case CypherParser::DROP: {
         enterOuterAlt(_localctx, 2);
         setState(385);
-        kU_DropColumn();
+        kU_DropProperty();
         break;
       }
 
@@ -1063,53 +1063,53 @@ CypherParser::KU_AlterOptionsContext* CypherParser::kU_AlterOptions() {
   return _localctx;
 }
 
-//----------------- KU_AddColumnContext ------------------------------------------------------------------
+//----------------- KU_AddPropertyContext ------------------------------------------------------------------
 
-CypherParser::KU_AddColumnContext::KU_AddColumnContext(ParserRuleContext *parent, size_t invokingState)
+CypherParser::KU_AddPropertyContext::KU_AddPropertyContext(ParserRuleContext *parent, size_t invokingState)
   : ParserRuleContext(parent, invokingState) {
 }
 
-tree::TerminalNode* CypherParser::KU_AddColumnContext::ADD() {
+tree::TerminalNode* CypherParser::KU_AddPropertyContext::ADD() {
   return getToken(CypherParser::ADD, 0);
 }
 
-std::vector<tree::TerminalNode *> CypherParser::KU_AddColumnContext::SP() {
+std::vector<tree::TerminalNode *> CypherParser::KU_AddPropertyContext::SP() {
   return getTokens(CypherParser::SP);
 }
 
-tree::TerminalNode* CypherParser::KU_AddColumnContext::SP(size_t i) {
+tree::TerminalNode* CypherParser::KU_AddPropertyContext::SP(size_t i) {
   return getToken(CypherParser::SP, i);
 }
 
-CypherParser::OC_PropertyKeyNameContext* CypherParser::KU_AddColumnContext::oC_PropertyKeyName() {
+CypherParser::OC_PropertyKeyNameContext* CypherParser::KU_AddPropertyContext::oC_PropertyKeyName() {
   return getRuleContext<CypherParser::OC_PropertyKeyNameContext>(0);
 }
 
-CypherParser::KU_DataTypeContext* CypherParser::KU_AddColumnContext::kU_DataType() {
+CypherParser::KU_DataTypeContext* CypherParser::KU_AddPropertyContext::kU_DataType() {
   return getRuleContext<CypherParser::KU_DataTypeContext>(0);
 }
 
-tree::TerminalNode* CypherParser::KU_AddColumnContext::COLUMN() {
+tree::TerminalNode* CypherParser::KU_AddPropertyContext::COLUMN() {
   return getToken(CypherParser::COLUMN, 0);
 }
 
-tree::TerminalNode* CypherParser::KU_AddColumnContext::DEFAULT() {
+tree::TerminalNode* CypherParser::KU_AddPropertyContext::DEFAULT() {
   return getToken(CypherParser::DEFAULT, 0);
 }
 
-CypherParser::OC_ExpressionContext* CypherParser::KU_AddColumnContext::oC_Expression() {
+CypherParser::OC_ExpressionContext* CypherParser::KU_AddPropertyContext::oC_Expression() {
   return getRuleContext<CypherParser::OC_ExpressionContext>(0);
 }
 
 
-size_t CypherParser::KU_AddColumnContext::getRuleIndex() const {
-  return CypherParser::RuleKU_AddColumn;
+size_t CypherParser::KU_AddPropertyContext::getRuleIndex() const {
+  return CypherParser::RuleKU_AddProperty;
 }
 
 
-CypherParser::KU_AddColumnContext* CypherParser::kU_AddColumn() {
-  KU_AddColumnContext *_localctx = _tracker.createInstance<KU_AddColumnContext>(_ctx, getState());
-  enterRule(_localctx, 20, CypherParser::RuleKU_AddColumn);
+CypherParser::KU_AddPropertyContext* CypherParser::kU_AddProperty() {
+  KU_AddPropertyContext *_localctx = _tracker.createInstance<KU_AddPropertyContext>(_ctx, getState());
+  enterRule(_localctx, 20, CypherParser::RuleKU_AddProperty);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -1171,41 +1171,41 @@ CypherParser::KU_AddColumnContext* CypherParser::kU_AddColumn() {
   return _localctx;
 }
 
-//----------------- KU_DropColumnContext ------------------------------------------------------------------
+//----------------- KU_DropPropertyContext ------------------------------------------------------------------
 
-CypherParser::KU_DropColumnContext::KU_DropColumnContext(ParserRuleContext *parent, size_t invokingState)
+CypherParser::KU_DropPropertyContext::KU_DropPropertyContext(ParserRuleContext *parent, size_t invokingState)
   : ParserRuleContext(parent, invokingState) {
 }
 
-tree::TerminalNode* CypherParser::KU_DropColumnContext::DROP() {
+tree::TerminalNode* CypherParser::KU_DropPropertyContext::DROP() {
   return getToken(CypherParser::DROP, 0);
 }
 
-std::vector<tree::TerminalNode *> CypherParser::KU_DropColumnContext::SP() {
+std::vector<tree::TerminalNode *> CypherParser::KU_DropPropertyContext::SP() {
   return getTokens(CypherParser::SP);
 }
 
-tree::TerminalNode* CypherParser::KU_DropColumnContext::SP(size_t i) {
+tree::TerminalNode* CypherParser::KU_DropPropertyContext::SP(size_t i) {
   return getToken(CypherParser::SP, i);
 }
 
-CypherParser::OC_PropertyKeyNameContext* CypherParser::KU_DropColumnContext::oC_PropertyKeyName() {
+CypherParser::OC_PropertyKeyNameContext* CypherParser::KU_DropPropertyContext::oC_PropertyKeyName() {
   return getRuleContext<CypherParser::OC_PropertyKeyNameContext>(0);
 }
 
-tree::TerminalNode* CypherParser::KU_DropColumnContext::COLUMN() {
+tree::TerminalNode* CypherParser::KU_DropPropertyContext::COLUMN() {
   return getToken(CypherParser::COLUMN, 0);
 }
 
 
-size_t CypherParser::KU_DropColumnContext::getRuleIndex() const {
-  return CypherParser::RuleKU_DropColumn;
+size_t CypherParser::KU_DropPropertyContext::getRuleIndex() const {
+  return CypherParser::RuleKU_DropProperty;
 }
 
 
-CypherParser::KU_DropColumnContext* CypherParser::kU_DropColumn() {
-  KU_DropColumnContext *_localctx = _tracker.createInstance<KU_DropColumnContext>(_ctx, getState());
-  enterRule(_localctx, 22, CypherParser::RuleKU_DropColumn);
+CypherParser::KU_DropPropertyContext* CypherParser::kU_DropProperty() {
+  KU_DropPropertyContext *_localctx = _tracker.createInstance<KU_DropPropertyContext>(_ctx, getState());
+  enterRule(_localctx, 22, CypherParser::RuleKU_DropProperty);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9666,7 +9666,7 @@ std::vector<uint16_t> CypherParser::_serializedATN;
 std::vector<std::string> CypherParser::_ruleNames = {
   "oC_Cypher", "kU_CopyCSV", "kU_ParsingOptions", "kU_ParsingOption", "kU_DDL", 
   "kU_CreateNode", "kU_CreateRel", "kU_DropTable", "kU_AlterTable", "kU_AlterOptions", 
-  "kU_AddColumn", "kU_DropColumn", "kU_RelConnections", "kU_RelConnection", 
+  "kU_AddProperty", "kU_DropProperty", "kU_RelConnections", "kU_RelConnection", 
   "kU_NodeLabels", "kU_PropertyDefinitions", "kU_PropertyDefinition", "kU_CreateNodeConstraint", 
   "kU_DataType", "kU_ListIdentifiers", "kU_ListIdentifier", "oC_AnyCypherOption", 
   "oC_Explain", "oC_Profile", "oC_Statement", "oC_Query", "oC_RegularQuery", 

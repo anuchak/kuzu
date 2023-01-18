@@ -2,8 +2,6 @@
 
 #include "add_property.h"
 
-using namespace kuzu::catalog;
-
 namespace kuzu {
 namespace processor {
 

@@ -12,6 +12,15 @@ InMemColumn::InMemColumn(
         make_unique<InMemFile>(this->fName, numBytesForElement, true /* hasNULLBytes */, numPages);
 }
 
+void InMemColumn::fillWithDefaultVal(
+    uint8_t* defaultVal, uint64_t numNodes, const DataType& dataType) {
+    PageByteCursor pageByteCursor{};
+    auto fillInMemColumnFunc = getFillInMemColumnFunc(dataType);
+    for (auto i = 0; i < numNodes; i++) {
+        fillInMemColumnFunc(this, defaultVal, pageByteCursor, i, dataType);
+    }
+}
+
 void InMemColumn::saveToFile() {
     inMemFile->flush();
 }
@@ -21,6 +30,46 @@ void InMemColumn::setElement(node_offset_t offset, const uint8_t* val) {
     inMemFile->getPage(cursor.pageIdx)
         ->write(cursor.elemPosInPage * numBytesForElement, cursor.elemPosInPage, val,
             numBytesForElement);
+}
+
+void InMemColumn::fillInMemColumnWithStrValFunc(InMemColumn* inMemColumn, uint8_t* defaultVal,
+    PageByteCursor& pageByteCursor, node_offset_t nodeOffset, const DataType& dataType) {
+    auto strVal = *reinterpret_cast<ku_string_t*>(defaultVal);
+    if (strVal.len > ku_string_t::SHORT_STR_LENGTH) {
+        inMemColumn->getInMemOverflowFile()->copyStringOverflow(
+            pageByteCursor, reinterpret_cast<uint8_t*>(strVal.overflowPtr), &strVal);
+    }
+    inMemColumn->setElement(nodeOffset, reinterpret_cast<uint8_t*>(&strVal));
+}
+
+void InMemColumn::fillInMemColumnWithListValFunc(InMemColumn* inMemColumn, uint8_t* defaultVal,
+    PageByteCursor& pageByteCursor, node_offset_t nodeOffset, const DataType& dataType) {
+    auto listVal = *reinterpret_cast<ku_list_t*>(defaultVal);
+    inMemColumn->getInMemOverflowFile()->copyListOverflowToFile(
+        pageByteCursor, &listVal, dataType.childType.get());
+    inMemColumn->setElement(nodeOffset, reinterpret_cast<uint8_t*>(&listVal));
+}
+
+fill_in_mem_column_function_t InMemColumn::getFillInMemColumnFunc(const DataType& dataType) {
+    switch (dataType.typeID) {
+    case INT64:
+    case DOUBLE:
+    case BOOL:
+    case DATE:
+    case TIMESTAMP:
+    case INTERVAL: {
+        return fillInMemColumnWithNonOverflowValFunc;
+    }
+    case STRING: {
+        return fillInMemColumnWithStrValFunc;
+    }
+    case LIST: {
+        return fillInMemColumnWithListValFunc;
+    }
+    default: {
+        assert(false);
+    }
+    }
 }
 
 InMemColumnWithOverflow::InMemColumnWithOverflow(

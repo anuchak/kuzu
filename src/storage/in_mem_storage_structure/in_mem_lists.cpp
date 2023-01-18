@@ -1,5 +1,7 @@
 #include "storage/in_mem_storage_structure/in_mem_lists.h"
 
+#include "storage/storage_structure/lists/lists.h"
+
 namespace kuzu {
 namespace storage {
 
@@ -36,6 +38,20 @@ InMemLists::InMemLists(
     listsMetadataBuilder->initChunkPageLists(numChunks);
     inMemFile =
         make_unique<InMemFile>(this->fName, numBytesForElement, this->dataType.typeID != NODE_ID);
+}
+
+void InMemLists::fillWithDefaultVal(
+    uint8_t* defaultVal, uint64_t numNodes, AdjLists* adjList, const DataType& dataType) {
+    PageByteCursor pageByteCursor{};
+    auto fillInMemListsFunc = getFillInMemListsFunc(dataType);
+    for (auto i = 0; i < numNodes; i++) {
+        auto header = adjList->getHeaders()->getHeader(i);
+        auto numElementsInList = adjList->getNumElementsFromListHeader(i);
+        for (auto j = 0u; j < numElementsInList; j++) {
+            fillInMemListsFunc(
+                this, defaultVal, pageByteCursor, i, header, numElementsInList - j, dataType);
+        }
+    }
 }
 
 void InMemLists::saveToFile() {
@@ -123,6 +139,46 @@ void InMemLists::calculatePagesForSmallList(uint64_t& numPages, uint64_t& offset
         offsetInPage = 0;
     }
     offsetInPage += numElementsInList;
+}
+
+void InMemLists::fillInMemListsWithStrValFunc(InMemLists* inMemLists, uint8_t* defaultVal,
+    PageByteCursor& pageByteCursor, node_offset_t nodeOffset, list_header_t header,
+    uint64_t posInList, const DataType& dataType) {
+    auto strVal = *(ku_string_t*)defaultVal;
+    inMemLists->getInMemOverflowFile()->copyStringOverflow(
+        pageByteCursor, reinterpret_cast<uint8_t*>(strVal.overflowPtr), &strVal);
+    inMemLists->setElement(header, nodeOffset, posInList, reinterpret_cast<uint8_t*>(&strVal));
+}
+
+void InMemLists::fillInMemListsWithListValFunc(InMemLists* inMemLists, uint8_t* defaultVal,
+    PageByteCursor& pageByteCursor, node_offset_t nodeOffset, list_header_t header,
+    uint64_t posInList, const DataType& dataType) {
+    auto listVal = *reinterpret_cast<ku_list_t*>(defaultVal);
+    inMemLists->getInMemOverflowFile()->copyListOverflowToFile(
+        pageByteCursor, &listVal, dataType.childType.get());
+    inMemLists->setElement(header, nodeOffset, posInList, reinterpret_cast<uint8_t*>(&listVal));
+}
+
+fill_in_mem_lists_function_t InMemLists::getFillInMemListsFunc(const DataType& dataType) {
+    switch (dataType.typeID) {
+    case INT64:
+    case DOUBLE:
+    case BOOL:
+    case DATE:
+    case TIMESTAMP:
+    case INTERVAL: {
+        return fillInMemListsWithNonOverflowValFunc;
+    }
+    case STRING: {
+        return fillInMemListsWithStrValFunc;
+    }
+    case LIST: {
+        return fillInMemListsWithListValFunc;
+    }
+    default: {
+        assert(false);
+    }
+    }
 }
 
 void InMemAdjLists::saveToFile() {

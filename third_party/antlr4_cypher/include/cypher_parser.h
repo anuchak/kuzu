@@ -39,8 +39,8 @@ public:
   enum {
     RuleOC_Cypher = 0, RuleKU_CopyCSV = 1, RuleKU_ParsingOptions = 2, RuleKU_ParsingOption = 3, 
     RuleKU_DDL = 4, RuleKU_CreateNode = 5, RuleKU_CreateRel = 6, RuleKU_DropTable = 7, 
-    RuleKU_AlterTable = 8, RuleKU_AlterOptions = 9, RuleKU_AddColumn = 10, 
-    RuleKU_DropColumn = 11, RuleKU_RelConnections = 12, RuleKU_RelConnection = 13, 
+    RuleKU_AlterTable = 8, RuleKU_AlterOptions = 9, RuleKU_AddProperty = 10, 
+    RuleKU_DropProperty = 11, RuleKU_RelConnections = 12, RuleKU_RelConnection = 13, 
     RuleKU_NodeLabels = 14, RuleKU_PropertyDefinitions = 15, RuleKU_PropertyDefinition = 16, 
     RuleKU_CreateNodeConstraint = 17, RuleKU_DataType = 18, RuleKU_ListIdentifiers = 19, 
     RuleKU_ListIdentifier = 20, RuleOC_AnyCypherOption = 21, RuleOC_Explain = 22, 
@@ -96,8 +96,8 @@ public:
   class KU_DropTableContext;
   class KU_AlterTableContext;
   class KU_AlterOptionsContext;
-  class KU_AddColumnContext;
-  class KU_DropColumnContext;
+  class KU_AddPropertyContext;
+  class KU_DropPropertyContext;
   class KU_RelConnectionsContext;
   class KU_RelConnectionContext;
   class KU_NodeLabelsContext;
@@ -347,17 +347,17 @@ public:
   public:
     KU_AlterOptionsContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    KU_AddColumnContext *kU_AddColumn();
-    KU_DropColumnContext *kU_DropColumn();
+    KU_AddPropertyContext *kU_AddProperty();
+    KU_DropPropertyContext *kU_DropProperty();
 
    
   };
 
   KU_AlterOptionsContext* kU_AlterOptions();
 
-  class  KU_AddColumnContext : public antlr4::ParserRuleContext {
+  class  KU_AddPropertyContext : public antlr4::ParserRuleContext {
   public:
-    KU_AddColumnContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    KU_AddPropertyContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *ADD();
     std::vector<antlr4::tree::TerminalNode *> SP();
@@ -371,11 +371,11 @@ public:
    
   };
 
-  KU_AddColumnContext* kU_AddColumn();
+  KU_AddPropertyContext* kU_AddProperty();
 
-  class  KU_DropColumnContext : public antlr4::ParserRuleContext {
+  class  KU_DropPropertyContext : public antlr4::ParserRuleContext {
   public:
-    KU_DropColumnContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    KU_DropPropertyContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *DROP();
     std::vector<antlr4::tree::TerminalNode *> SP();
@@ -386,7 +386,7 @@ public:
    
   };
 
-  KU_DropColumnContext* kU_DropColumn();
+  KU_DropPropertyContext* kU_DropProperty();
 
   class  KU_RelConnectionsContext : public antlr4::ParserRuleContext {
   public:

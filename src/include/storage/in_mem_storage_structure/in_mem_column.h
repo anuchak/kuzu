@@ -6,11 +6,19 @@
 namespace kuzu {
 namespace storage {
 
+class InMemColumn;
+
+using fill_in_mem_column_function_t =
+    std::function<void(InMemColumn* inMemColumn, uint8_t* defaultVal,
+        PageByteCursor& pageByteCursor, node_offset_t nodeOffset, const DataType& dataType)>;
+
 class InMemColumn {
 
 public:
     // For property columns.
     InMemColumn(string fName, DataType dataType, uint64_t numBytesForElement, uint64_t numElements);
+
+    void fillWithDefaultVal(uint8_t* defaultVal, uint64_t numNodes, const DataType& dataType);
 
     virtual ~InMemColumn() = default;
 
@@ -37,6 +45,21 @@ protected:
         return PageElementCursor{
             (page_idx_t)(offset / numElementsInAPage), (uint16_t)(offset % numElementsInAPage)};
     }
+
+private:
+    static inline void fillInMemColumnWithNonOverflowValFunc(InMemColumn* inMemColumn,
+        uint8_t* defaultVal, PageByteCursor& pageByteCursor, node_offset_t nodeOffset,
+        const DataType& dataType) {
+        inMemColumn->setElement(nodeOffset, defaultVal);
+    }
+
+    static void fillInMemColumnWithStrValFunc(InMemColumn* inMemColumn, uint8_t* defaultVal,
+        PageByteCursor& pageByteCursor, node_offset_t nodeOffset, const DataType& dataType);
+
+    static void fillInMemColumnWithListValFunc(InMemColumn* inMemColumn, uint8_t* defaultVal,
+        PageByteCursor& pageByteCursor, node_offset_t nodeOffset, const DataType& dataType);
+
+    static fill_in_mem_column_function_t getFillInMemColumnFunc(const DataType& dataType);
 
 protected:
     string fName;

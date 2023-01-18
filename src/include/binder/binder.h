@@ -51,7 +51,6 @@ private:
         vector<pair<string, string>> propertyNameDataTypes);
     uint32_t bindPrimaryKey(string pkColName, vector<pair<string, string>> propertyNameDataTypes);
     property_id_t bindPropertyName(TableSchema* tableSchema, const string& propertyName);
-    void validatePropertyNameUniqueness(TableSchema* tableSchema, string propertyName);
 
     /*** bind copy csv ***/
     unique_ptr<BoundStatement> bindCopy(const Statement& statement);

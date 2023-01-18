@@ -2,18 +2,12 @@
 
 #include "ddl.h"
 #include "expression_evaluator/base_evaluator.h"
-#include "storage/in_mem_storage_structure/in_mem_column.h"
 #include "storage/storage_manager.h"
 
 using namespace kuzu::catalog;
 
 namespace kuzu {
 namespace processor {
-
-class AddProperty;
-
-using fill_in_mem_column_function_t = std::function<void(AddProperty*, InMemColumn* inMemColumn,
-    uint8_t* defaultVal, PageByteCursor& pageByteCursor, node_offset_t nodeOffset)>;
 
 class AddProperty : public DDL {
 public:
@@ -41,22 +35,6 @@ protected:
         auto expressionVector = expressionEvaluator->resultVector;
         return expressionVector->isNull(expressionVector->state->selVector->selectedPositions[0]);
     }
-
-    inline void fillInMemColumnWithNonOverflowValFunc(InMemColumn* inMemColumn, uint8_t* defaultVal,
-        PageByteCursor& pageByteCursor, node_offset_t nodeOffset) {
-        inMemColumn->setElement(nodeOffset, defaultVal);
-    }
-
-    void fillInMemColumnWithStrValFunc(InMemColumn* inMemColumn, uint8_t* defaultVal,
-        PageByteCursor& pageByteCursor, node_offset_t nodeOffset);
-
-    void fillInMemColumnWithListValFunc(InMemColumn* inMemColumn, uint8_t* defaultVal,
-        PageByteCursor& pageByteCursor, node_offset_t nodeOffset);
-
-    fill_in_mem_column_function_t getFillInMemColumnFunc();
-
-    void fillInMemColumWithDefaultVal(
-        InMemColumn* inMemColumn, uint8_t* defaultVal, node_offset_t maxNodeOffset);
 
 protected:
     table_id_t tableID;

@@ -78,9 +78,9 @@ public:
 class DirectedRelTableData {
 public:
     DirectedRelTableData(table_id_t tableID, RelDirection direction,
-        ListsUpdatesStore* listsUpdatesStore, bool isInMemoryMode)
+        ListsUpdatesStore* listsUpdatesStore, bool isInMemoryMode, BufferManager& bufferManager)
         : tableID{tableID}, direction{direction}, listsUpdatesStore{listsUpdatesStore},
-          isInMemoryMode{isInMemoryMode} {}
+          isInMemoryMode{isInMemoryMode}, bufferManager{bufferManager} {}
 
     inline bool hasAdjColumn(table_id_t boundNodeTableID) {
         return adjColumns.contains(boundNodeTableID);
@@ -101,7 +101,7 @@ public:
                    UINT64_MAX;
     }
 
-    void initializeData(RelTableSchema* tableSchema, BufferManager& bufferManager, WAL* wal);
+    void initializeData(RelTableSchema* tableSchema, WAL* wal);
     void initializeColumnsForBoundNodeTable(RelTableSchema* tableSchema,
         table_id_t boundNodeTableID, NodeIDCompressionScheme& nodeIDCompressionScheme,
         BufferManager& bufferManager, WAL* wal);
@@ -132,8 +132,7 @@ public:
     unique_ptr<ListsUpdateIteratorsForDirection> getListsUpdateIteratorsForDirection(
         table_id_t boundNodeTableID);
     void removeProperty(property_id_t propertyID);
-    void addProperty(
-        Property& property, TableSchema* tableSchema, WAL* wal, BufferManager& bufferManager);
+    void addProperty(Property& property, table_id_t tableID, WAL* wal);
 
 private:
     void scanColumns(Transaction* transaction, RelTableScanState& scanState,
@@ -152,6 +151,7 @@ private:
     RelDirection direction;
     ListsUpdatesStore* listsUpdatesStore;
     bool isInMemoryMode;
+    BufferManager& bufferManager;
 };
 
 class RelTable {
@@ -218,7 +218,7 @@ public:
         const shared_ptr<ValueVector>& dstNodeIDVector, const shared_ptr<ValueVector>& relIDVector,
         const shared_ptr<ValueVector>& propertyVector, uint32_t propertyID);
     void initEmptyRelsForNewNode(nodeID_t& nodeID);
-    void addProperty(Property property, TableSchema* tableSchema);
+    void addProperty(Property property, table_id_t tableID);
 
 private:
     inline void addToUpdatedRelTables() { wal->addToUpdatedRelTables(tableID); }
@@ -249,7 +249,6 @@ private:
     unique_ptr<DirectedRelTableData> bwdRelTableData;
     unique_ptr<ListsUpdatesStore> listsUpdatesStore;
     WAL* wal;
-    BufferManager& bufferManager;
 };
 
 } // namespace storage

@@ -108,9 +108,9 @@ public:
         memoryManager = make_unique<MemoryManager>(bufferManager.get());
         executionContext = make_unique<ExecutionContext>(
             1 /* numThreads */, profiler.get(), memoryManager.get(), bufferManager.get());
-        personNodeTableID = catalog->getReadOnlyVersion()->getNodeTableIDFromName("person");
-        organisationTableID = catalog->getReadOnlyVersion()->getNodeTableIDFromName("organisation");
-        studyAtRelTableID = catalog->getReadOnlyVersion()->getRelTableIDFromName("studyAt");
+        personNodeTableID = catalog->getReadOnlyVersion()->getTableID("person");
+        organisationTableID = catalog->getReadOnlyVersion()->getTableID("organisation");
+        studyAtRelTableID = catalog->getReadOnlyVersion()->getTableID("studyAt");
     }
 
     void initWithoutLoadingGraph() {
@@ -213,7 +213,7 @@ public:
             ASSERT_TRUE(catalog->getReadOnlyVersion()->containRelTable("belongs"));
         }
         auto relTableSchema = (RelTableSchema*)catalog->getReadOnlyVersion()->getTableSchema(
-            catalog->getReadOnlyVersion()->getRelTableIDFromName("belongs"));
+            catalog->getReadOnlyVersion()->getTableID("belongs"));
         validateRelColumnAndListFilesExistence(
             relTableSchema, DBFileType::ORIGINAL, true /* existence */);
         executeQueryWithoutCommit("COPY belongs FROM \"" +
@@ -232,7 +232,7 @@ public:
         conn->query("CREATE NODE TABLE university(address STRING, PRIMARY KEY(address));");
         auto nodeTableSchema = make_unique<NodeTableSchema>(
             *(NodeTableSchema*)catalog->getReadOnlyVersion()->getTableSchema(
-                catalog->getReadOnlyVersion()->getNodeTableIDFromName("university")));
+                catalog->getReadOnlyVersion()->getTableID("university")));
         executeQueryWithoutCommit("DROP TABLE university");
         validateNodeColumnFilesExistence(nodeTableSchema.get(), DBFileType::ORIGINAL, true);
         ASSERT_TRUE(catalog->getReadOnlyVersion()->containNodeTable("university"));
@@ -253,7 +253,7 @@ public:
     void dropRelTableCommitAndRecoveryTest(TransactionTestType transactionTestType) {
         auto relTableSchema = make_unique<RelTableSchema>(
             *(RelTableSchema*)catalog->getReadOnlyVersion()->getTableSchema(
-                catalog->getReadOnlyVersion()->getRelTableIDFromName("knows")));
+                catalog->getReadOnlyVersion()->getTableID("knows")));
         executeQueryWithoutCommit("DROP TABLE knows");
         validateRelColumnAndListFilesExistence(relTableSchema.get(), DBFileType::ORIGINAL, true);
         ASSERT_TRUE(catalog->getReadOnlyVersion()->containRelTable("knows"));

@@ -914,18 +914,25 @@ unique_ptr<Statement> Transformer::transformDropTable(CypherParser::KU_DropTable
 }
 
 unique_ptr<Statement> Transformer::transformAlterTable(CypherParser::KU_AlterTableContext& ctx) {
-    if (ctx.kU_AlterOptions()->kU_DropColumn()) {
-        return make_unique<DropProperty>(transformSchemaName(*ctx.oC_SchemaName()),
-            transformPropertyKeyName(
-                *ctx.kU_AlterOptions()->kU_DropColumn()->oC_PropertyKeyName()));
+    if (ctx.kU_AlterOptions()->kU_DropProperty()) {
+        return transformAddProperty(ctx);
     } else {
-        return make_unique<AddProperty>(transformSchemaName(*ctx.oC_SchemaName()),
-            transformPropertyKeyName(*ctx.kU_AlterOptions()->kU_AddColumn()->oC_PropertyKeyName()),
-            transformDataType(*ctx.kU_AlterOptions()->kU_AddColumn()->kU_DataType()),
-            ctx.kU_AlterOptions()->kU_AddColumn()->oC_Expression() ?
-                transformExpression(*ctx.kU_AlterOptions()->kU_AddColumn()->oC_Expression()) :
-                make_unique<ParsedLiteralExpression>(make_unique<Literal>(), "NULL"));
+        return transformDropProperty(ctx);
     }
+}
+
+unique_ptr<Statement> Transformer::transformAddProperty(CypherParser::KU_AlterTableContext& ctx) {
+    return make_unique<DropProperty>(transformSchemaName(*ctx.oC_SchemaName()),
+        transformPropertyKeyName(*ctx.kU_AlterOptions()->kU_DropProperty()->oC_PropertyKeyName()));
+}
+
+unique_ptr<Statement> Transformer::transformDropProperty(CypherParser::KU_AlterTableContext& ctx) {
+    return make_unique<AddProperty>(transformSchemaName(*ctx.oC_SchemaName()),
+        transformPropertyKeyName(*ctx.kU_AlterOptions()->kU_AddProperty()->oC_PropertyKeyName()),
+        transformDataType(*ctx.kU_AlterOptions()->kU_AddProperty()->kU_DataType()),
+        ctx.kU_AlterOptions()->kU_AddProperty()->oC_Expression() ?
+            transformExpression(*ctx.kU_AlterOptions()->kU_AddProperty()->oC_Expression()) :
+            make_unique<ParsedLiteralExpression>(make_unique<Literal>(), "NULL"));
 }
 
 vector<pair<string, string>> Transformer::transformPropertyDefinitions(

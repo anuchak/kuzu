@@ -56,15 +56,15 @@ kU_AlterTable
 ALTER: ( 'A' | 'a' ) ( 'L' | 'l' ) ( 'T' | 't' ) ( 'E' | 'e' ) ( 'R' | 'r' ) ;
 
 kU_AlterOptions
-    : kU_AddColumn
-        | kU_DropColumn;
+    : kU_AddProperty
+        | kU_DropProperty;
 
-kU_AddColumn
+kU_AddProperty
     : ADD SP ( COLUMN SP )? oC_PropertyKeyName SP kU_DataType ( SP DEFAULT SP oC_Expression )? ;
 
 DEFAULT : ( 'D' | 'd' ) ( 'E' | 'e' ) ( 'F' | 'f' ) ( 'A' | 'a' ) ( 'U' | 'u' ) ( 'L' | 'l' ) ( 'T' | 't' ) ;
 
-kU_DropColumn
+kU_DropProperty
     : DROP SP ( COLUMN SP )? oC_PropertyKeyName ;
 
 ADD: ( 'A' | 'a' ) ( 'D' | 'd' ) ( 'D' | 'd' ) ;

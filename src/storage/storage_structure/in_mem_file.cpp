@@ -177,7 +177,7 @@ void InMemOverflowFile::copyStringOverflow(
     overflowCursor.offsetInPage += dstKUString->len;
 }
 
-void InMemOverflowFile::copyListOverflow(InMemOverflowFile* srcInMemOverflowFile,
+void InMemOverflowFile::copyListOverflowFromFile(InMemOverflowFile* srcInMemOverflowFile,
     const PageByteCursor& srcOverflowCursor, PageByteCursor& dstOverflowCursor,
     ku_list_t* dstKUList, DataType* listChildDataType) {
     auto numBytesOfListElement = Types::getDataTypeSize(*listChildDataType);
@@ -200,7 +200,7 @@ void InMemOverflowFile::copyListOverflow(InMemOverflowFile* srcInMemOverflowFile
             PageByteCursor elementCursor;
             TypeUtils::decodeOverflowPtr(
                 elementsInList[i].overflowPtr, elementCursor.pageIdx, elementCursor.offsetInPage);
-            copyListOverflow(srcInMemOverflowFile, elementCursor, dstOverflowCursor,
+            copyListOverflowFromFile(srcInMemOverflowFile, elementCursor, dstOverflowCursor,
                 &elementsInList[i], listChildDataType->childType.get());
         }
     } else if (listChildDataType->typeID == STRING) {
@@ -222,7 +222,7 @@ void InMemOverflowFile::copyListOverflow(InMemOverflowFile* srcInMemOverflowFile
         dstKUList->size * numBytesOfListElement);
 }
 
-void InMemOverflowFile::copyListOverflow(
+void InMemOverflowFile::copyListOverflowToFile(
     PageByteCursor& pageByteCursor, ku_list_t* srcKUList, DataType* childDataType) {
     auto numBytesOfListElement = Types::getDataTypeSize(*childDataType);
     // Allocate a new page if necessary.
@@ -237,6 +237,7 @@ void InMemOverflowFile::copyListOverflow(
     pages[pageByteCursor.pageIdx]->write(pageByteCursor.offsetInPage, pageByteCursor.offsetInPage,
         reinterpret_cast<uint8_t*>(srcKUList->overflowPtr),
         srcKUList->size * numBytesOfListElement);
+    lck.unlock();
     // Reset the overflowPtr of the srcKUList, so that it points to the inMemOverflowFile.
     TypeUtils::encodeOverflowPtr(
         srcKUList->overflowPtr, pageByteCursor.pageIdx, pageByteCursor.offsetInPage);
@@ -271,7 +272,7 @@ void InMemOverflowFile::resetElementsOverflowPtrIfNecessary(PageByteCursor& page
     if (elementType->typeID == LIST) {
         auto kuListPtr = reinterpret_cast<ku_list_t*>(elementsToReset);
         for (auto i = 0u; i < numElementsToReset; i++) {
-            copyListOverflow(pageByteCursor, kuListPtr, elementType->childType.get());
+            copyListOverflowToFile(pageByteCursor, kuListPtr, elementType->childType.get());
             kuListPtr++;
         }
     } else if (elementType->typeID == STRING) {

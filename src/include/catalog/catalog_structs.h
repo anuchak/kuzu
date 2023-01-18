@@ -85,7 +85,7 @@ public:
 
     inline void addProperty(string propertyName, DataType dataType) {
         properties.emplace_back(
-            std::move(propertyName), std::move(dataType), assignNextPropertyID(), tableID);
+            std::move(propertyName), std::move(dataType), increaseNextPropertyID(), tableID);
     }
 
     string getPropertyName(property_id_t propertyID) const;
@@ -95,7 +95,7 @@ public:
     Property getProperty(property_id_t propertyID) const;
 
 private:
-    inline property_id_t assignNextPropertyID() { return nextPropertyID++; }
+    inline property_id_t increaseNextPropertyID() { return nextPropertyID++; }
 
 public:
     string tableName;

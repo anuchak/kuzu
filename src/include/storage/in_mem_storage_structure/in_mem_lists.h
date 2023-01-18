@@ -9,6 +9,13 @@ namespace storage {
 
 typedef vector<atomic<uint64_t>> atomic_uint64_vec_t;
 
+class InMemLists;
+class AdjLists;
+
+using fill_in_mem_lists_function_t = std::function<void(InMemLists* inMemLists, uint8_t* defaultVal,
+    PageByteCursor& pageByteCursor, node_offset_t nodeOffset, list_header_t header,
+    uint64_t posInList, const DataType& dataType)>;
+
 class InMemListsUtils {
 
 public:
@@ -35,6 +42,9 @@ class InMemLists {
 public:
     InMemLists(string fName, DataType dataType, uint64_t numBytesForElement, uint64_t numNodes);
 
+    void fillWithDefaultVal(
+        uint8_t* defaultVal, uint64_t numNodes, AdjLists* adjList, const DataType& dataType);
+
     virtual ~InMemLists() = default;
 
     virtual void saveToFile();
@@ -56,6 +66,22 @@ private:
 
     void calculatePagesForSmallList(uint64_t& numPages, uint64_t& offsetInPage,
         uint64_t numElementsInList, uint64_t numElementsPerPage);
+
+    static inline void fillInMemListsWithNonOverflowValFunc(InMemLists* inMemLists,
+        uint8_t* defaultVal, PageByteCursor& pageByteCursor, node_offset_t nodeOffset,
+        list_header_t header, uint64_t posInList, const DataType& dataType) {
+        inMemLists->setElement(header, nodeOffset, posInList, defaultVal);
+    }
+
+    static void fillInMemListsWithStrValFunc(InMemLists* inMemLists, uint8_t* defaultVal,
+        PageByteCursor& pageByteCursor, node_offset_t nodeOffset, list_header_t header,
+        uint64_t posInList, const DataType& dataType);
+
+    static void fillInMemListsWithListValFunc(InMemLists* inMemLists, uint8_t* defaultVal,
+        PageByteCursor& pageByteCursor, node_offset_t nodeOffset, list_header_t header,
+        uint64_t posInList, const DataType& dataType);
+
+    static fill_in_mem_lists_function_t getFillInMemListsFunc(const DataType& dataType);
 
 public:
     unique_ptr<InMemFile> inMemFile;

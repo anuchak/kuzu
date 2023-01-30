@@ -14,7 +14,7 @@ CopyNodeArrow::CopyNodeArrow(CopyDescription& copyDescription, string outputDire
     nodeTableSchema = catalog.getReadOnlyVersion()->getNodeTableSchema(tableID);
 }
 
-uint64_t CopyNodeArrow::copy() {
+uint64_t CopyNodeArrow::copy(RelsStore& relsStore) {
     auto read_start = std::chrono::high_resolution_clock::now();
     logger->info(
         "Reading " + CopyDescription::getFileTypeName(copyDescription.fileType) + " file.");
@@ -47,6 +47,14 @@ uint64_t CopyNodeArrow::copy() {
     nodesStatisticsAndDeletedIDs->setNumTuplesForTable(nodeTableSchema->tableID, numRows);
     logger->info("Done copying node {} with table {}.", nodeTableSchema->tableName,
         nodeTableSchema->tableID);
+
+    logger->info("Creating list headers for copied nodes.");
+    for (auto& relTableSchema :
+        catalog.getAllRelTableSchemasContainBoundTable(nodeTableSchema->tableID)) {
+        relsStore.getRelTable(relTableSchema->tableID)
+            ->batchInitEmptyRelsForNewNodes(relTableSchema, nodeTableSchema->tableID, numRows);
+    }
+    logger->info("Done creating list headers for copied nodes.");
 
     auto write_end = std::chrono::high_resolution_clock::now();
     auto read_time = std::chrono::duration_cast<std::chrono::microseconds>(read_end - read_start);

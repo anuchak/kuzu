@@ -16,7 +16,7 @@ public:
 
     ~CopyNodeArrow() override = default;
 
-    uint64_t copy();
+    uint64_t copy(RelsStore& relsStore);
 
     void saveToFile() override;
 

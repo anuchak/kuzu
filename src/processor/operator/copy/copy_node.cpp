@@ -9,7 +9,7 @@ uint64_t CopyNode::executeInternal(
     common::TaskScheduler* taskScheduler, ExecutionContext* executionContext) {
     auto nodeCSVCopier = make_unique<CopyNodeArrow>(
         copyDescription, wal->getDirectory(), *taskScheduler, *catalog, tableID, nodesStatistics);
-    auto numNodesCopied = nodeCSVCopier->copy();
+    auto numNodesCopied = nodeCSVCopier->copy(relsStore);
     wal->logCopyNodeRecord(tableID);
     return numNodesCopied;
 }

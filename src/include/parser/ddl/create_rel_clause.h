@@ -9,19 +9,23 @@ using namespace std;
 
 class CreateRelClause : public CreateTable {
 public:
-    explicit CreateRelClause(string tableName, vector<pair<string, string>> propertyNameDataTypes,
-        string relMultiplicity, vector<pair<string, string>> relConnections)
-        : CreateTable{StatementType::CREATE_REL_CLAUSE, move(tableName),
-              move(propertyNameDataTypes)},
-          relMultiplicity{move(relMultiplicity)}, relConnections{move(relConnections)} {}
+    CreateRelClause(string tableName, vector<pair<string, string>> propertyNameDataTypes,
+        string relMultiplicity, string srcTableName, string dstTableName)
+        : CreateTable{StatementType::CREATE_REL_CLAUSE, std::move(tableName),
+              std::move(propertyNameDataTypes)},
+          relMultiplicity{std::move(relMultiplicity)}, srcTableName{std::move(srcTableName)},
+          dstTableName{std::move(dstTableName)} {}
 
     inline string getRelMultiplicity() const { return relMultiplicity; }
 
-    inline vector<pair<string, string>> getRelConnections() const { return relConnections; }
+    inline string getSrcTableName() const { return srcTableName; }
+
+    inline string getDstTableName() const { return dstTableName; }
 
 private:
     string relMultiplicity;
-    vector<pair<string, string>> relConnections;
+    string srcTableName;
+    string dstTableName;
 };
 
 } // namespace parser

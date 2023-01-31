@@ -23,31 +23,10 @@ public:
     }
 };
 
-class CopyReadLists2BytesPerEdgeTest : public DBTest {
+class CopyLargeListTest : public DBTest {
 public:
     string getInputDir() override {
-        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/2-bytes-per-edge/");
-    }
-};
-
-class CopyReadLists3BytesPerEdgeTest : public DBTest {
-public:
-    string getInputDir() override {
-        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/3-bytes-per-edge/");
-    }
-};
-
-class CopyReadLists4BytesPerEdgeTest : public DBTest {
-public:
-    string getInputDir() override {
-        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/4-bytes-per-edge/");
-    }
-};
-
-class CopyReadLists5BytesPerEdgeTest : public DBTest {
-public:
-    string getInputDir() override {
-        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/5-bytes-per-edge/");
+        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/large-list/");
     }
 };
 
@@ -85,10 +64,8 @@ KnowsTablePTablePKnowsLists getKnowsTablePTablePKnowsLists(
     KnowsTablePTablePKnowsLists retVal;
     retVal.pNodeTableID = catalog.getReadOnlyVersion()->getTableID("person");
     retVal.knowsRelTableID = catalog.getReadOnlyVersion()->getTableID("knows");
-    retVal.fwdPKnowsLists =
-        graph->getRelsStore().getAdjLists(FWD, retVal.pNodeTableID, retVal.knowsRelTableID);
-    retVal.bwdPKnowsLists =
-        graph->getRelsStore().getAdjLists(BWD, retVal.pNodeTableID, retVal.knowsRelTableID);
+    retVal.fwdPKnowsLists = graph->getRelsStore().getAdjLists(FWD, retVal.knowsRelTableID);
+    retVal.bwdPKnowsLists = graph->getRelsStore().getAdjLists(BWD, retVal.knowsRelTableID);
     return retVal;
 }
 
@@ -96,10 +73,8 @@ ATableAKnowsLists getATableAKnowsLists(const Catalog& catalog, StorageManager* s
     ATableAKnowsLists retVal;
     retVal.aNodeTableID = catalog.getReadOnlyVersion()->getTableID("animal");
     auto knowsRelTableID = catalog.getReadOnlyVersion()->getTableID("knows");
-    retVal.fwdAKnowsLists =
-        storageManager->getRelsStore().getAdjLists(FWD, retVal.aNodeTableID, knowsRelTableID);
-    retVal.bwdAKnowsLists =
-        storageManager->getRelsStore().getAdjLists(BWD, retVal.aNodeTableID, knowsRelTableID);
+    retVal.fwdAKnowsLists = storageManager->getRelsStore().getAdjLists(FWD, knowsRelTableID);
+    retVal.bwdAKnowsLists = storageManager->getRelsStore().getAdjLists(BWD, knowsRelTableID);
     return retVal;
 }
 } // namespace testing
@@ -206,34 +181,10 @@ void verifyP6001ToP65999(KnowsTablePTablePKnowsLists& knowsTablePTablePKnowsList
     }
 }
 
-TEST_F(CopyReadLists2BytesPerEdgeTest, ReadLists2BytesPerEdgeTest) {
+TEST_F(CopyLargeListTest, ReadLargeListTest) {
     auto knowsTablePTablePKnowsLists =
         getKnowsTablePTablePKnowsLists(*getCatalog(*database), getStorageManager(*database));
     verifyP0ToP5999(knowsTablePTablePKnowsLists);
-}
-
-TEST_F(CopyReadLists3BytesPerEdgeTest, ReadLists3BytesPerEdgeTest) {
-    auto knowsTablePTablePKnowsLists =
-        getKnowsTablePTablePKnowsLists(*getCatalog(*database), getStorageManager(*database));
-    verifyP0ToP5999(knowsTablePTablePKnowsLists);
-    verifya0Andp6000(
-        knowsTablePTablePKnowsLists, *getCatalog(*database), getStorageManager(*database));
-}
-
-TEST_F(CopyReadLists4BytesPerEdgeTest, ReadLists4BytesPerEdgeTest) {
-    auto knowsTablePTablePKnowsLists =
-        getKnowsTablePTablePKnowsLists(*getCatalog(*database), getStorageManager(*database));
-    verifyP0ToP5999(knowsTablePTablePKnowsLists);
-    verifyP6001ToP65999(knowsTablePTablePKnowsLists);
-}
-
-TEST_F(CopyReadLists5BytesPerEdgeTest, ReadLists5BytesPerEdgeTest) {
-    auto knowsTablePTablePKnowsLists =
-        getKnowsTablePTablePKnowsLists(*getCatalog(*database), getStorageManager(*database));
-    verifyP0ToP5999(knowsTablePTablePKnowsLists);
-    verifya0Andp6000(
-        knowsTablePTablePKnowsLists, *getCatalog(*database), getStorageManager(*database));
-    verifyP6001ToP65999(knowsTablePTablePKnowsLists);
 }
 
 TEST_F(CopySpecialCharTest, CopySpecialChars) {

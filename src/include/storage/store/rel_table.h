@@ -9,14 +9,6 @@
 namespace kuzu {
 namespace storage {
 
-// TODO(Guodong): remove the distinction between AdjColumn and Column, also AdjLists and Lists.
-using table_adj_columns_map_t = unordered_map<table_id_t, unique_ptr<AdjColumn>>;
-using table_adj_lists_map_t = unordered_map<table_id_t, unique_ptr<AdjLists>>;
-using table_property_columns_map_t =
-    unordered_map<table_id_t, unordered_map<property_id_t, unique_ptr<Column>>>;
-using table_property_lists_map_t =
-    unordered_map<table_id_t, unordered_map<property_id_t, unique_ptr<Lists>>>;
-
 enum class RelTableDataType : uint8_t {
     COLUMNS = 0,
     LISTS = 1,
@@ -48,10 +40,8 @@ private:
 
 struct RelTableScanState {
 public:
-    explicit RelTableScanState(table_id_t boundNodeTableID, vector<property_id_t> propertyIds,
-        RelTableDataType relTableDataType)
-        : relTableDataType{relTableDataType}, boundNodeTableID{boundNodeTableID},
-          propertyIds{std::move(propertyIds)} {
+    explicit RelTableScanState(vector<property_id_t> propertyIds, RelTableDataType relTableDataType)
+        : relTableDataType{relTableDataType}, propertyIds{std::move(propertyIds)} {
         if (relTableDataType == RelTableDataType::LISTS) {
             syncState = make_unique<ListSyncState>();
             // The first listHandle is for adj lists.
@@ -68,7 +58,6 @@ public:
     }
 
     RelTableDataType relTableDataType;
-    table_id_t boundNodeTableID;
     vector<property_id_t> propertyIds;
     // sync state between adj and property lists
     unique_ptr<ListSyncState> syncState;
@@ -77,40 +66,31 @@ public:
 
 class DirectedRelTableData {
 public:
-    DirectedRelTableData(table_id_t tableID, RelDirection direction,
-        ListsUpdatesStore* listsUpdatesStore, BufferManager& bufferManager)
-        : tableID{tableID}, direction{direction}, listsUpdatesStore{listsUpdatesStore},
-          bufferManager{bufferManager} {}
+    DirectedRelTableData(table_id_t tableID, table_id_t boundTableID, RelDirection direction,
+        ListsUpdatesStore* listsUpdatesStore, BufferManager& bufferManager,
+        bool isSingleMultiplicityInDirection)
+        : tableID{tableID}, boundTableID{boundTableID}, direction{direction},
+          listsUpdatesStore{listsUpdatesStore}, bufferManager{bufferManager},
+          isSingleMultiplicityInDirection{isSingleMultiplicityInDirection} {}
 
-    inline bool hasAdjColumn(table_id_t boundNodeTableID) {
-        return adjColumns.contains(boundNodeTableID);
-    }
-    inline bool hasAdjLists(table_id_t boundNodeTableID) {
-        return adjLists.contains(boundNodeTableID);
-    }
-    inline uint32_t getNumPropertyLists(table_id_t boundNodeTableID) {
-        return propertyLists.at(boundNodeTableID).size();
-    }
+    inline uint32_t getNumPropertyLists() { return propertyLists.size(); }
     // Returns the list offset of the given relID if the relID stored as list in the current
     // direction, otherwise it returns UINT64_MAX.
     inline list_offset_t getListOffset(nodeID_t nodeID, int64_t relID) {
-        return propertyLists.contains(nodeID.tableID) ?
-                   ((RelIDList*)getPropertyLists(
-                        nodeID.tableID, RelTableSchema::INTERNAL_REL_ID_PROPERTY_IDX))
+        return adjLists != nullptr ?
+                   ((RelIDList*)getPropertyLists(RelTableSchema::INTERNAL_REL_ID_PROPERTY_IDX))
                        ->getListOffset(nodeID.offset, relID) :
                    UINT64_MAX;
     }
+    inline AdjColumn* getAdjColumn() const { return adjColumn.get(); }
+    inline AdjLists* getAdjLists() const { return adjLists.get(); }
+    inline bool isSingleMultiplicity() const { return isSingleMultiplicityInDirection; }
 
     void initializeData(RelTableSchema* tableSchema, WAL* wal);
-    void initializeColumnsForBoundNodeTable(RelTableSchema* tableSchema,
-        table_id_t boundNodeTableID, NodeIDCompressionScheme& nodeIDCompressionScheme,
-        BufferManager& bufferManager, WAL* wal);
-    void initializeListsForBoundNodeTabl(RelTableSchema* tableSchema, table_id_t boundNodeTableID,
-        NodeIDCompressionScheme& nodeIDCompressionScheme, BufferManager& bufferManager, WAL* wal);
-    Column* getPropertyColumn(table_id_t boundNodeTableID, property_id_t propertyID);
-    Lists* getPropertyLists(table_id_t boundNodeTableID, property_id_t propertyID);
-    AdjColumn* getAdjColumn(table_id_t boundNodeTableID);
-    AdjLists* getAdjLists(table_id_t boundNodeTableID);
+    void initializeColumns(RelTableSchema* tableSchema, BufferManager& bufferManager, WAL* wal);
+    void initializeLists(RelTableSchema* tableSchema, BufferManager& bufferManager, WAL* wal);
+    Column* getPropertyColumn(property_id_t propertyID);
+    Lists* getPropertyLists(property_id_t propertyID);
 
     inline void scan(Transaction* transaction, RelTableScanState& scanState,
         const shared_ptr<ValueVector>& inNodeIDVector,
@@ -121,6 +101,7 @@ public:
             scanLists(transaction, scanState, inNodeIDVector, outputVectors);
         }
     }
+    inline bool isBoundTable(table_id_t tableID) const { return tableID == boundTableID; }
 
     void insertRel(const shared_ptr<ValueVector>& boundVector,
         const shared_ptr<ValueVector>& nbrVector,
@@ -129,12 +110,11 @@ public:
     void updateRel(const shared_ptr<ValueVector>& boundVector, property_id_t propertyID,
         const shared_ptr<ValueVector>& propertyVector);
     void performOpOnListsWithUpdates(const std::function<void(Lists*)>& opOnListsWithUpdates);
-    unique_ptr<ListsUpdateIteratorsForDirection> getListsUpdateIteratorsForDirection(
-        table_id_t boundNodeTableID);
+    unique_ptr<ListsUpdateIteratorsForDirection> getListsUpdateIteratorsForDirection();
     void removeProperty(property_id_t propertyID);
     void addProperty(Property& property, WAL* wal);
-    void batchInitEmptyRelsForNewNodes(const RelTableSchema* relTableSchema,
-        table_id_t boundTableID, uint64_t numNodesInTable, const string& directory);
+    void batchInitEmptyRelsForNewNodes(
+        const RelTableSchema* relTableSchema, uint64_t numNodesInTable, const string& directory);
 
 private:
     void scanColumns(Transaction* transaction, RelTableScanState& scanState,
@@ -145,14 +125,16 @@ private:
         vector<shared_ptr<ValueVector>>& outputVectors);
 
 private:
-    table_property_columns_map_t propertyColumns;
-    table_adj_columns_map_t adjColumns;
-    table_property_lists_map_t propertyLists;
-    table_adj_lists_map_t adjLists;
+    unordered_map<property_id_t, unique_ptr<Column>> propertyColumns;
+    unique_ptr<AdjColumn> adjColumn;
+    unordered_map<property_id_t, unique_ptr<Lists>> propertyLists;
+    unique_ptr<AdjLists> adjLists;
     table_id_t tableID;
+    table_id_t boundTableID;
     RelDirection direction;
     ListsUpdatesStore* listsUpdatesStore;
     BufferManager& bufferManager;
+    bool isSingleMultiplicityInDirection;
 };
 
 class RelTable {
@@ -162,37 +144,25 @@ public:
 
     void initializeData(RelTableSchema* tableSchema);
 
-    inline Column* getPropertyColumn(
-        RelDirection relDirection, table_id_t boundNodeTableID, property_id_t propertyId) {
-        return relDirection == FWD ?
-                   fwdRelTableData->getPropertyColumn(boundNodeTableID, propertyId) :
-                   bwdRelTableData->getPropertyColumn(boundNodeTableID, propertyId);
+    inline Column* getPropertyColumn(RelDirection relDirection, property_id_t propertyId) {
+        return relDirection == FWD ? fwdRelTableData->getPropertyColumn(propertyId) :
+                                     bwdRelTableData->getPropertyColumn(propertyId);
     }
-    inline Lists* getPropertyLists(
-        RelDirection relDirection, table_id_t boundNodeTableID, property_id_t propertyId) {
-        return relDirection == FWD ?
-                   fwdRelTableData->getPropertyLists(boundNodeTableID, propertyId) :
-                   bwdRelTableData->getPropertyLists(boundNodeTableID, propertyId);
+    inline Lists* getPropertyLists(RelDirection relDirection, property_id_t propertyId) {
+        return relDirection == FWD ? fwdRelTableData->getPropertyLists(propertyId) :
+                                     bwdRelTableData->getPropertyLists(propertyId);
     }
-    inline uint32_t getNumPropertyLists(RelDirection relDirection, table_id_t boundNodeTableID) {
-        return relDirection == FWD ? fwdRelTableData->getNumPropertyLists(boundNodeTableID) :
-                                     bwdRelTableData->getNumPropertyLists(boundNodeTableID);
+    inline uint32_t getNumPropertyLists(RelDirection relDirection) {
+        return relDirection == FWD ? fwdRelTableData->getNumPropertyLists() :
+                                     bwdRelTableData->getNumPropertyLists();
     }
-    inline bool hasAdjColumn(RelDirection relDirection, table_id_t boundNodeTableID) {
-        return relDirection == FWD ? fwdRelTableData->hasAdjColumn(boundNodeTableID) :
-                                     bwdRelTableData->hasAdjColumn(boundNodeTableID);
+    inline AdjColumn* getAdjColumn(RelDirection relDirection) {
+        return relDirection == FWD ? fwdRelTableData->getAdjColumn() :
+                                     bwdRelTableData->getAdjColumn();
     }
-    inline AdjColumn* getAdjColumn(RelDirection relDirection, table_id_t boundNodeTableID) {
-        return relDirection == FWD ? fwdRelTableData->getAdjColumn(boundNodeTableID) :
-                                     bwdRelTableData->getAdjColumn(boundNodeTableID);
-    }
-    inline bool hasAdjList(RelDirection relDirection, table_id_t boundNodeTableID) {
-        return relDirection == FWD ? fwdRelTableData->hasAdjLists(boundNodeTableID) :
-                                     bwdRelTableData->hasAdjLists(boundNodeTableID);
-    }
-    inline AdjLists* getAdjLists(RelDirection relDirection, table_id_t boundNodeTableID) {
-        return relDirection == FWD ? fwdRelTableData->getAdjLists(boundNodeTableID) :
-                                     bwdRelTableData->getAdjLists(boundNodeTableID);
+    inline AdjLists* getAdjLists(RelDirection relDirection) {
+        return relDirection == FWD ? fwdRelTableData->getAdjLists() :
+                                     bwdRelTableData->getAdjLists();
     }
     inline table_id_t getRelTableID() const { return tableID; }
     inline DirectedRelTableData* getDirectedTableData(RelDirection relDirection) {
@@ -202,9 +172,13 @@ public:
         fwdRelTableData->removeProperty(propertyID);
         bwdRelTableData->removeProperty(propertyID);
     }
+    inline bool isSingleMultiplicityInDirection(RelDirection relDirection) {
+        return relDirection == FWD ? fwdRelTableData->isSingleMultiplicity() :
+                                     bwdRelTableData->isSingleMultiplicity();
+    }
 
-    vector<AdjLists*> getAdjListsForNodeTable(table_id_t tableID);
-    vector<AdjColumn*> getAdjColumnsForNodeTable(table_id_t tableID);
+    vector<AdjLists*> getAllAdjLists(table_id_t boundTableID);
+    vector<AdjColumn*> getAllAdjColumns(table_id_t boundTableID);
 
     void prepareCommitOrRollbackIfNecessary(bool isCommit);
     void checkpointInMemoryIfNecessary();
@@ -220,7 +194,7 @@ public:
         const shared_ptr<ValueVector>& propertyVector, uint32_t propertyID);
     void initEmptyRelsForNewNode(nodeID_t& nodeID);
     void batchInitEmptyRelsForNewNodes(
-        const RelTableSchema* relTableSchema, table_id_t boundTableID, uint64_t numNodesInTable);
+        const RelTableSchema* relTableSchema, uint64_t numNodesInTable);
     void addProperty(Property property);
 
 private:
@@ -233,18 +207,16 @@ private:
     void performOpOnListsWithUpdates(const std::function<void(Lists*)>& opOnListsWithUpdates,
         const std::function<void()>& opIfHasUpdates);
     unique_ptr<ListsUpdateIteratorsForDirection> getListsUpdateIteratorsForDirection(
-        RelDirection relDirection, table_id_t boundNodeTableID) const;
+        RelDirection relDirection) const;
     void prepareCommitForDirection(RelDirection relDirection);
     void prepareCommitForListWithUpdateStoreDataOnly(AdjLists* adjLists, offset_t nodeOffset,
         ListsUpdatesForNodeOffset* listsUpdatesForNodeOffset, RelDirection relDirection,
         ListsUpdateIteratorsForDirection* listsUpdateIteratorsForDirection,
-        table_id_t boundNodeTableID,
         const std::function<void(ListsUpdateIterator* listsUpdateIterator, offset_t,
             InMemList& inMemList)>& opOnListsUpdateIterators);
     void prepareCommitForList(AdjLists* adjLists, offset_t nodeOffset,
         ListsUpdatesForNodeOffset* listsUpdatesForNodeOffset, RelDirection relDirection,
-        ListsUpdateIteratorsForDirection* listsUpdateIteratorsForDirection,
-        table_id_t boundNodeTableID);
+        ListsUpdateIteratorsForDirection* listsUpdateIteratorsForDirection);
 
 private:
     table_id_t tableID;

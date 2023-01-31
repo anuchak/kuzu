@@ -6,7 +6,7 @@ FetchContent_Declare(
         GIT_TAG release-1.11.0
 )
 FetchContent_MakeAvailable(googletest)
-add_library(GTest::GTest INTERFACE IMPORTED)
+add_library(GTest::GTest INTERFACE IMPORTED runner/e2e_create_rel_test.cpp)
 target_link_libraries(GTest::GTest INTERFACE gtest_main)
 target_link_libraries(GTest::GTest INTERFACE gmock_main)
 

@@ -7,12 +7,6 @@
 namespace kuzu {
 namespace storage {
 
-using table_adj_in_mem_columns_map_t = unordered_map<table_id_t, unique_ptr<InMemAdjColumn>>;
-using table_property_in_mem_lists_map_t = unordered_map<table_id_t, vector<unique_ptr<InMemLists>>>;
-using table_adj_in_mem_lists_map_t = unordered_map<table_id_t, unique_ptr<InMemAdjLists>>;
-using table_property_in_mem_columns_map_t =
-    unordered_map<table_id_t, vector<unique_ptr<InMemColumn>>>;
-
 class CopyRelArrow : public CopyStructuresArrow {
 
 public:
@@ -41,6 +35,8 @@ private:
     void initAdjListsHeaders();
 
     void initListsMetadata();
+
+    void initializePkIndexes(table_id_t nodeTableID, BufferManager& bufferManager);
 
     arrow::Status executePopulateTask(PopulateTaskType populateTaskType);
 
@@ -74,8 +70,7 @@ private:
     static void inferTableIDsAndOffsets(const vector<shared_ptr<T>>& batchColumns,
         vector<nodeID_t>& nodeIDs, vector<DataType>& nodeIDTypes,
         const map<table_id_t, unique_ptr<PrimaryKeyIndex>>& pkIndexes, Transaction* transaction,
-        const Catalog& catalog, vector<bool> requireToReadTableLabels, int64_t blockOffset,
-        int64_t& colIndex);
+        const Catalog& catalog, int64_t blockOffset, int64_t& colIndex);
 
     template<typename T>
     static void putPropsOfLineIntoColumns(CopyRelArrow* copier,
@@ -123,14 +118,13 @@ private:
     RelsStatistics* relsStatistics;
     unique_ptr<Transaction> dummyReadOnlyTrx;
     map<table_id_t, unique_ptr<PrimaryKeyIndex>> pkIndexes;
-    vector<map<table_id_t, unique_ptr<atomic_uint64_vec_t>>> directionTableListSizes{2};
-    vector<map<table_id_t, atomic<uint64_t>>> directionNumRelsPerTable{2};
-    vector<map<table_id_t, NodeIDCompressionScheme>> directionNodeIDCompressionScheme{2};
-    vector<table_adj_in_mem_columns_map_t> directionTableAdjColumns{2};
-    vector<table_property_in_mem_columns_map_t> directionTablePropertyColumns{2};
-    vector<table_adj_in_mem_lists_map_t> directionTableAdjLists{2};
-    vector<table_property_in_mem_lists_map_t> directionTablePropertyLists{2};
-    unordered_map<uint32_t, unique_ptr<InMemOverflowFile>> overflowFilePerPropertyID;
+    atomic<uint64_t> numRels = 0;
+    vector<unique_ptr<atomic_uint64_vec_t>> directionTableListSizes{2};
+    vector<unique_ptr<InMemAdjColumn>> directionTableAdjColumns{2};
+    vector<unordered_map<property_id_t, unique_ptr<InMemColumn>>> directionTablePropertyColumns{2};
+    vector<unique_ptr<InMemAdjLists>> directionTableAdjLists{2};
+    vector<unordered_map<property_id_t, unique_ptr<InMemLists>>> directionTablePropertyLists{2};
+    unordered_map<property_id_t, unique_ptr<InMemOverflowFile>> overflowFilePerPropertyID;
 };
 
 } // namespace storage

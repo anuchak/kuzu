@@ -6,7 +6,6 @@
 #include "common/vector/value_vector.h"
 #include "storage/buffer_manager/buffer_manager.h"
 #include "storage/buffer_manager/versioned_file_handle.h"
-#include "storage/node_id_compression_scheme.h"
 #include "storage/storage_structure/storage_structure_utils.h"
 #include "storage/storage_utils.h"
 #include "storage/wal/wal.h"
@@ -85,17 +84,17 @@ protected:
         PageElementCursor& cursor,
         const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper);
 
-    void readRelIDsBySequentialCopy(Transaction* transaction, const shared_ptr<ValueVector>& vector,
-        PageElementCursor& cursor,
+    void readInternalIDsBySequentialCopy(Transaction* transaction,
+        const shared_ptr<ValueVector>& vector, PageElementCursor& cursor,
         const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper,
         table_id_t commonTableID, bool hasNoNullGuarantee);
 
-    void readRelIDsFromAPageBySequentialCopy(Transaction* transaction,
+    void readInternalIDsFromAPageBySequentialCopy(Transaction* transaction,
         const shared_ptr<ValueVector>& vector, uint64_t vectorStartPos, page_idx_t physicalPageIdx,
         uint16_t pagePosOfFirstElement, uint64_t numValuesToRead, table_id_t commonTableID,
         bool hasNoNullGuarantee);
 
-    void readRelIDsBySequentialCopyWithSelState(Transaction* transaction,
+    void readInternalIDsBySequentialCopyWithSelState(Transaction* transaction,
         const shared_ptr<ValueVector>& vector, PageElementCursor& cursor,
         const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper,
         table_id_t commonTableID);
@@ -103,21 +102,6 @@ protected:
     void readBySequentialCopyWithSelState(Transaction* transaction,
         const shared_ptr<ValueVector>& vector, PageElementCursor& cursor,
         const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper);
-
-    void readNodeIDsBySequentialCopy(Transaction* transaction,
-        const shared_ptr<ValueVector>& valueVector, PageElementCursor& cursor,
-        const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper,
-        NodeIDCompressionScheme nodeIDCompressionScheme, bool hasNoNullGuarantee);
-
-    void readNodeIDsBySequentialCopyWithSelState(Transaction* transaction,
-        const shared_ptr<ValueVector>& valueVector, PageElementCursor& cursor,
-        const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper,
-        NodeIDCompressionScheme nodeIDCompressionScheme);
-
-    void readNodeIDsFromAPageBySequentialCopy(Transaction* transaction,
-        const shared_ptr<ValueVector>& vector, uint64_t vectorStartPos, page_idx_t physicalPageIdx,
-        uint16_t pagePosOfFirstElement, uint64_t numValuesToRead,
-        NodeIDCompressionScheme& nodeIDCompressionScheme, bool hasNoNullGuarantee);
 
     void readSingleNullBit(const shared_ptr<ValueVector>& valueVector, const uint8_t* frame,
         uint64_t elementPos, uint64_t offsetInVector) const;

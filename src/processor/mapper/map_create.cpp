@@ -23,7 +23,7 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalCreateNodeToPhysical(
         auto primaryKeyEvaluator = expressionMapper.mapExpression(primaryKey, *inSchema);
         vector<RelTable*> relTablesToInit;
         for (auto& [relTableID, relTableSchema] : catalogContent->getRelTableSchemas()) {
-            if (relTableSchema->edgeContainsNodeTable(nodeTableID)) {
+            if (relTableSchema->isSrcOrDstTable(nodeTableID)) {
                 relTablesToInit.push_back(storageManager.getRelsStore().getRelTable(relTableID));
             }
         }

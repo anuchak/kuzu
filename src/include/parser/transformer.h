@@ -10,7 +10,6 @@ namespace kuzu {
 namespace parser {
 
 struct ParsedCaseAlternative;
-struct SetItem;
 
 class Transformer {
 public:
@@ -224,11 +223,6 @@ private:
 
     vector<pair<string, string>> transformPropertyDefinitions(
         CypherParser::KU_PropertyDefinitionsContext& ctx);
-
-    vector<pair<string, string>> transformRelConnections(
-        CypherParser::KU_RelConnectionsContext& ctx);
-
-    vector<string> transformNodeLabels(CypherParser::KU_NodeLabelsContext& ctx);
 
     unique_ptr<Statement> transformCopyCSV(CypherParser::KU_CopyCSVContext& ctx);
 

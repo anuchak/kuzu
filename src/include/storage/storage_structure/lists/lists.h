@@ -106,7 +106,6 @@ public:
 
 protected:
     virtual inline DiskOverflowFile* getDiskOverflowFileIfExists() { return nullptr; }
-    virtual inline NodeIDCompressionScheme* getNodeIDCompressionIfExists() { return nullptr; }
     Lists(const StorageStructureIDAndFName& storageStructureIDAndFName, const DataType& dataType,
         const size_t& elementSize, shared_ptr<ListHeaders> headers, BufferManager& bufferManager,
         bool hasNULLBytes, WAL* wal, ListsUpdatesStore* listsUpdatesStore)
@@ -185,13 +184,12 @@ class AdjLists : public Lists {
 
 public:
     AdjLists(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        BufferManager& bufferManager, NodeIDCompressionScheme nodeIDCompressionScheme, WAL* wal,
+        table_id_t commonNbrTableID, BufferManager& bufferManager, WAL* wal,
         ListsUpdatesStore* listsUpdatesStore)
-        : Lists{storageStructureIDAndFName, DataType(INTERNAL_ID),
-              nodeIDCompressionScheme.getNumBytesForNodeIDAfterCompression(),
+        : Lists{storageStructureIDAndFName, DataType(INTERNAL_ID), sizeof(offset_t),
               make_shared<ListHeaders>(storageStructureIDAndFName, &bufferManager, wal),
               bufferManager, false /* hasNullBytes */, wal, listsUpdatesStore},
-          nodeIDCompressionScheme{nodeIDCompressionScheme} {};
+          commonNbrTableID{commonNbrTableID} {};
 
     inline bool mayContainNulls() const override { return false; }
 
@@ -212,10 +210,6 @@ public:
     }
 
 private:
-    inline NodeIDCompressionScheme* getNodeIDCompressionIfExists() override {
-        return &nodeIDCompressionScheme;
-    }
-
     void readFromLargeList(
         const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle) override;
     void readFromSmallList(
@@ -226,7 +220,7 @@ private:
         ListHandle& listHandle, const shared_ptr<ValueVector>& valueVector);
 
 private:
-    NodeIDCompressionScheme nodeIDCompressionScheme;
+    table_id_t commonNbrTableID;
 };
 
 class RelIDList : public Lists {

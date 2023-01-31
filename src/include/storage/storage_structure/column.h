@@ -186,18 +186,18 @@ public:
 private:
     inline void lookup(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
         uint32_t vectorPos, PageElementCursor& cursor) override {
-        readRelIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos, cursor.pageIdx,
-            cursor.elemPosInPage, 1 /* numValuesToCopy */, commonTableID,
+        readInternalIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos,
+            cursor.pageIdx, cursor.elemPosInPage, 1 /* numValuesToCopy */, commonTableID,
             false /* hasNoNullGuarantee */);
     }
     inline void scan(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
         PageElementCursor& cursor) override {
-        readRelIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper, commonTableID,
-            false /* hasNoNullGuarantee */);
+        readInternalIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
+            commonTableID, false /* hasNoNullGuarantee */);
     }
     inline void scanWithSelState(Transaction* transaction,
         const shared_ptr<ValueVector>& resultVector, PageElementCursor& cursor) override {
-        readRelIDsBySequentialCopyWithSelState(
+        readInternalIDsBySequentialCopyWithSelState(
             transaction, resultVector, cursor, identityMapper, commonTableID);
     }
     inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
@@ -215,39 +215,37 @@ private:
 class AdjColumn : public Column {
 
 public:
-    AdjColumn(const StorageStructureIDAndFName& structureIDAndFName, BufferManager& bufferManager,
-        const NodeIDCompressionScheme& nodeIDCompressionScheme, WAL* wal)
-        : Column{structureIDAndFName, DataType(INTERNAL_ID),
-              nodeIDCompressionScheme.getNumBytesForNodeIDAfterCompression(), bufferManager, wal},
-          nodeIDCompressionScheme(nodeIDCompressionScheme){};
+    AdjColumn(const StorageStructureIDAndFName& structureIDAndFName, table_id_t commonNbrTableID,
+        BufferManager& bufferManager, WAL* wal)
+        : Column{structureIDAndFName, DataType(INTERNAL_ID), sizeof(offset_t), bufferManager, wal},
+          commonNbrTableID{commonNbrTableID} {};
 
 private:
     inline void lookup(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
         uint32_t vectorPos, PageElementCursor& cursor) override {
-        readNodeIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos, cursor.pageIdx,
-            cursor.elemPosInPage, 1 /* numValuesToCopy */, nodeIDCompressionScheme,
+        readInternalIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos,
+            cursor.pageIdx, cursor.elemPosInPage, 1 /* numValuesToCopy */, commonNbrTableID,
             false /* hasNoNullGuarantee */);
     }
     inline void scan(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
         PageElementCursor& cursor) override {
-        readNodeIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
-            nodeIDCompressionScheme, false /* hasNoNullGuarantee */);
+        readInternalIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
+            commonNbrTableID, false /* hasNoNullGuarantee */);
     }
     inline void scanWithSelState(Transaction* transaction,
         const shared_ptr<ValueVector>& resultVector, PageElementCursor& cursor) override {
-        readNodeIDsBySequentialCopyWithSelState(
-            transaction, resultVector, cursor, identityMapper, nodeIDCompressionScheme);
+        readInternalIDsBySequentialCopyWithSelState(
+            transaction, resultVector, cursor, identityMapper, commonNbrTableID);
     }
     inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
         const shared_ptr<ValueVector>& vectorToWriteFrom,
         uint32_t posInVectorToWriteFrom) override {
-        nodeIDCompressionScheme.writeNodeID(
-            walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage),
-            vectorToWriteFrom->getValue<nodeID_t>(posInVectorToWriteFrom));
+        *(walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage)) =
+            vectorToWriteFrom->getValue<nodeID_t>(posInVectorToWriteFrom).offset;
     }
 
 private:
-    NodeIDCompressionScheme nodeIDCompressionScheme;
+    table_id_t commonNbrTableID;
 };
 
 class ColumnFactory {

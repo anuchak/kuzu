@@ -18,35 +18,20 @@ public:
     RelsStore(const Catalog& catalog, BufferManager& bufferManager, MemoryManager& memoryManager,
         WAL* wal);
 
-    inline Column* getRelPropertyColumn(RelDirection relDirection, table_id_t boundNodeTableID,
-        table_id_t relTableID, uint64_t propertyIdx) const {
-        return relTables.at(relTableID)
-            ->getPropertyColumn(relDirection, boundNodeTableID, propertyIdx);
+    inline Column* getRelPropertyColumn(
+        RelDirection relDirection, table_id_t relTableID, uint64_t propertyIdx) const {
+        return relTables.at(relTableID)->getPropertyColumn(relDirection, propertyIdx);
     }
-    inline Lists* getRelPropertyLists(RelDirection relDirection, table_id_t boundNodeTableID,
-        table_id_t relTableID, uint64_t propertyIdx) const {
-        return relTables.at(relTableID)
-            ->getPropertyLists(relDirection, boundNodeTableID, propertyIdx);
+    inline Lists* getRelPropertyLists(
+        RelDirection relDirection, table_id_t relTableID, uint64_t propertyIdx) const {
+        return relTables.at(relTableID)->getPropertyLists(relDirection, propertyIdx);
     }
-    inline bool hasAdjColumn(
-        RelDirection relDirection, table_id_t boundNodeTableID, table_id_t relTableID) const {
-        return relTables.at(relTableID)->hasAdjColumn(relDirection, boundNodeTableID);
+    inline AdjColumn* getAdjColumn(RelDirection relDirection, table_id_t relTableID) const {
+        return relTables.at(relTableID)->getAdjColumn(relDirection);
     }
-    inline AdjColumn* getAdjColumn(
-        RelDirection relDirection, table_id_t boundNodeTableID, table_id_t relTableID) const {
-        return relTables.at(relTableID)->getAdjColumn(relDirection, boundNodeTableID);
+    inline AdjLists* getAdjLists(RelDirection relDirection, table_id_t relTableID) const {
+        return relTables.at(relTableID)->getAdjLists(relDirection);
     }
-    inline bool hasAdjList(
-        RelDirection relDirection, table_id_t boundNodeTableID, table_id_t relTableID) const {
-        return relTables.at(relTableID)->hasAdjList(relDirection, boundNodeTableID);
-    }
-    inline AdjLists* getAdjLists(
-        RelDirection relDirection, table_id_t boundNodeTableID, table_id_t relTableID) const {
-        return relTables.at(relTableID)->getAdjLists(relDirection, boundNodeTableID);
-    }
-
-    pair<vector<AdjLists*>, vector<AdjColumn*>> getAdjListsAndColumns(
-        const table_id_t tableID) const;
 
     // Since ddl statements are wrapped in a single auto-committed transaction, we don't need to
     // maintain a write-only version of relTables. We just need to add the actual relTable to
@@ -70,11 +55,20 @@ public:
         relTables.erase(tableID);
         relsStatistics.removeTableStatistic(tableID);
     }
-    void prepareCommitOrRollbackIfNecessary(bool isCommit) {
+
+    inline void prepareCommitOrRollbackIfNecessary(bool isCommit) {
         for (auto& [_, relTable] : relTables) {
             relTable->prepareCommitOrRollbackIfNecessary(isCommit);
         }
     }
+
+    inline bool isSingleMultiplicityInDirection(
+        RelDirection relDirection, table_id_t relTableID) const {
+        return relTables.at(relTableID)->isSingleMultiplicityInDirection(relDirection);
+    }
+
+    pair<vector<AdjLists*>, vector<AdjColumn*>> getAdjListsAndColumns(
+        const table_id_t boundTableID) const;
 
 private:
     unordered_map<table_id_t, unique_ptr<RelTable>> relTables;

@@ -5,12 +5,14 @@
 
 #include "common/configs.h"
 #include "common/null_mask.h"
-#include "storage/node_id_compression_scheme.h"
+#include "common/types/internal_id_t.h"
 
 using namespace kuzu::common;
 
 namespace kuzu {
 namespace storage {
+
+using namespace std;
 
 class InMemPage {
 
@@ -20,8 +22,7 @@ public:
 
     inline bool isElemPosNull(uint16_t elemPosInPage) const { return nullMask[elemPosInPage]; }
 
-    uint8_t* writeNodeID(nodeID_t* nodeID, uint32_t byteOffsetInPage, uint32_t elemPosInPage,
-        const NodeIDCompressionScheme& nodeIDCompressionScheme);
+    uint8_t* writeNodeID(nodeID_t* nodeID, uint32_t byteOffsetInPage, uint32_t elemPosInPage);
     uint8_t* write(uint32_t byteOffsetInPage, uint32_t elemPosInPage, const uint8_t* elem,
         uint32_t numBytesForElem);
 

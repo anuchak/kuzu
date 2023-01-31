@@ -114,11 +114,8 @@ protected:
 class InMemAdjLists : public InMemLists {
 
 public:
-    InMemAdjLists(
-        string fName, const NodeIDCompressionScheme& nodeIDCompressionScheme, uint64_t numNodes)
-        : InMemLists{move(fName), DataType(INTERNAL_ID),
-              nodeIDCompressionScheme.getNumBytesForNodeIDAfterCompression(), numNodes},
-          nodeIDCompressionScheme{nodeIDCompressionScheme} {
+    InMemAdjLists(string fName, uint64_t numNodes)
+        : InMemLists{std::move(fName), DataType(INTERNAL_ID), sizeof(offset_t), numNodes} {
         listHeadersBuilder = make_unique<ListHeadersBuilder>(this->fName, numNodes);
     };
 
@@ -130,21 +127,20 @@ public:
 
 private:
     unique_ptr<ListHeadersBuilder> listHeadersBuilder;
-    NodeIDCompressionScheme nodeIDCompressionScheme;
 };
 
 class InMemStringLists : public InMemListsWithOverflow {
 
 public:
     explicit InMemStringLists(string fName, uint64_t numNodes)
-        : InMemListsWithOverflow{move(fName), DataType(STRING), numNodes} {};
+        : InMemListsWithOverflow{std::move(fName), DataType(STRING), numNodes} {};
 };
 
 class InMemListLists : public InMemListsWithOverflow {
 
 public:
     InMemListLists(string fName, DataType dataType, uint64_t numNodes)
-        : InMemListsWithOverflow{move(fName), move(dataType), numNodes} {};
+        : InMemListsWithOverflow{std::move(fName), std::move(dataType), numNodes} {};
 };
 
 class InMemListsFactory {

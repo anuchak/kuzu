@@ -10,11 +10,11 @@ class CreateRelTable : public CreateTable {
 public:
     CreateRelTable(Catalog* catalog, string tableName,
         vector<PropertyNameDataType> propertyNameDataTypes, RelMultiplicity relMultiplicity,
-        vector<pair<table_id_t, table_id_t>> srcDstTableIDs, const DataPos& outputPos, uint32_t id,
+        table_id_t srcTableID, table_id_t dstTableID, const DataPos& outputPos, uint32_t id,
         const string& paramsString, RelsStatistics* relsStatistics)
         : CreateTable{PhysicalOperatorType::CREATE_REL_TABLE, catalog, std::move(tableName),
               std::move(propertyNameDataTypes), outputPos, id, paramsString},
-          relMultiplicity{relMultiplicity}, srcDstTableIDs{std::move(srcDstTableIDs)},
+          relMultiplicity{relMultiplicity}, srcTableID{srcTableID}, dstTableID{dstTableID},
           relsStatistics{relsStatistics} {}
 
     void executeDDLInternal() override;
@@ -23,12 +23,13 @@ public:
 
     unique_ptr<PhysicalOperator> clone() override {
         return make_unique<CreateRelTable>(catalog, tableName, propertyNameDataTypes,
-            relMultiplicity, srcDstTableIDs, outputPos, id, paramsString, relsStatistics);
+            relMultiplicity, srcTableID, dstTableID, outputPos, id, paramsString, relsStatistics);
     }
 
 private:
     RelMultiplicity relMultiplicity;
-    vector<pair<table_id_t, table_id_t>> srcDstTableIDs;
+    table_id_t srcTableID;
+    table_id_t dstTableID;
     RelsStatistics* relsStatistics;
 };
 

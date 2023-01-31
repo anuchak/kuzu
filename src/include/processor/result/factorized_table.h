@@ -254,8 +254,7 @@ public:
     // inside overflowFileOfInMemList.
     void copyToInMemList(ft_col_idx_t colIdx, vector<ft_tuple_idx_t>& tupleIdxesToRead,
         uint8_t* data, NullMask* nullMask, uint64_t startElemPosInList,
-        DiskOverflowFile* overflowFileOfInMemList, const DataType& type,
-        NodeIDCompressionScheme* nodeIDCompressionScheme) const;
+        DiskOverflowFile* overflowFileOfInMemList, const DataType& type) const;
     void clear();
     int64_t findValueInFlatColumn(ft_col_idx_t colIdx, int64_t value) const;
 

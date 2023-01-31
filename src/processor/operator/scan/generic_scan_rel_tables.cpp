@@ -40,8 +40,8 @@ bool RelTableCollection::scan(const shared_ptr<ValueVector>& inVector,
 unique_ptr<RelTableCollection> RelTableCollection::clone() const {
     vector<unique_ptr<RelTableScanState>> clonedScanStates;
     for (auto& scanState : tableScanStates) {
-        clonedScanStates.push_back(make_unique<RelTableScanState>(
-            scanState->boundNodeTableID, scanState->propertyIds, scanState->relTableDataType));
+        clonedScanStates.push_back(
+            make_unique<RelTableScanState>(scanState->propertyIds, scanState->relTableDataType));
     }
     return make_unique<RelTableCollection>(tables, std::move(clonedScanStates));
 }

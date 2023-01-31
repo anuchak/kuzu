@@ -80,9 +80,8 @@ public:
         }
         initListsUpdatesPerTablePerDirection();
     }
-    inline map<table_id_t, ListsUpdatesPerChunk>& getListsUpdatesPerBoundNodeTableOfDirection(
-        RelDirection relDirection) {
-        return listsUpdatesPerTablePerDirection[relDirection];
+    inline ListsUpdatesPerChunk& getListsUpdatesPerChunk(RelDirection relDirection) {
+        return listsUpdatesPerDirection[relDirection];
     }
 
     bool isNewlyAddedNode(ListFileID& listFileID, offset_t nodeOffset) const;
@@ -96,8 +95,7 @@ public:
 
     void readInsertedRelsToList(ListFileID& listFileID, vector<ft_tuple_idx_t> tupleIdxes,
         InMemList& inMemList, uint64_t numElementsInPersistentStore,
-        DiskOverflowFile* diskOverflowFile, DataType dataType,
-        NodeIDCompressionScheme* nodeIDCompressionScheme);
+        DiskOverflowFile* diskOverflowFile, DataType dataType);
 
     // If this is a one-to-one relTable, all properties are stored in columns.
     // In this case, the listsUpdatesStore should not store the insert rels in FT.
@@ -167,7 +165,7 @@ private:
     // only has one column. ListsUpdates is a collection of these special factorizedTable indexed by
     // propertyID.
     unordered_map<property_id_t, unique_ptr<FactorizedTable>> listsUpdates;
-    vector<map<table_id_t, ListsUpdatesPerChunk>> listsUpdatesPerTablePerDirection;
+    vector<ListsUpdatesPerChunk> listsUpdatesPerDirection;
     unordered_map<property_id_t, ft_col_idx_t> propertyIDToColIdxMap;
     RelTableSchema relTableSchema;
     MemoryManager& memoryManager;

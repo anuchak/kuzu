@@ -7,20 +7,22 @@ namespace binder {
 
 class BoundCreateRelClause : public BoundCreateTable {
 public:
-    explicit BoundCreateRelClause(string tableName,
-        vector<PropertyNameDataType> propertyNameDataTypes, RelMultiplicity relMultiplicity,
-        vector<pair<table_id_t, table_id_t>> srcDstTableIDs)
-        : BoundCreateTable{StatementType::CREATE_REL_CLAUSE, move(tableName),
-              move(propertyNameDataTypes)},
-          relMultiplicity{relMultiplicity}, srcDstTableIDs{move(srcDstTableIDs)} {}
+    BoundCreateRelClause(string tableName, vector<PropertyNameDataType> propertyNameDataTypes,
+        RelMultiplicity relMultiplicity, table_id_t srcTableID, table_id_t dstTableID)
+        : BoundCreateTable{StatementType::CREATE_REL_CLAUSE, std::move(tableName),
+              std::move(propertyNameDataTypes)},
+          relMultiplicity{relMultiplicity}, srcTableID{srcTableID}, dstTableID{dstTableID} {}
 
-    RelMultiplicity getRelMultiplicity() const { return relMultiplicity; }
+    inline RelMultiplicity getRelMultiplicity() const { return relMultiplicity; }
 
-    vector<pair<table_id_t, table_id_t>> getSrcDstTableIDs() const { return srcDstTableIDs; }
+    inline table_id_t getSrcTableID() const { return srcTableID; }
+
+    inline table_id_t getDstTableID() const { return dstTableID; }
 
 private:
     RelMultiplicity relMultiplicity;
-    vector<pair<table_id_t, table_id_t>> srcDstTableIDs;
+    table_id_t srcTableID;
+    table_id_t dstTableID;
 };
 
 } // namespace binder

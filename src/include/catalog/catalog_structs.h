@@ -141,10 +141,10 @@ public:
         : TableSchema{"", INVALID_TABLE_ID, false /* isNodeTable */, {} /* properties */},
           relMultiplicity{MANY_MANY} {}
     RelTableSchema(string tableName, table_id_t tableID, RelMultiplicity relMultiplicity,
-        vector<Property> properties, vector<pair<table_id_t, table_id_t>> srcDstTableIDs)
+        vector<Property> properties, table_id_t srcTableID, table_id_t dstTableID)
         : TableSchema{std::move(tableName), tableID, false /* isNodeTable */,
               std::move(properties)},
-          relMultiplicity{relMultiplicity}, srcDstTableIDs{std::move(srcDstTableIDs)} {}
+          relMultiplicity{relMultiplicity}, srcTableID{srcTableID}, dstTableID{dstTableID} {}
 
     inline Property& getRelIDDefinition() {
         for (auto& property : properties) {
@@ -160,8 +160,6 @@ public:
                relMultiplicity == (direction == FWD ? MANY_ONE : ONE_MANY);
     }
 
-    inline vector<pair<table_id_t, table_id_t>> getSrcDstTableIDs() const { return srcDstTableIDs; }
-
     inline uint32_t getNumUserDefinedProperties() const {
         // Note: the first column stores the relID property.
         return properties.size() - 1;
@@ -172,28 +170,21 @@ public:
                (relMultiplicity == MANY_ONE && relDirection == BWD);
     }
 
-    inline bool edgeContainsNodeTable(table_id_t tableID) const {
-        return any_of(srcDstTableIDs.begin(), srcDstTableIDs.end(),
-            [tableID](pair<table_id_t, table_id_t> srcDstTableID) {
-                return srcDstTableID.first == tableID || srcDstTableID.second == tableID;
-            });
+    inline bool isSrcOrDstTable(table_id_t tableID) const {
+        return srcTableID == tableID || dstTableID == tableID;
     }
 
-    inline unordered_set<table_id_t> getUniqueBoundTableIDs(RelDirection relDirection) const {
-        return relDirection == FWD ? getUniqueSrcTableIDs() : getUniqueDstTableIDs();
+    inline table_id_t getBoundTableID(RelDirection relDirection) const {
+        return relDirection == FWD ? srcTableID : dstTableID;
     }
 
-    unordered_set<table_id_t> getAllNodeTableIDs() const;
-
-    unordered_set<table_id_t> getUniqueSrcTableIDs() const;
-
-    unordered_set<table_id_t> getUniqueDstTableIDs() const;
-
-    unordered_set<table_id_t> getUniqueNbrTableIDsForBoundTableIDDirection(
-        RelDirection direction, table_id_t boundTableID) const;
+    inline table_id_t getNbrTableID(RelDirection relDirection) const {
+        return relDirection == FWD ? dstTableID : srcTableID;
+    }
 
     RelMultiplicity relMultiplicity;
-    vector<pair<table_id_t, table_id_t>> srcDstTableIDs;
+    table_id_t srcTableID;
+    table_id_t dstTableID;
 };
 
 } // namespace catalog

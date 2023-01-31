@@ -41,8 +41,8 @@ public:
         vector<PropertyNameDataType> propertyDefinitions);
 
     table_id_t addRelTableSchema(string tableName, RelMultiplicity relMultiplicity,
-        const vector<PropertyNameDataType>& propertyDefinitions,
-        vector<pair<table_id_t, table_id_t>> srcDstTableIDs);
+        const vector<PropertyNameDataType>& propertyDefinitions, table_id_t srcTableID,
+        table_id_t dstTableID);
 
     inline bool containNodeTable(table_id_t tableID) const {
         return nodeTableSchemas.contains(tableID);
@@ -120,12 +120,6 @@ public:
     inline unordered_map<table_id_t, unique_ptr<RelTableSchema>>& getRelTableSchemas() {
         return relTableSchemas;
     }
-    inline unordered_set<table_id_t> getNodeTableIDsForRelTableDirection(
-        table_id_t relTableID, RelDirection direction) const {
-        auto relTableSchema = getRelTableSchema(relTableID);
-        return direction == FWD ? relTableSchema->getUniqueSrcTableIDs() :
-                                  relTableSchema->getUniqueDstTableIDs();
-    }
 
     void dropTableSchema(table_id_t tableID);
 
@@ -191,8 +185,8 @@ public:
         vector<PropertyNameDataType> propertyDefinitions);
 
     table_id_t addRelTableSchema(string tableName, RelMultiplicity relMultiplicity,
-        const vector<PropertyNameDataType>& propertyDefinitions,
-        vector<pair<table_id_t, table_id_t>> srcDstTableIDs);
+        const vector<PropertyNameDataType>& propertyDefinitions, table_id_t srcTableID,
+        table_id_t dstTableID);
 
     void dropTableSchema(table_id_t tableID);
 

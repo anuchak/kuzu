@@ -654,7 +654,7 @@ unique_ptr<ParsedExpression> Transformer::transformListSliceOperatorExpression(
         }
     }
     return listSlice;
-};
+}
 
 unique_ptr<ParsedExpression> Transformer::transformListExtractOperatorExpression(
     CypherParser::KU_ListExtractOperatorExpressionContext& ctx,
@@ -665,7 +665,7 @@ unique_ptr<ParsedExpression> Transformer::transformListExtractOperatorExpression
     listExtract->addChild(std::move(propertyExpression));
     listExtract->addChild(transformExpression(*ctx.oC_Expression()));
     return listExtract;
-};
+}
 
 unique_ptr<ParsedExpression> Transformer::transformNullOperatorExpression(
     CypherParser::OC_NullOperatorExpressionContext& ctx,
@@ -916,15 +916,15 @@ unique_ptr<Statement> Transformer::transformCreateNodeClause(
 
 unique_ptr<Statement> Transformer::transformCreateRelClause(
     CypherParser::KU_CreateRelContext& ctx) {
-    auto schemaName = transformSchemaName(*ctx.oC_SchemaName());
+    auto schemaName = transformSchemaName(*ctx.oC_SchemaName(0));
     auto propertyDefinitions = ctx.kU_PropertyDefinitions() ?
                                    transformPropertyDefinitions(*ctx.kU_PropertyDefinitions()) :
                                    vector<pair<string, string>>();
     auto relMultiplicity =
         ctx.oC_SymbolicName() ? transformSymbolicName(*ctx.oC_SymbolicName()) : "MANY_MANY";
-    auto relConnections = transformRelConnections(*ctx.kU_RelConnections());
     return make_unique<CreateRelClause>(std::move(schemaName), std::move(propertyDefinitions),
-        relMultiplicity, std::move(relConnections));
+        relMultiplicity, transformSchemaName(*ctx.oC_SchemaName(1)),
+        transformSchemaName(*ctx.oC_SchemaName(2)));
 }
 
 unique_ptr<Statement> Transformer::transformDropTable(CypherParser::KU_DropTableContext& ctx) {
@@ -989,31 +989,6 @@ string Transformer::transformListIdentifiers(CypherParser::KU_ListIdentifiersCon
 
 string Transformer::transformPrimaryKey(CypherParser::KU_CreateNodeConstraintContext& ctx) {
     return transformPropertyKeyName(*ctx.oC_PropertyKeyName());
-}
-
-vector<pair<string, string>> Transformer::transformRelConnections(
-    CypherParser::KU_RelConnectionsContext& ctx) {
-    vector<pair<string, string>> relConnections;
-    if (!ctx.kU_RelConnection().empty()) {
-        for (auto& relConnection : ctx.kU_RelConnection()) {
-            auto newSrcTableNames = transformNodeLabels(*relConnection->kU_NodeLabels()[0]);
-            auto newDstTableNames = transformNodeLabels(*relConnection->kU_NodeLabels()[1]);
-            for (auto& newSrcTableName : newSrcTableNames) {
-                for (auto& newDstTableName : newDstTableNames) {
-                    relConnections.emplace_back(newSrcTableName, newDstTableName);
-                }
-            }
-        }
-    }
-    return relConnections;
-}
-
-vector<string> Transformer::transformNodeLabels(CypherParser::KU_NodeLabelsContext& ctx) {
-    vector<string> nodeLabels;
-    for (auto& nodeLabel : ctx.oC_SchemaName()) {
-        nodeLabels.push_back(transformSchemaName(*nodeLabel));
-    }
-    return nodeLabels;
 }
 
 unique_ptr<Statement> Transformer::transformCopyCSV(CypherParser::KU_CopyCSVContext& ctx) {

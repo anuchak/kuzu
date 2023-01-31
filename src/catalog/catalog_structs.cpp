@@ -79,43 +79,5 @@ void TableSchema::renameProperty(property_id_t propertyID, const string& newName
     throw InternalException("Property with id=" + to_string(propertyID) + " not found.");
 }
 
-unordered_set<table_id_t> RelTableSchema::getAllNodeTableIDs() const {
-    unordered_set<table_id_t> allNodeTableIDs;
-    for (auto& [srcTableID, dstTableID] : srcDstTableIDs) {
-        allNodeTableIDs.insert(srcTableID);
-        allNodeTableIDs.insert(dstTableID);
-    }
-    return allNodeTableIDs;
-}
-
-unordered_set<table_id_t> RelTableSchema::getUniqueSrcTableIDs() const {
-    unordered_set<table_id_t> srcTableIDs;
-    for (auto& [srcTableID, dstTableID] : srcDstTableIDs) {
-        srcTableIDs.insert(srcTableID);
-    }
-    return srcTableIDs;
-}
-
-unordered_set<table_id_t> RelTableSchema::getUniqueDstTableIDs() const {
-    unordered_set<table_id_t> dstTableIDs;
-    for (auto& [srcTableID, dstTableID] : srcDstTableIDs) {
-        dstTableIDs.insert(dstTableID);
-    }
-    return dstTableIDs;
-}
-
-unordered_set<table_id_t> RelTableSchema::getUniqueNbrTableIDsForBoundTableIDDirection(
-    RelDirection direction, table_id_t boundTableID) const {
-    unordered_set<table_id_t> nbrTableIDs;
-    for (auto& [srcTableID, dstTableID] : srcDstTableIDs) {
-        if (direction == FWD && srcTableID == boundTableID) {
-            nbrTableIDs.insert(dstTableID);
-        } else if (direction == BWD && dstTableID == boundTableID) {
-            nbrTableIDs.insert(srcTableID);
-        }
-    }
-    return nbrTableIDs;
-}
-
 } // namespace catalog
 } // namespace kuzu

@@ -73,29 +73,28 @@ private:
         table_id_t relTableID, table_id_t boundTableID, RelDirection relDirection,
         property_id_t propertyID, DBFileType dbFileType) {
         removeColumnFilesIfExists(StorageUtils::getRelPropertyColumnFName(
-            directory, relTableID, boundTableID, relDirection, propertyID, DBFileType::ORIGINAL));
+            directory, relTableID, relDirection, propertyID, DBFileType::ORIGINAL));
     }
 
     static inline void removeListFilesForPropertyIfExists(const string& directory,
         table_id_t relTableID, table_id_t boundTableID, RelDirection relDirection,
         property_id_t propertyID, DBFileType dbFileType) {
         removeListFilesIfExists(StorageUtils::getRelPropertyListsFName(
-            directory, relTableID, boundTableID, relDirection, propertyID, DBFileType::ORIGINAL));
+            directory, relTableID, relDirection, propertyID, DBFileType::ORIGINAL));
     }
 
     static void initLargeListPageListsAndSaveToFile(InMemLists* inMemLists);
 
     static void createEmptyDBFilesForRelProperties(RelTableSchema* relTableSchema,
-        table_id_t tableID, const string& directory, RelDirection relDireciton, uint32_t numNodes,
+        const string& directory, RelDirection relDireciton, uint32_t numNodes,
         bool isForRelPropertyColumn);
 
-    static void createEmptyDBFilesForColumns(const unordered_set<table_id_t>& nodeTableIDs,
+    static void createEmptyDBFilesForColumns(
         const map<table_id_t, uint64_t>& maxNodeOffsetsPerTable, RelDirection relDirection,
         const string& directory, RelTableSchema* relTableSchema);
 
-    static void createEmptyDBFilesForLists(const unordered_set<table_id_t>& boundTableIDs,
-        const map<table_id_t, uint64_t>& maxNodeOffsetsPerTable, RelDirection relDirection,
-        const string& directory, RelTableSchema* relTableSchema);
+    static void createEmptyDBFilesForLists(const map<table_id_t, uint64_t>& maxNodeOffsetsPerTable,
+        RelDirection relDirection, const string& directory, RelTableSchema* relTableSchema);
 
     static void replaceOriginalColumnFilesWithWALVersionIfExists(const string& originalColFileName);
 

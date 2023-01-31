@@ -141,7 +141,7 @@ protected:
         bool isCommit, TransactionTestType transactionTestType);
 
 private:
-    void validateRelPropertyFiles(catalog::RelTableSchema* relTableSchema, table_id_t tableID,
+    void validateRelPropertyFiles(catalog::RelTableSchema* relTableSchema,
         RelDirection relDirection, bool isColumnProperty, DBFileType dbFileType, bool existence);
 
 public:

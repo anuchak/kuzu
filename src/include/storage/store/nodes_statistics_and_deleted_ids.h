@@ -28,7 +28,7 @@ public:
 
     inline void setAdjListsAndColumns(
         pair<vector<AdjLists*>, vector<AdjColumn*>> adjListsAndColumns_) {
-        adjListsAndColumns = adjListsAndColumns_;
+        adjListsAndColumns = std::move(adjListsAndColumns_);
     }
 
     offset_t addNode();

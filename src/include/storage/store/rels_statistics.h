@@ -7,36 +7,19 @@
 
 namespace kuzu {
 namespace storage {
+
 class RelsStatistics;
 class RelStatistics : public TableStatistics {
     friend class RelsStatistics;
 
 public:
-    RelStatistics(uint64_t numRels,
-        vector<unordered_map<table_id_t, uint64_t>> numRelsPerDirectionBoundTable,
-        offset_t nextRelOffset)
-        : TableStatistics{numRels}, numRelsPerDirectionBoundTable{std::move(
-                                        numRelsPerDirectionBoundTable)},
-          nextRelOffset{nextRelOffset} {}
-    RelStatistics(vector<pair<table_id_t, table_id_t>> srcDstTableIDs);
-
-    inline uint64_t getNumRelsForDirectionBoundTable(
-        RelDirection relDirection, table_id_t boundNodeTableID) const {
-        if (!numRelsPerDirectionBoundTable[relDirection].contains(boundNodeTableID)) {
-            return 0;
-        }
-        return numRelsPerDirectionBoundTable[relDirection].at(boundNodeTableID);
-    }
-
-    inline void setNumRelsForDirectionBoundTable(
-        RelDirection relDirection, table_id_t boundTableID, uint64_t numRels) {
-        numRelsPerDirectionBoundTable[relDirection][boundTableID] = numRels;
-    }
+    RelStatistics() : TableStatistics{0 /* numTuples */}, nextRelOffset{0} {}
+    RelStatistics(uint64_t numRels, offset_t nextRelOffset)
+        : TableStatistics{numRels}, nextRelOffset{nextRelOffset} {}
 
     inline offset_t getNextRelOffset() { return nextRelOffset; }
 
 private:
-    vector<unordered_map<table_id_t, uint64_t>> numRelsPerDirectionBoundTable;
     offset_t nextRelOffset;
 };
 
@@ -71,15 +54,7 @@ public:
 
     void setNumRelsForTable(table_id_t relTableID, uint64_t numRels);
 
-    void assertNumRelsIsSound(
-        unordered_map<table_id_t, uint64_t>& relsPerBoundTable, uint64_t numRels);
-
-    void updateNumRelsByValue(
-        table_id_t relTableID, table_id_t srcTableID, table_id_t dstTableID, int64_t value);
-
-    // Note: This function will not set the numTuples field. That should be called separately.
-    void setNumRelsPerDirectionBoundTableID(
-        table_id_t tableID, vector<map<table_id_t, atomic<uint64_t>>>& directionNumRelsPerTable);
+    void updateNumRelsByValue(table_id_t relTableID, int64_t value);
 
     offset_t getNextRelOffset(Transaction* transaction, table_id_t tableID);
 
@@ -87,7 +62,7 @@ protected:
     inline string getTableTypeForPrinting() const override { return "RelsStatistics"; }
 
     inline unique_ptr<TableStatistics> constructTableStatistic(TableSchema* tableSchema) override {
-        return make_unique<RelStatistics>(((RelTableSchema*)tableSchema)->getSrcDstTableIDs());
+        return make_unique<RelStatistics>();
     }
 
     inline unique_ptr<TableStatistics> constructTableStatistic(

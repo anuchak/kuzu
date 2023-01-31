@@ -27,17 +27,15 @@ enum class ColumnType : uint8_t {
 
 struct RelNodeTableAndDir {
     table_id_t relTableID;
-    table_id_t srcNodeTableID;
     RelDirection dir;
 
     RelNodeTableAndDir() = default;
 
-    RelNodeTableAndDir(table_id_t relTableID, table_id_t srcNodeTableID, RelDirection dir)
-        : relTableID{relTableID}, srcNodeTableID{srcNodeTableID}, dir{dir} {}
+    RelNodeTableAndDir(table_id_t relTableID, RelDirection dir)
+        : relTableID{relTableID}, dir{dir} {}
 
     inline bool operator==(const RelNodeTableAndDir& rhs) const {
-        return relTableID == rhs.relTableID && srcNodeTableID == rhs.srcNodeTableID &&
-               dir == rhs.dir;
+        return relTableID == rhs.relTableID && dir == rhs.dir;
     }
 };
 
@@ -235,18 +233,17 @@ struct StorageStructureID {
     static StorageStructureID newNodePropertyColumnID(table_id_t tableID, property_id_t propertyID);
 
     static StorageStructureID newRelPropertyColumnID(
-        table_id_t nodeTableID, table_id_t relTableID, RelDirection dir, property_id_t propertyID);
+        table_id_t relTableID, RelDirection dir, property_id_t propertyID);
 
-    static StorageStructureID newAdjColumnID(
-        table_id_t nodeTableID, table_id_t relTableID, RelDirection dir);
+    static StorageStructureID newAdjColumnID(table_id_t relTableID, RelDirection dir);
 
     static StorageStructureID newNodeIndexID(table_id_t tableID);
 
     static StorageStructureID newAdjListsID(
-        table_id_t tableID, table_id_t srcNodeTableID, RelDirection dir, ListFileType listFileType);
+        table_id_t relTableID, RelDirection dir, ListFileType listFileType);
 
-    static StorageStructureID newRelPropertyListsID(table_id_t nodeTableID, table_id_t relTableID,
-        RelDirection dir, property_id_t propertyID, ListFileType listFileType);
+    static StorageStructureID newRelPropertyListsID(table_id_t relTableID, RelDirection dir,
+        property_id_t propertyID, ListFileType listFileType);
 };
 
 enum class WALRecordType : uint8_t {

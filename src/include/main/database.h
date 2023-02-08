@@ -19,7 +19,17 @@ class BaseGraphTest;
 namespace kuzu {
 namespace main {
 
+/**
+ * @brief Stores buffer pool size and max number of threads.
+ */
 struct SystemConfig {
+
+    /**
+     * @brief Creates a SystemConfig object.
+     * @param bufferPoolSize Buffer pool size in bytes.
+     * @note defaultPageBufferPoolSize and largePageBufferPoolSize are calculated based on the
+     * DEFAULT_PAGES_BUFFER_RATIO and LARGE_PAGES_BUFFER_RATIO constants in StorageConfig.
+     */
     explicit SystemConfig(
         uint64_t bufferPoolSize = common::StorageConfig::DEFAULT_BUFFER_POOL_SIZE);
 
@@ -29,12 +39,23 @@ struct SystemConfig {
     uint64_t maxNumThreads = std::thread::hardware_concurrency();
 };
 
+/**
+ * @brief Stores databasePath.
+ */
 struct DatabaseConfig {
+    /**
+     * @brief Creates a DatabaseConfig object.
+     * @param databasePath Path to store the database files.
+     */
     explicit DatabaseConfig(std::string databasePath) : databasePath{std::move(databasePath)} {}
 
     std::string databasePath;
 };
 
+/**
+ * @brief Database class is the main class of the KuzuDB. It manages all database configurations and
+ * files.
+ */
 class Database {
     friend class EmbeddedShell;
     friend class Connection;
@@ -42,13 +63,32 @@ class Database {
     friend class kuzu::testing::BaseGraphTest;
 
 public:
+    /**
+     * @brief Creates a Database object with default buffer pool size and max num threads.
+     * @param databaseConfig Database configurations(database path).
+     */
     explicit Database(const DatabaseConfig& databaseConfig)
         : Database{databaseConfig, SystemConfig()} {}
 
+    /**
+     * @brief Creates a Database object.
+     * @param databaseConfig Database configurations(database path).
+     * @param systemConfig System configurations(buffer pool size and max num threads).
+     */
     explicit Database(const DatabaseConfig& databaseConfig, const SystemConfig& systemConfig);
 
+    /**
+     * @brief Sets the logging level of the database instance.
+     * @param loggingLevel New logging level. (Supported logging levels are: info, debug, err).
+     */
     void setLoggingLevel(spdlog::level::level_enum loggingLevel);
 
+    /**
+     * @brief Resizes the buffer pool size of the database instance.
+     * @param newSize New buffer pool size in bytes.
+     * @throws BufferManagerException if the new size is smaller than the current buffer manager
+     * size.
+     */
     void resizeBufferManager(uint64_t newSize);
 
     ~Database() = default;

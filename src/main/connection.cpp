@@ -111,14 +111,14 @@ std::string Connection::getRelTableNames() {
     return result;
 }
 
-std::string Connection::getNodePropertyNames(const std::string& tableName) {
+std::string Connection::getNodePropertyNames(const std::string& nodeTableName) {
     lock_t lck{mtx};
     auto catalog = database->catalog.get();
-    if (!catalog->getReadOnlyVersion()->containNodeTable(tableName)) {
-        throw Exception("Cannot find node table " + tableName);
+    if (!catalog->getReadOnlyVersion()->containNodeTable(nodeTableName)) {
+        throw Exception("Cannot find node table " + nodeTableName);
     }
-    std::string result = tableName + " properties: \n";
-    auto tableID = catalog->getReadOnlyVersion()->getTableID(tableName);
+    std::string result = nodeTableName + " properties: \n";
+    auto tableID = catalog->getReadOnlyVersion()->getTableID(nodeTableName);
     auto primaryKeyPropertyID =
         catalog->getReadOnlyVersion()->getNodeTableSchema(tableID)->getPrimaryKey().propertyID;
     for (auto& property : catalog->getReadOnlyVersion()->getAllNodeProperties(tableID)) {

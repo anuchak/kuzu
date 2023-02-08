@@ -11,10 +11,10 @@ using namespace kuzu::utf8proc;
 namespace kuzu {
 namespace common {
 
-CSVReader::CSVReader(const string& fName, const CSVReaderConfig& config, uint64_t blockId)
+CSVReader::CSVReader(const std::string& fName, const CSVReaderConfig& config, uint64_t blockId)
     : CSVReader{fName, config} {
-    readingBlockStartOffset = CopyCSVConfig::CSV_READING_BLOCK_SIZE * blockId;
-    readingBlockEndOffset = CopyCSVConfig::CSV_READING_BLOCK_SIZE * (blockId + 1);
+    readingBlockStartOffset = CopyConfig::CSV_READING_BLOCK_SIZE * blockId;
+    readingBlockEndOffset = CopyConfig::CSV_READING_BLOCK_SIZE * (blockId + 1);
     auto isBeginningOfLine = false;
     if (0 == readingBlockStartOffset) {
         isBeginningOfLine = true;
@@ -29,7 +29,7 @@ CSVReader::CSVReader(const string& fName, const CSVReaderConfig& config, uint64_
     }
 }
 
-CSVReader::CSVReader(const string& fname, const CSVReaderConfig& config)
+CSVReader::CSVReader(const std::string& fname, const CSVReaderConfig& config)
     : CSVReader{(char*)malloc(sizeof(char) * 1024), 0, -1l, config} {
     openFile(fname);
 }
@@ -163,10 +163,10 @@ bool CSVReader::hasNextToken() {
         nestedListLevel++;
         isList = true;
     }
-    string lineStr;
+    std::string lineStr;
     while (true) {
         if (isQuotedString) {
-            // ignore tokenSeparator and new line character here
+            // ignore delimiter and new line character here
             if (config.quoteChar == line[linePtrEnd]) {
                 break;
             } else if (config.escapeChar == line[linePtrEnd]) {
@@ -174,7 +174,7 @@ bool CSVReader::hasNextToken() {
                 linePtrEnd++;
             }
         } else if (isList) {
-            // ignore tokenSeparator and new line character here
+            // ignore delimiter and new line character here
             if (config.listBeginChar == line[linePtrEnd]) {
                 linePtrEnd++;
                 nestedListLevel++;
@@ -184,7 +184,7 @@ bool CSVReader::hasNextToken() {
             if (nestedListLevel == 0) {
                 break;
             }
-        } else if (config.tokenSeparator == line[linePtrEnd] || '\n' == line[linePtrEnd] ||
+        } else if (config.delimiter == line[linePtrEnd] || '\n' == line[linePtrEnd] ||
                    linePtrEnd == lineLen) {
             break;
         }
@@ -195,7 +195,7 @@ bool CSVReader::hasNextToken() {
     line[linePtrEnd] = 0;
     if (isQuotedString) {
         strncpy(line + linePtrStart, lineStr.c_str(), lineStr.length() + 1);
-        // if this is a string literal, skip the next comma as well
+        // if this is a std::string literal, skip the next comma as well
         linePtrEnd++;
     }
     if (isList) {
@@ -207,7 +207,7 @@ bool CSVReader::hasNextToken() {
 
 bool CSVReader::hasNextTokenOrError() {
     if (!hasNextToken()) {
-        throw CSVReaderException(
+        throw ReaderException(
             StringUtils::string_format("CSV Reader was expecting more tokens but the line does not "
                                        "have any tokens left. Last token: %s",
                 line + linePtrStart));
@@ -235,7 +235,7 @@ char* CSVReader::getString() {
     auto strVal = line + linePtrStart;
     if (strlen(strVal) > DEFAULT_PAGE_SIZE) {
         logger->warn(StringUtils::getLongStringErrorMessage(strVal, DEFAULT_PAGE_SIZE));
-        // If the string is too long, truncate it.
+        // If the std::string is too long, truncate it.
         strVal[DEFAULT_PAGE_SIZE] = '\0';
     }
     auto unicodeType = Utf8Proc::analyze(strVal, strlen(strVal));
@@ -244,7 +244,7 @@ char* CSVReader::getString() {
     } else if (unicodeType == UnicodeType::UNICODE) {
         return Utf8Proc::normalize(strVal, strlen(strVal));
     } else {
-        throw CSVReaderException("Invalid UTF-8 character encountered.");
+        throw ReaderException("Invalid UTF-8 character encountered.");
     }
 }
 
@@ -266,51 +266,54 @@ interval_t CSVReader::getInterval() {
     return retVal;
 }
 
-Literal CSVReader::getList(const DataType& dataType) {
-    Literal result(DataType(LIST, make_unique<DataType>(dataType)));
+std::unique_ptr<Value> CSVReader::getList(const DataType& dataType) {
+    std::vector<std::unique_ptr<Value>> listVal;
     // Move the linePtrStart one character forward, because hasNextToken() will first increment it.
     CSVReader listCSVReader(line, linePtrEnd - 1, linePtrStart - 1, config);
     while (listCSVReader.hasNextToken()) {
         if (!listCSVReader.skipTokenIfNull()) {
+            std::unique_ptr<Value> val;
             switch (dataType.typeID) {
             case INT64: {
-                result.listVal.emplace_back(listCSVReader.getInt64());
+                val = std::make_unique<Value>(listCSVReader.getInt64());
             } break;
             case DOUBLE: {
-                result.listVal.emplace_back(listCSVReader.getDouble());
+                val = std::make_unique<Value>(listCSVReader.getDouble());
             } break;
             case BOOL: {
-                result.listVal.emplace_back((bool)listCSVReader.getBoolean());
+                val = std::make_unique<Value>((bool)listCSVReader.getBoolean());
             } break;
             case STRING: {
-                result.listVal.emplace_back(string(listCSVReader.getString()));
+                val = std::make_unique<Value>(std::string(listCSVReader.getString()));
             } break;
             case DATE: {
-                result.listVal.emplace_back(listCSVReader.getDate());
+                val = std::make_unique<Value>(listCSVReader.getDate());
             } break;
             case TIMESTAMP: {
-                result.listVal.emplace_back(listCSVReader.getTimestamp());
+                val = std::make_unique<Value>(listCSVReader.getTimestamp());
             } break;
             case INTERVAL: {
-                result.listVal.emplace_back(listCSVReader.getInterval());
+                val = std::make_unique<Value>(listCSVReader.getInterval());
             } break;
             case LIST: {
-                result.listVal.emplace_back(listCSVReader.getList(*dataType.childType));
+                val = listCSVReader.getList(*dataType.childType);
             } break;
             default:
-                throw CSVReaderException("Unsupported data type " +
-                                         Types::dataTypeToString(dataType.childType->typeID) +
-                                         " inside LIST");
+                throw ReaderException("Unsupported data type " +
+                                      Types::dataTypeToString(dataType.childType->typeID) +
+                                      " inside LIST");
             }
+            listVal.push_back(std::move(val));
         }
     }
-    auto numBytesOfOverflow = result.listVal.size() * Types::getDataTypeSize(dataType.typeID);
+    auto numBytesOfOverflow = listVal.size() * Types::getDataTypeSize(dataType.typeID);
     if (numBytesOfOverflow >= DEFAULT_PAGE_SIZE) {
-        throw CSVReaderException(StringUtils::string_format(
+        throw ReaderException(StringUtils::string_format(
             "Maximum num bytes of a LIST is %d. Input list's num bytes is %d.", DEFAULT_PAGE_SIZE,
             numBytesOfOverflow));
     }
-    return result;
+    return std::make_unique<Value>(
+        DataType(LIST, std::make_unique<DataType>(dataType)), std::move(listVal));
 }
 
 void CSVReader::setNextTokenIsProcessed() {
@@ -318,11 +321,76 @@ void CSVReader::setNextTokenIsProcessed() {
     nextTokenLen = UINT64_MAX;
 }
 
-void CSVReader::openFile(const string& fName) {
+void CSVReader::openFile(const std::string& fName) {
     fd = fopen(fName.c_str(), "r");
     if (nullptr == fd) {
-        throw CSVReaderException("Cannot open file: " + fName);
+        throw ReaderException("Cannot open file: " + fName);
     }
+}
+
+CopyDescription::CopyDescription(const std::string& filePath, CSVReaderConfig csvReaderConfig)
+    : filePath{filePath}, csvReaderConfig{nullptr}, fileType{FileType::CSV} {
+    setFileType(filePath);
+    if (fileType == FileType::CSV) {
+        this->csvReaderConfig = std::make_unique<CSVReaderConfig>(csvReaderConfig);
+    }
+}
+
+CopyDescription::CopyDescription(const CopyDescription& copyDescription)
+    : filePath{copyDescription.filePath}, csvReaderConfig{nullptr}, fileType{
+                                                                        copyDescription.fileType} {
+    if (fileType == FileType::CSV) {
+        this->csvReaderConfig = std::make_unique<CSVReaderConfig>(*copyDescription.csvReaderConfig);
+    }
+}
+
+std::string CopyDescription::getFileTypeName(FileType fileType) {
+    switch (fileType) {
+    case FileType::CSV:
+        return "csv";
+
+    case FileType::ARROW:
+        return "arrow";
+
+    case FileType::PARQUET:
+        return "parquet";
+    }
+}
+
+std::string CopyDescription::getFileTypeSuffix(FileType fileType) {
+    return "." + getFileTypeName(fileType);
+}
+
+void CopyDescription::setFileType(std::string const& fileName) {
+    auto csvSuffix = getFileTypeSuffix(FileType::CSV);
+    auto arrowSuffix = getFileTypeSuffix(FileType::ARROW);
+    auto parquetSuffix = getFileTypeSuffix(FileType::PARQUET);
+
+    if (fileName.length() >= csvSuffix.length()) {
+        if (!fileName.compare(
+                fileName.length() - csvSuffix.length(), csvSuffix.length(), csvSuffix)) {
+            fileType = FileType::CSV;
+            return;
+        }
+    }
+
+    if (fileName.length() >= arrowSuffix.length()) {
+        if (!fileName.compare(
+                fileName.length() - arrowSuffix.length(), arrowSuffix.length(), arrowSuffix)) {
+            fileType = FileType::ARROW;
+            return;
+        }
+    }
+
+    if (fileName.length() >= parquetSuffix.length()) {
+        if (!fileName.compare(fileName.length() - parquetSuffix.length(), parquetSuffix.length(),
+                parquetSuffix)) {
+            fileType = FileType::PARQUET;
+            return;
+        }
+    }
+
+    throw CopyException("Unsupported file type: " + fileName);
 }
 
 } // namespace common

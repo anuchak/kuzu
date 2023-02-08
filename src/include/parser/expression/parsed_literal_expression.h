@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/type_utils.h"
+#include "common/types/value.h"
 #include "parsed_expression.h"
 
 namespace kuzu {
@@ -8,13 +8,13 @@ namespace parser {
 
 class ParsedLiteralExpression : public ParsedExpression {
 public:
-    ParsedLiteralExpression(unique_ptr<Literal> literal, string raw)
-        : ParsedExpression{LITERAL, std::move(raw)}, literal{std::move(literal)} {}
+    ParsedLiteralExpression(std::unique_ptr<common::Value> value, std::string raw)
+        : ParsedExpression{common::LITERAL, std::move(raw)}, value{std::move(value)} {}
 
-    inline Literal* getLiteral() const { return literal.get(); }
+    inline common::Value* getValue() const { return value.get(); }
 
 private:
-    unique_ptr<Literal> literal;
+    std::unique_ptr<common::Value> value;
 };
 
 } // namespace parser

@@ -3,31 +3,26 @@
 #include "ddl.h"
 #include "storage/storage_manager.h"
 
-using namespace kuzu::catalog;
-
 namespace kuzu {
 namespace processor {
 
 class DropTable : public DDL {
 public:
-    DropTable(Catalog* catalog, TableSchema* tableSchema, StorageManager& storageManager,
-        uint32_t id, const string& paramsString)
-        : DDL{PhysicalOperatorType::DROP_TABLE, catalog, id, paramsString},
-          tableSchema{tableSchema}, storageManager{storageManager} {}
+    DropTable(catalog::Catalog* catalog, common::table_id_t tableID, const DataPos& outputPos,
+        uint32_t id, const std::string& paramsString)
+        : DDL{PhysicalOperatorType::DROP_TABLE, catalog, outputPos, id, paramsString},
+          tableID{tableID} {}
 
-    string execute() override {
-        catalog->removeTableSchema(tableSchema);
-        return StringUtils::string_format("%sTable: %s has been dropped.",
-            tableSchema->isNodeTable ? "Node" : "Rel", tableSchema->tableName.c_str());
-    }
+    void executeDDLInternal() override;
 
-    unique_ptr<PhysicalOperator> clone() override {
-        return make_unique<DropTable>(catalog, tableSchema, storageManager, id, paramsString);
+    std::string getOutputMsg() override;
+
+    std::unique_ptr<PhysicalOperator> clone() override {
+        return make_unique<DropTable>(catalog, tableID, outputPos, id, paramsString);
     }
 
 protected:
-    TableSchema* tableSchema;
-    StorageManager& storageManager;
+    common::table_id_t tableID;
 };
 
 } // namespace processor

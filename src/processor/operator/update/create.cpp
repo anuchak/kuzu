@@ -1,5 +1,7 @@
 #include "processor/operator/update/create.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace processor {
 
@@ -24,7 +26,7 @@ bool CreateNode::getNextTuplesInternal() {
         auto vector = outValueVectors[i];
         nodeID_t nodeID{nodeOffset, nodeTable->getTableID()};
         vector->setValue(vector->state->selVector->selectedPositions[0], nodeID);
-        for (auto& relTable : createNodeInfos[i]->relTablesToInit) {
+        for (auto& relTable : createNodeInfo->relTablesToInit) {
             relTable->initEmptyRelsForNewNode(nodeID);
         }
     }
@@ -33,7 +35,7 @@ bool CreateNode::getNextTuplesInternal() {
 
 void CreateRel::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
     for (auto& createRelInfo : createRelInfos) {
-        auto createRelVectors = make_unique<CreateRelVectors>();
+        auto createRelVectors = std::make_unique<CreateRelVectors>();
         createRelVectors->srcNodeIDVector = resultSet->getValueVector(createRelInfo->srcNodePos);
         createRelVectors->dstNodeIDVector = resultSet->getValueVector(createRelInfo->dstNodePos);
         for (auto& evaluator : createRelInfo->evaluators) {
@@ -56,9 +58,10 @@ bool CreateRel::getNextTuplesInternal() {
             // Rel ID is our interval property, so we overwrite relID=$expr with system ID.
             if (j == createRelInfo->relIDEvaluatorIdx) {
                 auto relIDVector = evaluator->resultVector;
-                assert(relIDVector->dataType.typeID == INT64 &&
+                assert(relIDVector->dataType.typeID == INTERNAL_ID &&
                        relIDVector->state->selVector->selectedPositions[0] == 0);
-                relIDVector->setValue(0, relsStatistics.getNextRelID(transaction));
+                relIDVector->setValue(0, relsStatistics.getNextRelOffset(
+                                             transaction, createRelInfo->table->getRelTableID()));
                 relIDVector->setNull(0, false);
             } else {
                 createRelInfo->evaluators[j]->evaluate();
@@ -67,7 +70,6 @@ bool CreateRel::getNextTuplesInternal() {
         createRelInfo->table->insertRel(createRelVectors->srcNodeIDVector,
             createRelVectors->dstNodeIDVector, createRelVectors->propertyVectors);
         relsStatistics.updateNumRelsByValue(createRelInfo->table->getRelTableID(),
-            createRelInfo->srcNodeTableID, createRelInfo->dstNodeTableID,
             1 /* increment numRelsPerDirectionBoundTable by 1 */);
     }
     return true;

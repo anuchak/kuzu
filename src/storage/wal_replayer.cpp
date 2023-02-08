@@ -5,6 +5,9 @@
 #include "storage/storage_utils.h"
 #include "storage/wal_replayer_utils.h"
 
+using namespace kuzu::catalog;
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace storage {
 
@@ -19,19 +22,60 @@ WALReplayer::WALReplayer(WAL* wal, StorageManager* storageManager, BufferManager
     init();
 }
 
+void WALReplayer::replay() {
+    // Note: We assume no other thread is accessing the wal during the following operations.
+    // If this assumption no longer holds, we need to lock the wal.
+    if (!isRecovering && isCheckpoint && !wal->isLastLoggedRecordCommit()) {
+        throw StorageException(
+            "Cannot checkpoint WAL because last logged record is not a commit record.");
+    }
+    if (isRecovering && !wal->isLastLoggedRecordCommit()) {
+        logger->info("WALReplayer is in recovery mode but the last record is not commit, so not "
+                     "replaying. This should not happen and the caller should instead not call "
+                     "WALReplayer::replay.");
+        throw StorageException("System should not try to rollback when the last logged record is "
+                               "not a commit record.");
+    }
+    auto walIterator = wal->getIterator();
+    WALRecord walRecord;
+    while (walIterator->hasNextRecord()) {
+        walIterator->getNextRecord(walRecord);
+        replayWALRecord(walRecord);
+    }
+
+    // We next perform an in-memory checkpointing or rolling back of nodeTables.
+    for (auto nodeTableID : wal->updatedNodeTables) {
+        auto nodeTable = storageManager->getNodesStore().getNodeTable(nodeTableID);
+        if (isCheckpoint) {
+            nodeTable->checkpointInMemoryIfNecessary();
+        } else {
+            nodeTable->rollbackInMemoryIfNecessary();
+        }
+    }
+    // Then we perform an in-memory checkpointing or rolling back of relTables.
+    for (auto relTableID : wal->updatedRelTables) {
+        auto relTable = storageManager->getRelsStore().getRelTable(relTableID);
+        if (isCheckpoint) {
+            relTable->checkpointInMemoryIfNecessary();
+        } else {
+            relTable->rollbackInMemoryIfNecessary();
+        }
+    }
+}
+
 void WALReplayer::init() {
     logger = LoggerUtils::getOrCreateLogger("storage");
     walFileHandle = WAL::createWALFileHandle(wal->getDirectory());
-    pageBuffer = make_unique<uint8_t[]>(DEFAULT_PAGE_SIZE);
+    pageBuffer = std::make_unique<uint8_t[]>(DEFAULT_PAGE_SIZE);
 }
 
 void WALReplayer::replayWALRecord(WALRecord& walRecord) {
     switch (walRecord.recordType) {
-    case PAGE_UPDATE_OR_INSERT_RECORD: {
+    case WALRecordType::PAGE_UPDATE_OR_INSERT_RECORD: {
         // 1. As the first step we copy over the page on disk, regardless of if we are recovering
         // (and checkpointing) or checkpointing while during regular execution.
         auto storageStructureID = walRecord.pageInsertOrUpdateRecord.storageStructureID;
-        unique_ptr<FileInfo> fileInfoOfStorageStructure =
+        std::unique_ptr<FileInfo> fileInfoOfStorageStructure =
             StorageUtils::getFileInfoForReadWrite(wal->getDirectory(), storageStructureID);
         if (isCheckpoint) {
             walFileHandle->readPage(
@@ -48,7 +92,7 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
             checkpointOrRollbackVersionedFileHandleAndBufferManager(walRecord, storageStructureID);
         }
     } break;
-    case TABLE_STATISTICS_RECORD: {
+    case WALRecordType::TABLE_STATISTICS_RECORD: {
         if (isCheckpoint) {
             if (walRecord.tableStatisticsRecord.isNodeTable) {
                 StorageUtils::overwriteNodesStatisticsAndDeletedIDsFileWithVersionFromWAL(
@@ -72,9 +116,9 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
                 .rollbackInMemoryIfNecessary();
         }
     } break;
-    case COMMIT_RECORD: {
+    case WALRecordType::COMMIT_RECORD: {
     } break;
-    case CATALOG_RECORD: {
+    case WALRecordType::CATALOG_RECORD: {
         if (isCheckpoint) {
             StorageUtils::overwriteCatalogFileWithVersionFromWAL(wal->getDirectory());
             if (!isRecovering) {
@@ -85,16 +129,16 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
             // for users to roll back a DDL statement.
         }
     } break;
-    case NODE_TABLE_RECORD: {
+    case WALRecordType::NODE_TABLE_RECORD: {
         if (isCheckpoint) {
             // Since we log the NODE_TABLE_RECORD prior to logging CATALOG_RECORD, the catalog
             // file has not recovered yet. Thus, the catalog needs to read the catalog file for WAL
             // record.
-            auto catalogForCheckpointing = make_unique<catalog::Catalog>(wal);
-            catalogForCheckpointing->getReadOnlyVersion()->readFromFile(
-                wal->getDirectory(), DBFileType::WAL_VERSION);
-            WALReplayerUtils::createEmptyDBFilesForNewNodeTable(catalogForCheckpointing.get(),
-                walRecord.nodeTableRecord.tableID, wal->getDirectory());
+            auto catalogForCheckpointing = getCatalogForRecovery(DBFileType::WAL_VERSION);
+            WALReplayerUtils::createEmptyDBFilesForNewNodeTable(
+                catalogForCheckpointing->getReadOnlyVersion()->getNodeTableSchema(
+                    walRecord.nodeTableRecord.tableID),
+                wal->getDirectory());
             if (!isRecovering) {
                 // If we are not recovering, i.e., we are checkpointing during normal execution,
                 // then we need to create the NodeTable object for the newly created node table.
@@ -108,31 +152,31 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
             // impossible for users to roll back a DDL statement.
         }
     } break;
-    case REL_TABLE_RECORD: {
+    case WALRecordType::REL_TABLE_RECORD: {
         if (isCheckpoint) {
             // See comments for NODE_TABLE_RECORD.
             auto nodesStatisticsAndDeletedIDsForCheckPointing =
-                make_unique<NodesStatisticsAndDeletedIDs>(wal->getDirectory());
+                std::make_unique<NodesStatisticsAndDeletedIDs>(wal->getDirectory());
             auto maxNodeOffsetPerTable =
                 nodesStatisticsAndDeletedIDsForCheckPointing->getMaxNodeOffsetPerTable();
-            auto catalogForCheckPointing = make_unique<catalog::Catalog>(wal);
-            catalogForCheckPointing->getReadOnlyVersion()->readFromFile(
-                wal->getDirectory(), DBFileType::WAL_VERSION);
-            WALReplayerUtils::createEmptyDBFilesForNewRelTable(catalogForCheckPointing.get(),
-                walRecord.relTableRecord.tableID, wal->getDirectory(), maxNodeOffsetPerTable);
+            auto catalogForCheckpointing = getCatalogForRecovery(DBFileType::WAL_VERSION);
+            WALReplayerUtils::createEmptyDBFilesForNewRelTable(
+                catalogForCheckpointing->getReadOnlyVersion()->getRelTableSchema(
+                    walRecord.relTableRecord.tableID),
+                wal->getDirectory(), maxNodeOffsetPerTable);
             if (!isRecovering) {
                 // See comments for NODE_TABLE_RECORD.
                 storageManager->getRelsStore().createRelTable(walRecord.nodeTableRecord.tableID,
-                    bufferManager, wal, catalogForCheckPointing.get(), memoryManager);
+                    bufferManager, wal, catalogForCheckpointing.get(), memoryManager);
             }
         } else {
             // See comments for NODE_TABLE_RECORD.
         }
     } break;
-    case OVERFLOW_FILE_NEXT_BYTE_POS_RECORD: {
+    case WALRecordType::OVERFLOW_FILE_NEXT_BYTE_POS_RECORD: {
         // If we are recovering we do not replay OVERFLOW_FILE_NEXT_BYTE_POS_RECORD because
         // this record is intended for rolling back a transaction to ensure that we can
-        // recover the overflow space allocated for the write trx by calling
+        // recover the overflow space allocated for the write transaction by calling
         // DiskOverflowFile::resetNextBytePosToWriteTo(...). However during recovery, storageManager
         // is null, so we cannot construct this value.
         if (isRecovering) {
@@ -142,22 +186,21 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
         auto storageStructureID = walRecord.diskOverflowFileNextBytePosRecord.storageStructureID;
         DiskOverflowFile* diskOverflowFile;
         switch (storageStructureID.storageStructureType) {
-        case COLUMN: {
+        case StorageStructureType::COLUMN: {
             switch (storageStructureID.columnFileID.columnType) {
-            case STRUCTURED_NODE_PROPERTY_COLUMN: {
+            case ColumnType::NODE_PROPERTY_COLUMN: {
                 Column* column = storageManager->getNodesStore().getNodePropertyColumn(
-                    storageStructureID.columnFileID.structuredNodePropertyColumnID.tableID,
-                    storageStructureID.columnFileID.structuredNodePropertyColumnID.propertyID);
+                    storageStructureID.columnFileID.nodePropertyColumnID.tableID,
+                    storageStructureID.columnFileID.nodePropertyColumnID.propertyID);
                 diskOverflowFile =
                     reinterpret_cast<PropertyColumnWithOverflow*>(column)->getDiskOverflowFile();
             } break;
-            case REL_PROPERTY_COLUMN: {
+            case ColumnType::REL_PROPERTY_COLUMN: {
                 auto& relNodeTableAndDir =
                     storageStructureID.columnFileID.relPropertyColumnID.relNodeTableAndDir;
-                Column* column =
-                    storageManager->getRelsStore().getRelPropertyColumn(relNodeTableAndDir.dir,
-                        relNodeTableAndDir.relTableID, relNodeTableAndDir.srcNodeTableID,
-                        storageStructureID.columnFileID.relPropertyColumnID.propertyID);
+                Column* column = storageManager->getRelsStore().getRelPropertyColumn(
+                    relNodeTableAndDir.dir, relNodeTableAndDir.relTableID,
+                    storageStructureID.columnFileID.relPropertyColumnID.propertyID);
                 diskOverflowFile =
                     reinterpret_cast<PropertyColumnWithOverflow*>(column)->getDiskOverflowFile();
             } break;
@@ -166,33 +209,33 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
                     "AdjColumn shouldn't have OVERFLOW_FILE_NEXT_BYTE_POS_RECORD.");
             }
         } break;
-        case LISTS: {
+        case StorageStructureType::LISTS: {
             switch (storageStructureID.listFileID.listType) {
-            case REL_PROPERTY_LISTS: {
+            case ListType::REL_PROPERTY_LISTS: {
                 auto& relNodeTableAndDir =
                     storageStructureID.listFileID.relPropertyListID.relNodeTableAndDir;
-                auto relPropertyLists =
-                    storageManager->getRelsStore().getRelPropertyLists(relNodeTableAndDir.dir,
-                        relNodeTableAndDir.srcNodeTableID, relNodeTableAndDir.relTableID,
-                        storageStructureID.listFileID.relPropertyListID.propertyID);
+                auto relPropertyLists = storageManager->getRelsStore().getRelPropertyLists(
+                    relNodeTableAndDir.dir, relNodeTableAndDir.relTableID,
+                    storageStructureID.listFileID.relPropertyListID.propertyID);
                 diskOverflowFile =
                     &((PropertyListsWithOverflow*)relPropertyLists)->diskOverflowFile;
             } break;
             default:
                 throw RuntimeException(
                     "AdjLists shouldn't have OVERFLOW_FILE_NEXT_BYTE_POS_RECORD.");
-                assert(storageStructureID.listFileID.listFileType == BASE_LISTS);
+                assert(storageStructureID.listFileID.listFileType == ListFileType::BASE_LISTS);
             }
         } break;
-        case NODE_INDEX: {
+        case StorageStructureType::NODE_INDEX: {
             auto index =
                 storageManager->getNodesStore().getPKIndex(storageStructureID.nodeIndexID.tableID);
             diskOverflowFile = index->getDiskOverflowFile();
         } break;
         default:
-            throw RuntimeException("Unsupported storageStructureType " +
-                                   to_string(storageStructureID.storageStructureType) +
-                                   " for OVERFLOW_FILE_NEXT_BYTE_POS_RECORD.");
+            throw RuntimeException(
+                "Unsupported storageStructureType " +
+                storageStructureTypeToString(storageStructureID.storageStructureType) +
+                " for OVERFLOW_FILE_NEXT_BYTE_POS_RECORD.");
         }
         // Reset NextBytePosToWriteTo if we are rolling back.
         if (!isCheckpoint) {
@@ -201,9 +244,9 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
         }
         diskOverflowFile->resetLoggedNewOverflowFileNextBytePosRecord();
     } break;
-    case COPY_NODE_CSV_RECORD: {
+    case WALRecordType::COPY_NODE_RECORD: {
         if (isCheckpoint) {
-            auto tableID = walRecord.copyNodeCsvRecord.tableID;
+            auto tableID = walRecord.copyNodeRecord.tableID;
             if (!isRecovering) {
                 auto nodeTableSchema = catalog->getReadOnlyVersion()->getNodeTableSchema(tableID);
                 // If the WAL version of the file doesn't exist, we must have already replayed
@@ -212,23 +255,32 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
                 // entire WAL (which is why the log record is still here). In that case the
                 // renaming has already happened, so we do not have to do anything, which is the
                 // behavior of replaceNodeWithVersionFromWALIfExists, i.e., if the WAL version
-                // of the file does not exists, it will not do anything.
+                // of the file does not exist, it will not do anything.
                 WALReplayerUtils::replaceNodeFilesWithVersionFromWALIfExists(
                     nodeTableSchema, wal->getDirectory());
+                auto relTableSchemas = catalog->getAllRelTableSchemasContainBoundTable(tableID);
+                WALReplayerUtils::replaceListsHeadersFilesWithVersionFromWALIfExists(
+                    relTableSchemas, tableID, wal->getDirectory());
                 // If we are not recovering, i.e., we are checkpointing during normal execution,
                 // then we need to update the nodeTable because the actual columns and lists
                 // files have been changed during checkpoint. So the in memory
                 // fileHandles are obsolete and should be reconstructed (e.g. since the numPages
                 // have likely changed they need to reconstruct their page locks).
-                storageManager->getNodesStore().getNodeTable(tableID)->loadColumnsAndListsFromDisk(
-                    nodeTableSchema, *bufferManager, wal);
+                storageManager->getNodesStore().getNodeTable(tableID)->initializeData(
+                    nodeTableSchema);
+                for (auto relTableSchema : relTableSchemas) {
+                    storageManager->getRelsStore()
+                        .getRelTable(relTableSchema->tableID)
+                        ->initializeData(relTableSchema);
+                }
             } else {
-                auto catalogForCheckpointing = make_unique<catalog::Catalog>();
-                catalogForCheckpointing->getReadOnlyVersion()->readFromFile(
-                    wal->getDirectory(), DBFileType::ORIGINAL);
+                auto catalogForRecovery = getCatalogForRecovery(DBFileType::ORIGINAL);
                 // See comments above.
                 WALReplayerUtils::replaceNodeFilesWithVersionFromWALIfExists(
-                    catalogForCheckpointing->getReadOnlyVersion()->getNodeTableSchema(tableID),
+                    catalogForRecovery->getReadOnlyVersion()->getNodeTableSchema(tableID),
+                    wal->getDirectory());
+                WALReplayerUtils::replaceListsHeadersFilesWithVersionFromWALIfExists(
+                    catalogForRecovery->getAllRelTableSchemasContainBoundTable(tableID), tableID,
                     wal->getDirectory());
             }
         } else {
@@ -236,38 +288,35 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
             // impossible for users to roll back a COPY_CSV statement.
         }
     } break;
-    case COPY_REL_CSV_RECORD: {
+    case WALRecordType::COPY_REL_RECORD: {
         if (isCheckpoint) {
-            auto tableID = walRecord.copyRelCsvRecord.tableID;
+            auto tableID = walRecord.copyRelRecord.tableID;
             if (!isRecovering) {
-                // See comments for COPY_NODE_CSV_RECORD.
+                // See comments for COPY_NODE_RECORD.
                 WALReplayerUtils::replaceRelPropertyFilesWithVersionFromWALIfExists(
-                    catalog->getReadOnlyVersion()->getRelTableSchema(tableID), wal->getDirectory(),
-                    catalog);
-                // See comments for COPY_NODE_CSV_RECORD.
-                storageManager->getRelsStore().getRelTable(tableID)->loadColumnsAndListsFromDisk(
-                    *catalog, *bufferManager);
+                    catalog->getReadOnlyVersion()->getRelTableSchema(tableID), wal->getDirectory());
+                // See comments for COPY_NODE_RECORD.
+                storageManager->getRelsStore().getRelTable(tableID)->initializeData(
+                    catalog->getReadOnlyVersion()->getRelTableSchema(tableID));
                 storageManager->getNodesStore()
                     .getNodesStatisticsAndDeletedIDs()
                     .setAdjListsAndColumns(&storageManager->getRelsStore());
             } else {
-                auto catalogForCheckpointing = make_unique<catalog::Catalog>();
-                catalogForCheckpointing->getReadOnlyVersion()->readFromFile(
-                    wal->getDirectory(), DBFileType::ORIGINAL);
-                // See comments for COPY_NODE_CSV_RECORD.
+                auto catalogForRecovery = getCatalogForRecovery(DBFileType::ORIGINAL);
+                // See comments for COPY_NODE_RECORD.
                 WALReplayerUtils::replaceRelPropertyFilesWithVersionFromWALIfExists(
-                    catalogForCheckpointing->getReadOnlyVersion()->getRelTableSchema(tableID),
-                    wal->getDirectory(), catalogForCheckpointing.get());
+                    catalogForRecovery->getReadOnlyVersion()->getRelTableSchema(tableID),
+                    wal->getDirectory());
             }
         } else {
-            // See comments for COPY_NODE_CSV_RECORD.
+            // See comments for COPY_NODE_RECORD.
         }
     } break;
-    case DROP_TABLE_RECORD: {
+    case WALRecordType::DROP_TABLE_RECORD: {
         if (isCheckpoint) {
             auto tableID = walRecord.dropTableRecord.tableID;
             if (!isRecovering) {
-                if (walRecord.dropTableRecord.isNodeTable) {
+                if (catalog->getReadOnlyVersion()->containNodeTable(tableID)) {
                     storageManager->getNodesStore().removeNodeTable(tableID);
                     WALReplayerUtils::removeDBFilesForNodeTable(
                         catalog->getReadOnlyVersion()->getNodeTableSchema(tableID),
@@ -276,30 +325,93 @@ void WALReplayer::replayWALRecord(WALRecord& walRecord) {
                     storageManager->getRelsStore().removeRelTable(tableID);
                     WALReplayerUtils::removeDBFilesForRelTable(
                         catalog->getReadOnlyVersion()->getRelTableSchema(tableID),
-                        wal->getDirectory(), catalog);
+                        wal->getDirectory());
                 }
             } else {
-                auto catalogForCheckpointing = make_unique<catalog::Catalog>();
-                catalogForCheckpointing->getReadOnlyVersion()->readFromFile(
-                    wal->getDirectory(), DBFileType::ORIGINAL);
-                if (walRecord.dropTableRecord.isNodeTable) {
+                auto catalogForRecovery = getCatalogForRecovery(DBFileType::ORIGINAL);
+                if (catalogForRecovery->getReadOnlyVersion()->containNodeTable(tableID)) {
                     WALReplayerUtils::removeDBFilesForNodeTable(
-                        catalogForCheckpointing->getReadOnlyVersion()->getNodeTableSchema(tableID),
+                        catalogForRecovery->getReadOnlyVersion()->getNodeTableSchema(tableID),
                         wal->getDirectory());
                 } else {
                     WALReplayerUtils::removeDBFilesForRelTable(
-                        catalogForCheckpointing->getReadOnlyVersion()->getRelTableSchema(tableID),
-                        wal->getDirectory(), catalogForCheckpointing.get());
+                        catalogForRecovery->getReadOnlyVersion()->getRelTableSchema(tableID),
+                        wal->getDirectory());
                 }
             }
         } else {
-            // See comments for COPY_NODE_CSV_RECORD.
+            // See comments for COPY_NODE_RECORD.
+        }
+    } break;
+    case WALRecordType::DROP_PROPERTY_RECORD: {
+        if (isCheckpoint) {
+            auto tableID = walRecord.dropPropertyRecord.tableID;
+            auto propertyID = walRecord.dropPropertyRecord.propertyID;
+            if (!isRecovering) {
+                if (catalog->getReadOnlyVersion()->containNodeTable(tableID)) {
+                    storageManager->getNodesStore().getNodeTable(tableID)->removeProperty(
+                        propertyID);
+                    WALReplayerUtils::removeDBFilesForNodeProperty(
+                        wal->getDirectory(), tableID, propertyID);
+                } else {
+                    WALReplayerUtils::removeDBFilesForRelProperty(wal->getDirectory(),
+                        catalog->getReadOnlyVersion()->getRelTableSchema(tableID), propertyID);
+                    storageManager->getRelsStore().getRelTable(tableID)->removeProperty(
+                        propertyID, *catalog->getReadOnlyVersion()->getRelTableSchema(tableID));
+                }
+            } else {
+                auto catalogForRecovery = getCatalogForRecovery(DBFileType::ORIGINAL);
+                if (catalogForRecovery->getReadOnlyVersion()->containNodeTable(tableID)) {
+                    WALReplayerUtils::removeDBFilesForNodeProperty(
+                        wal->getDirectory(), tableID, propertyID);
+                } else {
+                    WALReplayerUtils::removeDBFilesForRelProperty(wal->getDirectory(),
+                        catalogForRecovery->getReadOnlyVersion()->getRelTableSchema(tableID),
+                        propertyID);
+                }
+            }
+        } else {
+            // See comments for COPY_NODE_RECORD.
+        }
+    } break;
+    case WALRecordType::ADD_PROPERTY_RECORD: {
+        if (isCheckpoint) {
+            auto tableID = walRecord.addPropertyRecord.tableID;
+            auto propertyID = walRecord.addPropertyRecord.propertyID;
+            if (!isRecovering) {
+                auto tableSchema = catalog->getWriteVersion()->getTableSchema(tableID);
+                auto property = tableSchema->getProperty(propertyID);
+                if (catalog->getReadOnlyVersion()->containNodeTable(tableID)) {
+                    WALReplayerUtils::renameDBFilesForNodeProperty(
+                        wal->getDirectory(), tableID, propertyID);
+                    storageManager->getNodesStore().getNodeTable(tableID)->addProperty(property);
+                } else {
+                    WALReplayerUtils::renameDBFilesForRelProperty(wal->getDirectory(),
+                        reinterpret_cast<RelTableSchema*>(tableSchema), propertyID);
+                    storageManager->getRelsStore().getRelTable(tableID)->addProperty(
+                        property, *reinterpret_cast<RelTableSchema*>(tableSchema));
+                }
+            } else {
+                auto catalogForRecovery = getCatalogForRecovery(DBFileType::WAL_VERSION);
+                auto tableSchema =
+                    catalogForRecovery->getReadOnlyVersion()->getTableSchema(tableID);
+                auto property = tableSchema->getProperty(propertyID);
+                if (catalogForRecovery->getReadOnlyVersion()->containNodeTable(tableID)) {
+                    WALReplayerUtils::renameDBFilesForNodeProperty(
+                        wal->getDirectory(), tableID, propertyID);
+                } else {
+                    WALReplayerUtils::renameDBFilesForRelProperty(wal->getDirectory(),
+                        reinterpret_cast<RelTableSchema*>(tableSchema), propertyID);
+                }
+            }
+        } else {
+            // See comments for COPY_NODE_RECORD.
         }
     } break;
     default:
         throw RuntimeException(
             "Unrecognized WAL record type inside WALReplayer::replay. recordType: " +
-            to_string(walRecord.recordType));
+            walRecordTypeToString(walRecord.recordType));
     }
 }
 
@@ -344,31 +456,30 @@ void WALReplayer::checkpointOrRollbackVersionedFileHandleAndBufferManager(
 VersionedFileHandle* WALReplayer::getVersionedFileHandleIfWALVersionAndBMShouldBeCleared(
     const StorageStructureID& storageStructureID) {
     switch (storageStructureID.storageStructureType) {
-    case COLUMN: {
+    case StorageStructureType::COLUMN: {
         switch (storageStructureID.columnFileID.columnType) {
-        case STRUCTURED_NODE_PROPERTY_COLUMN: {
+        case ColumnType::NODE_PROPERTY_COLUMN: {
             Column* column = storageManager->getNodesStore().getNodePropertyColumn(
-                storageStructureID.columnFileID.structuredNodePropertyColumnID.tableID,
-                storageStructureID.columnFileID.structuredNodePropertyColumnID.propertyID);
+                storageStructureID.columnFileID.nodePropertyColumnID.tableID,
+                storageStructureID.columnFileID.nodePropertyColumnID.propertyID);
             return storageStructureID.isOverflow ?
                        reinterpret_cast<PropertyColumnWithOverflow*>(column)
                            ->getDiskOverflowFileHandle() :
                        column->getFileHandle();
         }
-        case ADJ_COLUMN: {
+        case ColumnType::ADJ_COLUMN: {
             auto& relNodeTableAndDir =
                 storageStructureID.columnFileID.adjColumnID.relNodeTableAndDir;
-            Column* column = storageManager->getRelsStore().getAdjColumn(relNodeTableAndDir.dir,
-                relNodeTableAndDir.srcNodeTableID, relNodeTableAndDir.relTableID);
+            Column* column = storageManager->getRelsStore().getAdjColumn(
+                relNodeTableAndDir.dir, relNodeTableAndDir.relTableID);
             return column->getFileHandle();
         }
-        case REL_PROPERTY_COLUMN: {
+        case ColumnType::REL_PROPERTY_COLUMN: {
             auto& relNodeTableAndDir =
                 storageStructureID.columnFileID.relPropertyColumnID.relNodeTableAndDir;
-            Column* column =
-                storageManager->getRelsStore().getRelPropertyColumn(relNodeTableAndDir.dir,
-                    relNodeTableAndDir.relTableID, relNodeTableAndDir.srcNodeTableID,
-                    storageStructureID.columnFileID.relPropertyColumnID.propertyID);
+            Column* column = storageManager->getRelsStore().getRelPropertyColumn(
+                relNodeTableAndDir.dir, relNodeTableAndDir.relTableID,
+                storageStructureID.columnFileID.relPropertyColumnID.propertyID);
             return storageStructureID.isOverflow ?
                        reinterpret_cast<PropertyColumnWithOverflow*>(column)
                            ->getDiskOverflowFileHandle() :
@@ -379,29 +490,28 @@ VersionedFileHandle* WALReplayer::getVersionedFileHandleIfWALVersionAndBMShouldB
         }
         }
     }
-    case LISTS: {
+    case StorageStructureType::LISTS: {
         switch (storageStructureID.listFileID.listType) {
-        case ADJ_LISTS: {
+        case ListType::ADJ_LISTS: {
             auto& relNodeTableAndDir = storageStructureID.listFileID.adjListsID.relNodeTableAndDir;
-            auto adjLists = storageManager->getRelsStore().getAdjLists(relNodeTableAndDir.dir,
-                relNodeTableAndDir.srcNodeTableID, relNodeTableAndDir.relTableID);
+            auto adjLists = storageManager->getRelsStore().getAdjLists(
+                relNodeTableAndDir.dir, relNodeTableAndDir.relTableID);
             switch (storageStructureID.listFileID.listFileType) {
-            case BASE_LISTS: {
+            case ListFileType::BASE_LISTS: {
                 return adjLists->getFileHandle();
             }
             default:
                 return nullptr;
             }
         }
-        case REL_PROPERTY_LISTS: {
+        case ListType::REL_PROPERTY_LISTS: {
             auto& relNodeTableAndDir =
                 storageStructureID.listFileID.relPropertyListID.relNodeTableAndDir;
-            auto relPropLists =
-                storageManager->getRelsStore().getRelPropertyLists(relNodeTableAndDir.dir,
-                    relNodeTableAndDir.srcNodeTableID, relNodeTableAndDir.relTableID,
-                    storageStructureID.listFileID.relPropertyListID.propertyID);
+            auto relPropLists = storageManager->getRelsStore().getRelPropertyLists(
+                relNodeTableAndDir.dir, relNodeTableAndDir.relTableID,
+                storageStructureID.listFileID.relPropertyListID.propertyID);
             switch (storageStructureID.listFileID.listFileType) {
-            case BASE_LISTS: {
+            case ListFileType::BASE_LISTS: {
                 return storageStructureID.isOverflow ? ((PropertyListsWithOverflow*)relPropLists)
                                                            ->diskOverflowFile.getFileHandle() :
                                                        relPropLists->getFileHandle();
@@ -415,7 +525,7 @@ VersionedFileHandle* WALReplayer::getVersionedFileHandleIfWALVersionAndBMShouldB
         }
         }
     }
-    case NODE_INDEX: {
+    case StorageStructureType::NODE_INDEX: {
         auto index =
             storageManager->getNodesStore().getPKIndex(storageStructureID.nodeIndexID.tableID);
         return storageStructureID.isOverflow ? index->getDiskOverflowFile()->getFileHandle() :
@@ -426,45 +536,13 @@ VersionedFileHandle* WALReplayer::getVersionedFileHandleIfWALVersionAndBMShouldB
     }
 }
 
-void WALReplayer::replay() {
-    // Note: We assume no other thread is accessing the wal during the following operations.
-    // If this assumption no longer holds, we need to lock the wal.
-    if (!isRecovering && isCheckpoint && !wal->isLastLoggedRecordCommit()) {
-        throw StorageException(
-            "Cannot checkpointWAL because last logged record is not a commit record.");
-    }
-    if (isRecovering && !wal->isLastLoggedRecordCommit()) {
-        logger->info("WALReplayer is in recovery mode but the last record is not commit, so not "
-                     "replaying. This should not happen and the caller should instead not call "
-                     "WALReplayer::replay.");
-        throw StorageException("System should not try to rollback when the last logged record is "
-                               "not a commit record.");
-    }
-    auto walIterator = wal->getIterator();
-    WALRecord walRecord;
-    while (walIterator->hasNextRecord()) {
-        walIterator->getNextRecord(walRecord);
-        replayWALRecord(walRecord);
-    }
-
-    // We next perform an in-memory checkpointing or rolling back of nodeTables.
-    for (auto nodeTableID : wal->updatedNodeTables) {
-        auto nodeTable = storageManager->getNodesStore().getNodeTable(nodeTableID);
-        if (isCheckpoint) {
-            nodeTable->checkpointInMemoryIfNecessary();
-        } else {
-            nodeTable->rollbackInMemoryIfNecessary();
-        }
-    }
-    // Then we perform an in-memory checkpointing or rolling back of relTables.
-    for (auto relTableID : wal->updatedRelTables) {
-        auto relTable = storageManager->getRelsStore().getRelTable(relTableID);
-        if (isCheckpoint) {
-            relTable->checkpointInMemoryIfNecessary();
-        } else {
-            relTable->rollbackInMemoryIfNecessary();
-        }
-    }
+std::unique_ptr<Catalog> WALReplayer::getCatalogForRecovery(DBFileType dbFileType) {
+    // When we are recovering our database, the catalog field of walReplayer has not been
+    // initialized and recovered yet. We need to create a new catalog to get node/rel tableSchemas
+    // for recovering.
+    auto catalogForRecovery = std::make_unique<Catalog>(wal);
+    catalogForRecovery->getReadOnlyVersion()->readFromFile(wal->getDirectory(), dbFileType);
+    return catalogForRecovery;
 }
 
 } // namespace storage

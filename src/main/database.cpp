@@ -5,24 +5,42 @@
 #include "spdlog/spdlog.h"
 #include "storage/wal_replayer.h"
 
+using namespace kuzu::catalog;
+using namespace kuzu::common;
+using namespace kuzu::storage;
+using namespace kuzu::transaction;
+
 namespace kuzu {
 namespace main {
+
+SystemConfig::SystemConfig(uint64_t bufferPoolSize) {
+    if (bufferPoolSize == -1u) {
+        auto systemMemSize =
+            (std::uint64_t)sysconf(_SC_PHYS_PAGES) * (std::uint64_t)sysconf(_SC_PAGESIZE);
+        bufferPoolSize = (uint64_t)(StorageConfig::DEFAULT_BUFFER_POOL_RATIO *
+                                    (double_t)std::min(systemMemSize, (std::uint64_t)UINTPTR_MAX));
+    }
+    defaultPageBufferPoolSize =
+        (uint64_t)((double_t)bufferPoolSize * StorageConfig::DEFAULT_PAGES_BUFFER_RATIO);
+    largePageBufferPoolSize =
+        (uint64_t)((double_t)bufferPoolSize * StorageConfig::LARGE_PAGES_BUFFER_RATIO);
+}
 
 Database::Database(const DatabaseConfig& databaseConfig, const SystemConfig& systemConfig)
     : databaseConfig{databaseConfig},
       systemConfig{systemConfig}, logger{LoggerUtils::getOrCreateLogger("database")} {
     initLoggers();
     initDBDirAndCoreFilesIfNecessary();
-    bufferManager = make_unique<BufferManager>(
+    bufferManager = std::make_unique<BufferManager>(
         systemConfig.defaultPageBufferPoolSize, systemConfig.largePageBufferPoolSize);
-    memoryManager = make_unique<MemoryManager>(bufferManager.get());
-    wal = make_unique<WAL>(databaseConfig.databasePath, *bufferManager);
+    memoryManager = std::make_unique<MemoryManager>(bufferManager.get());
+    wal = std::make_unique<WAL>(databaseConfig.databasePath, *bufferManager);
     recoverIfNecessary();
-    queryProcessor = make_unique<processor::QueryProcessor>(systemConfig.maxNumThreads);
-    catalog = make_unique<catalog::Catalog>(wal.get());
-    storageManager = make_unique<storage::StorageManager>(
-        *catalog, *bufferManager, *memoryManager, databaseConfig.inMemoryMode, wal.get());
-    transactionManager = make_unique<transaction::TransactionManager>(*wal);
+    queryProcessor = std::make_unique<processor::QueryProcessor>(systemConfig.maxNumThreads);
+    catalog = std::make_unique<catalog::Catalog>(wal.get());
+    storageManager = std::make_unique<storage::StorageManager>(
+        *catalog, *bufferManager, *memoryManager, wal.get());
+    transactionManager = std::make_unique<transaction::TransactionManager>(*wal);
 }
 
 void Database::initDBDirAndCoreFilesIfNecessary() const {
@@ -158,20 +176,20 @@ void Database::recoverIfNecessary() {
 }
 
 void Database::checkpointOrRollbackAndClearWAL(bool isRecovering, bool isCheckpoint) {
-    logger->info(
-        "Starting " +
-        (isCheckpoint ? string("checkpointing") : string("rolling back the wal contents")) +
-        " in the storage manager during " +
-        (isRecovering ? "recovery." : "normal db execution (i.e., not recovering)."));
+    logger->info("Starting " +
+                 (isCheckpoint ? std::string("checkpointing") :
+                                 std::string("rolling back the wal contents")) +
+                 " in the storage manager during " +
+                 (isRecovering ? "recovery." : "normal db execution (i.e., not recovering)."));
     WALReplayer walReplayer = isRecovering ?
                                   WALReplayer(wal.get()) :
                                   WALReplayer(wal.get(), storageManager.get(), bufferManager.get(),
                                       memoryManager.get(), catalog.get(), isCheckpoint);
     walReplayer.replay();
-    logger->info(
-        "Finished " +
-        (isCheckpoint ? string("checkpointing") : string("rolling back the wal contents")) +
-        " in the storage manager.");
+    logger->info("Finished " +
+                 (isCheckpoint ? std::string("checkpointing") :
+                                 std::string("rolling back the wal contents")) +
+                 " in the storage manager.");
     wal->clearWAL();
 }
 

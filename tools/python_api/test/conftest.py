@@ -2,6 +2,7 @@ import os
 import sys
 import pytest
 import shutil
+
 sys.path.append('../build/')
 import kuzu
 
@@ -23,13 +24,33 @@ def init_tiny_snb(tmp_path):
         "create rel table knows (FROM person TO person, date DATE, meetTime TIMESTAMP, validInterval INTERVAL, "
         "comments STRING[], MANY_MANY);")
     conn.execute("COPY knows FROM \"../../../dataset/tinysnb/eKnows.csv\"")
+    conn.execute("create node table organisation (ID INT64, name STRING, orgCode INT64, mark DOUBLE, score INT64, "
+                 "history STRING, licenseValidInterval INTERVAL, rating DOUBLE, PRIMARY KEY (ID))")
+    conn.execute('COPY organisation FROM "../../../dataset/tinysnb/vOrganisation.csv"')
+    conn.execute('CREATE NODE TABLE movies (name STRING, PRIMARY KEY (name))')
+    conn.execute('COPY movies FROM "../../../dataset/tinysnb/vMovies.csv"')
+    conn.execute('create rel table workAt (FROM person TO organisation, year INT64, MANY_ONE)')
+    conn.execute('COPY workAt FROM "../../../dataset/tinysnb/eWorkAt.csv"')
+    conn.execute('create node table tensor (ID INT64, boolTensor BOOLEAN[], doubleTensor DOUBLE[][], intTensor INT64[][][], oneDimInt INT64, PRIMARY KEY (ID));')
+    conn.execute(
+        'COPY tensor FROM "../../../dataset/tensor-list/vTensor.csv" (HEADER=true)')
+    conn.execute(
+        "CREATE NODE TABLE personLongString (name STRING, spouse STRING, PRIMARY KEY(name))")
+    conn.execute(
+        'COPY personLongString FROM "../../../dataset/long-string-pk-tests/vPerson.csv"')
+    conn.execute(
+        "CREATE REL TABLE knowsLongString (FROM personLongString TO personLongString, MANY_MANY)")
+    conn.execute(
+        'COPY knowsLongString FROM "../../../dataset/long-string-pk-tests/eKnows.csv"')
     return output_path
+
 
 @pytest.fixture
 def establish_connection(init_tiny_snb):
     db = kuzu.Database(init_tiny_snb, buffer_pool_size=256 * 1024 * 1024)
     conn = kuzu.Connection(db, num_threads=4)
     return conn, db
+
 
 @pytest.fixture
 def get_tmp_path(tmp_path):

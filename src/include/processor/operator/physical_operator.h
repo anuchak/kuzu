@@ -9,11 +9,11 @@ namespace kuzu {
 namespace processor {
 
 enum class PhysicalOperatorType : uint8_t {
+    ADD_PROPERTY,
     AGGREGATE,
     AGGREGATE_SCAN,
-    COLUMN_EXTEND,
-    COPY_NODE_CSV,
-    COPY_REL_CSV,
+    COPY_NODE,
+    COPY_REL,
     CREATE_NODE,
     CREATE_NODE_TABLE,
     CREATE_REL,
@@ -21,24 +21,28 @@ enum class PhysicalOperatorType : uint8_t {
     CROSS_PRODUCT,
     DELETE_NODE,
     DELETE_REL,
+    DROP_PROPERTY,
     DROP_TABLE,
     FACTORIZED_TABLE_SCAN,
     FILTER,
     FLATTEN,
-    GENERIC_EXTEND,
+    GENERIC_SCAN_REL_TABLES,
     HASH_JOIN_BUILD,
     HASH_JOIN_PROBE,
     INDEX_SCAN,
     INTERSECT_BUILD,
     INTERSECT,
     LIMIT,
-    LIST_EXTEND,
     MULTIPLICITY_REDUCER,
     PROJECTION,
-    SCAN_REL_PROPERTY,
+    RENAME_PROPERTY,
+    RENAME_TABLE,
     RESULT_COLLECTOR,
     SCAN_NODE_ID,
     SCAN_NODE_PROPERTY,
+    SCAN_REL_PROPERTY,
+    SCAN_REL_TABLE_COLUMNS,
+    SCAN_REL_TABLE_LISTS,
     SEMI_MASKER,
     SET_NODE_PROPERTY,
     SET_REL_PROPERTY,
@@ -62,29 +66,30 @@ public:
 struct OperatorMetrics {
 
 public:
-    OperatorMetrics(TimeMetric& executionTime, NumericMetric& numOutputTuple)
+    OperatorMetrics(common::TimeMetric& executionTime, common::NumericMetric& numOutputTuple)
         : executionTime{executionTime}, numOutputTuple{numOutputTuple} {}
 
 public:
-    TimeMetric& executionTime;
-    NumericMetric& numOutputTuple;
+    common::TimeMetric& executionTime;
+    common::NumericMetric& numOutputTuple;
 };
 
 class PhysicalOperator {
 public:
     // Leaf operator
-    PhysicalOperator(PhysicalOperatorType operatorType, uint32_t id, string paramsString)
+    PhysicalOperator(PhysicalOperatorType operatorType, uint32_t id, std::string paramsString)
         : operatorType{operatorType}, id{id}, transaction{nullptr}, paramsString{
                                                                         std::move(paramsString)} {}
     // Unary operator
-    PhysicalOperator(PhysicalOperatorType operatorType, unique_ptr<PhysicalOperator> child,
-        uint32_t id, const string& paramsString);
+    PhysicalOperator(PhysicalOperatorType operatorType, std::unique_ptr<PhysicalOperator> child,
+        uint32_t id, const std::string& paramsString);
     // Binary operator
-    PhysicalOperator(PhysicalOperatorType operatorType, unique_ptr<PhysicalOperator> left,
-        unique_ptr<PhysicalOperator> right, uint32_t id, const string& paramsString);
+    PhysicalOperator(PhysicalOperatorType operatorType, std::unique_ptr<PhysicalOperator> left,
+        std::unique_ptr<PhysicalOperator> right, uint32_t id, const std::string& paramsString);
     // This constructor is used by UnionAllScan only since it may have multiple children.
     PhysicalOperator(PhysicalOperatorType operatorType,
-        vector<unique_ptr<PhysicalOperator>> children, uint32_t id, const string& paramsString);
+        std::vector<std::unique_ptr<PhysicalOperator>> children, uint32_t id,
+        const std::string& paramsString);
 
     virtual ~PhysicalOperator() = default;
 
@@ -95,12 +100,14 @@ public:
     inline virtual bool isSource() const { return false; }
     inline virtual bool isSink() const { return false; }
 
-    inline void addChild(unique_ptr<PhysicalOperator> op) { children.push_back(std::move(op)); }
+    inline void addChild(std::unique_ptr<PhysicalOperator> op) {
+        children.push_back(std::move(op));
+    }
     inline PhysicalOperator* getChild(uint64_t idx) const { return children[idx].get(); }
     inline uint64_t getNumChildren() const { return children.size(); }
-    unique_ptr<PhysicalOperator> moveUnaryChild();
+    std::unique_ptr<PhysicalOperator> moveUnaryChild();
 
-    inline string getParamsString() const { return paramsString; }
+    inline std::string getParamsString() const { return paramsString; }
 
     // Global state is initialized once.
     void initGlobalState(ExecutionContext* context);
@@ -114,10 +121,11 @@ public:
         return result;
     }
 
-    unordered_map<string, string> getProfilerKeyValAttributes(Profiler& profiler) const;
-    vector<string> getProfilerAttributes(Profiler& profiler) const;
+    std::unordered_map<std::string, std::string> getProfilerKeyValAttributes(
+        common::Profiler& profiler) const;
+    std::vector<std::string> getProfilerAttributes(common::Profiler& profiler) const;
 
-    virtual unique_ptr<PhysicalOperator> clone() = 0;
+    virtual std::unique_ptr<PhysicalOperator> clone() = 0;
 
 protected:
     virtual void initGlobalStateInternal(ExecutionContext* context) {}
@@ -125,24 +133,24 @@ protected:
     // Return false if no more tuples to pull, otherwise return true
     virtual bool getNextTuplesInternal() = 0;
 
-    inline string getTimeMetricKey() const { return "time-" + to_string(id); }
-    inline string getNumTupleMetricKey() const { return "numTuple-" + to_string(id); }
+    inline std::string getTimeMetricKey() const { return "time-" + std::to_string(id); }
+    inline std::string getNumTupleMetricKey() const { return "numTuple-" + std::to_string(id); }
 
-    void registerProfilingMetrics(Profiler* profiler);
+    void registerProfilingMetrics(common::Profiler* profiler);
 
-    double getExecutionTime(Profiler& profiler) const;
-    uint64_t getNumOutputTuples(Profiler& profiler) const;
+    double getExecutionTime(common::Profiler& profiler) const;
+    uint64_t getNumOutputTuples(common::Profiler& profiler) const;
 
 protected:
     uint32_t id;
-    unique_ptr<OperatorMetrics> metrics;
+    std::unique_ptr<OperatorMetrics> metrics;
     PhysicalOperatorType operatorType;
 
-    vector<unique_ptr<PhysicalOperator>> children;
-    Transaction* transaction;
+    std::vector<std::unique_ptr<PhysicalOperator>> children;
+    transaction::Transaction* transaction;
     ResultSet* resultSet;
 
-    string paramsString;
+    std::string paramsString;
 };
 
 } // namespace processor

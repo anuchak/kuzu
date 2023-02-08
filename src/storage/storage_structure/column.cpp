@@ -3,11 +3,14 @@
 #include "common/in_mem_overflow_buffer_utils.h"
 #include "storage/storage_structure/storage_structure_utils.h"
 
+using namespace kuzu::common;
+using namespace kuzu::transaction;
+
 namespace kuzu {
 namespace storage {
 
-void Column::read(Transaction* transaction, const shared_ptr<ValueVector>& nodeIDVector,
-    const shared_ptr<ValueVector>& resultVector) {
+void Column::read(Transaction* transaction, const std::shared_ptr<ValueVector>& nodeIDVector,
+    const std::shared_ptr<ValueVector>& resultVector) {
     if (nodeIDVector->state->isFlat()) {
         auto pos = nodeIDVector->state->selVector->selectedPositions[0];
         lookup(transaction, nodeIDVector, resultVector, pos);
@@ -28,8 +31,8 @@ void Column::read(Transaction* transaction, const shared_ptr<ValueVector>& nodeI
     }
 }
 
-void Column::writeValues(
-    const shared_ptr<ValueVector>& nodeIDVector, const shared_ptr<ValueVector>& vectorToWriteFrom) {
+void Column::writeValues(const std::shared_ptr<ValueVector>& nodeIDVector,
+    const std::shared_ptr<ValueVector>& vectorToWriteFrom) {
     if (nodeIDVector->state->isFlat() && vectorToWriteFrom->state->isFlat()) {
         auto nodeOffset =
             nodeIDVector->readNodeOffset(nodeIDVector->state->selVector->selectedPositions[0]);
@@ -56,15 +59,15 @@ void Column::writeValues(
     }
 }
 
-Literal Column::readValue(node_offset_t offset) {
+Value Column::readValue(offset_t offset) {
     auto cursor = PageUtils::getPageElementCursorForPos(offset, numElementsPerPage);
     auto frame = bufferManager.pin(fileHandle, cursor.pageIdx);
-    auto retVal = Literal(frame + mapElementPosToByteOffset(cursor.elemPosInPage), dataType);
+    auto retVal = Value(dataType, frame + mapElementPosToByteOffset(cursor.elemPosInPage));
     bufferManager.unpin(fileHandle, cursor.pageIdx);
     return retVal;
 }
 
-bool Column::isNull(node_offset_t nodeOffset, Transaction* transaction) {
+bool Column::isNull(offset_t nodeOffset, Transaction* transaction) {
     auto cursor = PageUtils::getPageElementCursorForPos(nodeOffset, numElementsPerPage);
     auto originalPageIdx = cursor.pageIdx;
     fileHandle.acquirePageLock(originalPageIdx, true /* block */);
@@ -91,15 +94,15 @@ bool Column::isNull(node_offset_t nodeOffset, Transaction* transaction) {
     return isNull;
 }
 
-void Column::setNodeOffsetToNull(node_offset_t nodeOffset) {
+void Column::setNodeOffsetToNull(offset_t nodeOffset) {
     auto updatedPageInfoAndWALPageFrame =
         beginUpdatingPageAndWriteOnlyNullBit(nodeOffset, true /* isNull */);
     StorageStructureUtils::unpinWALPageAndReleaseOriginalPageLock(
         updatedPageInfoAndWALPageFrame, fileHandle, bufferManager, *wal);
 }
 
-void Column::lookup(Transaction* transaction, const shared_ptr<ValueVector>& nodeIDVector,
-    const shared_ptr<ValueVector>& resultVector, uint32_t vectorPos) {
+void Column::lookup(Transaction* transaction, const std::shared_ptr<ValueVector>& nodeIDVector,
+    const std::shared_ptr<ValueVector>& resultVector, uint32_t vectorPos) {
     if (nodeIDVector->isNull(vectorPos)) {
         resultVector->setNull(vectorPos, true);
         return;
@@ -109,7 +112,7 @@ void Column::lookup(Transaction* transaction, const shared_ptr<ValueVector>& nod
     lookup(transaction, resultVector, vectorPos, pageCursor);
 }
 
-void Column::lookup(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
+void Column::lookup(Transaction* transaction, const std::shared_ptr<ValueVector>& resultVector,
     uint32_t vectorPos, PageElementCursor& cursor) {
     auto [fileHandleToPin, pageIdxToPin] =
         StorageStructureUtils::getFileHandleAndPhysicalPageIdxToPin(
@@ -122,8 +125,8 @@ void Column::lookup(Transaction* transaction, const shared_ptr<ValueVector>& res
     bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
 }
 
-WALPageIdxPosInPageAndFrame Column::beginUpdatingPage(node_offset_t nodeOffset,
-    const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
+WALPageIdxPosInPageAndFrame Column::beginUpdatingPage(offset_t nodeOffset,
+    const std::shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
     auto isNull = vectorToWriteFrom->isNull(posInVectorToWriteFrom);
     auto walPageInfo = beginUpdatingPageAndWriteOnlyNullBit(nodeOffset, isNull);
     if (!isNull) {
@@ -133,22 +136,22 @@ WALPageIdxPosInPageAndFrame Column::beginUpdatingPage(node_offset_t nodeOffset,
 }
 
 WALPageIdxPosInPageAndFrame Column::beginUpdatingPageAndWriteOnlyNullBit(
-    node_offset_t nodeOffset, bool isNull) {
+    offset_t nodeOffset, bool isNull) {
     auto walPageInfo = createWALVersionOfPageIfNecessaryForElement(nodeOffset, numElementsPerPage);
     setNullBitOfAPosInFrame(walPageInfo.frame, walPageInfo.posInPage, isNull);
     return walPageInfo;
 }
 
-void Column::writeValueForSingleNodeIDPosition(node_offset_t nodeOffset,
-    const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
+void Column::writeValueForSingleNodeIDPosition(offset_t nodeOffset,
+    const std::shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
     auto updatedPageInfoAndWALPageFrame =
         beginUpdatingPage(nodeOffset, vectorToWriteFrom, posInVectorToWriteFrom);
     StorageStructureUtils::unpinWALPageAndReleaseOriginalPageLock(
         updatedPageInfoAndWALPageFrame, fileHandle, bufferManager, *wal);
 }
 
-void StringPropertyColumn::writeValueForSingleNodeIDPosition(node_offset_t nodeOffset,
-    const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
+void StringPropertyColumn::writeValueForSingleNodeIDPosition(offset_t nodeOffset,
+    const std::shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
     auto updatedPageInfoAndWALPageFrame =
         beginUpdatingPage(nodeOffset, vectorToWriteFrom, posInVectorToWriteFrom);
     if (!vectorToWriteFrom->isNull(posInVectorToWriteFrom)) {
@@ -167,17 +170,17 @@ void StringPropertyColumn::writeValueForSingleNodeIDPosition(node_offset_t nodeO
         updatedPageInfoAndWALPageFrame, fileHandle, bufferManager, *wal);
 }
 
-Literal StringPropertyColumn::readValue(node_offset_t offset) {
+Value StringPropertyColumn::readValue(offset_t offset) {
     auto cursor = PageUtils::getPageElementCursorForPos(offset, numElementsPerPage);
     ku_string_t kuString;
     auto frame = bufferManager.pin(fileHandle, cursor.pageIdx);
     memcpy(&kuString, frame + mapElementPosToByteOffset(cursor.elemPosInPage), sizeof(ku_string_t));
     bufferManager.unpin(fileHandle, cursor.pageIdx);
-    return Literal(diskOverflowFile.readString(TransactionType::READ_ONLY, kuString));
+    return Value(diskOverflowFile.readString(TransactionType::READ_ONLY, kuString));
 }
 
-void ListPropertyColumn::writeValueForSingleNodeIDPosition(node_offset_t nodeOffset,
-    const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
+void ListPropertyColumn::writeValueForSingleNodeIDPosition(offset_t nodeOffset,
+    const std::shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
     assert(vectorToWriteFrom->dataType.typeID == LIST);
     auto updatedPageInfoAndWALPageFrame =
         beginUpdatingPage(nodeOffset, vectorToWriteFrom, posInVectorToWriteFrom);
@@ -193,14 +196,13 @@ void ListPropertyColumn::writeValueForSingleNodeIDPosition(node_offset_t nodeOff
         updatedPageInfoAndWALPageFrame, fileHandle, bufferManager, *wal);
 }
 
-Literal ListPropertyColumn::readValue(node_offset_t offset) {
+Value ListPropertyColumn::readValue(offset_t offset) {
     auto cursor = PageUtils::getPageElementCursorForPos(offset, numElementsPerPage);
     ku_list_t kuList;
     auto frame = bufferManager.pin(fileHandle, cursor.pageIdx);
     memcpy(&kuList, frame + mapElementPosToByteOffset(cursor.elemPosInPage), sizeof(ku_list_t));
     bufferManager.unpin(fileHandle, cursor.pageIdx);
-    return Literal(
-        diskOverflowFile.readList(TransactionType::READ_ONLY, kuList, dataType), dataType);
+    return Value(dataType, diskOverflowFile.readList(TransactionType::READ_ONLY, kuList, dataType));
 }
 
 } // namespace storage

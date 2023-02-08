@@ -7,16 +7,8 @@ namespace planner {
 
 void LogicalOrderBy::computeSchema() {
     auto childSchema = children[0]->getSchema();
-    schema = make_unique<Schema>();
-    SinkOperatorUtil::recomputeSchema(*childSchema, *schema);
-}
-
-string LogicalOrderBy::getExpressionsForPrinting() const {
-    auto result = string();
-    for (auto& expression : expressionsToOrderBy) {
-        result += expression->getUniqueName() + ", ";
-    }
-    return result;
+    schema = std::make_unique<Schema>();
+    SinkOperatorUtil::recomputeSchema(*childSchema, expressionsToMaterialize, *schema);
 }
 
 } // namespace planner

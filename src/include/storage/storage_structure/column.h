@@ -1,13 +1,9 @@
 #pragma once
 
 #include "catalog/catalog.h"
-#include "common/types/literal.h"
+#include "common/types/value.h"
 #include "storage/storage_structure/disk_overflow_file.h"
 #include "storage/storage_structure/storage_structure.h"
-
-using namespace kuzu::common;
-using namespace kuzu::catalog;
-using namespace std;
 
 namespace kuzu {
 namespace storage {
@@ -15,52 +11,58 @@ namespace storage {
 class Column : public BaseColumnOrList {
 
 public:
-    Column(const StorageStructureIDAndFName& structureIDAndFName, const DataType& dataType,
-        size_t elementSize, BufferManager& bufferManager, bool isInMemory, WAL* wal)
+    Column(const StorageStructureIDAndFName& structureIDAndFName, const common::DataType& dataType,
+        size_t elementSize, BufferManager& bufferManager, WAL* wal)
         : BaseColumnOrList{structureIDAndFName, dataType, elementSize, bufferManager,
-              true /*hasNULLBytes*/, isInMemory, wal} {};
+              true /*hasNULLBytes*/, wal} {};
 
-    Column(const StorageStructureIDAndFName& structureIDAndFName, const DataType& dataType,
-        BufferManager& bufferManager, bool isInMemory, WAL* wal)
-        : Column(structureIDAndFName, dataType, Types::getDataTypeSize(dataType), bufferManager,
-              isInMemory, wal){};
+    Column(const StorageStructureIDAndFName& structureIDAndFName, const common::DataType& dataType,
+        BufferManager& bufferManager, WAL* wal)
+        : Column(structureIDAndFName, dataType, common::Types::getDataTypeSize(dataType),
+              bufferManager, wal){};
 
-    void read(Transaction* transaction, const shared_ptr<ValueVector>& nodeIDVector,
-        const shared_ptr<ValueVector>& resultVector);
+    virtual void read(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& nodeIDVector,
+        const std::shared_ptr<common::ValueVector>& resultVector);
 
-    void writeValues(const shared_ptr<ValueVector>& nodeIDVector,
-        const shared_ptr<ValueVector>& vectorToWriteFrom);
+    void writeValues(const std::shared_ptr<common::ValueVector>& nodeIDVector,
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom);
 
     // Currently, used only in CopyCSV tests.
-    virtual Literal readValue(node_offset_t offset);
-    bool isNull(node_offset_t nodeOffset, Transaction* transaction);
-    void setNodeOffsetToNull(node_offset_t nodeOffset);
+    virtual common::Value readValue(common::offset_t offset);
+    bool isNull(common::offset_t nodeOffset, transaction::Transaction* transaction);
+    void setNodeOffsetToNull(common::offset_t nodeOffset);
 
 protected:
-    void lookup(Transaction* transaction, const shared_ptr<ValueVector>& nodeIDVector,
-        const shared_ptr<ValueVector>& resultVector, uint32_t vectorPos);
+    void lookup(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& nodeIDVector,
+        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos);
 
-    virtual void lookup(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
-        uint32_t vectorPos, PageElementCursor& cursor);
-    virtual inline void scan(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
-        PageElementCursor& cursor) {
+    virtual void lookup(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
+        PageElementCursor& cursor);
+    virtual inline void scan(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector, PageElementCursor& cursor) {
         readBySequentialCopy(transaction, resultVector, cursor, identityMapper);
     }
-    virtual void scanWithSelState(Transaction* transaction,
-        const shared_ptr<ValueVector>& resultVector, PageElementCursor& cursor) {
+    virtual void scanWithSelState(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector, PageElementCursor& cursor) {
         readBySequentialCopyWithSelState(transaction, resultVector, cursor, identityMapper);
     }
-    virtual void writeValueForSingleNodeIDPosition(node_offset_t nodeOffset,
-        const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom);
-    WALPageIdxPosInPageAndFrame beginUpdatingPage(node_offset_t nodeOffset,
-        const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom);
+    virtual void writeValueForSingleNodeIDPosition(common::offset_t nodeOffset,
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom);
+    WALPageIdxPosInPageAndFrame beginUpdatingPage(common::offset_t nodeOffset,
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom);
 
 private:
     // The reason why we make this function virtual is: we can't simply do memcpy on nodeIDs if
     // the adjColumn has tableIDCompression, in this case we only store the nodeOffset in
     // persistent store of adjColumn.
     virtual inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
-        const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom) {
         memcpy(walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage),
             vectorToWriteFrom->getData() + getElemByteOffset(posInVectorToWriteFrom), elementSize);
     }
@@ -71,20 +73,28 @@ private:
     // Note that caller must ensure to unpin and release the WAL version of the page by calling
     // StorageStructure::unpinWALPageAndReleaseOriginalPageLock.
     WALPageIdxPosInPageAndFrame beginUpdatingPageAndWriteOnlyNullBit(
-        node_offset_t nodeOffset, bool isNull);
+        common::offset_t nodeOffset, bool isNull);
 
 protected:
     // no logical-physical page mapping is required for columns
-    std::function<page_idx_t(page_idx_t)> identityMapper = [](uint32_t i) { return i; };
+    std::function<common::page_idx_t(common::page_idx_t)> identityMapper = [](uint32_t i) {
+        return i;
+    };
 };
 
 class PropertyColumnWithOverflow : public Column {
 public:
     PropertyColumnWithOverflow(const StorageStructureIDAndFName& structureIDAndFNameOfMainColumn,
-        const DataType& dataType, BufferManager& bufferManager, bool isInMemory, WAL* wal)
-        : Column{structureIDAndFNameOfMainColumn, dataType, bufferManager, isInMemory, wal},
-          diskOverflowFile{structureIDAndFNameOfMainColumn, bufferManager, isInMemory, wal} {}
+        const common::DataType& dataType, BufferManager& bufferManager, WAL* wal)
+        : Column{structureIDAndFNameOfMainColumn, dataType, bufferManager, wal},
+          diskOverflowFile{structureIDAndFNameOfMainColumn, bufferManager, wal} {}
 
+    inline void read(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& nodeIDVector,
+        const std::shared_ptr<common::ValueVector>& resultVector) override {
+        resultVector->resetOverflowBuffer();
+        Column::read(transaction, nodeIDVector, resultVector);
+    }
     inline DiskOverflowFile* getDiskOverflowFile() { return &diskOverflowFile; }
 
     inline VersionedFileHandle* getDiskOverflowFileHandle() {
@@ -99,31 +109,35 @@ class StringPropertyColumn : public PropertyColumnWithOverflow {
 
 public:
     StringPropertyColumn(const StorageStructureIDAndFName& structureIDAndFNameOfMainColumn,
-        const DataType& dataType, BufferManager& bufferManager, bool isInMemory, WAL* wal)
+        const common::DataType& dataType, BufferManager& bufferManager, WAL* wal)
         : PropertyColumnWithOverflow{
-              structureIDAndFNameOfMainColumn, dataType, bufferManager, isInMemory, wal} {};
+              structureIDAndFNameOfMainColumn, dataType, bufferManager, wal} {};
 
-    void writeValueForSingleNodeIDPosition(node_offset_t nodeOffset,
-        const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override;
+    void writeValueForSingleNodeIDPosition(common::offset_t nodeOffset,
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom) override;
 
     // Currently, used only in CopyCSV tests.
-    Literal readValue(node_offset_t offset) override;
+    common::Value readValue(common::offset_t offset) override;
 
 private:
-    inline void lookup(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
-        uint32_t vectorPos, PageElementCursor& cursor) override {
+    inline void lookup(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
+        PageElementCursor& cursor) override {
         Column::lookup(transaction, resultVector, vectorPos, cursor);
         if (!resultVector->isNull(vectorPos)) {
             diskOverflowFile.scanSingleStringOverflow(
                 transaction->getType(), *resultVector, vectorPos);
         }
     }
-    inline void scan(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
+    inline void scan(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
         PageElementCursor& cursor) override {
         Column::scan(transaction, resultVector, cursor);
         diskOverflowFile.scanSequentialStringOverflow(transaction->getType(), *resultVector);
     }
-    void scanWithSelState(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
+    void scanWithSelState(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
         PageElementCursor& cursor) override {
         Column::scanWithSelState(transaction, resultVector, cursor);
         diskOverflowFile.scanSequentialStringOverflow(transaction->getType(), *resultVector);
@@ -134,97 +148,154 @@ class ListPropertyColumn : public PropertyColumnWithOverflow {
 
 public:
     ListPropertyColumn(const StorageStructureIDAndFName& structureIDAndFNameOfMainColumn,
-        const DataType& dataType, BufferManager& bufferManager, bool isInMemory, WAL* wal)
+        const common::DataType& dataType, BufferManager& bufferManager, WAL* wal)
         : PropertyColumnWithOverflow{
-              structureIDAndFNameOfMainColumn, dataType, bufferManager, isInMemory, wal} {};
+              structureIDAndFNameOfMainColumn, dataType, bufferManager, wal} {};
 
-    void writeValueForSingleNodeIDPosition(node_offset_t nodeOffset,
-        const shared_ptr<ValueVector>& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override;
+    void writeValueForSingleNodeIDPosition(common::offset_t nodeOffset,
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom) override;
 
-    Literal readValue(node_offset_t offset) override;
+    common::Value readValue(common::offset_t offset) override;
 
 private:
-    inline void lookup(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
-        uint32_t vectorPos, PageElementCursor& cursor) override {
+    inline void lookup(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
+        PageElementCursor& cursor) override {
         Column::lookup(transaction, resultVector, vectorPos, cursor);
         if (!resultVector->isNull(vectorPos)) {
             diskOverflowFile.scanSingleListOverflow(
                 transaction->getType(), *resultVector, vectorPos);
         }
     }
-    inline void scan(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
+    inline void scan(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
         PageElementCursor& cursor) override {
         Column::scan(transaction, resultVector, cursor);
         diskOverflowFile.readListsToVector(transaction->getType(), *resultVector);
     }
-    inline void scanWithSelState(Transaction* transaction,
-        const shared_ptr<ValueVector>& resultVector, PageElementCursor& cursor) override {
+    inline void scanWithSelState(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
+        PageElementCursor& cursor) override {
         Column::scanWithSelState(transaction, resultVector, cursor);
         diskOverflowFile.readListsToVector(transaction->getType(), *resultVector);
     }
 };
 
+class RelIDColumn : public Column {
+
+public:
+    RelIDColumn(const StorageStructureIDAndFName& structureIDAndFName, BufferManager& bufferManager,
+        WAL* wal)
+        : Column{structureIDAndFName, common::DataType(common::INTERNAL_ID),
+              sizeof(common::offset_t), bufferManager, wal},
+          commonTableID{structureIDAndFName.storageStructureID.columnFileID.relPropertyColumnID
+                            .relNodeTableAndDir.relTableID} {
+        assert(structureIDAndFName.storageStructureID.columnFileID.columnType ==
+               ColumnType::REL_PROPERTY_COLUMN);
+        assert(structureIDAndFName.storageStructureID.storageStructureType ==
+               StorageStructureType::COLUMN);
+    }
+
+private:
+    inline void lookup(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
+        PageElementCursor& cursor) override {
+        readInternalIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos,
+            cursor.pageIdx, cursor.elemPosInPage, 1 /* numValuesToCopy */, commonTableID,
+            false /* hasNoNullGuarantee */);
+    }
+    inline void scan(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
+        PageElementCursor& cursor) override {
+        readInternalIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
+            commonTableID, false /* hasNoNullGuarantee */);
+    }
+    inline void scanWithSelState(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
+        PageElementCursor& cursor) override {
+        readInternalIDsBySequentialCopyWithSelState(
+            transaction, resultVector, cursor, identityMapper, commonTableID);
+    }
+    inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom) override {
+        auto relID = vectorToWriteFrom->getValue<common::relID_t>(posInVectorToWriteFrom);
+        memcpy(walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage), &relID.offset,
+            sizeof(relID.offset));
+    }
+
+private:
+    common::table_id_t commonTableID;
+};
+
 class AdjColumn : public Column {
 
 public:
-    AdjColumn(const StorageStructureIDAndFName& structureIDAndFName, BufferManager& bufferManager,
-        const NodeIDCompressionScheme& nodeIDCompressionScheme, bool isInMemory, WAL* wal)
-        : Column{structureIDAndFName, DataType(NODE_ID),
-              nodeIDCompressionScheme.getNumBytesForNodeIDAfterCompression(), bufferManager,
-              isInMemory, wal},
-          nodeIDCompressionScheme(nodeIDCompressionScheme){};
+    AdjColumn(const StorageStructureIDAndFName& structureIDAndFName, common::table_id_t nbrTableID,
+        BufferManager& bufferManager, WAL* wal)
+        : Column{structureIDAndFName, common::DataType(common::INTERNAL_ID),
+              sizeof(common::offset_t), bufferManager, wal},
+          nbrTableID{nbrTableID} {};
 
 private:
-    inline void lookup(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
-        uint32_t vectorPos, PageElementCursor& cursor) override {
-        readNodeIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos, cursor.pageIdx,
-            cursor.elemPosInPage, 1 /* numValuesToCopy */, nodeIDCompressionScheme,
-            false /*isAdjLists*/);
-    }
-    inline void scan(Transaction* transaction, const shared_ptr<ValueVector>& resultVector,
+    inline void lookup(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
         PageElementCursor& cursor) override {
-        readNodeIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
-            nodeIDCompressionScheme, false /*isAdjLists*/);
+        readInternalIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos,
+            cursor.pageIdx, cursor.elemPosInPage, 1 /* numValuesToCopy */, nbrTableID,
+            false /* hasNoNullGuarantee */);
     }
-    inline void scanWithSelState(Transaction* transaction,
-        const shared_ptr<ValueVector>& resultVector, PageElementCursor& cursor) override {
-        readNodeIDsBySequentialCopyWithSelState(
-            transaction, resultVector, cursor, identityMapper, nodeIDCompressionScheme);
+    inline void scan(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
+        PageElementCursor& cursor) override {
+        readInternalIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
+            nbrTableID, false /* hasNoNullGuarantee */);
+    }
+    inline void scanWithSelState(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& resultVector,
+        PageElementCursor& cursor) override {
+        readInternalIDsBySequentialCopyWithSelState(
+            transaction, resultVector, cursor, identityMapper, nbrTableID);
     }
     inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
-        const shared_ptr<ValueVector>& vectorToWriteFrom,
+        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
         uint32_t posInVectorToWriteFrom) override {
-        nodeIDCompressionScheme.writeNodeID(
-            walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage),
-            vectorToWriteFrom->getValue<nodeID_t>(posInVectorToWriteFrom));
+        *(walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage)) =
+            vectorToWriteFrom->getValue<common::nodeID_t>(posInVectorToWriteFrom).offset;
     }
 
 private:
-    NodeIDCompressionScheme nodeIDCompressionScheme;
+    common::table_id_t nbrTableID;
 };
 
 class ColumnFactory {
 
 public:
-    static unique_ptr<Column> getColumn(const StorageStructureIDAndFName& structureIDAndFName,
-        const DataType& dataType, BufferManager& bufferManager, bool isInMemory, WAL* wal) {
+    static std::unique_ptr<Column> getColumn(const StorageStructureIDAndFName& structureIDAndFName,
+        const common::DataType& dataType, BufferManager& bufferManager, WAL* wal) {
         switch (dataType.typeID) {
-        case INT64:
-        case DOUBLE:
-        case BOOL:
-        case DATE:
-        case TIMESTAMP:
-        case INTERVAL:
-            return make_unique<Column>(
-                structureIDAndFName, dataType, bufferManager, isInMemory, wal);
-        case STRING:
-            return make_unique<StringPropertyColumn>(
-                structureIDAndFName, dataType, bufferManager, isInMemory, wal);
-        case LIST:
-            return make_unique<ListPropertyColumn>(
-                structureIDAndFName, dataType, bufferManager, isInMemory, wal);
+        case common::INT64:
+        case common::DOUBLE:
+        case common::BOOL:
+        case common::DATE:
+        case common::TIMESTAMP:
+        case common::INTERVAL:
+            return std::make_unique<Column>(structureIDAndFName, dataType, bufferManager, wal);
+        case common::STRING:
+            return std::make_unique<StringPropertyColumn>(
+                structureIDAndFName, dataType, bufferManager, wal);
+        case common::LIST:
+            return std::make_unique<ListPropertyColumn>(
+                structureIDAndFName, dataType, bufferManager, wal);
+        case common::INTERNAL_ID:
+            assert(structureIDAndFName.storageStructureID.storageStructureType ==
+                   StorageStructureType::COLUMN);
+            assert(structureIDAndFName.storageStructureID.columnFileID.columnType ==
+                   ColumnType::REL_PROPERTY_COLUMN);
+            return std::make_unique<RelIDColumn>(structureIDAndFName, bufferManager, wal);
         default:
-            throw StorageException("Invalid type for property column creation.");
+            throw common::StorageException("Invalid type for property column creation.");
         }
     }
 };

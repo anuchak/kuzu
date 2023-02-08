@@ -4,97 +4,135 @@
 
 #include "catalog/catalog_structs.h"
 #include "common/data_chunk/data_chunk.h"
-#include "common/types/node_id_t.h"
 #include "common/types/types.h"
 #include "processor/result/factorized_table.h"
-#include "storage/storage_structure/lists/list_sync_state.h"
+#include "storage/storage_structure/lists/list_handle.h"
 #include "storage/storage_utils.h"
 
 namespace kuzu {
 namespace storage {
 
-using namespace processor;
-using namespace catalog;
+typedef uint64_t list_offset_t;
 
-struct ListUpdates {
+struct UpdatedPersistentListOffsets {
 public:
-    ListUpdates() : newlyAddedNode{false} {}
-
-    inline bool hasUpdates() const {
-        return newlyAddedNode || !insertedRelsTupleIdxInFT.empty() || !deletedRelIDs.empty();
+    inline void insertOffset(list_offset_t listOffset, processor::ft_tuple_idx_t ftTupleIdx) {
+        listOffsetFTIdxMap[listOffset] = ftTupleIdx;
     }
+    inline bool hasUpdates() const { return !listOffsetFTIdxMap.empty(); }
 
 public:
-    bool newlyAddedNode;
-    vector<uint64_t> insertedRelsTupleIdxInFT;
-    unordered_set<int64_t> deletedRelIDs;
+    std::map<list_offset_t, processor::ft_tuple_idx_t> listOffsetFTIdxMap;
 };
 
-using ListUpdatesPerNode = map<node_offset_t, ListUpdates>;
-using ListUpdatesPerChunk = map<uint64_t, ListUpdatesPerNode>;
+struct ListsUpdatesForNodeOffset {
+public:
+    explicit ListsUpdatesForNodeOffset(const catalog::RelTableSchema& relTableSchema);
+
+    inline bool hasUpdates() const {
+        return isNewlyAddedNode || !insertedRelsTupleIdxInFT.empty() ||
+               !deletedRelOffsets.empty() || hasAnyUpdatedPersistentListOffsets();
+    }
+
+    bool hasAnyUpdatedPersistentListOffsets() const;
+
+public:
+    bool isNewlyAddedNode;
+    std::vector<processor::ft_tuple_idx_t> insertedRelsTupleIdxInFT;
+    std::unordered_map<common::property_id_t, UpdatedPersistentListOffsets>
+        updatedPersistentListOffsets;
+    std::unordered_set<common::offset_t> deletedRelOffsets;
+};
+
+struct ListsUpdateInfo {
+public:
+    ListsUpdateInfo(const std::shared_ptr<common::ValueVector>& propertyVector,
+        common::property_id_t propertyID, common::offset_t relOffset, uint64_t fwdListOffset,
+        uint64_t bwdListOffset)
+        : propertyVector{propertyVector}, propertyID{propertyID}, relOffset{relOffset},
+          fwdListOffset{fwdListOffset}, bwdListOffset{bwdListOffset} {}
+
+    bool isStoredInPersistentStore() const { return fwdListOffset != -1 || bwdListOffset != -1; }
+
+public:
+    std::shared_ptr<common::ValueVector> propertyVector;
+    common::property_id_t propertyID;
+    common::offset_t relOffset;
+    list_offset_t fwdListOffset;
+    list_offset_t bwdListOffset;
+};
+
+using ListsUpdatesPerNode = std::map<common::offset_t, std::unique_ptr<ListsUpdatesForNodeOffset>>;
+using ListsUpdatesPerChunk = std::map<chunk_idx_t, ListsUpdatesPerNode>;
 
 struct InMemList;
 
-class ListsUpdateStore {
+class ListsUpdatesStore {
 
 public:
-    ListsUpdateStore(MemoryManager& memoryManager, RelTableSchema& relTableSchema);
+    ListsUpdatesStore(MemoryManager& memoryManager, catalog::RelTableSchema& relTableSchema);
 
-    inline bool isEmpty() const { return factorizedTable->isEmpty(); }
     inline void clear() {
-        factorizedTable->clear();
-        initListUpdatesPerTablePerDirection();
+        ftOfInsertedRels->clear();
+        for (auto& [_, propertyUpdates] : listsUpdates) {
+            propertyUpdates->clear();
+        }
+        initListsUpdatesPerTablePerDirection();
     }
-    inline ListUpdatesPerChunk& getListUpdatesPerChunk(ListFileID& listFileID) {
-        auto relNodeTableAndDir = getRelNodeTableAndDirFromListFileID(listFileID);
-        return listUpdatesPerTablePerDirection[relNodeTableAndDir.dir].at(
-            relNodeTableAndDir.srcNodeTableID);
-    }
-    inline vector<map<table_id_t, ListUpdatesPerChunk>>& getListUpdatesPerTablePerDirection() {
-        return listUpdatesPerTablePerDirection;
+    inline ListsUpdatesPerChunk& getListsUpdatesPerChunk(common::RelDirection relDirection) {
+        return listsUpdatesPerDirection[relDirection];
     }
 
-    uint64_t getNumDeletedRels(ListFileID& listFileID, node_offset_t nodeOffset) const;
+    void updateSchema(catalog::RelTableSchema& relTableSchema);
 
-    bool isNewlyAddedNode(ListFileID& listFileID, node_offset_t nodeOffset) const;
+    bool isNewlyAddedNode(ListFileID& listFileID, common::offset_t nodeOffset) const;
+
+    uint64_t getNumDeletedRels(ListFileID& listFileID, common::offset_t nodeOffset) const;
 
     bool isRelDeletedInPersistentStore(
-        ListFileID& listFileID, node_offset_t nodeOffset, int64_t relID) const;
+        ListFileID& listFileID, common::offset_t nodeOffset, common::offset_t relOffset) const;
 
     bool hasUpdates() const;
 
-    void readInsertionsToList(ListFileID& listFileID, vector<uint64_t> tupleIdxes,
-        InMemList& inMemList, uint64_t numElementsInPersistentStore,
-        DiskOverflowFile* diskOverflowFile, DataType dataType,
-        NodeIDCompressionScheme* nodeIDCompressionScheme);
+    void readInsertedRelsToList(ListFileID& listFileID,
+        std::vector<processor::ft_tuple_idx_t> tupleIdxes, InMemList& inMemList,
+        uint64_t numElementsInPersistentStore, DiskOverflowFile* diskOverflowFile,
+        common::DataType dataType);
 
     // If this is a one-to-one relTable, all properties are stored in columns.
-    // In this case, the listsUpdateStore should not store the insert rels in FT.
-    void insertRelIfNecessary(const shared_ptr<ValueVector>& srcNodeIDVector,
-        const shared_ptr<ValueVector>& dstNodeIDVector,
-        const vector<shared_ptr<ValueVector>>& relPropertyVectors);
+    // In this case, the listsUpdatesStore should not store the insert rels in FT.
+    void insertRelIfNecessary(const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
+        const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
+        const std::vector<std::shared_ptr<common::ValueVector>>& relPropertyVectors);
 
-    void deleteRelIfNecessary(const shared_ptr<ValueVector>& srcNodeIDVector,
-        const shared_ptr<ValueVector>& dstNodeIDVector, const shared_ptr<ValueVector>& relIDVector);
+    void deleteRelIfNecessary(const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
+        const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
+        const std::shared_ptr<common::ValueVector>& relIDVector);
 
     uint64_t getNumInsertedRelsForNodeOffset(
-        ListFileID& listFileID, node_offset_t nodeOffset) const;
+        ListFileID& listFileID, common::offset_t nodeOffset) const;
 
-    void readValues(ListFileID& listFileID, ListSyncState& listSyncState,
-        shared_ptr<ValueVector> valueVector) const;
+    void readValues(ListFileID& listFileID, ListHandle& listSyncState,
+        std::shared_ptr<common::ValueVector> valueVector) const;
 
-    void initNewlyAddedNodes(nodeID_t& nodeID) {
-        for (auto direction : REL_DIRECTIONS) {
-            if (listUpdatesPerTablePerDirection[direction].contains(nodeID.tableID)) {
-                listUpdatesPerTablePerDirection[direction][nodeID.tableID]
-                                               [StorageUtils::getListChunkIdx(nodeID.offset)]
-                                               [nodeID.offset]
-                                                   .newlyAddedNode = true;
-            }
-        }
-    }
+    bool hasAnyDeletedRelsInPersistentStore(
+        ListFileID& listFileID, common::offset_t nodeOffset) const;
 
-    bool hasAnyDeletedRelsInPersistentStore(ListFileID& listFileID, node_offset_t nodeOffset) const;
+    // This function is called ifNecessary because it only handles the updates to a propertyList.
+    // If the property is stored as a column in both direction(e.g. we are updating a ONE-ONE rel
+    // table), this function won't do any operations in this case.
+    void updateRelIfNecessary(const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
+        const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
+        const ListsUpdateInfo& listsUpdateInfo);
+
+    void readUpdatesToPropertyVectorIfExists(ListFileID& listFileID, common::offset_t nodeOffset,
+        const std::shared_ptr<common::ValueVector>& valueVector, list_offset_t startListOffset);
+
+    void readPropertyUpdateToInMemList(ListFileID& listFileID, processor::ft_tuple_idx_t ftTupleIdx,
+        InMemList& inMemList, uint64_t posToWriteToInMemList, const common::DataType& dataType,
+        DiskOverflowFile* overflowFileOfInMemList);
+
+    void initNewlyAddedNodes(common::nodeID_t& nodeID);
 
 private:
     static inline RelNodeTableAndDir getRelNodeTableAndDirFromListFileID(ListFileID& listFileID) {
@@ -103,29 +141,41 @@ private:
                    listFileID.relPropertyListID.relNodeTableAndDir;
     }
     inline int64_t getTupleIdxIfInsertedRel(int64_t relID) {
-        return factorizedTable->findValueInFlatColumn(INTERNAL_REL_ID_IDX_IN_FT, relID);
+        return ftOfInsertedRels->findValueInFlatColumn(INTERNAL_REL_ID_IDX_IN_FT, relID);
     }
 
-    uint32_t getColIdxInFT(ListFileID& listFileID) const;
+    void initInsertedRelsAndListsUpdates();
 
-    void initListUpdatesPerTablePerDirection();
+    processor::ft_col_idx_t getColIdxInFT(ListFileID& listFileID) const;
+
+    void initListsUpdatesPerTablePerDirection();
+
+    ListsUpdatesForNodeOffset* getOrCreateListsUpdatesForNodeOffset(
+        common::RelDirection relDirection, common::nodeID_t nodeID);
+
+    ListsUpdatesForNodeOffset* getListsUpdatesForNodeOffsetIfExists(
+        ListFileID& listFileID, common::offset_t nodeOffset) const;
 
 private:
-    /* ListsUpdateStore stores all inserted edges in a factorizedTable in the format:
+    /* ListsUpdatesStore stores all inserted edges in a factorizedTable in the format:
      * [srcNodeID, dstNodeID, relID, relProp1, relProp2, ..., relPropN]. In order to efficiently
      * find the insertedEdges for a nodeTable, we introduce a mapping which stores the tupleIdxes of
      * insertedEdges for each nodeTable per direction.
      */
-    static constexpr uint64_t SRC_TABLE_ID_IDX_IN_FT = 0;
-    static constexpr uint64_t DST_TABLE_ID_IDX_IN_FT = 1;
-    static constexpr uint64_t INTERNAL_REL_ID_IDX_IN_FT = 2;
-    unique_ptr<FactorizedTable> factorizedTable;
-    shared_ptr<ValueVector> srcNodeVector;
-    shared_ptr<ValueVector> dstNodeVector;
-    shared_ptr<DataChunk> nodeDataChunk;
-    vector<map<table_id_t, ListUpdatesPerChunk>> listUpdatesPerTablePerDirection;
-    unordered_map<uint32_t, uint32_t> propertyIDToColIdxMap;
-    RelTableSchema relTableSchema;
+    static constexpr processor::ft_tuple_idx_t SRC_TABLE_ID_IDX_IN_FT = 0;
+    static constexpr processor::ft_tuple_idx_t DST_TABLE_ID_IDX_IN_FT = 1;
+    static constexpr processor::ft_tuple_idx_t INTERNAL_REL_ID_IDX_IN_FT = 2;
+    static constexpr processor::ft_tuple_idx_t LISTS_UPDATES_IDX_IN_FT = 0;
+    std::unique_ptr<processor::FactorizedTable> ftOfInsertedRels;
+    // We store all updates to the same property list inside a special factorizedTable which
+    // only has one column. ListsUpdates is a collection of these special factorizedTable indexed by
+    // propertyID.
+    std::unordered_map<common::property_id_t, std::unique_ptr<processor::FactorizedTable>>
+        listsUpdates;
+    std::vector<ListsUpdatesPerChunk> listsUpdatesPerDirection;
+    std::unordered_map<common::property_id_t, processor::ft_col_idx_t> propertyIDToColIdxMap;
+    catalog::RelTableSchema relTableSchema;
+    MemoryManager& memoryManager;
 };
 
 } // namespace storage

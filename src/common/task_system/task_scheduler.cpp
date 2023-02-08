@@ -22,11 +22,30 @@ TaskScheduler::~TaskScheduler() {
     }
 }
 
-shared_ptr<ScheduledTask> TaskScheduler::scheduleTask(const shared_ptr<Task>& task) {
+std::shared_ptr<ScheduledTask> TaskScheduler::scheduleTask(const std::shared_ptr<Task>& task) {
     lock_t lck{mtx};
-    auto scheduledTask = make_shared<ScheduledTask>(task, nextScheduledTaskID++);
+    auto scheduledTask = std::make_shared<ScheduledTask>(task, nextScheduledTaskID++);
     taskQueue.push_back(scheduledTask);
     return scheduledTask;
+}
+
+void TaskScheduler::errorIfThereIsAnException() {
+    lock_t lck{mtx};
+    errorIfThereIsAnExceptionNoLock();
+    lck.unlock();
+}
+
+void TaskScheduler::errorIfThereIsAnExceptionNoLock() {
+    for (auto it = taskQueue.begin(); it != taskQueue.end(); ++it) {
+        auto task = (*it)->task;
+        if (task->hasException()) {
+            taskQueue.erase(it);
+            std::rethrow_exception(task->getExceptionPtr());
+        }
+        // TODO(Semih): We can optimize to stop after finding a registrable task. This is
+        // because tasks after the first registrable task in the queue cannot have any thread
+        // yet registered to them, so they cannot have errored.
+    }
 }
 
 void TaskScheduler::waitAllTasksToCompleteOrError() {
@@ -35,28 +54,21 @@ void TaskScheduler::waitAllTasksToCompleteOrError() {
         if (taskQueue.empty()) {
             return;
         }
-        for (auto it = taskQueue.begin(); it != taskQueue.end(); ++it) {
-            auto task = (*it)->task;
-            if (task->hasException()) {
-                taskQueue.erase(it);
-                std::rethrow_exception(task->getExceptionPtr());
-            }
-            // TODO(Semih): We can optimize to stop after finding a registrable task. This is
-            // because tasks after the first registrable task in the queue cannot have any thread
-            // yet registered to them, so they cannot have errored.
-        }
+        errorIfThereIsAnExceptionNoLock();
         lck.unlock();
-        this_thread::sleep_for(chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+        std::this_thread::sleep_for(
+            std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
     }
 }
 
-void TaskScheduler::scheduleTaskAndWaitOrError(const shared_ptr<Task>& task) {
+void TaskScheduler::scheduleTaskAndWaitOrError(const std::shared_ptr<Task>& task) {
     for (auto& dependency : task->children) {
         scheduleTaskAndWaitOrError(dependency);
     }
     auto scheduledTask = scheduleTask(task);
     while (!task->isCompleted()) {
-        this_thread::sleep_for(chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+        std::this_thread::sleep_for(
+            std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
     }
     if (task->hasException()) {
         removeErroringTask(scheduledTask->ID);
@@ -64,7 +76,15 @@ void TaskScheduler::scheduleTaskAndWaitOrError(const shared_ptr<Task>& task) {
     }
 }
 
-shared_ptr<ScheduledTask> TaskScheduler::getTaskAndRegister() {
+void TaskScheduler::waitUntilEnoughTasksFinish(int64_t minimumNumTasksToScheduleMore) {
+    while (getNumTasks() > minimumNumTasksToScheduleMore) {
+        errorIfThereIsAnException();
+        std::this_thread::sleep_for(
+            std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+    }
+}
+
+std::shared_ptr<ScheduledTask> TaskScheduler::getTaskAndRegister() {
     lock_t lck{mtx};
     if (taskQueue.empty()) {
         return nullptr;
@@ -108,14 +128,15 @@ void TaskScheduler::runWorkerThread() {
         }
         auto scheduledTask = getTaskAndRegister();
         if (!scheduledTask) {
-            this_thread::sleep_for(chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+            std::this_thread::sleep_for(
+                std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
             continue;
         }
         try {
             scheduledTask->task->run();
             scheduledTask->task->deRegisterThreadAndFinalizeTaskIfNecessary();
-        } catch (exception& e) {
-            scheduledTask->task->setException(current_exception());
+        } catch (std::exception& e) {
+            scheduledTask->task->setException(std::current_exception());
             scheduledTask->task->deRegisterThreadAndFinalizeTaskIfNecessary();
             continue;
         }

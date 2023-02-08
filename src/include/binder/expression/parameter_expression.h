@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/types/literal.h"
+#include "common/types/value.h"
 #include "expression.h"
 
 namespace kuzu {
@@ -9,19 +9,19 @@ namespace binder {
 class ParameterExpression : public Expression {
 
 public:
-    explicit ParameterExpression(const string& parameterName, shared_ptr<Literal> literal)
-        : Expression{PARAMETER, ANY, "$" + parameterName /* add $ to avoid conflict between parameter name and variable name */}, literal{move(literal)} {}
+    explicit ParameterExpression(const std::string& parameterName, std::shared_ptr<common::Value> value)
+        : Expression{common::PARAMETER, common::ANY, "$" + parameterName /* add $ to avoid conflict between parameter name and variable name */}, value{std::move(value)} {}
 
-    inline void setDataType(const DataType& targetType) {
-        assert(dataType.typeID == ANY);
+    inline void setDataType(const common::DataType& targetType) {
+        assert(dataType.typeID == common::ANY);
         dataType = targetType;
-        literal->dataType = targetType;
+        value->setDataType(targetType);
     }
 
-    inline shared_ptr<Literal> getLiteral() const { return literal; }
+    inline std::shared_ptr<common::Value> getLiteral() const { return value; }
 
 private:
-    shared_ptr<Literal> literal;
+    std::shared_ptr<common::Value> value;
 };
 
 } // namespace binder

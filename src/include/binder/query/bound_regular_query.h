@@ -7,34 +7,36 @@ namespace kuzu {
 namespace binder {
 
 class BoundRegularQuery : public BoundStatement {
-
 public:
-    explicit BoundRegularQuery(vector<bool> isUnionAll)
-        : BoundStatement{StatementType::QUERY}, isUnionAll{move(isUnionAll)} {}
+    explicit BoundRegularQuery(
+        std::vector<bool> isUnionAll, std::unique_ptr<BoundStatementResult> statementResult)
+        : BoundStatement{common::StatementType::QUERY, std::move(statementResult)},
+          isUnionAll{std::move(isUnionAll)} {}
 
-    ~BoundRegularQuery() = default;
+    ~BoundRegularQuery() override = default;
 
-    inline void addSingleQuery(unique_ptr<NormalizedSingleQuery> singleQuery) {
-        singleQueries.push_back(move(singleQuery));
+    inline bool isReadOnly() const override {
+        for (auto& singleQuery : singleQueries) {
+            if (!singleQuery->isReadOnly()) {
+                return false;
+            }
+        }
+        return true;
     }
 
+    inline void addSingleQuery(std::unique_ptr<NormalizedSingleQuery> singleQuery) {
+        singleQueries.push_back(std::move(singleQuery));
+    }
     inline uint64_t getNumSingleQueries() const { return singleQueries.size(); }
-
     inline NormalizedSingleQuery* getSingleQuery(uint32_t idx) const {
         return singleQueries[idx].get();
     }
 
     inline bool getIsUnionAll(uint32_t idx) const { return isUnionAll[idx]; }
 
-    // For regular query (i.e. union of single queries), since there
-    inline expression_vector getExpressionsToReturn() const {
-        assert(!singleQueries.empty());
-        return singleQueries[0]->getExpressionsToReturn();
-    }
-
 private:
-    vector<unique_ptr<NormalizedSingleQuery>> singleQueries;
-    vector<bool> isUnionAll;
+    std::vector<std::unique_ptr<NormalizedSingleQuery>> singleQueries;
+    std::vector<bool> isUnionAll;
 };
 
 } // namespace binder

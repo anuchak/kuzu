@@ -1,6 +1,7 @@
 #include "common/in_mem_overflow_buffer_utils.h"
-#include "test_helper/test_helper.h"
+#include "graph_test/graph_test.h"
 
+using namespace kuzu::common;
 using namespace kuzu::storage;
 using namespace kuzu::testing;
 
@@ -27,15 +28,6 @@ public:
             getCatalog(*database)->getReadOnlyVersion()->getNodeTableIDFromName("person");
         personNodeTable = getStorageManager(*database)->getNodesStore().getNodeTable(personTableID);
         conn->beginWriteTransaction();
-    }
-
-    void commitOrRollbackConnectionAndInitDBIfNecessary(
-        bool isCommit, TransactionTestType transactionTestType) {
-        commitOrRollbackConnection(isCommit, transactionTestType);
-        if (transactionTestType == TransactionTestType::RECOVERY) {
-            // This creates a new database/conn/readConn and should run the recovery algorithm
-            initWithoutLoadingGraph();
-        }
     }
 
     // This function is necessary to call to trigger the checkpoint/rollback mechanism of the
@@ -166,13 +158,13 @@ public:
 class DiskArrayUpdateTests : public BaseDiskArrayUpdateTests {
 
 public:
-    string getInputCSVDir() override { return "dataset/non-empty-disk-array-db/"; }
+    string getInputDir() override { return "dataset/non-empty-disk-array-db/"; }
 };
 
 class DiskArrayUpdateEmptyDBTests : public BaseDiskArrayUpdateTests {
 
 public:
-    string getInputCSVDir() override { return "dataset/empty-db/"; }
+    string getInputDir() override { return "dataset/empty-db/"; }
 };
 
 TEST_F(DiskArrayUpdateTests, BasicUpdateTestCommitNormalExecution) {

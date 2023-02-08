@@ -1,47 +1,35 @@
 #include <filesystem>
 
-#include "gtest/gtest.h"
-#include "test_helper/test_helper.h"
+#include "graph_test/graph_test.h"
 
 using ::testing::Test;
 using namespace kuzu::testing;
 
-class EndToEndReadLists2BytesPerEdgeTest : public DBTest {
+class EndToEndReadLargeListsTest : public DBTest {
 public:
-    string getInputCSVDir() override {
-        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/2-bytes-per-edge/");
-    }
-};
-
-class EndToEndReadLists4BytesPerEdgeTest : public DBTest {
-public:
-    string getInputCSVDir() override {
-        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/4-bytes-per-edge/");
+    std::string getInputDir() override {
+        return TestHelper::appendKuzuRootPath("dataset/read-list-tests/large-list/");
     }
 };
 
 class EndToEndReadListsSubQueryTest : public DBTest {
 public:
-    string getInputCSVDir() override {
+    std::string getInputDir() override {
         return TestHelper::appendKuzuRootPath(
             "dataset/read-list-tests/large-list-sub-query-tests/");
     }
 };
 
-TEST_F(EndToEndReadLists2BytesPerEdgeTest, AdjLists2BytesPerEdgeTest) {
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/read_list/2-bytes-per-edge.test"));
+TEST_F(EndToEndReadLargeListsTest, LargeAdjListTest) {
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/read_list/large-list.test"));
 }
 
-TEST_F(EndToEndReadLists4BytesPerEdgeTest, AdjLists4BytesPerEdgeTest) {
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/read_list/4-bytes-per-edge.test"));
-}
-
-TEST_F(EndToEndReadLists2BytesPerEdgeTest, PropLists4BytesPerEdgeTest) {
+TEST_F(EndToEndReadLargeListsTest, PropLists4BytesPerEdgeTest) {
     runTest(TestHelper::appendKuzuRootPath(
         "test/test_files/read_list/small-large-property-list-reading.test"));
 }
 
-TEST_F(EndToEndReadLists2BytesPerEdgeTest, VarLengthExtendLargeAdjListTest) {
+TEST_F(EndToEndReadLargeListsTest, VarLengthExtendLargeAdjListTest) {
     runTest(TestHelper::appendKuzuRootPath(
         "test/test_files/read_list/var_length_large_adj_list_extend.test"));
 }

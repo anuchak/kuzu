@@ -1,5 +1,5 @@
 #include "common/exception.h"
-#include "include/gtest/gtest.h"
+#include "gtest/gtest.h"
 #include "storage/wal/wal_record.h"
 
 using namespace kuzu::common;
@@ -11,12 +11,12 @@ class WALRecordTest : public Test {
 protected:
     // We assume 4096 bytes is enough as space two write logs in the tests in these files. When
     // other tests are written and this assumption fails, this needs to be increased.
-    void SetUp() override { bytes = make_unique<uint8_t[]>(4096); }
+    void SetUp() override { bytes = std::make_unique<uint8_t[]>(4096); }
 
     void TearDown() override {}
 
 public:
-    unique_ptr<uint8_t[]> bytes;
+    std::unique_ptr<uint8_t[]> bytes;
 
 public:
     void readBackWALRecordAndAssert(WALRecord& expectedWALRecord, uint64_t& offset) {
@@ -44,8 +44,8 @@ public:
         uint64_t pageIdxInOriginalFile = 1455304;
         uint64_t pageIdxInWAL = 3;
         return WALRecord::newPageUpdateRecord(
-            StorageStructureID::newStructuredNodePropertyColumnID(tableID, propertyID),
-            pageIdxInOriginalFile, pageIdxInWAL);
+            StorageStructureID::newNodePropertyColumnID(tableID, propertyID), pageIdxInOriginalFile,
+            pageIdxInWAL);
     }
 
     WALRecord constructExampleStructuredNodePropertyOverflowFilePageUpdateRecord() {
@@ -54,8 +54,8 @@ public:
         uint64_t pageIdxInOriginalFile = 44436;
         uint64_t pageIdxInWAL = 1234;
         return WALRecord::newPageUpdateRecord(
-            StorageStructureID::newStructuredNodePropertyColumnID(tableID, propertyID),
-            pageIdxInOriginalFile, pageIdxInWAL);
+            StorageStructureID::newNodePropertyColumnID(tableID, propertyID), pageIdxInOriginalFile,
+            pageIdxInWAL);
     }
 
     WALRecord constructExampleCommitRecord() {

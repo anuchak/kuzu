@@ -1,17 +1,19 @@
-#include "test_helper/test_helper.h"
+#include "graph_test/graph_test.h"
 
 using ::testing::Test;
 using namespace kuzu::testing;
 
 class LongStringPKTest : public DBTest {
-    string getInputCSVDir() override {
+    std::string getInputDir() override {
         return TestHelper::appendKuzuRootPath("dataset/long-string-pk-tests/");
     }
 };
 
 class TinySnbReadTest : public DBTest {
 public:
-    string getInputCSVDir() override { return TestHelper::appendKuzuRootPath("dataset/tinysnb/"); }
+    std::string getInputDir() override {
+        return TestHelper::appendKuzuRootPath("dataset/tinysnb/");
+    }
 };
 
 TEST_F(LongStringPKTest, LongStringPKTest) {

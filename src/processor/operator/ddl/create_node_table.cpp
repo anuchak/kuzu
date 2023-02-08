@@ -1,12 +1,17 @@
 #include "processor/operator/ddl/create_node_table.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace processor {
 
-string CreateNodeTable::execute() {
+void CreateNodeTable::executeDDLInternal() {
     auto newTableID = catalog->addNodeTableSchema(tableName, primaryKeyIdx, propertyNameDataTypes);
-    nodesStatisticsAndDeletedIDs->addNodeStatisticsAndDeletedIDs(
+    nodesStatistics->addNodeStatisticsAndDeletedIDs(
         catalog->getWriteVersion()->getNodeTableSchema(newTableID));
+}
+
+std::string CreateNodeTable::getOutputMsg() {
     return StringUtils::string_format("NodeTable: %s has been created.", tableName.c_str());
 }
 

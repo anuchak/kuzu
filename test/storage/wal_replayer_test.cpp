@@ -1,11 +1,14 @@
+#include "graph_test/graph_test.h"
 #include "storage/wal_replayer.h"
-#include "test_helper/test_helper.h"
 
+using namespace kuzu::common;
 using namespace kuzu::storage;
 using namespace kuzu::testing;
 
 class WALReplayerTests : public DBTest {
-    string getInputCSVDir() override { return TestHelper::appendKuzuRootPath("dataset/tinysnb/"); }
+    std::string getInputDir() override {
+        return TestHelper::appendKuzuRootPath("dataset/tinysnb/");
+    }
 };
 
 TEST_F(WALReplayerTests, ReplayingUncommittedWALForChekpointErrors) {

@@ -14,9 +14,7 @@ grammar Cypher;
 }
 
 oC_Cypher
-    : SP ? oC_AnyCypherOption? SP? oC_Statement ( SP? ';' )? SP? EOF
-        | SP ? kU_DDL ( SP? ';' )? SP? EOF
-        | SP ? kU_CopyCSV ( SP? ';' )? SP? EOF ;
+    : SP ? oC_AnyCypherOption? SP? ( oC_Statement | kU_DDL | kU_CopyCSV ) ( SP? ';' )? SP? EOF ;
 
 kU_CopyCSV
     : COPY SP oC_SchemaName SP FROM SP StringLiteral ( SP? '(' SP? kU_ParsingOptions SP? ')' )? ;
@@ -34,7 +32,8 @@ FROM : ( 'F' | 'f' ) ( 'R' | 'r' ) ( 'O' | 'o' ) ( 'M' | 'm' );
 kU_DDL
     : kU_CreateNode
         | kU_CreateRel
-        | kU_DropTable;
+        | kU_DropTable
+        | kU_AlterTable;
 
 kU_CreateNode
     : CREATE SP NODE SP TABLE SP oC_SchemaName SP? '(' SP? kU_PropertyDefinitions SP? ( ',' SP? kU_CreateNodeConstraint ) SP? ')' ;
@@ -44,18 +43,41 @@ NODE : ( 'N' | 'n' ) ( 'O' | 'o' ) ( 'D' | 'd' ) ( 'E' | 'e' ) ;
 TABLE: ( 'T' | 't' ) ( 'A' | 'a' ) ( 'B' | 'b' ) ( 'L' | 'l' ) ( 'E' | 'e' ) ;
 
 kU_CreateRel
-    : CREATE SP REL SP TABLE SP oC_SchemaName SP? '(' SP? kU_RelConnections SP? ( ',' SP? kU_PropertyDefinitions SP? )? ( ',' SP? oC_SymbolicName SP? )?  ')' ;
+    : CREATE SP REL SP TABLE SP oC_SchemaName SP? '(' SP? FROM SP oC_SchemaName SP TO SP oC_SchemaName SP? ( ',' SP? kU_PropertyDefinitions SP? )? ( ',' SP? oC_SymbolicName SP? )?  ')' ;
 
 kU_DropTable
     : DROP SP TABLE SP oC_SchemaName ;
 
 DROP : ( 'D' | 'd' ) ( 'R' | 'r' ) ( 'O' | 'o' ) ( 'P' | 'p' ) ;
 
-kU_RelConnections : kU_RelConnection ( SP? ',' SP? kU_RelConnection )* ;
+kU_AlterTable
+    : ALTER SP TABLE SP oC_SchemaName SP kU_AlterOptions ;
 
-kU_RelConnection: FROM SP kU_NodeLabels SP TO SP kU_NodeLabels ;
+ALTER: ( 'A' | 'a' ) ( 'L' | 'l' ) ( 'T' | 't' ) ( 'E' | 'e' ) ( 'R' | 'r' ) ;
 
-kU_NodeLabels: oC_SchemaName ( SP? '|' SP ? oC_SchemaName )* ;
+kU_AlterOptions
+    : kU_AddProperty
+        | kU_DropProperty
+        | kU_RenameTable
+        | kU_RenameProperty;
+
+kU_AddProperty
+    : ADD SP oC_PropertyKeyName SP kU_DataType ( SP DEFAULT SP oC_Expression )? ;
+
+DEFAULT : ( 'D' | 'd' ) ( 'E' | 'e' ) ( 'F' | 'f' ) ( 'A' | 'a' ) ( 'U' | 'u' ) ( 'L' | 'l' ) ( 'T' | 't' ) ;
+
+kU_DropProperty
+    : DROP SP oC_PropertyKeyName ;
+
+kU_RenameTable
+    : RENAME SP TO SP oC_SchemaName ;
+
+kU_RenameProperty
+    : RENAME SP oC_PropertyKeyName SP TO SP oC_PropertyKeyName ;
+
+RENAME: ( 'R' | 'r' ) ( 'E' | 'e' ) ( 'N' | 'n' ) ( 'A' | 'a' ) ( 'M' | 'm' ) ( 'E' | 'e' ) ;
+
+ADD: ( 'A' | 'a' ) ( 'D' | 'd' ) ( 'D' | 'd' ) ;
 
 kU_PropertyDefinitions : kU_PropertyDefinition ( SP? ',' SP? kU_PropertyDefinition )* ;
 
@@ -362,7 +384,10 @@ kU_ListSliceOperatorExpression
     : SP ? '[' oC_Expression? ':' oC_Expression? ']' ;
 
 oC_StringOperatorExpression
-    :  ( ( SP STARTS SP WITH ) | ( SP ENDS SP WITH ) | ( SP CONTAINS ) ) SP? oC_PropertyOrLabelsExpression ;
+    :  ( oC_RegularExpression | ( SP STARTS SP WITH ) | ( SP ENDS SP WITH ) | ( SP CONTAINS ) ) SP? oC_PropertyOrLabelsExpression ;
+
+oC_RegularExpression
+    :  SP? '=~' ;
 
 STARTS : ( 'S' | 's' ) ( 'T' | 't' ) ( 'A' | 'a' ) ( 'R' | 'r' ) ( 'T' | 't' ) ( 'S' | 's' ) ;
 

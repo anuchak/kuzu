@@ -4,10 +4,12 @@
 #include "spdlog/spdlog.h"
 #include "storage/storage_utils.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace storage {
 
-WAL::WAL(const string& directory, BufferManager& bufferManager)
+WAL::WAL(const std::string& directory, BufferManager& bufferManager)
     : logger{LoggerUtils::getOrCreateLogger("wal")}, directory{directory},
       bufferManager{bufferManager}, isLastLoggedRecordCommit_{false} {
     fileHandle = WAL::createWALFileHandle(directory);
@@ -72,21 +74,33 @@ void WAL::logOverflowFileNextBytePosRecord(
     addNewWALRecordNoLock(walRecord);
 }
 
-void WAL::logCopyNodeCSVRecord(table_id_t tableID) {
+void WAL::logCopyNodeRecord(table_id_t tableID) {
     lock_t lck{mtx};
-    WALRecord walRecord = WALRecord::newCopyNodeCSVRecord(tableID);
+    WALRecord walRecord = WALRecord::newCopyNodeRecord(tableID);
     addNewWALRecordNoLock(walRecord);
 }
 
-void WAL::logCopyRelCSVRecord(table_id_t tableID) {
+void WAL::logCopyRelRecord(table_id_t tableID) {
     lock_t lck{mtx};
-    WALRecord walRecord = WALRecord::newCopyRelCSVRecord(tableID);
+    WALRecord walRecord = WALRecord::newCopyRelRecord(tableID);
     addNewWALRecordNoLock(walRecord);
 }
 
-void WAL::logDropTableRecord(bool isNodeTable, table_id_t tableID) {
+void WAL::logDropTableRecord(table_id_t tableID) {
     lock_t lck{mtx};
-    WALRecord walRecord = WALRecord::newDropTableRecord(isNodeTable, tableID);
+    WALRecord walRecord = WALRecord::newDropTableRecord(tableID);
+    addNewWALRecordNoLock(walRecord);
+}
+
+void WAL::logDropPropertyRecord(table_id_t tableID, property_id_t propertyID) {
+    lock_t lck{mtx};
+    WALRecord walRecord = WALRecord::newDropPropertyRecord(tableID, propertyID);
+    addNewWALRecordNoLock(walRecord);
+}
+
+void WAL::logAddPropertyRecord(table_id_t tableID, property_id_t propertyID) {
+    lock_t lck{mtx};
+    WALRecord walRecord = WALRecord::newAddPropertyRecord(tableID, propertyID);
     addNewWALRecordNoLock(walRecord);
 }
 
@@ -135,7 +149,7 @@ void WAL::addNewWALRecordNoLock(WALRecord& walRecord) {
     }
     incrementNumRecordsInCurrentHeaderPage();
     walRecord.writeWALRecordToBytes(currentHeaderPageBuffer.get(), offsetInCurrentHeaderPage);
-    isLastLoggedRecordCommit_ = (COMMIT_RECORD == walRecord.recordType);
+    isLastLoggedRecordCommit_ = (WALRecordType::COMMIT_RECORD == walRecord.recordType);
 }
 
 void WAL::setIsLastRecordCommit() {
@@ -150,12 +164,12 @@ void WAL::setIsLastRecordCommit() {
     while (walIterator.hasNextRecord()) {
         walIterator.getNextRecord(walRecord);
     }
-    if (COMMIT_RECORD == walRecord.recordType) {
+    if (WALRecordType::COMMIT_RECORD == walRecord.recordType) {
         isLastLoggedRecordCommit_ = true;
     }
 }
 
-WALIterator::WALIterator(shared_ptr<FileHandle> fileHandle, mutex& mtx)
+WALIterator::WALIterator(const std::shared_ptr<FileHandle>& fileHandle, std::mutex& mtx)
     : BaseWALAndWALIterator(fileHandle), mtx{mtx} {
     resetCurrentHeaderPagePrefix();
     if (fileHandle->getNumPages() > 0) {

@@ -10,10 +10,6 @@
 #include "storage/wal/wal.h"
 #include "transaction/transaction_manager.h"
 
-using namespace kuzu::planner;
-using namespace kuzu::transaction;
-using lock_t = unique_lock<mutex>;
-
 namespace kuzu {
 namespace testing {
 class ApiTest;
@@ -55,24 +51,24 @@ public:
     ~Connection();
 
     inline void beginReadOnlyTransaction() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         setTransactionModeNoLock(MANUAL);
-        beginTransactionNoLock(READ_ONLY);
+        beginTransactionNoLock(transaction::READ_ONLY);
     }
 
     inline void beginWriteTransaction() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         setTransactionModeNoLock(MANUAL);
-        beginTransactionNoLock(WRITE);
+        beginTransactionNoLock(transaction::WRITE);
     }
 
     inline void commit() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         commitOrRollbackNoLock(true /* isCommit */);
     }
 
     inline void rollback() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         commitOrRollbackNoLock(false /* is rollback */);
     }
 
@@ -80,41 +76,41 @@ public:
         clientContext->numThreadsForExecution = numThreads;
     }
     inline uint64_t getMaxNumThreadForExec() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         return clientContext->numThreadsForExecution;
     }
 
     std::unique_ptr<QueryResult> query(const std::string& query);
 
     std::unique_ptr<PreparedStatement> prepare(const std::string& query) {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         return prepareNoLock(query);
     }
 
     template<typename... Args>
     inline std::unique_ptr<QueryResult> execute(
-        PreparedStatement* preparedStatement, pair<string, Args>... args) {
-        unordered_map<string, shared_ptr<Literal>> inputParameters;
+        PreparedStatement* preparedStatement, std::pair<std::string, Args>... args) {
+        std::unordered_map<std::string, std::shared_ptr<common::Value>> inputParameters;
         return executeWithParams(preparedStatement, inputParameters, args...);
     }
     // Note: Any call that goes through executeWithParams acquires a lock in the end by calling
     // executeLock(...).
     std::unique_ptr<QueryResult> executeWithParams(PreparedStatement* preparedStatement,
-        unordered_map<string, shared_ptr<Literal>>& inputParams);
+        std::unordered_map<std::string, std::shared_ptr<common::Value>>& inputParams);
 
-    string getNodeTableNames();
-    string getRelTableNames();
-    string getNodePropertyNames(const string& tableName);
-    string getRelPropertyNames(const string& relTableName);
+    std::string getNodeTableNames();
+    std::string getRelTableNames();
+    std::string getNodePropertyNames(const std::string& tableName);
+    std::string getRelPropertyNames(const std::string& relTableName);
 
 protected:
     inline ConnectionTransactionMode getTransactionMode() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         return transactionMode;
     }
     inline void setTransactionModeNoLock(ConnectionTransactionMode newTransactionMode) {
         if (activeTransaction && transactionMode == MANUAL && newTransactionMode == AUTO_COMMIT) {
-            throw ConnectionException(
+            throw common::ConnectionException(
                 "Cannot change transaction mode from MANUAL to AUTO_COMMIT when there is an "
                 "active transaction. Need to first commit or rollback the active transaction.");
         }
@@ -123,29 +119,29 @@ protected:
     // Note: This is only added for testing recovery algorithms in unit tests. Do not use
     // this otherwise.
     inline void commitButSkipCheckpointingForTestingRecovery() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         commitOrRollbackNoLock(true /* isCommit */, true /* skip checkpointing for testing */);
     }
     // Note: This is only added for testing recovery algorithms in unit tests. Do not use
     // this otherwise.
     inline void rollbackButSkipCheckpointingForTestingRecovery() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         commitOrRollbackNoLock(false /* is rollback */, true /* skip checkpointing for testing */);
     }
     // Note: This is only added for testing recovery algorithms in unit tests. Do not use
     // this otherwise.
-    inline Transaction* getActiveTransaction() {
-        lock_t lck{mtx};
+    inline transaction::Transaction* getActiveTransaction() {
+        std::unique_lock<std::mutex> lck{mtx};
         return activeTransaction.get();
     }
     // used in API test
 
     inline uint64_t getActiveTransactionID() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         return activeTransaction ? activeTransaction->getID() : UINT64_MAX;
     }
     inline bool hasActiveTransaction() {
-        lock_t lck{mtx};
+        std::unique_lock<std::mutex> lck{mtx};
         return activeTransaction != nullptr;
     }
     inline void commitNoLock() { commitOrRollbackNoLock(true /* is commit */); }
@@ -157,45 +153,37 @@ protected:
         }
     }
 
-    // Used in test helper. Note: for our testing framework, we should not catch exception and
-    // instead let IDE catch these exceptions.
-    std::vector<unique_ptr<planner::LogicalPlan>> enumeratePlans(const std::string& query);
-    unique_ptr<planner::LogicalPlan> getBestPlan(const std::string& query);
-    std::unique_ptr<QueryResult> executePlan(unique_ptr<planner::LogicalPlan> logicalPlan);
-
-    void beginTransactionNoLock(TransactionType type);
+    void beginTransactionNoLock(transaction::TransactionType type);
 
     void commitOrRollbackNoLock(bool isCommit, bool skipCheckpointForTesting = false);
 
-    unique_ptr<QueryResult> queryResultWithError(std::string& errMsg);
+    std::unique_ptr<QueryResult> queryResultWithError(std::string& errMsg);
 
-    void setQuerySummaryAndPreparedStatement(
-        Statement* statement, Binder& binder, PreparedStatement* preparedStatement);
-
-    std::unique_ptr<PreparedStatement> prepareNoLock(const std::string& query);
+    std::unique_ptr<PreparedStatement> prepareNoLock(
+        const std::string& query, bool enumerateAllPlans = false);
 
     template<typename T, typename... Args>
     std::unique_ptr<QueryResult> executeWithParams(PreparedStatement* preparedStatement,
-        unordered_map<string, shared_ptr<Literal>>& params, pair<string, T> arg,
-        pair<string, Args>... args) {
+        std::unordered_map<std::string, std::shared_ptr<common::Value>>& params,
+        std::pair<std::string, T> arg, std::pair<std::string, Args>... args) {
         auto name = arg.first;
-        auto val = make_shared<Literal>(Literal::createLiteral<T>(arg.second));
+        auto val = std::make_shared<common::Value>(common::Value::createValue<T>(arg.second));
         params.insert({name, val});
         return executeWithParams(preparedStatement, params, args...);
     }
 
     void bindParametersNoLock(PreparedStatement* preparedStatement,
-        unordered_map<string, shared_ptr<Literal>>& inputParams);
+        std::unordered_map<std::string, std::shared_ptr<common::Value>>& inputParams);
 
     std::unique_ptr<QueryResult> executeAndAutoCommitIfNecessaryNoLock(
-        PreparedStatement* preparedStatement);
+        PreparedStatement* preparedStatement, uint32_t planIdx = 0u);
 
     void beginTransactionIfAutoCommit(PreparedStatement* preparedStatement);
 
 protected:
     Database* database;
     std::unique_ptr<ClientContext> clientContext;
-    std::unique_ptr<Transaction> activeTransaction;
+    std::unique_ptr<transaction::Transaction> activeTransaction;
     ConnectionTransactionMode transactionMode;
     std::mutex mtx;
 };

@@ -5,24 +5,22 @@
 namespace kuzu {
 namespace planner {
 
-class LogicalDropTable : public LogicalOperator {
-
+class LogicalDropTable : public LogicalDDL {
 public:
-    explicit LogicalDropTable(TableSchema* tableSchema)
-        : LogicalOperator{LogicalOperatorType::DROP_TABLE}, tableSchema{tableSchema} {}
+    explicit LogicalDropTable(common::table_id_t tableID, std::string tableName,
+        std::shared_ptr<binder::Expression> outputExpression)
+        : LogicalDDL{LogicalOperatorType::DROP_TABLE, std::move(tableName),
+              std::move(outputExpression)},
+          tableID{tableID} {}
 
-    inline TableSchema* getTableSchema() const { return tableSchema; }
+    inline common::table_id_t getTableID() const { return tableID; }
 
-    void computeSchema() override { createEmptySchema(); }
-
-    inline string getExpressionsForPrinting() const override { return tableSchema->tableName; }
-
-    inline unique_ptr<LogicalOperator> copy() override {
-        return make_unique<LogicalDropTable>(tableSchema);
+    inline std::unique_ptr<LogicalOperator> copy() override {
+        return make_unique<LogicalDropTable>(tableID, tableName, outputExpression);
     }
 
 private:
-    TableSchema* tableSchema;
+    common::table_id_t tableID;
 };
 
 } // namespace planner

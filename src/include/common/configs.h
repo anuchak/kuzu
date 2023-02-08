@@ -44,9 +44,11 @@ const std::string INTERNAL_ID_SUFFIX = "_id";
 
 struct StorageConfig {
     // The default amount of memory pre-allocated to both the default and large pages buffer pool.
-    static constexpr uint64_t DEFAULT_BUFFER_POOL_SIZE = 1ull << 30;             // (1GB)
+    static constexpr uint64_t DEFAULT_BUFFER_POOL_SIZE = -1u;
     static constexpr uint64_t DEFAULT_BUFFER_POOL_SIZE_FOR_TESTING = 1ull << 26; // (64MB)
-    // The default ratio of buffer allocated to large pages.
+    // The default ratio of system memory allocated to buffer pools (including default and large).
+    static constexpr double DEFAULT_BUFFER_POOL_RATIO = 0.8;
+    // The default ratio of buffer allocated to default and large pages.
     static constexpr double DEFAULT_PAGES_BUFFER_RATIO = 0.75;
     static constexpr double LARGE_PAGES_BUFFER_RATIO = 1.0 - DEFAULT_PAGES_BUFFER_RATIO;
     static constexpr char OVERFLOW_FILE_SUFFIX[] = ".ovf";
@@ -83,19 +85,25 @@ struct HashIndexConfig {
     static constexpr uint8_t SLOT_CAPACITY = (uint64_t)1 << SLOT_CAPACITY_LOG_2;
 };
 
-struct CopyCSVConfig {
-    // Size (in bytes) of the chunks to be read in InMemNode/RelCSVCopier
+struct CopyConfig {
+    // Size (in bytes) of the chunks to be read in Node/Rel Copier
     static constexpr uint64_t CSV_READING_BLOCK_SIZE = 1 << 23;
+
+    // Number of tasks to be assigned in a batch when reading files.
+    static constexpr uint64_t NUM_COPIER_TASKS_TO_SCHEDULE_PER_BATCH = 200;
+
+    // Lower bound for number of incomplete tasks in copier to trigger scheduling a new batch.
+    static constexpr uint64_t MINIMUM_NUM_COPIER_TASKS_TO_SCHEDULE_MORE = 50;
 
     // Default configuration for csv file parsing
     static constexpr const char* STRING_CSV_PARSING_OPTIONS[5] = {
         "ESCAPE", "DELIM", "QUOTE", "LIST_BEGIN", "LIST_END"};
-    static constexpr char DEFAULT_ESCAPE_CHAR = '\\';
-    static constexpr char DEFAULT_TOKEN_SEPARATOR = ',';
-    static constexpr char DEFAULT_QUOTE_CHAR = '"';
-    static constexpr char DEFAULT_LIST_BEGIN_CHAR = '[';
-    static constexpr char DEFAULT_LIST_END_CHAR = ']';
-    static constexpr bool DEFAULT_HAS_HEADER = false;
+    static constexpr char DEFAULT_CSV_ESCAPE_CHAR = '\\';
+    static constexpr char DEFAULT_CSV_DELIMITER = ',';
+    static constexpr char DEFAULT_CSV_QUOTE_CHAR = '"';
+    static constexpr char DEFAULT_CSV_LIST_BEGIN_CHAR = '[';
+    static constexpr char DEFAULT_CSV_LIST_END_CHAR = ']';
+    static constexpr bool DEFAULT_CSV_HAS_HEADER = false;
 };
 
 struct EnumeratorKnobs {

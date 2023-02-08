@@ -13,32 +13,33 @@
 #include "planner/logical_plan/logical_operator/logical_unwind.h"
 #include "planner/logical_plan/logical_operator/sink_util.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace planner {
 
-vector<unique_ptr<LogicalPlan>> QueryPlanner::getAllPlans(const BoundStatement& boundStatement) {
-    vector<unique_ptr<LogicalPlan>> resultPlans;
+std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::getAllPlans(
+    const BoundStatement& boundStatement) {
+    std::vector<std::unique_ptr<LogicalPlan>> resultPlans;
     auto& regularQuery = (BoundRegularQuery&)boundStatement;
     if (regularQuery.getNumSingleQueries() == 1) {
-        resultPlans.push_back(getShortestPathPlan(boundStatement));
+        resultPlans = planSingleQuery(*regularQuery.getSingleQuery(0));
     } else {
-        vector<vector<unique_ptr<LogicalPlan>>> childrenLogicalPlans(
+        std::vector<std::vector<std::unique_ptr<LogicalPlan>>> childrenLogicalPlans(
             regularQuery.getNumSingleQueries());
         for (auto i = 0u; i < regularQuery.getNumSingleQueries(); i++) {
             childrenLogicalPlans[i] = planSingleQuery(*regularQuery.getSingleQuery(i));
         }
-        auto childrenPlans = cartesianProductChildrenPlans(move(childrenLogicalPlans));
+        auto childrenPlans = cartesianProductChildrenPlans(std::move(childrenLogicalPlans));
         for (auto& childrenPlan : childrenPlans) {
             resultPlans.push_back(createUnionPlan(childrenPlan, regularQuery.getIsUnionAll(0)));
         }
     }
-    for (auto& plan : resultPlans) {
-        plan->setExpressionsToCollect(regularQuery.getExpressionsToReturn());
-    }
     return resultPlans;
 }
 
-unique_ptr<LogicalPlan> QueryPlanner::getBestPlan(vector<unique_ptr<LogicalPlan>> plans) {
+std::unique_ptr<LogicalPlan> QueryPlanner::getBestPlan(
+    std::vector<std::unique_ptr<LogicalPlan>> plans) {
     auto bestPlan = std::move(plans[0]);
     for (auto i = 1u; i < plans.size(); ++i) {
         if (plans[i]->getCost() < bestPlan->getCost()) {
@@ -48,7 +49,7 @@ unique_ptr<LogicalPlan> QueryPlanner::getBestPlan(vector<unique_ptr<LogicalPlan>
     return bestPlan;
 }
 
-unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(const BoundStatement& boundStatement) {
+/*unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(const BoundStatement& boundStatement) {
     auto& boundRegularQuery = (BoundRegularQuery&)boundStatement;
     auto singleQuery = boundRegularQuery.getSingleQuery(0);
     propertiesToScan.clear();
@@ -68,12 +69,12 @@ unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(const BoundStatement& 
     auto sourceNode = queryGraph->getQueryNode(0);
     auto destNode = queryGraph->getQueryNode(1);
     auto rel = queryGraph->getQueryRel(0);
-    auto dataType = make_unique<DataType>(DataTypeID::REL);
-    auto relTableToProperty = unordered_map<table_id_t, property_id_t>();
+    auto dataType = std::make_unique<DataType>(DataTypeID::REL);
+    auto relTableToProperty = std::unordered_map<table_id_t, property_id_t>();
     relTableToProperty[rel->getSingleTableID()] = 0;
-    shared_ptr<Expression> relPropertyExpr =
-        make_shared<PropertyExpression>(*dataType, "_id", relTableToProperty, rel);
-    auto leftPlan = make_unique<LogicalPlan>();
+    std::shared_ptr<Expression> relPropertyExpr =
+        std::make_shared<PropertyExpression>(*dataType, "_id", relTableToProperty, rel);
+    auto leftPlan = std::make_unique<LogicalPlan>();
     joinOrderEnumerator.appendScanNode(sourceNode, *leftPlan);
     joinOrderEnumerator.planFiltersForNode(srcPredicate, sourceNode, *leftPlan);
     joinOrderEnumerator.planPropertyScansForNode(sourceNode, *leftPlan);
@@ -89,16 +90,16 @@ unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(const BoundStatement& 
     leftPlan->setLastOperator(logicalShortestPath);
     logicalShortestPath->computeSchema();
     return leftPlan;
-}
+}*/
 
 // Note: we cannot append ResultCollector for plans enumerated for single query before there could
 // be a UNION on top which requires further flatten. So we delay ResultCollector appending to
 // enumerate regular query level.
-vector<unique_ptr<LogicalPlan>> QueryPlanner::planSingleQuery(
+std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::planSingleQuery(
     const NormalizedSingleQuery& singleQuery) {
     // populate properties to scan
     propertiesToScan.clear();
-    unordered_set<string> populatedProperties; // remove duplication
+    std::unordered_set<std::string> populatedProperties; // remove duplication
     for (auto& expression : singleQuery.getPropertiesToRead()) {
         assert(expression->expressionType == PROPERTY);
         if (!populatedProperties.contains(expression->getUniqueName())) {
@@ -109,9 +110,9 @@ vector<unique_ptr<LogicalPlan>> QueryPlanner::planSingleQuery(
     joinOrderEnumerator.resetState();
     auto plans = getInitialEmptyPlans();
     for (auto i = 0u; i < singleQuery.getNumQueryParts(); ++i) {
-        plans = planQueryPart(*singleQuery.getQueryPart(i), move(plans));
+        plans = planQueryPart(*singleQuery.getQueryPart(i), std::move(plans));
     }
-    vector<unique_ptr<LogicalPlan>> result;
+    std::vector<std::unique_ptr<LogicalPlan>> result;
     for (auto& plan : plans) {
         // This is copy is to avoid sharing operator across plans. Later optimization requires
         // each plan to be independent.
@@ -120,9 +121,9 @@ vector<unique_ptr<LogicalPlan>> QueryPlanner::planSingleQuery(
     return result;
 }
 
-vector<unique_ptr<LogicalPlan>> QueryPlanner::planQueryPart(
-    const NormalizedQueryPart& queryPart, vector<unique_ptr<LogicalPlan>> prevPlans) {
-    vector<unique_ptr<LogicalPlan>> plans = move(prevPlans);
+std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::planQueryPart(
+    const NormalizedQueryPart& queryPart, std::vector<std::unique_ptr<LogicalPlan>> prevPlans) {
+    std::vector<std::unique_ptr<LogicalPlan>> plans = std::move(prevPlans);
     // plan read
     for (auto i = 0u; i < queryPart.getNumReadingClause(); i++) {
         planReadingClause(queryPart.getReadingClause(i), plans);
@@ -143,7 +144,7 @@ vector<unique_ptr<LogicalPlan>> QueryPlanner::planQueryPart(
 }
 
 void QueryPlanner::planReadingClause(
-    BoundReadingClause* boundReadingClause, vector<unique_ptr<LogicalPlan>>& prevPlans) {
+    BoundReadingClause* boundReadingClause, std::vector<std::unique_ptr<LogicalPlan>>& prevPlans) {
     auto readingClauseType = boundReadingClause->getClauseType();
     switch (readingClauseType) {
     case ClauseType::MATCH: {
@@ -158,7 +159,7 @@ void QueryPlanner::planReadingClause(
 }
 
 void QueryPlanner::planMatchClause(
-    BoundReadingClause* boundReadingClause, vector<unique_ptr<LogicalPlan>>& plans) {
+    BoundReadingClause* boundReadingClause, std::vector<std::unique_ptr<LogicalPlan>>& plans) {
     auto boundMatchClause = (BoundMatchClause*)boundReadingClause;
     auto queryGraphCollection = boundMatchClause->getQueryGraphCollection();
     auto predicates = boundMatchClause->hasWhereExpression() ?
@@ -183,7 +184,7 @@ void QueryPlanner::planMatchClause(
 }
 
 void QueryPlanner::planUnwindClause(
-    BoundReadingClause* boundReadingClause, vector<unique_ptr<LogicalPlan>>& plans) {
+    BoundReadingClause* boundReadingClause, std::vector<std::unique_ptr<LogicalPlan>>& plans) {
     auto boundUnwindClause = (BoundUnwindClause*)boundReadingClause;
     for (auto& plan : plans) {
         if (plan->isEmpty()) { // UNWIND [1, 2, 3, 4] AS x RETURN x
@@ -210,15 +211,14 @@ static expression_vector getCorrelatedExpressions(
     return result;
 }
 
-static vector<shared_ptr<NodeExpression>> getJoinNodes(expression_vector& expressions) {
-    vector<shared_ptr<NodeExpression>> joinNodes;
+static expression_vector getJoinNodeIDs(expression_vector& expressions) {
+    expression_vector joinNodeIDs;
     for (auto& expression : expressions) {
-        if (expression->dataType.typeID == NODE_ID) {
-            auto node = static_pointer_cast<NodeExpression>(expression->getChild(0));
-            joinNodes.push_back(std::move(node));
+        if (expression->dataType.typeID == INTERNAL_ID) {
+            joinNodeIDs.push_back(expression);
         }
     }
-    return joinNodes;
+    return joinNodeIDs;
 }
 
 void QueryPlanner::planOptionalMatch(const QueryGraphCollection& queryGraphCollection,
@@ -228,20 +228,20 @@ void QueryPlanner::planOptionalMatch(const QueryGraphCollection& queryGraphColle
     if (correlatedExpressions.empty()) {
         throw NotImplementedException("Optional match is disconnected with previous MATCH clause.");
     }
-    if (ExpressionUtil::allExpressionsHaveDataType(correlatedExpressions, NODE_ID)) {
-        auto joinNodes = getJoinNodes(correlatedExpressions);
+    if (ExpressionUtil::allExpressionsHaveDataType(correlatedExpressions, INTERNAL_ID)) {
+        auto joinNodeIDs = getJoinNodeIDs(correlatedExpressions);
         // When correlated variables are all NODE IDs, the subquery can be un-nested as left join.
         // Join nodes are scanned twice in both outer and inner. However, we make sure inner table
         // scan only scans node ID and does not scan from storage (i.e. no property scan).
         auto prevContext = joinOrderEnumerator.enterSubquery(
-            &outerPlan, expression_vector{} /* nothing to scan from outer */, joinNodes);
+            &outerPlan, expression_vector{} /* nothing to scan from outer */, joinNodeIDs);
         auto innerPlans = joinOrderEnumerator.enumerate(queryGraphCollection, predicates);
         auto bestInnerPlan = getBestPlan(std::move(innerPlans));
         joinOrderEnumerator.exitSubquery(std::move(prevContext));
-        for (auto& joinNode : joinNodes) {
-            appendFlattenIfNecessary(joinNode->getInternalIDProperty(), outerPlan);
+        for (auto& joinNodeID : joinNodeIDs) {
+            appendFlattenIfNecessary(joinNodeID, outerPlan);
         }
-        JoinOrderEnumerator::planLeftHashJoin(joinNodes, outerPlan, *bestInnerPlan);
+        JoinOrderEnumerator::planLeftHashJoin(joinNodeIDs, outerPlan, *bestInnerPlan);
     } else {
         throw NotImplementedException("Correlated optional match is not supported.");
     }
@@ -251,7 +251,7 @@ void QueryPlanner::planRegularMatch(const QueryGraphCollection& queryGraphCollec
     expression_vector& predicates, LogicalPlan& prevPlan) {
     auto correlatedExpressions =
         getCorrelatedExpressions(queryGraphCollection, predicates, prevPlan.getSchema());
-    auto joinNodes = getJoinNodes(correlatedExpressions);
+    auto joinNodeIDs = getJoinNodeIDs(correlatedExpressions);
     expression_vector predicatesToPushDown, predicatesToPullUp;
     // E.g. MATCH (a) WITH COUNT(*) AS s MATCH (b) WHERE b.age > s
     // "b.age > s" should be pulled up after both MATCH clauses are joined.
@@ -266,46 +266,47 @@ void QueryPlanner::planRegularMatch(const QueryGraphCollection& queryGraphCollec
     // from outer (i.e. can always be un-nest). So we plan multi-part query in the same way as
     // planning an un-nest subquery.
     auto prevContext = joinOrderEnumerator.enterSubquery(
-        &prevPlan, expression_vector{} /* nothing to scan from outer */, joinNodes);
+        &prevPlan, expression_vector{} /* nothing to scan from outer */, joinNodeIDs);
     auto plans = joinOrderEnumerator.enumerate(queryGraphCollection, predicatesToPushDown);
     joinOrderEnumerator.exitSubquery(std::move(prevContext));
     auto bestPlan = getBestPlan(std::move(plans));
-    if (joinNodes.empty()) {
+    if (joinNodeIDs.empty()) {
         JoinOrderEnumerator::planCrossProduct(prevPlan, *bestPlan);
     } else {
-        JoinOrderEnumerator::planInnerHashJoin(joinNodes, prevPlan, *bestPlan);
+        JoinOrderEnumerator::planInnerHashJoin(joinNodeIDs, prevPlan, *bestPlan);
     }
     for (auto& predicate : predicatesToPullUp) {
         appendFilter(predicate, prevPlan);
     }
 }
 
-void QueryPlanner::planExistsSubquery(shared_ptr<Expression>& expression, LogicalPlan& outerPlan) {
+void QueryPlanner::planExistsSubquery(
+    std::shared_ptr<Expression>& expression, LogicalPlan& outerPlan) {
     assert(expression->expressionType == EXISTENTIAL_SUBQUERY);
     auto subquery = static_pointer_cast<ExistentialSubqueryExpression>(expression);
     auto correlatedExpressions = outerPlan.getSchema()->getSubExpressionsInScope(subquery);
     if (correlatedExpressions.empty()) {
         throw NotImplementedException("Subquery is disconnected with outer query.");
     }
-    if (ExpressionUtil::allExpressionsHaveDataType(correlatedExpressions, NODE_ID)) {
-        auto joinNodes = getJoinNodes(correlatedExpressions);
+    if (ExpressionUtil::allExpressionsHaveDataType(correlatedExpressions, INTERNAL_ID)) {
+        auto joinNodeIDs = getJoinNodeIDs(correlatedExpressions);
         // Unnest as mark join. See planOptionalMatch for unnesting logic.
         auto prevContext = joinOrderEnumerator.enterSubquery(
-            &outerPlan, expression_vector{} /* nothing to scan from outer */, joinNodes);
+            &outerPlan, expression_vector{} /* nothing to scan from outer */, joinNodeIDs);
         auto predicates = subquery->hasWhereExpression() ?
                               subquery->getWhereExpression()->splitOnAND() :
                               expression_vector{};
         auto bestInnerPlan = getBestPlan(
             joinOrderEnumerator.enumerate(*subquery->getQueryGraphCollection(), predicates));
         joinOrderEnumerator.exitSubquery(std::move(prevContext));
-        JoinOrderEnumerator::planMarkJoin(joinNodes, expression, outerPlan, *bestInnerPlan);
+        JoinOrderEnumerator::planMarkJoin(joinNodeIDs, expression, outerPlan, *bestInnerPlan);
     } else {
         throw NotImplementedException("Correlated exists subquery is not supported.");
     }
 }
 
 void QueryPlanner::planSubqueryIfNecessary(
-    const shared_ptr<Expression>& expression, LogicalPlan& plan) {
+    const std::shared_ptr<Expression>& expression, LogicalPlan& plan) {
     if (expression->hasSubqueryExpression()) {
         for (auto& expr : expression->getTopLevelSubSubqueryExpressions()) {
             planExistsSubquery(expr, plan);
@@ -350,19 +351,20 @@ void QueryPlanner::appendUnwind(BoundUnwindClause& boundUnwindClause, LogicalPla
     plan.setLastOperator(logicalUnwind);
 }
 
-void QueryPlanner::appendFlattens(const unordered_set<uint32_t>& groupsPos, LogicalPlan& plan) {
+void QueryPlanner::appendFlattens(
+    const std::unordered_set<uint32_t>& groupsPos, LogicalPlan& plan) {
     for (auto& groupPos : groupsPos) {
         appendFlattenIfNecessary(groupPos, plan);
     }
 }
 
 uint32_t QueryPlanner::appendFlattensButOne(
-    const unordered_set<uint32_t>& groupsPos, LogicalPlan& plan) {
+    const std::unordered_set<uint32_t>& groupsPos, LogicalPlan& plan) {
     if (groupsPos.empty()) {
         // an expression may not depend on any group. E.g. COUNT(*).
         return UINT32_MAX;
     }
-    vector<uint32_t> unFlatGroupsPos;
+    std::vector<uint32_t> unFlatGroupsPos;
     for (auto& groupPos : groupsPos) {
         if (!plan.getSchema()->getGroup(groupPos)->isFlat()) {
             unFlatGroupsPos.push_back(groupPos);
@@ -378,7 +380,7 @@ uint32_t QueryPlanner::appendFlattensButOne(
 }
 
 void QueryPlanner::appendFlattenIfNecessary(
-    const shared_ptr<Expression>& expression, LogicalPlan& plan) {
+    const std::shared_ptr<Expression>& expression, LogicalPlan& plan) {
     auto group = plan.getSchema()->getGroup(expression);
     if (group->isFlat()) {
         return;
@@ -390,7 +392,7 @@ void QueryPlanner::appendFlattenIfNecessary(
     plan.setLastOperator(std::move(flatten));
 }
 
-void QueryPlanner::appendFilter(const shared_ptr<Expression>& expression, LogicalPlan& plan) {
+void QueryPlanner::appendFilter(const std::shared_ptr<Expression>& expression, LogicalPlan& plan) {
     planSubqueryIfNecessary(expression, plan);
     auto dependentGroupsPos = plan.getSchema()->getDependentGroupsPos(expression);
     auto groupPosToSelect = appendFlattensButOne(dependentGroupsPos, plan);
@@ -401,7 +403,7 @@ void QueryPlanner::appendFilter(const shared_ptr<Expression>& expression, Logica
 }
 
 void QueryPlanner::appendScanNodePropIfNecessary(const expression_vector& propertyExpressions,
-    shared_ptr<NodeExpression> node, LogicalPlan& plan) {
+    std::shared_ptr<NodeExpression> node, LogicalPlan& plan) {
     expression_vector propertyExpressionToScan;
     for (auto& propertyExpression : propertyExpressions) {
         if (plan.getSchema()->isExpressionInScope(*propertyExpression)) {
@@ -418,8 +420,8 @@ void QueryPlanner::appendScanNodePropIfNecessary(const expression_vector& proper
     plan.setLastOperator(std::move(scanNodeProperty));
 }
 
-unique_ptr<LogicalPlan> QueryPlanner::createUnionPlan(
-    vector<unique_ptr<LogicalPlan>>& childrenPlans, bool isUnionAll) {
+std::unique_ptr<LogicalPlan> QueryPlanner::createUnionPlan(
+    std::vector<std::unique_ptr<LogicalPlan>>& childrenPlans, bool isUnionAll) {
     // If an expression to union has different flat/unflat state in different child, we
     // need to flatten that expression in all the single queries.
     assert(!childrenPlans.empty());
@@ -440,17 +442,14 @@ unique_ptr<LogicalPlan> QueryPlanner::createUnionPlan(
         }
     }
     // we compute the schema based on first child
-    auto plan = make_unique<LogicalPlan>();
-    vector<unique_ptr<Schema>> schemaBeforeUnion;
-    vector<shared_ptr<LogicalOperator>> children;
+    auto plan = std::make_unique<LogicalPlan>();
+    std::vector<std::shared_ptr<LogicalOperator>> children;
     for (auto& childPlan : childrenPlans) {
         plan->increaseCost(childPlan->getCost());
-        schemaBeforeUnion.push_back(childPlan->getSchema()->copy());
         children.push_back(childPlan->getLastOperator());
     }
-    auto logicalUnion =
-        make_shared<LogicalUnion>(childrenPlans[0]->getSchema()->getExpressionsInScope(),
-            std::move(schemaBeforeUnion), std::move(children));
+    auto logicalUnion = make_shared<LogicalUnion>(
+        childrenPlans[0]->getSchema()->getExpressionsInScope(), std::move(children));
     logicalUnion->computeSchema();
     plan->setLastOperator(logicalUnion);
     if (!isUnionAll) {
@@ -459,18 +458,18 @@ unique_ptr<LogicalPlan> QueryPlanner::createUnionPlan(
     return plan;
 }
 
-vector<unique_ptr<LogicalPlan>> QueryPlanner::getInitialEmptyPlans() {
-    vector<unique_ptr<LogicalPlan>> plans;
-    plans.push_back(make_unique<LogicalPlan>());
+std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::getInitialEmptyPlans() {
+    std::vector<std::unique_ptr<LogicalPlan>> plans;
+    plans.push_back(std::make_unique<LogicalPlan>());
     return plans;
 }
 
 expression_vector QueryPlanner::getPropertiesForNode(NodeExpression& node) {
     expression_vector result;
-    for (auto& property : propertiesToScan) {
-        if (property->getChild(0)->getUniqueName() == node.getUniqueName()) {
-            assert(property->getChild(0)->dataType.typeID == NODE);
-            result.push_back(property);
+    for (auto& expression : propertiesToScan) {
+        auto property = (PropertyExpression*)expression.get();
+        if (property->getVariableName() == node.getUniqueName()) {
+            result.push_back(expression);
         }
     }
     return result;
@@ -478,28 +477,28 @@ expression_vector QueryPlanner::getPropertiesForNode(NodeExpression& node) {
 
 expression_vector QueryPlanner::getPropertiesForRel(RelExpression& rel) {
     expression_vector result;
-    for (auto& property : propertiesToScan) {
-        if (property->getChild(0)->getUniqueName() == rel.getUniqueName()) {
-            assert(property->getChild(0)->dataType.typeID == REL);
-            result.push_back(property);
+    for (auto& expression : propertiesToScan) {
+        auto property = (PropertyExpression*)expression.get();
+        if (property->getVariableName() == rel.getUniqueName()) {
+            result.push_back(expression);
         }
     }
     return result;
 }
 
-vector<vector<unique_ptr<LogicalPlan>>> QueryPlanner::cartesianProductChildrenPlans(
-    vector<vector<unique_ptr<LogicalPlan>>> childrenLogicalPlans) {
-    vector<vector<unique_ptr<LogicalPlan>>> resultChildrenPlans;
+std::vector<std::vector<std::unique_ptr<LogicalPlan>>> QueryPlanner::cartesianProductChildrenPlans(
+    std::vector<std::vector<std::unique_ptr<LogicalPlan>>> childrenLogicalPlans) {
+    std::vector<std::vector<std::unique_ptr<LogicalPlan>>> resultChildrenPlans;
     for (auto& childLogicalPlans : childrenLogicalPlans) {
-        vector<vector<unique_ptr<LogicalPlan>>> curChildResultLogicalPlans;
+        std::vector<std::vector<std::unique_ptr<LogicalPlan>>> curChildResultLogicalPlans;
         for (auto& childLogicalPlan : childLogicalPlans) {
             if (resultChildrenPlans.empty()) {
-                vector<unique_ptr<LogicalPlan>> logicalPlans;
+                std::vector<std::unique_ptr<LogicalPlan>> logicalPlans;
                 logicalPlans.push_back(childLogicalPlan->deepCopy());
                 curChildResultLogicalPlans.push_back(std::move(logicalPlans));
             } else {
                 for (auto& resultChildPlans : resultChildrenPlans) {
-                    vector<unique_ptr<LogicalPlan>> logicalPlans;
+                    std::vector<std::unique_ptr<LogicalPlan>> logicalPlans;
                     for (auto& resultChildPlan : resultChildPlans) {
                         logicalPlans.push_back(resultChildPlan->deepCopy());
                     }
@@ -508,7 +507,7 @@ vector<vector<unique_ptr<LogicalPlan>>> QueryPlanner::cartesianProductChildrenPl
                 }
             }
         }
-        resultChildrenPlans = move(curChildResultLogicalPlans);
+        resultChildrenPlans = std::move(curChildResultLogicalPlans);
     }
     return resultChildrenPlans;
 }

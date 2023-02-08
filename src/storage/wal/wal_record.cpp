@@ -1,70 +1,127 @@
 #include "storage/wal/wal_record.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace storage {
 
-StorageStructureID StorageStructureID::newStructuredNodePropertyColumnID(
-    table_id_t tableID, uint32_t propertyID) {
+std::string storageStructureTypeToString(StorageStructureType storageStructureType) {
+    switch (storageStructureType) {
+    case StorageStructureType::COLUMN: {
+        return "COLUMN";
+    } break;
+    case StorageStructureType::LISTS: {
+        return "LISTS";
+    } break;
+    case StorageStructureType::NODE_INDEX: {
+        return "NODE_INDEX";
+    } break;
+    default: {
+        assert(false);
+    }
+    }
+}
+
+StorageStructureID StorageStructureID::newNodePropertyColumnID(
+    table_id_t tableID, property_id_t propertyID) {
     StorageStructureID retVal;
-    retVal.storageStructureType = COLUMN;
+    retVal.storageStructureType = StorageStructureType::COLUMN;
     retVal.isOverflow = false;
-    retVal.columnFileID = ColumnFileID(
-        StructuredNodePropertyColumnID(StructuredNodePropertyColumnID(tableID, propertyID)));
+    retVal.columnFileID =
+        ColumnFileID(NodePropertyColumnID(NodePropertyColumnID(tableID, propertyID)));
     return retVal;
 }
 
 StorageStructureID StorageStructureID::newNodeIndexID(table_id_t tableID) {
     StorageStructureID retVal;
     retVal.isOverflow = false;
-    retVal.storageStructureType = NODE_INDEX;
+    retVal.storageStructureType = StorageStructureType::NODE_INDEX;
     retVal.nodeIndexID = NodeIndexID(tableID);
     return retVal;
 }
 
 StorageStructureID StorageStructureID::newAdjListsID(
-    table_id_t tableID, table_id_t srcNodeTableID, RelDirection dir, ListFileType listFileType) {
+    table_id_t relTableID, RelDirection dir, ListFileType listFileType) {
     StorageStructureID retVal;
     retVal.isOverflow = false;
-    retVal.storageStructureType = LISTS;
-    retVal.listFileID =
-        ListFileID(listFileType, AdjListsID(RelNodeTableAndDir(tableID, srcNodeTableID, dir)));
+    retVal.storageStructureType = StorageStructureType::LISTS;
+    retVal.listFileID = ListFileID(listFileType, AdjListsID(RelNodeTableAndDir(relTableID, dir)));
     return retVal;
 }
 
-StorageStructureID StorageStructureID::newRelPropertyListsID(table_id_t nodeTableID,
-    table_id_t relTableID, RelDirection dir, uint32_t propertyID, ListFileType listFileType) {
+StorageStructureID StorageStructureID::newRelPropertyListsID(
+    table_id_t relTableID, RelDirection dir, property_id_t propertyID, ListFileType listFileType) {
     StorageStructureID retVal;
     retVal.isOverflow = false;
-    retVal.storageStructureType = LISTS;
-    retVal.listFileID = ListFileID(listFileType,
-        RelPropertyListID(RelNodeTableAndDir(nodeTableID, relTableID, dir), propertyID));
+    retVal.storageStructureType = StorageStructureType::LISTS;
+    retVal.listFileID = ListFileID(
+        listFileType, RelPropertyListsID(RelNodeTableAndDir(relTableID, dir), propertyID));
     return retVal;
 }
 
 StorageStructureID StorageStructureID::newRelPropertyColumnID(
-    table_id_t nodeTableID, table_id_t relTableID, RelDirection dir, uint32_t propertyID) {
+    table_id_t relTableID, RelDirection dir, property_id_t propertyID) {
     StorageStructureID retVal;
     retVal.isOverflow = false;
-    retVal.storageStructureType = COLUMN;
-    retVal.columnFileID = ColumnFileID(
-        RelPropertyColumnID(RelNodeTableAndDir(relTableID, nodeTableID, dir), propertyID));
+    retVal.storageStructureType = StorageStructureType::COLUMN;
+    retVal.columnFileID =
+        ColumnFileID(RelPropertyColumnID(RelNodeTableAndDir(relTableID, dir), propertyID));
     return retVal;
 }
 
-StorageStructureID StorageStructureID::newAdjColumnID(
-    table_id_t nodeTableID, table_id_t relTableID, RelDirection dir) {
+StorageStructureID StorageStructureID::newAdjColumnID(table_id_t relTableID, RelDirection dir) {
     StorageStructureID retVal;
     retVal.isOverflow = false;
-    retVal.storageStructureType = COLUMN;
-    retVal.columnFileID =
-        ColumnFileID(AdjColumnID(RelNodeTableAndDir(relTableID, nodeTableID, dir)));
+    retVal.storageStructureType = StorageStructureType::COLUMN;
+    retVal.columnFileID = ColumnFileID(AdjColumnID(RelNodeTableAndDir(relTableID, dir)));
     return retVal;
+}
+
+std::string walRecordTypeToString(WALRecordType walRecordType) {
+    switch (walRecordType) {
+    case WALRecordType::PAGE_UPDATE_OR_INSERT_RECORD: {
+        return "PAGE_UPDATE_OR_INSERT_RECORD";
+    }
+    case WALRecordType::TABLE_STATISTICS_RECORD: {
+        return "TABLE_STATISTICS_RECORD";
+    }
+    case WALRecordType::COMMIT_RECORD: {
+        return "COMMIT_RECORD";
+    }
+    case WALRecordType::CATALOG_RECORD: {
+        return "CATALOG_RECORD";
+    }
+    case WALRecordType::NODE_TABLE_RECORD: {
+        return "NODE_TABLE_RECORD";
+    }
+    case WALRecordType::REL_TABLE_RECORD: {
+        return "REL_TABLE_RECORD";
+    }
+    case WALRecordType::OVERFLOW_FILE_NEXT_BYTE_POS_RECORD: {
+        return "OVERFLOW_FILE_NEXT_BYTE_POS_RECORD";
+    }
+    case WALRecordType::COPY_NODE_RECORD: {
+        return "COPY_NODE_RECORD";
+    }
+    case WALRecordType::COPY_REL_RECORD: {
+        return "COPY_REL_RECORD";
+    }
+    case WALRecordType::DROP_TABLE_RECORD: {
+        return "DROP_TABLE_RECORD";
+    }
+    case WALRecordType::DROP_PROPERTY_RECORD: {
+        return "DROP_PROPERTY_RECORD";
+    }
+    default: {
+        assert(false);
+    }
+    }
 }
 
 WALRecord WALRecord::newPageInsertOrUpdateRecord(StorageStructureID storageStructureID_,
     uint64_t pageIdxInOriginalFile, uint64_t pageIdxInWAL, bool isInsert) {
     WALRecord retVal;
-    retVal.recordType = PAGE_UPDATE_OR_INSERT_RECORD;
+    retVal.recordType = WALRecordType::PAGE_UPDATE_OR_INSERT_RECORD;
     retVal.pageInsertOrUpdateRecord = PageUpdateOrInsertRecord(
         storageStructureID_, pageIdxInOriginalFile, pageIdxInWAL, isInsert);
     return retVal;
@@ -84,34 +141,34 @@ WALRecord WALRecord::newPageInsertRecord(
 
 WALRecord WALRecord::newCommitRecord(uint64_t transactionID) {
     WALRecord retVal;
-    retVal.recordType = COMMIT_RECORD;
+    retVal.recordType = WALRecordType::COMMIT_RECORD;
     retVal.commitRecord = CommitRecord(transactionID);
     return retVal;
 }
 
 WALRecord WALRecord::newTableStatisticsRecord(bool isNodeTable) {
     WALRecord retVal;
-    retVal.recordType = TABLE_STATISTICS_RECORD;
+    retVal.recordType = WALRecordType::TABLE_STATISTICS_RECORD;
     retVal.tableStatisticsRecord = TableStatisticsRecord(isNodeTable);
     return retVal;
 }
 
 WALRecord WALRecord::newCatalogRecord() {
     WALRecord retVal;
-    retVal.recordType = CATALOG_RECORD;
+    retVal.recordType = WALRecordType::CATALOG_RECORD;
     return retVal;
 }
 
 WALRecord WALRecord::newNodeTableRecord(table_id_t tableID) {
     WALRecord retVal;
-    retVal.recordType = NODE_TABLE_RECORD;
+    retVal.recordType = WALRecordType::NODE_TABLE_RECORD;
     retVal.nodeTableRecord = NodeTableRecord(tableID);
     return retVal;
 }
 
 WALRecord WALRecord::newRelTableRecord(table_id_t tableID) {
     WALRecord retVal;
-    retVal.recordType = REL_TABLE_RECORD;
+    retVal.recordType = WALRecordType::REL_TABLE_RECORD;
     retVal.relTableRecord = RelTableRecord(tableID);
     return retVal;
 }
@@ -119,30 +176,44 @@ WALRecord WALRecord::newRelTableRecord(table_id_t tableID) {
 WALRecord WALRecord::newOverflowFileNextBytePosRecord(
     StorageStructureID storageStructureID_, uint64_t prevNextByteToWriteTo_) {
     WALRecord retVal;
-    retVal.recordType = OVERFLOW_FILE_NEXT_BYTE_POS_RECORD;
+    retVal.recordType = WALRecordType::OVERFLOW_FILE_NEXT_BYTE_POS_RECORD;
     retVal.diskOverflowFileNextBytePosRecord =
         DiskOverflowFileNextBytePosRecord(storageStructureID_, prevNextByteToWriteTo_);
     return retVal;
 }
 
-WALRecord WALRecord::newCopyNodeCSVRecord(table_id_t tableID) {
+WALRecord WALRecord::newCopyNodeRecord(table_id_t tableID) {
     WALRecord retVal;
-    retVal.recordType = COPY_NODE_CSV_RECORD;
-    retVal.copyNodeCsvRecord = CopyNodeCSVRecord(tableID);
+    retVal.recordType = WALRecordType::COPY_NODE_RECORD;
+    retVal.copyNodeRecord = CopyNodeRecord(tableID);
     return retVal;
 }
 
-WALRecord WALRecord::newCopyRelCSVRecord(table_id_t tableID) {
+WALRecord WALRecord::newCopyRelRecord(table_id_t tableID) {
     WALRecord retVal;
-    retVal.recordType = COPY_REL_CSV_RECORD;
-    retVal.copyRelCsvRecord = CopyRelCSVRecord(tableID);
+    retVal.recordType = WALRecordType::COPY_REL_RECORD;
+    retVal.copyRelRecord = CopyRelRecord(tableID);
     return retVal;
 }
 
-WALRecord WALRecord::newDropTableRecord(bool isNodeTable, table_id_t tableID) {
+WALRecord WALRecord::newDropTableRecord(table_id_t tableID) {
     WALRecord retVal;
-    retVal.recordType = DROP_TABLE_RECORD;
-    retVal.dropTableRecord = DropTableRecord(isNodeTable, tableID);
+    retVal.recordType = WALRecordType::DROP_TABLE_RECORD;
+    retVal.dropTableRecord = DropTableRecord(tableID);
+    return retVal;
+}
+
+WALRecord WALRecord::newDropPropertyRecord(table_id_t tableID, property_id_t propertyID) {
+    WALRecord retVal;
+    retVal.recordType = WALRecordType::DROP_PROPERTY_RECORD;
+    retVal.dropPropertyRecord = DropPropertyRecord(tableID, propertyID);
+    return retVal;
+}
+
+WALRecord WALRecord::newAddPropertyRecord(table_id_t tableID, property_id_t propertyID) {
+    WALRecord retVal;
+    retVal.recordType = WALRecordType::ADD_PROPERTY_RECORD;
+    retVal.addPropertyRecord = AddPropertyRecord(tableID, propertyID);
     return retVal;
 }
 

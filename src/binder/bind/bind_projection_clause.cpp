@@ -1,41 +1,53 @@
 #include "binder/binder.h"
 #include "binder/expression/literal_expression.h"
 
+using namespace kuzu::common;
+using namespace kuzu::parser;
+
 namespace kuzu {
 namespace binder {
 
-unique_ptr<BoundWithClause> Binder::bindWithClause(const WithClause& withClause) {
+std::unique_ptr<BoundWithClause> Binder::bindWithClause(const WithClause& withClause) {
     auto projectionBody = withClause.getProjectionBody();
     auto boundProjectionExpressions = bindProjectionExpressions(
-        projectionBody->getProjectionExpressions(), projectionBody->getContainsStar());
+        projectionBody->getProjectionExpressions(), projectionBody->containsStar());
     validateProjectionColumnsInWithClauseAreAliased(boundProjectionExpressions);
-    auto boundProjectionBody = make_unique<BoundProjectionBody>(
-        projectionBody->getIsDistinct(), move(boundProjectionExpressions));
+    auto boundProjectionBody = std::make_unique<BoundProjectionBody>(
+        projectionBody->getIsDistinct(), std::move(boundProjectionExpressions));
     bindOrderBySkipLimitIfNecessary(*boundProjectionBody, *projectionBody);
     validateOrderByFollowedBySkipOrLimitInWithClause(*boundProjectionBody);
     variablesInScope.clear();
     addExpressionsToScope(boundProjectionBody->getProjectionExpressions());
-    auto boundWithClause = make_unique<BoundWithClause>(move(boundProjectionBody));
+    auto boundWithClause = std::make_unique<BoundWithClause>(std::move(boundProjectionBody));
     if (withClause.hasWhereExpression()) {
         boundWithClause->setWhereExpression(bindWhereExpression(*withClause.getWhereExpression()));
     }
     return boundWithClause;
 }
 
-unique_ptr<BoundReturnClause> Binder::bindReturnClause(
-    const ReturnClause& returnClause, unique_ptr<BoundSingleQuery>& boundSingleQuery) {
+std::unique_ptr<BoundReturnClause> Binder::bindReturnClause(const ReturnClause& returnClause) {
     auto projectionBody = returnClause.getProjectionBody();
-    auto boundProjectionExpressions = rewriteProjectionExpressions(bindProjectionExpressions(
-        projectionBody->getProjectionExpressions(), projectionBody->getContainsStar()));
-    validateProjectionColumnHasNoInternalType(boundProjectionExpressions);
-    auto boundProjectionBody = make_unique<BoundProjectionBody>(
-        projectionBody->getIsDistinct(), move(boundProjectionExpressions));
+    auto boundProjectionExpressions = bindProjectionExpressions(
+        projectionBody->getProjectionExpressions(), projectionBody->containsStar());
+    auto statementResult = std::make_unique<BoundStatementResult>();
+    for (auto& expression : boundProjectionExpressions) {
+        auto dataType = expression->getDataType();
+        if (dataType.typeID == common::NODE || dataType.typeID == common::REL) {
+            statementResult->addColumn(expression, rewriteNodeOrRelExpression(*expression));
+        } else {
+            statementResult->addColumn(expression, expression_vector{expression});
+        }
+    }
+    auto boundProjectionBody = std::make_unique<BoundProjectionBody>(
+        projectionBody->getIsDistinct(), statementResult->getExpressionsToCollect());
     bindOrderBySkipLimitIfNecessary(*boundProjectionBody, *projectionBody);
-    return make_unique<BoundReturnClause>(move(boundProjectionBody));
+    return std::make_unique<BoundReturnClause>(
+        std::move(boundProjectionBody), std::move(statementResult));
 }
 
 expression_vector Binder::bindProjectionExpressions(
-    const vector<unique_ptr<ParsedExpression>>& projectionExpressions, bool containsStar) {
+    const std::vector<std::unique_ptr<ParsedExpression>>& projectionExpressions,
+    bool containsStar) {
     expression_vector boundProjectionExpressions;
     for (auto& expression : projectionExpressions) {
         boundProjectionExpressions.push_back(expressionBinder.bindExpression(*expression));
@@ -54,71 +66,34 @@ expression_vector Binder::bindProjectionExpressions(
     return boundProjectionExpressions;
 }
 
-expression_vector Binder::rewriteProjectionExpressions(const expression_vector& expressions) {
+expression_vector Binder::rewriteNodeOrRelExpression(const Expression& expression) {
+    if (expression.dataType.typeID == common::NODE) {
+        return rewriteNodeExpression(expression);
+    } else {
+        assert(expression.dataType.typeID == common::REL);
+        return rewriteRelExpression(expression);
+    }
+}
+
+expression_vector Binder::rewriteNodeExpression(const kuzu::binder::Expression& expression) {
     expression_vector result;
-    for (auto& expression : expressions) {
-        if (expression->dataType.typeID == NODE) {
-            for (auto& property : rewriteAsAllProperties(expression, NODE)) {
-                result.push_back(property);
-            }
-        } else if (expression->dataType.typeID == REL) {
-            for (auto& property : rewriteAsAllProperties(expression, REL)) {
-                result.push_back(property);
-            }
-        } else {
-            result.push_back(expression);
-        }
+    auto& node = (NodeExpression&)expression;
+    result.push_back(node.getInternalIDProperty());
+    result.push_back(expressionBinder.bindNodeLabelFunction(node));
+    for (auto& property : node.getPropertyExpressions()) {
+        result.push_back(property->copy());
     }
     return result;
 }
 
-expression_vector Binder::rewriteAsAllProperties(
-    const shared_ptr<Expression>& expression, DataTypeID nodeOrRelType) {
-    vector<Property> properties;
-    switch (nodeOrRelType) {
-    case NODE: {
-        auto& node = (NodeExpression&)*expression;
-        for (auto tableID : node.getTableIDs()) {
-            for (auto& property : catalog.getReadOnlyVersion()->getAllNodeProperties(tableID)) {
-                properties.push_back(property);
-            }
-        }
-    } break;
-    case REL: {
-        auto& rel = (RelExpression&)*expression;
-        for (auto tableID : rel.getTableIDs()) {
-            for (auto& property : catalog.getReadOnlyVersion()->getRelProperties(tableID)) {
-                properties.push_back(property);
-            }
-        }
-    } break;
-    default:
-        throw NotImplementedException(
-            "Cannot rewrite type " + Types::dataTypeToString(nodeOrRelType));
-    }
-    // Make sure columns are in the same order as specified in catalog.
-    vector<string> columnNames;
-    unordered_set<string> existingColumnNames;
-    for (auto& property : properties) {
-        if (TableSchema::isReservedPropertyName(property.name)) {
-            continue;
-        }
-        if (!existingColumnNames.contains(property.name)) {
-            columnNames.push_back(property.name);
-            existingColumnNames.insert(property.name);
-        }
-    }
+expression_vector Binder::rewriteRelExpression(const Expression& expression) {
     expression_vector result;
-    for (auto& columnName : columnNames) {
-        shared_ptr<Expression> propertyExpression;
-        if (nodeOrRelType == NODE) {
-            propertyExpression =
-                expressionBinder.bindNodePropertyExpression(expression, columnName);
-        } else {
-            propertyExpression = expressionBinder.bindRelPropertyExpression(expression, columnName);
-        }
-        propertyExpression->setRawName(expression->getRawName() + "." + columnName);
-        result.emplace_back(propertyExpression);
+    auto& rel = (RelExpression&)expression;
+    result.push_back(rel.getSrcNode()->getInternalIDProperty());
+    result.push_back(rel.getDstNode()->getInternalIDProperty());
+    result.push_back(expressionBinder.bindRelLabelFunction(rel));
+    for (auto& property : rel.getPropertyExpressions()) {
+        result.push_back(property->copy());
     }
     return result;
 }
@@ -148,7 +123,7 @@ void Binder::bindOrderBySkipLimitIfNecessary(
 }
 
 expression_vector Binder::bindOrderByExpressions(
-    const vector<unique_ptr<ParsedExpression>>& orderByExpressions) {
+    const std::vector<std::unique_ptr<ParsedExpression>>& orderByExpressions) {
     expression_vector boundOrderByExpressions;
     for (auto& expression : orderByExpressions) {
         auto boundExpression = expressionBinder.bindExpression(*expression);
@@ -170,7 +145,7 @@ uint64_t Binder::bindSkipLimitExpression(const ParsedExpression& expression) {
         ((LiteralExpression&)(*boundExpression)).getDataType().typeID != INT64) {
         throw BinderException("The number of rows to skip/limit must be a non-negative integer.");
     }
-    return ((LiteralExpression&)(*boundExpression)).literal->val.int64Val;
+    return ((LiteralExpression&)(*boundExpression)).value->getValue<int64_t>();
 }
 
 void Binder::addExpressionsToScope(const expression_vector& projectionExpressions) {

@@ -6,10 +6,6 @@
 #include "storage/store/nodes_statistics_and_deleted_ids.h"
 #include "storage/wal/wal.h"
 
-namespace spdlog {
-class logger;
-}
-
 namespace kuzu {
 namespace storage {
 
@@ -17,53 +13,61 @@ class NodeTable {
 
 public:
     NodeTable(NodesStatisticsAndDeletedIDs* nodesStatisticsAndDeletedIDs,
-        BufferManager& bufferManager, bool isInMemory, WAL* wal, NodeTableSchema* nodeTableSchema);
+        BufferManager& bufferManager, WAL* wal, catalog::NodeTableSchema* nodeTableSchema);
 
-    inline node_offset_t getMaxNodeOffset(Transaction* trx) {
+    void initializeData(catalog::NodeTableSchema* nodeTableSchema);
+
+    inline common::offset_t getMaxNodeOffset(transaction::Transaction* trx) const {
         return nodesStatisticsAndDeletedIDs->getMaxNodeOffset(trx, tableID);
     }
-
-    inline void setSelVectorForDeletedOffsets(Transaction* trx, shared_ptr<ValueVector>& vector) {
+    inline void setSelVectorForDeletedOffsets(
+        transaction::Transaction* trx, std::shared_ptr<common::ValueVector>& vector) const {
         assert(vector->isSequential());
         nodesStatisticsAndDeletedIDs->setDeletedNodeOffsetsForMorsel(trx, vector, tableID);
     }
 
-    void loadColumnsAndListsFromDisk(
-        NodeTableSchema* nodeTableSchema, BufferManager& bufferManager, WAL* wal);
+    void scan(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& inputIDVector,
+        const std::vector<uint32_t>& columnIdxes,
+        std::vector<std::shared_ptr<common::ValueVector>> outputVectors);
 
-    inline Column* getPropertyColumn(uint64_t propertyIdx) {
-        return propertyColumns[propertyIdx].get();
+    inline Column* getPropertyColumn(common::property_id_t propertyIdx) {
+        assert(propertyColumns.contains(propertyIdx));
+        return propertyColumns.at(propertyIdx).get();
     }
     inline PrimaryKeyIndex* getPKIndex() const { return pkIndex.get(); }
-
     inline NodesStatisticsAndDeletedIDs* getNodeStatisticsAndDeletedIDs() const {
         return nodesStatisticsAndDeletedIDs;
     }
+    inline common::table_id_t getTableID() const { return tableID; }
+    inline void checkpointInMemoryIfNecessary() { pkIndex->checkpointInMemoryIfNecessary(); }
+    inline void rollbackInMemoryIfNecessary() { pkIndex->rollbackInMemoryIfNecessary(); }
+    inline void removeProperty(common::property_id_t propertyID) {
+        propertyColumns.erase(propertyID);
+    }
+    inline void addProperty(catalog::Property property) {
+        propertyColumns.emplace(property.propertyID,
+            ColumnFactory::getColumn(StorageUtils::getNodePropertyColumnStructureIDAndFName(
+                                         wal->getDirectory(), property),
+                property.dataType, bufferManager, wal));
+    }
 
-    inline table_id_t getTableID() const { return tableID; }
-
-    node_offset_t addNodeAndResetProperties(ValueVector* primaryKeyVector);
-    void deleteNodes(ValueVector* nodeIDVector, ValueVector* primaryKeyVector);
+    common::offset_t addNodeAndResetProperties(common::ValueVector* primaryKeyVector);
+    void deleteNodes(common::ValueVector* nodeIDVector, common::ValueVector* primaryKeyVector);
 
     void prepareCommitOrRollbackIfNecessary(bool isCommit);
 
-    inline void checkpointInMemoryIfNecessary() { pkIndex->checkpointInMemoryIfNecessary(); }
-    inline void rollbackInMemoryIfNecessary() { pkIndex->rollbackInMemoryIfNecessary(); }
+private:
+    void deleteNode(
+        common::offset_t nodeOffset, common::ValueVector* primaryKeyVector, uint32_t pos) const;
 
 private:
-    void deleteNode(node_offset_t nodeOffset, ValueVector* primaryKeyVector, uint32_t pos) const;
-
-public:
     NodesStatisticsAndDeletedIDs* nodesStatisticsAndDeletedIDs;
-
-private:
-    // This is for structured properties.
-    vector<unique_ptr<Column>> propertyColumns;
-    // The index for ID property.
-    // TODO(Guodong): rename this to primary key index
-    unique_ptr<PrimaryKeyIndex> pkIndex;
-    table_id_t tableID;
-    bool isInMemory;
+    std::unordered_map<common::property_id_t, std::unique_ptr<Column>> propertyColumns;
+    std::unique_ptr<PrimaryKeyIndex> pkIndex;
+    common::table_id_t tableID;
+    BufferManager& bufferManager;
+    WAL* wal;
 };
 
 } // namespace storage

@@ -12,3 +12,15 @@ build/
 __pycache__/
 *.py[cod]
 *$py.class
+cmake-build-debug/
+test/unittest_temp/
+
+# antlr4 jar
+scripts/antlr4/antlr4.jar
+
+# macOS
+.DS_Store
+
+# Archive files
+*.zip
+*.tar.gz

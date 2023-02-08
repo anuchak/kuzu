@@ -5,7 +5,7 @@
 #include "common/data_chunk/data_chunk_state.h"
 #include "common/in_mem_overflow_buffer.h"
 #include "common/null_mask.h"
-#include "common/types/literal.h"
+#include "common/types/value.h"
 
 namespace kuzu {
 namespace common {
@@ -15,15 +15,15 @@ namespace common {
 class ValueVector {
 
 public:
-    explicit ValueVector(DataType dataType, MemoryManager* memoryManager = nullptr);
-    explicit ValueVector(DataTypeID dataTypeID, MemoryManager* memoryManager = nullptr)
+    explicit ValueVector(DataType dataType, storage::MemoryManager* memoryManager = nullptr);
+    explicit ValueVector(DataTypeID dataTypeID, storage::MemoryManager* memoryManager = nullptr)
         : ValueVector(DataType(dataTypeID), memoryManager) {
         assert(dataTypeID != LIST);
     }
 
     ~ValueVector() = default;
 
-    inline void setState(shared_ptr<DataChunkState> state_) { state = std::move(state_); }
+    inline void setState(std::shared_ptr<DataChunkState> state_) { state = std::move(state_); }
 
     inline void setAllNull() { nullMask->setAllNull(); }
     inline void setAllNonNull() { nullMask->setAllNonNull(); }
@@ -49,10 +49,12 @@ public:
     template<typename T>
     void setValue(uint32_t pos, T val);
 
+    void addValue(uint32_t pos, const Value& value);
+
     inline uint8_t* getData() const { return valueBuffer.get(); }
 
-    inline node_offset_t readNodeOffset(uint32_t pos) const {
-        assert(dataType.typeID == NODE_ID);
+    inline offset_t readNodeOffset(uint32_t pos) const {
+        assert(dataType.typeID == INTERNAL_ID);
         return getValue<nodeID_t>(pos).offset;
     }
 
@@ -73,15 +75,17 @@ private:
 
     void addString(uint32_t pos, char* value, uint64_t len) const;
 
+    void copyValue(uint8_t* dest, const Value& value);
+
 public:
     DataType dataType;
-    shared_ptr<DataChunkState> state;
+    std::shared_ptr<DataChunkState> state;
 
 private:
     bool _isSequential = false;
-    unique_ptr<InMemOverflowBuffer> inMemOverflowBuffer;
-    unique_ptr<uint8_t[]> valueBuffer;
-    unique_ptr<NullMask> nullMask;
+    std::unique_ptr<InMemOverflowBuffer> inMemOverflowBuffer;
+    std::unique_ptr<uint8_t[]> valueBuffer;
+    std::unique_ptr<NullMask> nullMask;
     uint32_t numBytesPerValue;
 };
 

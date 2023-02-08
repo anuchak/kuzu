@@ -1,11 +1,14 @@
 #include "planner/logical_plan/logical_operator/logical_scan_node_property.h"
 #include "processor/mapper/plan_mapper.h"
-#include "processor/operator/scan_column/scan_node_properties.h"
+#include "processor/operator/scan/scan_node_table.h"
+
+using namespace kuzu::binder;
+using namespace kuzu::planner;
 
 namespace kuzu {
 namespace processor {
 
-unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanNodePropertyToPhysical(
+std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanNodePropertyToPhysical(
     LogicalOperator* logicalOperator) {
     auto& scanProperty = (const LogicalScanNodeProperty&)*logicalOperator;
     auto outSchema = scanProperty.getSchema();
@@ -14,39 +17,39 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanNodePropertyToPhysical(
     auto node = scanProperty.getNode();
     auto inputNodeIDVectorPos = DataPos(inSchema->getExpressionPos(*node->getInternalIDProperty()));
     auto& nodeStore = storageManager.getNodesStore();
-    vector<DataPos> outVectorsPos;
+    std::vector<DataPos> outVectorsPos;
     for (auto& expression : scanProperty.getProperties()) {
         outVectorsPos.emplace_back(outSchema->getExpressionPos(*expression));
     }
     if (node->isMultiLabeled()) {
-        unordered_map<table_id_t, vector<Column*>> tableIDToColumns;
+        std::unordered_map<common::table_id_t, std::vector<uint32_t>> tableIDToColumns;
+        std::unordered_map<common::table_id_t, storage::NodeTable*> tables;
         for (auto& tableID : node->getTableIDs()) {
-            vector<Column*> columns;
+            tables.insert({tableID, nodeStore.getNodeTable(tableID)});
+            std::vector<uint32_t> columns;
             for (auto& expression : scanProperty.getProperties()) {
                 auto property = static_pointer_cast<PropertyExpression>(expression);
                 if (!property->hasPropertyID(tableID)) {
-                    columns.push_back(nullptr);
+                    columns.push_back(UINT32_MAX);
                 } else {
-                    columns.push_back(
-                        nodeStore.getNodePropertyColumn(tableID, property->getPropertyID(tableID)));
+                    columns.push_back(property->getPropertyID(tableID));
                 }
             }
             tableIDToColumns.insert({tableID, std::move(columns)});
         }
-        return make_unique<ScanMultiNodeTableProperties>(inputNodeIDVectorPos,
-            std::move(outVectorsPos), std::move(tableIDToColumns), std::move(prevOperator),
+        return std::make_unique<ScanMultiNodeTables>(inputNodeIDVectorPos, std::move(outVectorsPos),
+            std::move(tables), std::move(tableIDToColumns), std::move(prevOperator),
             getOperatorID(), scanProperty.getExpressionsForPrinting());
     } else {
         auto tableID = node->getSingleTableID();
-        vector<Column*> columns;
+        std::vector<uint32_t> columnIds;
         for (auto& expression : scanProperty.getProperties()) {
             auto property = static_pointer_cast<PropertyExpression>(expression);
-            columns.push_back(
-                nodeStore.getNodePropertyColumn(tableID, property->getPropertyID(tableID)));
+            columnIds.push_back(property->getPropertyID(tableID));
         }
-        return make_unique<ScanSingleNodeTableProperties>(inputNodeIDVectorPos,
-            std::move(outVectorsPos), std::move(columns), std::move(prevOperator), getOperatorID(),
-            scanProperty.getExpressionsForPrinting());
+        return std::make_unique<ScanSingleNodeTable>(inputNodeIDVectorPos, std::move(outVectorsPos),
+            nodeStore.getNodeTable(tableID), std::move(columnIds), std::move(prevOperator),
+            getOperatorID(), scanProperty.getExpressionsForPrinting());
     }
 }
 

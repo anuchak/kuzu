@@ -20,11 +20,8 @@ namespace kuzu {
 namespace main {
 
 struct SystemConfig {
-    explicit SystemConfig(uint64_t bufferPoolSize = StorageConfig::DEFAULT_BUFFER_POOL_SIZE)
-        : defaultPageBufferPoolSize{(uint64_t)(
-              bufferPoolSize * StorageConfig::DEFAULT_PAGES_BUFFER_RATIO)},
-          largePageBufferPoolSize{
-              (uint64_t)(bufferPoolSize * StorageConfig::LARGE_PAGES_BUFFER_RATIO)} {}
+    explicit SystemConfig(
+        uint64_t bufferPoolSize = common::StorageConfig::DEFAULT_BUFFER_POOL_SIZE);
 
     uint64_t defaultPageBufferPoolSize;
     uint64_t largePageBufferPoolSize;
@@ -33,11 +30,9 @@ struct SystemConfig {
 };
 
 struct DatabaseConfig {
-    explicit DatabaseConfig(std::string databasePath, bool inMemoryMode = false)
-        : databasePath{std::move(databasePath)}, inMemoryMode{inMemoryMode} {}
+    explicit DatabaseConfig(std::string databasePath) : databasePath{std::move(databasePath)} {}
 
     std::string databasePath;
-    bool inMemoryMode;
 };
 
 class Database {
@@ -90,8 +85,8 @@ private:
     std::unique_ptr<catalog::Catalog> catalog;
     std::unique_ptr<storage::StorageManager> storageManager;
     std::unique_ptr<transaction::TransactionManager> transactionManager;
-    unique_ptr<storage::WAL> wal;
-    shared_ptr<spdlog::logger> logger;
+    std::unique_ptr<storage::WAL> wal;
+    std::shared_ptr<spdlog::logger> logger;
 };
 
 } // namespace main

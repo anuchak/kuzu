@@ -3,7 +3,10 @@
 #include "common/in_mem_overflow_buffer_utils.h"
 #include "common/type_utils.h"
 
-using lock_t = unique_lock<mutex>;
+using lock_t = std::unique_lock<std::mutex>;
+
+using namespace kuzu::transaction;
+using namespace kuzu::common;
 
 namespace kuzu {
 namespace storage {
@@ -112,7 +115,7 @@ void DiskOverflowFile::readListToVector(TransactionType trxType, ku_list_t& kuLi
     }
 }
 
-string DiskOverflowFile::readString(TransactionType trxType, const ku_string_t& str) {
+std::string DiskOverflowFile::readString(TransactionType trxType, const ku_string_t& str) {
     if (ku_string_t::isShortString(str.len)) {
         return str.getAsShortString();
     } else {
@@ -122,13 +125,13 @@ string DiskOverflowFile::readString(TransactionType trxType, const ku_string_t& 
             StorageStructureUtils::getFileHandleAndPhysicalPageIdxToPin(
                 fileHandle, cursor.pageIdx, *wal, trxType);
         auto frame = bufferManager.pin(*fileHandleToPin, pageIdxToPin);
-        auto retVal = string((char*)(frame + cursor.offsetInPage), str.len);
+        auto retVal = std::string((char*)(frame + cursor.offsetInPage), str.len);
         bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
         return retVal;
     }
 }
 
-vector<Literal> DiskOverflowFile::readList(
+std::vector<std::unique_ptr<Value>> DiskOverflowFile::readList(
     TransactionType trxType, const ku_list_t& listVal, const DataType& dataType) {
     PageByteCursor cursor;
     TypeUtils::decodeOverflowPtr(listVal.overflowPtr, cursor.pageIdx, cursor.offsetInPage);
@@ -138,28 +141,29 @@ vector<Literal> DiskOverflowFile::readList(
     auto frame = bufferManager.pin(*fileHandleToPin, pageIdxToPin);
     auto numBytesOfSingleValue = Types::getDataTypeSize(*dataType.childType);
     auto numValuesInList = listVal.size;
-    vector<Literal> retLiterals;
+    std::vector<std::unique_ptr<Value>> retValues;
     if (dataType.childType->typeID == STRING) {
         for (auto i = 0u; i < numValuesInList; i++) {
             auto kuListVal = *(ku_string_t*)(frame + cursor.offsetInPage);
-            retLiterals.emplace_back(readString(trxType, kuListVal));
+            retValues.push_back(make_unique<Value>(readString(trxType, kuListVal)));
             cursor.offsetInPage += numBytesOfSingleValue;
         }
     } else if (dataType.childType->typeID == LIST) {
         for (auto i = 0u; i < numValuesInList; i++) {
             auto kuListVal = *(ku_list_t*)(frame + cursor.offsetInPage);
-            retLiterals.emplace_back(
-                readList(trxType, kuListVal, *dataType.childType), *dataType.childType);
+            retValues.push_back(make_unique<Value>(
+                *dataType.childType, readList(trxType, kuListVal, *dataType.childType)));
             cursor.offsetInPage += numBytesOfSingleValue;
         }
     } else {
         for (auto i = 0u; i < numValuesInList; i++) {
-            retLiterals.emplace_back(frame + cursor.offsetInPage, *dataType.childType);
+            retValues.push_back(
+                std::make_unique<Value>(*dataType.childType, frame + cursor.offsetInPage));
             cursor.offsetInPage += numBytesOfSingleValue;
         }
     }
     bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
-    return retLiterals;
+    return retValues;
 }
 
 void DiskOverflowFile::addNewPageIfNecessaryWithoutLock(uint32_t numBytesToAppend) {

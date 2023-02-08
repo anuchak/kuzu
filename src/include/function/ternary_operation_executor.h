@@ -20,15 +20,16 @@ struct TernaryStringAndListOperationWrapper {
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename OP>
     static inline void operation(
         A_TYPE& a, B_TYPE& b, C_TYPE& c, RESULT_TYPE& result, void* dataptr) {
-        OP::operation(a, b, c, result, *(ValueVector*)dataptr);
+        OP::operation(a, b, c, result, *(common::ValueVector*)dataptr);
     }
 };
 
 struct TernaryOperationExecutor {
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeOnValue(ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result,
-        uint64_t aPos, uint64_t bPos, uint64_t cPos, uint64_t resPos) {
+    static void executeOnValue(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result, uint64_t aPos, uint64_t bPos,
+        uint64_t cPos, uint64_t resPos) {
         auto resValues = (RESULT_TYPE*)result.getData();
         OP_WRAPPER::template operation<A_TYPE, B_TYPE, C_TYPE, RESULT_TYPE, FUNC>(
             ((A_TYPE*)a.getData())[aPos], ((B_TYPE*)b.getData())[bPos],
@@ -37,9 +38,8 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeAllFlat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
-        result.state = a.state;
+    static void executeAllFlat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         auto aPos = a.state->selVector->selectedPositions[0];
         auto bPos = b.state->selVector->selectedPositions[0];
         auto cPos = c.state->selVector->selectedPositions[0];
@@ -53,9 +53,8 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeFlatFlatUnflat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
-        result.state = c.state;
+    static void executeFlatFlatUnflat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         auto aPos = a.state->selVector->selectedPositions[0];
         auto bPos = b.state->selVector->selectedPositions[0];
         if (a.isNull(aPos) || b.isNull(bPos)) {
@@ -97,10 +96,9 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeFlatUnflatUnflat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
+    static void executeFlatUnflatUnflat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         assert(b.state == c.state);
-        result.state = b.state;
         auto aPos = a.state->selVector->selectedPositions[0];
         if (a.isNull(aPos)) {
             result.setAllNull();
@@ -141,9 +139,8 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeFlatUnflatFlat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
-        result.state = b.state;
+    static void executeFlatUnflatFlat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         auto aPos = a.state->selVector->selectedPositions[0];
         auto cPos = c.state->selVector->selectedPositions[0];
         if (a.isNull(aPos) || c.isNull(cPos)) {
@@ -185,10 +182,9 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeAllUnFlat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
+    static void executeAllUnFlat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         assert(a.state == b.state && b.state == c.state);
-        result.state = a.state;
         if (a.hasNoNullsGuarantee() && b.hasNoNullsGuarantee() && c.hasNoNullsGuarantee()) {
             if (a.state->selVector->isUnfiltered()) {
                 for (uint64_t i = 0; i < a.state->selVector->selectedSize; i++) {
@@ -226,9 +222,8 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeUnflatFlatFlat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
-        result.state = a.state;
+    static void executeUnflatFlatFlat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         auto bPos = b.state->selVector->selectedPositions[0];
         auto cPos = c.state->selVector->selectedPositions[0];
         if (b.isNull(bPos) || c.isNull(cPos)) {
@@ -270,10 +265,9 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeUnflatFlatUnflat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
+    static void executeUnflatFlatUnflat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         assert(a.state == c.state);
-        result.state = a.state;
         auto bPos = b.state->selVector->selectedPositions[0];
         if (b.isNull(bPos)) {
             result.setAllNull();
@@ -314,10 +308,9 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeUnflatUnFlatFlat(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
+    static void executeUnflatUnFlatFlat(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         assert(a.state == b.state);
-        result.state = a.state;
         auto cPos = c.state->selVector->selectedPositions[0];
         if (c.isNull(cPos)) {
             result.setAllNull();
@@ -358,7 +351,8 @@ struct TernaryOperationExecutor {
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC,
         typename OP_WRAPPER>
-    static void executeSwitch(ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
+    static void executeSwitch(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         result.resetOverflowBuffer();
         if (a.state->isFlat() && b.state->isFlat() && c.state->isFlat()) {
             executeAllFlat<A_TYPE, B_TYPE, C_TYPE, RESULT_TYPE, FUNC, OP_WRAPPER>(a, b, c, result);
@@ -389,14 +383,15 @@ struct TernaryOperationExecutor {
     }
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC>
-    static void execute(ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
+    static void execute(common::ValueVector& a, common::ValueVector& b, common::ValueVector& c,
+        common::ValueVector& result) {
         executeSwitch<A_TYPE, B_TYPE, C_TYPE, RESULT_TYPE, FUNC, TernaryOperationWrapper>(
             a, b, c, result);
     }
 
     template<typename A_TYPE, typename B_TYPE, typename C_TYPE, typename RESULT_TYPE, typename FUNC>
-    static void executeStringAndList(
-        ValueVector& a, ValueVector& b, ValueVector& c, ValueVector& result) {
+    static void executeStringAndList(common::ValueVector& a, common::ValueVector& b,
+        common::ValueVector& c, common::ValueVector& result) {
         executeSwitch<A_TYPE, B_TYPE, C_TYPE, RESULT_TYPE, FUNC,
             TernaryStringAndListOperationWrapper>(a, b, c, result);
     }

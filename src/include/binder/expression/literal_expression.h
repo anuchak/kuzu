@@ -1,39 +1,28 @@
 #pragma once
 
-#include "common/type_utils.h"
+#include "common/types/value.h"
 #include "expression.h"
 
 namespace kuzu {
 namespace binder {
 
 class LiteralExpression : public Expression {
-
 public:
-    LiteralExpression(DataType dataType, unique_ptr<Literal> literal)
-        : Expression(LITERAL, std::move(dataType), "_" + TypeUtils::toString(*literal)),
-          literal{std::move(literal)} {
-        assert(!isNull());
-    }
+    LiteralExpression(std::unique_ptr<common::Value> value, const std::string& uniqueName)
+        : Expression{common::LITERAL, value->getDataType(), uniqueName}, value{std::move(value)} {}
 
-    LiteralExpression(DataTypeID dataTypeID, unique_ptr<Literal> literal)
-        : LiteralExpression{DataType(dataTypeID), std::move(literal)} {
-        assert(dataTypeID != LIST);
-    }
+    inline bool isNull() const { return value->isNull(); }
 
-    LiteralExpression(DataType dataType, unique_ptr<Literal> literal, string uniqueName)
-        : Expression{LITERAL, std::move(dataType), std::move(uniqueName)}, literal{std::move(
-                                                                               literal)} {}
-
-    inline bool isNull() const { return literal->isNull(); }
-
-    inline void setDataType(const DataType& targetType) {
-        assert(dataType.typeID == ANY && isNull());
+    inline void setDataType(const common::DataType& targetType) {
+        assert(dataType.typeID == common::ANY && isNull());
         dataType = targetType;
-        literal->dataType = targetType;
+        value->setDataType(targetType);
     }
 
+    inline common::Value* getValue() const { return value.get(); }
+
 public:
-    unique_ptr<Literal> literal;
+    std::unique_ptr<common::Value> value;
 };
 
 } // namespace binder

@@ -14,6 +14,7 @@ namespace common {
 typedef uint16_t sel_t;
 typedef uint64_t hash_t;
 typedef uint32_t page_idx_t;
+typedef uint32_t page_offset_t;
 constexpr page_idx_t PAGE_IDX_MAX = UINT32_MAX;
 typedef uint32_t list_header_t;
 
@@ -36,13 +37,15 @@ enum DataTypeID : uint8_t {
     //    - bind (static evaluate) functions work on node/rel table.
     //      E.g. ID(a "datatype:NODE") -> node ID property "datatype:NODE_ID"
 
-    // logical  types
+    // logical types
+
     ANY = 0,
     NODE = 10,
     REL = 11,
 
-    // physical fixed size types
-    NODE_ID = 21,
+    // physical types
+
+    // fixed size types
     BOOL = 22,
     INT64 = 23,
     DOUBLE = 24,
@@ -50,6 +53,9 @@ enum DataTypeID : uint8_t {
     TIMESTAMP = 26,
     INTERVAL = 27,
 
+    INTERNAL_ID = 40,
+
+    // variable size types
     STRING = 50,
     LIST = 52,
 };
@@ -74,7 +80,7 @@ public:
     }
     static inline std::vector<DataTypeID> getAllValidTypeIDs() {
         return std::vector<DataTypeID>{
-            NODE_ID, BOOL, INT64, DOUBLE, STRING, DATE, TIMESTAMP, INTERVAL, LIST};
+            INTERNAL_ID, BOOL, INT64, DOUBLE, STRING, DATE, TIMESTAMP, INTERVAL, LIST};
     }
 
     DataType& operator=(const DataType& other);

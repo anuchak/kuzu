@@ -3,14 +3,17 @@
 #include "function/binary_operation_executor.h"
 #include "function/unary_operation_executor.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace function {
 
 void VectorHashOperations::computeHash(ValueVector* operand, ValueVector* result) {
+    result->state = operand->state;
     assert(result->dataType.typeID == INT64);
     switch (operand->dataType.typeID) {
-    case NODE_ID: {
-        UnaryHashOperationExecutor::execute<nodeID_t, hash_t>(*operand, *result);
+    case INTERNAL_ID: {
+        UnaryHashOperationExecutor::execute<internalID_t, hash_t>(*operand, *result);
     } break;
     case BOOL: {
         UnaryHashOperationExecutor::execute<bool, hash_t>(*operand, *result);
@@ -44,6 +47,8 @@ void VectorHashOperations::combineHash(ValueVector* left, ValueVector* right, Va
     assert(left->dataType.typeID == INT64);
     assert(left->dataType.typeID == right->dataType.typeID);
     assert(left->dataType.typeID == result->dataType.typeID);
+    // TODO(Xiyang/Guodong): we should resolve result state of hash vector at compile time.
+    result->state = !right->state->isFlat() ? right->state : left->state;
     BinaryOperationExecutor::execute<hash_t, hash_t, hash_t, operation::CombineHash>(
         *left, *right, *result);
 }

@@ -1,18 +1,10 @@
 #pragma once
 
-#include "common/types/literal.h"
+#include "common/types/value.h"
 #include "lists_update_store.h"
 #include "storage/storage_structure/disk_overflow_file.h"
-#include "storage/storage_structure/lists/list_headers.h"
-#include "storage/storage_structure/lists/list_sync_state.h"
-#include "storage/storage_structure/lists/lists_metadata.h"
+#include "storage/storage_structure/lists/list_handle.h"
 #include "storage/storage_structure/storage_structure.h"
-
-namespace kuzu {
-namespace testing {
-class CopyCSVEmptyListsTest;
-} // namespace testing
-} // namespace kuzu
 
 namespace kuzu {
 namespace storage {
@@ -20,10 +12,10 @@ namespace storage {
 struct InMemList {
     InMemList(uint64_t numElements, uint64_t elementSize, bool requireNullMask)
         : numElements{numElements} {
-        listData = make_unique<uint8_t[]>(numElements * elementSize);
-        nullMask = requireNullMask ?
-                       make_unique<NullMask>(NullMask::getNumNullEntries(numElements)) :
-                       nullptr;
+        listData = std::make_unique<uint8_t[]>(numElements * elementSize);
+        nullMask = requireNullMask ? std::make_unique<common::NullMask>(
+                                         common::NullMask::getNumNullEntries(numElements)) :
+                                     nullptr;
     }
 
     inline uint8_t* getListData() const { return listData.get(); }
@@ -31,40 +23,8 @@ struct InMemList {
     inline uint64_t* getNullMask() const { return nullMask->getData(); }
 
     uint64_t numElements;
-    unique_ptr<uint8_t[]> listData;
-    unique_ptr<NullMask> nullMask;
-};
-
-struct CursorAndMapper {
-    void reset(ListsMetadata& listMetadata, uint64_t numElementsPerPage, list_header_t listHeader,
-        node_offset_t nodeOffset) {
-        if (ListHeaders::isALargeList(listHeader)) {
-            cursor = PageUtils::getPageElementCursorForPos(0, numElementsPerPage);
-            mapper =
-                listMetadata.getPageMapperForLargeListIdx(ListHeaders::getLargeListIdx(listHeader));
-        } else {
-            cursor = PageUtils::getPageElementCursorForPos(
-                ListHeaders::getSmallListCSROffset(listHeader), numElementsPerPage);
-            mapper =
-                listMetadata.getPageMapperForChunkIdx(StorageUtils::getListChunkIdx(nodeOffset));
-        }
-    }
-
-    std::function<uint32_t(uint32_t)> mapper;
-    PageElementCursor cursor;
-};
-
-struct ListHandle {
-    explicit ListHandle(ListSyncState& listSyncState) : listSyncState{listSyncState} {}
-
-    inline void resetCursorMapper(ListsMetadata& listMetadata, uint64_t numElementsPerPage) {
-        cursorAndMapper.reset(listMetadata, numElementsPerPage, listSyncState.getListHeader(),
-            listSyncState.getBoundNodeOffset());
-    }
-    inline void reset() { listSyncState.reset(); }
-
-    ListSyncState& listSyncState;
-    CursorAndMapper cursorAndMapper;
+    std::unique_ptr<uint8_t[]> listData;
+    std::unique_ptr<common::NullMask> nullMask;
 };
 
 /**
@@ -80,35 +40,35 @@ struct ListHandle {
  * actual physical location in the Lists file on disk.
  * */
 class Lists : public BaseColumnOrList {
-    friend class kuzu::testing::CopyCSVEmptyListsTest;
     friend class ListsUpdateIterator;
     friend class ListsUpdateIteratorFactory;
 
 public:
-    Lists(const StorageStructureIDAndFName& storageStructureIDAndFName, const DataType& dataType,
-        const size_t& elementSize, shared_ptr<ListHeaders> headers, BufferManager& bufferManager,
-        bool isInMemory, WAL* wal, ListsUpdateStore* listsUpdateStore)
+    Lists(const StorageStructureIDAndFName& storageStructureIDAndFName,
+        const common::DataType& dataType, const size_t& elementSize,
+        std::shared_ptr<ListHeaders> headers, BufferManager& bufferManager, WAL* wal,
+        ListsUpdatesStore* listsUpdatesStore)
         : Lists{storageStructureIDAndFName, dataType, elementSize, std::move(headers),
-              bufferManager, true /*hasNULLBytes*/, isInMemory, wal, listsUpdateStore} {};
+              bufferManager, true /*hasNULLBytes*/, wal, listsUpdatesStore} {};
     inline ListsMetadata& getListsMetadata() { return metadata; };
-    inline shared_ptr<ListHeaders> getHeaders() const { return headers; };
+    inline std::shared_ptr<ListHeaders> getHeaders() const { return headers; };
     // TODO(Guodong): change the input to header.
-    inline uint64_t getNumElementsFromListHeader(node_offset_t nodeOffset) const {
+    inline uint64_t getNumElementsFromListHeader(common::offset_t nodeOffset) const {
         auto header = headers->getHeader(nodeOffset);
         return ListHeaders::isALargeList(header) ?
                    metadata.getNumElementsInLargeLists(ListHeaders::getLargeListIdx(header)) :
                    ListHeaders::getSmallListLen(header);
     }
-    inline uint64_t getNumElementsInListsUpdateStore(node_offset_t nodeOffset) {
-        return listsUpdateStore->getNumInsertedRelsForNodeOffset(
+    inline uint64_t getNumElementsInListsUpdatesStore(common::offset_t nodeOffset) {
+        return listsUpdatesStore->getNumInsertedRelsForNodeOffset(
             storageStructureIDAndFName.storageStructureID.listFileID, nodeOffset);
     }
     inline uint64_t getTotalNumElementsInList(
-        TransactionType transactionType, node_offset_t nodeOffset) {
+        transaction::TransactionType transactionType, common::offset_t nodeOffset) {
         return getNumElementsInPersistentStore(transactionType, nodeOffset) +
-               (transactionType == TransactionType::WRITE ?
-                       getNumElementsInListsUpdateStore(nodeOffset) -
-                           listsUpdateStore->getNumDeletedRels(
+               (transactionType == transaction::TransactionType::WRITE ?
+                       getNumElementsInListsUpdatesStore(nodeOffset) -
+                           listsUpdatesStore->getNumDeletedRels(
                                storageStructureIDAndFName.storageStructureID.listFileID,
                                nodeOffset) :
                        0);
@@ -118,62 +78,73 @@ public:
     }
     virtual inline void rollbackInMemoryIfNecessary() { metadata.rollbackInMemoryIfNecessary(); }
     virtual inline bool mayContainNulls() const { return true; }
-    virtual inline void setDeletedRelsIfNecessary(Transaction* transaction,
-        ListSyncState& listSyncState, const shared_ptr<ValueVector>& valueVector) {}
-    virtual void readValues(const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle);
+    virtual inline void setDeletedRelsIfNecessary(transaction::Transaction* transaction,
+        ListHandle& listHandle, const std::shared_ptr<common::ValueVector>& valueVector) {
+        // DO NOTHING.
+    }
+    virtual void readValues(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle);
     virtual void readFromSmallList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle);
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle);
     virtual void readFromLargeList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle);
-    void readFromList(const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle);
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle);
+    void readFromList(
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle);
     uint64_t getNumElementsInPersistentStore(
-        TransactionType transactionType, node_offset_t nodeOffset);
-    void initListReadingState(
-        node_offset_t nodeOffset, ListHandle& listHandle, TransactionType transactionType);
-    unique_ptr<InMemList> getInMemListWithDataFromUpdateStoreOnly(
-        node_offset_t nodeOffset, vector<uint64_t>& insertedRelsTupleIdxInFT);
+        transaction::TransactionType transactionType, common::offset_t nodeOffset);
+    void initListReadingState(common::offset_t nodeOffset, ListHandle& listHandle,
+        transaction::TransactionType transactionType);
+    std::unique_ptr<InMemList> createInMemListWithDataFromUpdateStoreOnly(
+        common::offset_t nodeOffset, std::vector<uint64_t>& insertedRelsTupleIdxInFT);
     // This function writes the persistent store data (skipping over the deleted rels) and update
     // store data to the inMemList.
-    unique_ptr<InMemList> writeToInMemList(node_offset_t nodeOffset,
-        const vector<uint64_t>& insertedRelTupleIdxesInFT,
-        const unordered_set<uint64_t>& deletedRelOffsetsForList);
-    void fillInMemListsFromPersistentStore(CursorAndMapper& cursorAndMapper,
-        uint64_t numElfementsInPersistentStore, InMemList& inMemList,
-        const unordered_set<uint64_t>& deletedRelOffsetsInList);
+    std::unique_ptr<InMemList> writeToInMemList(common::offset_t nodeOffset,
+        const std::vector<uint64_t>& insertedRelTupleIdxesInFT,
+        const std::unordered_set<uint64_t>& deletedRelOffsetsForList,
+        UpdatedPersistentListOffsets* updatedPersistentListOffsets);
+    void fillInMemListsFromPersistentStore(common::offset_t nodeOffset,
+        uint64_t numElementsInPersistentStore, InMemList& inMemList,
+        const std::unordered_set<list_offset_t>& deletedRelOffsetsInList,
+        UpdatedPersistentListOffsets* updatedPersistentListOffsets = nullptr);
 
 protected:
     virtual inline DiskOverflowFile* getDiskOverflowFileIfExists() { return nullptr; }
-    virtual inline NodeIDCompressionScheme* getNodeIDCompressionIfExists() { return nullptr; }
-    // storageStructureIDAndFName is the ID and fName for the "main ".lists" file.
-    Lists(const StorageStructureIDAndFName& storageStructureIDAndFName, const DataType& dataType,
-        const size_t& elementSize, shared_ptr<ListHeaders> headers, BufferManager& bufferManager,
-        bool hasNULLBytes, bool isInMemory, WAL* wal, ListsUpdateStore* listsUpdateStore)
+    Lists(const StorageStructureIDAndFName& storageStructureIDAndFName,
+        const common::DataType& dataType, const size_t& elementSize,
+        std::shared_ptr<ListHeaders> headers, BufferManager& bufferManager, bool hasNULLBytes,
+        WAL* wal, ListsUpdatesStore* listsUpdatesStore)
         : BaseColumnOrList{storageStructureIDAndFName, dataType, elementSize, bufferManager,
-              hasNULLBytes, isInMemory, wal},
+              hasNULLBytes, wal},
           storageStructureIDAndFName{storageStructureIDAndFName},
           metadata{storageStructureIDAndFName, &bufferManager, wal}, headers{std::move(headers)},
-          listsUpdateStore{listsUpdateStore} {};
+          listsUpdatesStore{listsUpdatesStore} {};
 
 private:
     void fillInMemListsFromFrame(InMemList& inMemList, const uint8_t* frame, uint64_t elemPosInPage,
-        uint64_t numElementsToReadInCurPage, const unordered_set<uint64_t>& deletedRelOffsetsInList,
-        uint64_t numElementsRead, uint64_t& nextPosToWriteToInMemList);
+        uint64_t numElementsToReadInCurPage,
+        const std::unordered_set<uint64_t>& deletedRelOffsetsInList, uint64_t numElementsRead,
+        uint64_t& nextPosToWriteToInMemList,
+        UpdatedPersistentListOffsets* updatedPersistentListOffsets);
+
+    void readPropertyUpdatesToInMemListIfExists(InMemList& inMemList,
+        UpdatedPersistentListOffsets* updatedPersistentListOffsets, uint64_t numElementsRead,
+        uint64_t numElementsToReadInCurPage, uint64_t nextPosToWriteToInMemList);
 
 protected:
     StorageStructureIDAndFName storageStructureIDAndFName;
     ListsMetadata metadata;
-    shared_ptr<ListHeaders> headers;
-    ListsUpdateStore* listsUpdateStore;
+    std::shared_ptr<ListHeaders> headers;
+    ListsUpdatesStore* listsUpdatesStore;
 };
 
 class PropertyListsWithOverflow : public Lists {
 public:
     PropertyListsWithOverflow(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        const DataType& dataType, shared_ptr<ListHeaders> headers, BufferManager& bufferManager,
-        bool isInMemory, WAL* wal, ListsUpdateStore* listsUpdateStore)
-        : Lists{storageStructureIDAndFName, dataType, Types::getDataTypeSize(dataType),
-              std::move(headers), bufferManager, isInMemory, wal, listsUpdateStore},
-          diskOverflowFile{storageStructureIDAndFName, bufferManager, isInMemory, wal} {}
+        const common::DataType& dataType, std::shared_ptr<ListHeaders> headers,
+        BufferManager& bufferManager, WAL* wal, ListsUpdatesStore* listsUpdatesStore)
+        : Lists{storageStructureIDAndFName, dataType, common::Types::getDataTypeSize(dataType),
+              std::move(headers), bufferManager, wal, listsUpdatesStore},
+          diskOverflowFile{storageStructureIDAndFName, bufferManager, wal} {}
 
 private:
     inline DiskOverflowFile* getDiskOverflowFileIfExists() override { return &diskOverflowFile; }
@@ -186,52 +157,54 @@ class StringPropertyLists : public PropertyListsWithOverflow {
 
 public:
     StringPropertyLists(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        const shared_ptr<ListHeaders>& headers, BufferManager& bufferManager, bool isInMemory,
-        WAL* wal, ListsUpdateStore* listsUpdateStore)
-        : PropertyListsWithOverflow{storageStructureIDAndFName, DataType{STRING}, headers,
-              bufferManager, isInMemory, wal, listsUpdateStore} {};
+        const std::shared_ptr<ListHeaders>& headers, BufferManager& bufferManager, WAL* wal,
+        ListsUpdatesStore* listsUpdatesStore)
+        : PropertyListsWithOverflow{storageStructureIDAndFName, common::DataType{common::STRING},
+              headers, bufferManager, wal, listsUpdatesStore} {};
 
 private:
     void readFromLargeList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle) override;
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
     void readFromSmallList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle) override;
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
 };
 
 class ListPropertyLists : public PropertyListsWithOverflow {
 
 public:
     ListPropertyLists(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        const DataType& dataType, const shared_ptr<ListHeaders>& headers,
-        BufferManager& bufferManager, bool isInMemory, WAL* wal, ListsUpdateStore* listsUpdateStore)
+        const common::DataType& dataType, const std::shared_ptr<ListHeaders>& headers,
+        BufferManager& bufferManager, WAL* wal, ListsUpdatesStore* listsUpdatesStore)
         : PropertyListsWithOverflow{storageStructureIDAndFName, dataType, headers, bufferManager,
-              isInMemory, wal, listsUpdateStore} {};
+              wal, listsUpdatesStore} {};
 
 private:
     void readFromLargeList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle) override;
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
     void readFromSmallList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle) override;
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
 };
 
 class AdjLists : public Lists {
 
 public:
     AdjLists(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        BufferManager& bufferManager, NodeIDCompressionScheme nodeIDCompressionScheme,
-        bool isInMemory, WAL* wal, ListsUpdateStore* listsUpdateStore)
-        : Lists{storageStructureIDAndFName, DataType(NODE_ID),
-              nodeIDCompressionScheme.getNumBytesForNodeIDAfterCompression(),
-              make_shared<ListHeaders>(storageStructureIDAndFName, &bufferManager, wal),
-              bufferManager, false /* hasNullBytes */, isInMemory, wal, listsUpdateStore},
-          nodeIDCompressionScheme{nodeIDCompressionScheme} {};
+        common::table_id_t nbrTableID, BufferManager& bufferManager, WAL* wal,
+        ListsUpdatesStore* listsUpdatesStore)
+        : Lists{storageStructureIDAndFName, common::DataType(common::INTERNAL_ID),
+              sizeof(common::offset_t),
+              std::make_shared<ListHeaders>(storageStructureIDAndFName, &bufferManager, wal),
+              bufferManager, false /* hasNullBytes */, wal, listsUpdatesStore},
+          nbrTableID{nbrTableID} {};
 
     inline bool mayContainNulls() const override { return false; }
 
-    void readValues(const shared_ptr<ValueVector>& valueVector, ListHandle& listSyncState) override;
+    void readValues(transaction::Transaction* transaction,
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
 
     // Currently, used only in copyCSV tests.
-    unique_ptr<vector<nodeID_t>> readAdjacencyListOfNode(node_offset_t nodeOffset);
+    std::unique_ptr<std::vector<common::nodeID_t>> readAdjacencyListOfNode(
+        common::offset_t nodeOffset);
 
     void checkpointInMemoryIfNecessary() override {
         headers->checkpointInMemoryIfNecessary();
@@ -244,70 +217,80 @@ public:
     }
 
 private:
-    inline NodeIDCompressionScheme* getNodeIDCompressionIfExists() override {
-        return &nodeIDCompressionScheme;
-    }
-
     void readFromLargeList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle) override;
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
     void readFromSmallList(
-        const shared_ptr<ValueVector>& valueVector, ListHandle& listHandle) override;
-    void readFromListsUpdateStore(
-        ListSyncState& listSyncState, const shared_ptr<ValueVector>& valueVector);
-    void readFromListsPersistentStore(
-        ListHandle& listHandle, const shared_ptr<ValueVector>& valueVector);
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
+    void readFromListsUpdatesStore(
+        ListHandle& listHandle, const std::shared_ptr<common::ValueVector>& valueVector);
+    void readFromPersistentStore(
+        ListHandle& listHandle, const std::shared_ptr<common::ValueVector>& valueVector);
 
 private:
-    NodeIDCompressionScheme nodeIDCompressionScheme;
+    common::table_id_t nbrTableID;
 };
 
 class RelIDList : public Lists {
 
 public:
     RelIDList(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        const DataType& dataType, const size_t& elementSize, shared_ptr<ListHeaders> headers,
-        BufferManager& bufferManager, bool isInMemory, WAL* wal, ListsUpdateStore* listsUpdateStore)
-        : Lists{storageStructureIDAndFName, dataType, elementSize, std::move(headers),
-              bufferManager, isInMemory, wal, listsUpdateStore} {}
-    void setDeletedRelsIfNecessary(Transaction* transaction, ListSyncState& listSyncState,
-        const shared_ptr<ValueVector>& relIDVector) override;
-    unordered_set<uint64_t> getDeletedRelOffsetsInListForNodeOffset(node_offset_t nodeOffset);
+        std::shared_ptr<ListHeaders> headers, BufferManager& bufferManager, WAL* wal,
+        ListsUpdatesStore* listsUpdatesStore)
+        : Lists{storageStructureIDAndFName, common::DataType{common::INTERNAL_ID},
+              sizeof(common::offset_t), std::move(headers), bufferManager, wal, listsUpdatesStore} {
+    }
+
+    void setDeletedRelsIfNecessary(transaction::Transaction* transaction, ListHandle& listHandle,
+        const std::shared_ptr<common::ValueVector>& relIDVector) override;
+
+    std::unordered_set<uint64_t> getDeletedRelOffsetsInListForNodeOffset(
+        common::offset_t nodeOffset);
+
+    list_offset_t getListOffset(common::offset_t nodeOffset, common::offset_t relOffset);
+
+    void readFromSmallList(
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
+
+    void readFromLargeList(
+        const std::shared_ptr<common::ValueVector>& valueVector, ListHandle& listHandle) override;
+
+private:
+    inline bool mayContainNulls() const override { return false; }
+
+    inline common::table_id_t getRelTableID() const {
+        return storageStructureIDAndFName.storageStructureID.listFileID.relPropertyListID
+            .relNodeTableAndDir.relTableID;
+    }
 };
 
 class ListsFactory {
 
 public:
-    static unique_ptr<Lists> getLists(const StorageStructureIDAndFName& structureIDAndFName,
-        const DataType& dataType, const shared_ptr<ListHeaders>& adjListsHeaders,
-        BufferManager& bufferManager, bool isInMemory, WAL* wal,
-        ListsUpdateStore* listsUpdateStore) {
-        // TODO(Ziyi): this is a super hacky design. Consider storing a relIDColumn/List in relTable
-        // just like adjColumn/List and we can have Extend read from both relIDColumn/List and
-        // adjColumn/List.
-        if (structureIDAndFName.storageStructureID.listFileID.relPropertyListID.propertyID ==
-            RelTableSchema::INTERNAL_REL_ID_PROPERTY_IDX) {
-            return make_unique<RelIDList>(structureIDAndFName, dataType,
-                Types::getDataTypeSize(dataType), adjListsHeaders, bufferManager, isInMemory, wal,
-                listsUpdateStore);
-        }
+    static std::unique_ptr<Lists> getLists(const StorageStructureIDAndFName& structureIDAndFName,
+        const common::DataType& dataType, const std::shared_ptr<ListHeaders>& adjListsHeaders,
+        BufferManager& bufferManager, WAL* wal, ListsUpdatesStore* listsUpdatesStore) {
+        assert(listsUpdatesStore != nullptr);
         switch (dataType.typeID) {
-        case INT64:
-        case DOUBLE:
-        case BOOL:
-        case DATE:
-        case TIMESTAMP:
-        case INTERVAL:
-            return make_unique<Lists>(structureIDAndFName, dataType,
-                Types::getDataTypeSize(dataType), adjListsHeaders, bufferManager, isInMemory, wal,
-                listsUpdateStore);
-        case STRING:
-            return make_unique<StringPropertyLists>(structureIDAndFName, adjListsHeaders,
-                bufferManager, isInMemory, wal, listsUpdateStore);
-        case LIST:
-            return make_unique<ListPropertyLists>(structureIDAndFName, dataType, adjListsHeaders,
-                bufferManager, isInMemory, wal, listsUpdateStore);
+        case common::INT64:
+        case common::DOUBLE:
+        case common::BOOL:
+        case common::DATE:
+        case common::TIMESTAMP:
+        case common::INTERVAL:
+            return std::make_unique<Lists>(structureIDAndFName, dataType,
+                common::Types::getDataTypeSize(dataType), adjListsHeaders, bufferManager, wal,
+                listsUpdatesStore);
+        case common::STRING:
+            return std::make_unique<StringPropertyLists>(
+                structureIDAndFName, adjListsHeaders, bufferManager, wal, listsUpdatesStore);
+        case common::LIST:
+            return std::make_unique<ListPropertyLists>(structureIDAndFName, dataType,
+                adjListsHeaders, bufferManager, wal, listsUpdatesStore);
+        case common::INTERNAL_ID:
+            return std::make_unique<RelIDList>(
+                structureIDAndFName, adjListsHeaders, bufferManager, wal, listsUpdatesStore);
         default:
-            throw StorageException("Invalid type for property list creation.");
+            throw common::StorageException("Invalid type for property list creation.");
         }
     }
 };

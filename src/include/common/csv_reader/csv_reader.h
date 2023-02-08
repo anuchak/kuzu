@@ -3,8 +3,8 @@
 #include <fstream>
 
 #include "common/configs.h"
-#include "common/types/literal.h"
 #include "common/types/types_include.h"
+#include "common/types/value.h"
 
 namespace spdlog {
 class logger;
@@ -15,38 +15,47 @@ namespace common {
 
 struct CSVReaderConfig {
     CSVReaderConfig()
-        : escapeChar{CopyCSVConfig::DEFAULT_ESCAPE_CHAR},
-          tokenSeparator{CopyCSVConfig::DEFAULT_TOKEN_SEPARATOR},
-          quoteChar{CopyCSVConfig::DEFAULT_QUOTE_CHAR},
-          listBeginChar{CopyCSVConfig::DEFAULT_LIST_BEGIN_CHAR},
-          listEndChar{CopyCSVConfig::DEFAULT_LIST_END_CHAR},
-          hasHeader{CopyCSVConfig::DEFAULT_HAS_HEADER} {}
+        : escapeChar{CopyConfig::DEFAULT_CSV_ESCAPE_CHAR},
+          delimiter{CopyConfig::DEFAULT_CSV_DELIMITER},
+          quoteChar{CopyConfig::DEFAULT_CSV_QUOTE_CHAR},
+          listBeginChar{CopyConfig::DEFAULT_CSV_LIST_BEGIN_CHAR},
+          listEndChar{CopyConfig::DEFAULT_CSV_LIST_END_CHAR},
+          hasHeader{CopyConfig::DEFAULT_CSV_HAS_HEADER} {}
 
     char escapeChar;
-    char tokenSeparator;
+    char delimiter;
     char quoteChar;
     char listBeginChar;
     char listEndChar;
     bool hasHeader;
 };
 
-struct CSVDescription {
-    CSVDescription(const string filePath, const CSVReaderConfig csvReaderConfig)
-        : filePath{move(filePath)}, csvReaderConfig{move(csvReaderConfig)} {}
-    const string filePath;
-    const CSVReaderConfig csvReaderConfig;
+struct CopyDescription {
+    CopyDescription(const std::string& filePath, CSVReaderConfig csvReaderConfig);
+
+    CopyDescription(const CopyDescription& copyDescription);
+
+    enum class FileType { CSV, ARROW, PARQUET };
+
+    static std::string getFileTypeName(FileType fileType);
+
+    static std::string getFileTypeSuffix(FileType fileType);
+
+    void setFileType(std::string const& fileName);
+
+    const std::string filePath;
+    std::unique_ptr<CSVReaderConfig> csvReaderConfig;
+    FileType fileType;
 };
 
-// TODO(Guodong): we should add a csv reader test to test edge cases and error messages.
-// Iterator-like interface to read one block in a CSV file line-by-line while parsing into primitive
-// dataTypes.
+// TODO(Guodong): Remove this class and file and related code.
 class CSVReader {
 
 public:
     // Initializes to read a block in file.
-    CSVReader(const string& fname, const CSVReaderConfig& csvReaderConfig, uint64_t blockId);
+    CSVReader(const std::string& fname, const CSVReaderConfig& csvReaderConfig, uint64_t blockId);
     // Initializes to read the complete file.
-    CSVReader(const string& fname, const CSVReaderConfig& csvReaderConfig);
+    CSVReader(const std::string& fname, const CSVReaderConfig& csvReaderConfig);
     // Initializes to read a part of a line.
     CSVReader(
         char* line, uint64_t lineLen, int64_t linePtrStart, const CSVReaderConfig& csvReaderConfig);
@@ -75,16 +84,16 @@ public:
     date_t getDate();
     timestamp_t getTimestamp();
     interval_t getInterval();
-    Literal getList(const DataType& dataType);
+    std::unique_ptr<Value> getList(const DataType& dataType);
 
 private:
-    void openFile(const string& fName);
+    void openFile(const std::string& fName);
     void setNextTokenIsProcessed();
 
 private:
     FILE* fd;
     const CSVReaderConfig& config;
-    shared_ptr<spdlog::logger> logger;
+    std::shared_ptr<spdlog::logger> logger;
     bool nextLineIsNotProcessed, isEndOfBlock, nextTokenIsNotProcessed;
     char* line;
     size_t lineCapacity, lineLen;

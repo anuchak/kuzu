@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="/logo/kuzu-logo.png" height="100">
+  <img src="https://kuzudb.com/kuzu-logo.png" height="100">
 </div>
 
 # Kùzu
@@ -17,11 +17,16 @@ Kùzu is an in-process property graph database management system (GDBMS) built f
 Kùzu is being actively developed at University of Waterloo as a feature-rich and usable GDBMS. Kùzu is available under a permissible license. So try it out and help us make it better! We welcome your feedback and feature requests.
 
 ## Build
-To build from source code, Kùzu requires Cmake(>=3.11), Python 3, and a compiler that supports `C++20`.  
-- Perform a full clean build
-  - `make clean && make`
-- Run tests (optional)
+To build from source code, Kùzu requires Cmake(>=3.11), Python 3, and a compiler that supports `C++20`.
+- Perform a full clean build without tests and benchmark:
+  - `make clean && make release`
+- Perform a full clean build with tests and benchmark (optional):
+  - `make clean && make all`
+- Run tests (optional):
   - `make test`
+
+For development, use `make debug` to build a non-optimized debug version.
+To build in parallel, pass `NUM_THREADS` as parameter, e.g., `make NUM_THREADS=8`.
 
 After build, our CLI binary `kuzu_shell` is available under the directory `build/release/tools/shell/`.
 
@@ -118,4 +123,4 @@ You can use the following BibTeX citation:
 ```
 
 ## Contact Us
-You can contact us at [contact@kuzudb.com](mailto:contact@kuzudb.com).
+You can contact us at [contact@kuzudb.com](mailto:contact@kuzudb.com) or [join our Slack workspace](https://join.slack.com/t/kuzudb/shared_invite/zt-1n67h736q-E3AFGSI4w~ljlFMYr3_Sjg).

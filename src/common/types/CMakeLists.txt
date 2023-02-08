@@ -5,10 +5,9 @@ add_library(kuzu_common_types
         interval_t.cpp
         ku_list.cpp
         ku_string.cpp
-        literal.cpp
+        value.cpp
         timestamp_t.cpp
-        types.cpp
-        value.cpp)
+        types.cpp)
 
 set(ALL_OBJECT_FILES
         ${ALL_OBJECT_FILES} $<TARGET_OBJECTS:kuzu_common_types>

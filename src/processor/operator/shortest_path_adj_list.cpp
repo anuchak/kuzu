@@ -9,11 +9,11 @@ namespace processor {
 
 void ShortestPathAdjList::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
     BaseShortestPath::initLocalStateInternal(resultSet, context);
-    adjNodeIDVector = make_shared<ValueVector>(NODE_ID, context->memoryManager);
-    adjNodeIDVector->state = make_shared<DataChunkState>();
-    relIDVector = make_shared<ValueVector>(INT64, context->memoryManager);
+    adjNodeIDVector = make_shared<common::ValueVector>(common::INTERNAL_ID, context->memoryManager);
+    adjNodeIDVector->state = make_shared<common::DataChunkState>();
+    relIDVector = make_shared<common::ValueVector>(common::INT64, context->memoryManager);
     relIDVector->state = adjNodeIDVector->state;
-    relListHandles = make_shared<ListHandle>(*listSyncState);
+    listHandles = make_shared<storage::ListHandle>(*listSyncState);
 }
 
 bool ShortestPathAdjList::getNextTuplesInternal() {
@@ -34,9 +34,9 @@ bool ShortestPathAdjList::getNextTuplesInternal() {
 
 bool ShortestPathAdjList::computeShortestPath(uint64_t currIdx, uint64_t destIdx) {
     bfsVisitedNodesMap = map<uint64_t, unique_ptr<NodeState>>();
-    currFrontier = make_shared<vector<node_offset_t>>();
-    nextFrontier = make_shared<vector<node_offset_t>>();
-    listHandle->reset();
+    currFrontier = make_shared<vector<common::offset_t>>();
+    nextFrontier = make_shared<vector<common::offset_t>>();
+    listHandle->resetSyncState();
 
     uint64_t currLevel = 1, destNodeOffset;
     auto srcNodeOffset = srcValueVector->readNodeOffset(currIdx);
@@ -56,18 +56,18 @@ bool ShortestPathAdjList::computeShortestPath(uint64_t currIdx, uint64_t destIdx
     return false;
 }
 
-bool ShortestPathAdjList::extendToNextFrontier(node_offset_t destNodeOffset) {
+bool ShortestPathAdjList::extendToNextFrontier(common::offset_t destNodeOffset) {
     uint64_t nodeOffset;
     for (auto i = 0u; i < currFrontier->size(); i++) {
         nodeOffset = currFrontier->operator[](i);
         lists->initListReadingState(nodeOffset, *listHandle, transaction->getType());
-        lists->readValues(adjNodeIDVector, *listHandle);
-        relPropertyLists->readValues(relIDVector, *relListHandles);
+        lists->readValues(transaction, adjNodeIDVector, *listHandle);
+        relPropertyLists->readValues(transaction, relIDVector, *listHandles);
         if (addToNextFrontier(nodeOffset, destNodeOffset)) {
             return true;
         }
         while (getNextBatchOfChildNodes()) {
-            relPropertyLists->readValues(relIDVector, *relListHandles);
+            relPropertyLists->readValues(transaction, relIDVector, *listHandles);
             if (addToNextFrontier(nodeOffset, destNodeOffset)) {
                 return true;
             }
@@ -77,8 +77,8 @@ bool ShortestPathAdjList::extendToNextFrontier(node_offset_t destNodeOffset) {
 }
 
 bool ShortestPathAdjList::addToNextFrontier(
-    node_offset_t parentNodeOffset, node_offset_t destNodeOffset) {
-    node_offset_t nodeOffset;
+    common::offset_t parentNodeOffset, common::offset_t destNodeOffset) {
+    common::offset_t nodeOffset;
     uint64_t relOffset;
     for (auto pos = 0u; pos < adjNodeIDVector->state->selVector->selectedSize; pos++) {
         auto offsetPos = adjNodeIDVector->state->selVector->selectedPositions[pos];
@@ -98,8 +98,8 @@ bool ShortestPathAdjList::addToNextFrontier(
 }
 
 bool ShortestPathAdjList::getNextBatchOfChildNodes() {
-    if (listHandle->listSyncState.hasMoreToRead()) {
-        lists->readValues(adjNodeIDVector, *listHandle);
+    if (listHandle->hasMoreAndSwitchSourceIfNecessary()) {
+        lists->readValues(transaction, adjNodeIDVector, *listHandle);
         return true;
     }
     return false;
@@ -107,10 +107,10 @@ bool ShortestPathAdjList::getNextBatchOfChildNodes() {
 
 void ShortestPathAdjList::resetFrontier() {
     currFrontier = move(nextFrontier);
-    nextFrontier = make_shared<vector<node_offset_t>>();
+    nextFrontier = make_shared<vector<common::offset_t>>();
 }
 
-void ShortestPathAdjList::printShortestPath(node_offset_t destNodeOffset) {
+void ShortestPathAdjList::printShortestPath(common::offset_t destNodeOffset) {
     do {
         cout << destNodeOffset << " ";
         if (bfsVisitedNodesMap[destNodeOffset]->relParentID != INT64_MAX) {

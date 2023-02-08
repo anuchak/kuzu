@@ -3,32 +3,39 @@
 #include "args.hxx"
 #include "embedded_shell.h"
 
-using namespace std;
 using namespace kuzu::main;
 
 int main(int argc, char* argv[]) {
     args::ArgumentParser parser("KuzuDB Shell");
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
-    args::ValueFlag<string> inputDirFlag(
+    args::ValueFlag<std::string> inputDirFlag(
         parser, "", "Database path.", {'i', "inputDir"}, args::Options::Required);
     args::ValueFlag<uint64_t> bpSizeInMBFlag(parser, "",
         "Size of buffer pool for default and large page sizes in megabytes", {'d', "defaultBPSize"},
-        1024);
-    args::Flag inMemoryFlag(parser, "", "Runs the system in in-memory mode", {'m', "in-memory"});
+        -1u);
     try {
         parser.ParseCLI(argc, argv);
-    } catch (exception& e) {
-        cerr << e.what() << std::endl;
-        cerr << parser;
+    } catch (std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
         return 1;
     }
     auto databasePath = args::get(inputDirFlag);
+    std::cout << "Opened the database at path: " << databasePath << std::endl;
+    std::cout << "Enter \":help\" for usage hints." << std::endl;
     uint64_t bpSizeInMB = args::get(bpSizeInMBFlag);
-    cout << "Opened the database at path: " << databasePath << endl;
-    cout << "Enter \":help\" for usage hints." << endl;
-    SystemConfig systemConfig(bpSizeInMB << 20);
-    DatabaseConfig databaseConfig(databasePath, inMemoryFlag);
-    auto shell = EmbeddedShell(databaseConfig, systemConfig);
-    shell.run();
+    uint64_t bpSizeInBytes = -1u;
+    if (bpSizeInMB != -1u) {
+        bpSizeInBytes = bpSizeInMB << 20;
+    }
+    SystemConfig systemConfig(bpSizeInBytes);
+    DatabaseConfig databaseConfig(databasePath);
+    try {
+        auto shell = EmbeddedShell(databaseConfig, systemConfig);
+        shell.run();
+    } catch (std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
     return 0;
 }

@@ -12,37 +12,37 @@ namespace planner {
 class LogicalShortestPath : public LogicalOperator {
 
 public:
-    LogicalShortestPath(shared_ptr<NodeExpression> sourceNode, shared_ptr<NodeExpression> destNode,
-        shared_ptr<RelExpression> rel, shared_ptr<Expression> relProperty,
-        shared_ptr<LogicalOperator> child)
+    LogicalShortestPath(std::shared_ptr<NodeExpression> sourceNode, std::shared_ptr<NodeExpression> destNode,
+        std::shared_ptr<RelExpression> rel, std::shared_ptr<Expression> relProperty,
+        std::shared_ptr<LogicalOperator> child)
         : LogicalOperator{LogicalOperatorType::SHORTEST_PATH, std::move(child)},
           sourceNode{std::move(sourceNode)}, destNode{std::move(destNode)}, rel{std::move(rel)},
           relProperty{move(relProperty)} {}
 
     void computeSchema() override { copyChildSchema(0); }
 
-    shared_ptr<NodeExpression> getSrcNodeExpression() { return sourceNode; }
+    std::shared_ptr<NodeExpression> getSrcNodeExpression() { return sourceNode; }
 
-    shared_ptr<NodeExpression> getDestNodeExpression() { return destNode; }
+    std::shared_ptr<NodeExpression> getDestNodeExpression() { return destNode; }
 
-    shared_ptr<RelExpression> getRelExpression() { return rel; }
+    std::shared_ptr<RelExpression> getRelExpression() { return rel; }
 
-    shared_ptr<Expression> getRelPropertyExpression() { return relProperty; }
+    std::shared_ptr<Expression> getRelPropertyExpression() { return relProperty; }
 
-    string getExpressionsForPrinting() const override {
+    std::string getExpressionsForPrinting() const override {
         return sourceNode->getRawName() + ("->") + destNode->getRawName();
     }
 
-    unique_ptr<LogicalOperator> copy() override {
+    std::unique_ptr<LogicalOperator> copy() override {
         return make_unique<LogicalShortestPath>(
             sourceNode, destNode, rel, relProperty, children[0]->copy());
     }
 
 private:
-    shared_ptr<NodeExpression> sourceNode;
-    shared_ptr<NodeExpression> destNode;
-    shared_ptr<RelExpression> rel;
-    shared_ptr<Expression> relProperty;
+    std::shared_ptr<NodeExpression> sourceNode;
+    std::shared_ptr<NodeExpression> destNode;
+    std::shared_ptr<RelExpression> rel;
+    std::shared_ptr<Expression> relProperty;
 };
 
 } // namespace planner

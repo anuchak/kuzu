@@ -1,13 +1,20 @@
 #include "binder/expression/expression.h"
 
+#include "binder/expression/property_expression.h"
+
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace binder {
 
-unordered_set<string> Expression::getDependentVariableNames() {
-    unordered_set<string> result;
+std::unordered_set<std::string> Expression::getDependentVariableNames() {
+    std::unordered_set<std::string> result;
     if (expressionType == VARIABLE) {
         result.insert(getUniqueName());
         return result;
+    }
+    if (expressionType == common::PROPERTY) {
+        result.insert(((PropertyExpression*)this)->getVariableName());
     }
     for (auto& child : getChildren()) {
         for (auto& variableName : child->getDependentVariableNames()) {
@@ -91,9 +98,9 @@ uint32_t ExpressionUtil::find(Expression* target, expression_vector expressions)
     return UINT32_MAX;
 }
 
-string ExpressionUtil::toString(const expression_vector& expressions) {
+std::string ExpressionUtil::toString(const expression_vector& expressions) {
     if (expressions.empty()) {
-        return string{};
+        return std::string{};
     }
     auto result = expressions[0]->getRawName();
     for (auto i = 1u; i < expressions.size(); ++i) {

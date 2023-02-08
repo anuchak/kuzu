@@ -12,17 +12,21 @@ public:
 
     ~PyConnection() = default;
 
-    unique_ptr<PyQueryResult> execute(const string& query, py::list params);
+    std::unique_ptr<PyQueryResult> execute(const std::string& query, py::list params);
 
     void setMaxNumThreadForExec(uint64_t numThreads);
 
-private:
-    unordered_map<string, shared_ptr<Literal>> transformPythonParameters(py::list params);
-
-    pair<string, shared_ptr<Literal>> transformPythonParameter(py::tuple param);
-
-    Literal transformPythonValue(py::handle val);
+    py::str getNodePropertyNames(const std::string& tableName);
 
 private:
-    unique_ptr<Connection> conn;
+    std::unordered_map<std::string, std::shared_ptr<kuzu::common::Value>> transformPythonParameters(
+        py::list params);
+
+    std::pair<std::string, std::shared_ptr<kuzu::common::Value>> transformPythonParameter(
+        py::tuple param);
+
+    kuzu::common::Value transformPythonValue(py::handle val);
+
+private:
+    std::unique_ptr<Connection> conn;
 };

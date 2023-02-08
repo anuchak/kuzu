@@ -8,21 +8,25 @@
 #include "processor/operator/shortest_path_adj_col.h"
 #include "processor/operator/shortest_path_adj_list.h"
 
+using namespace kuzu::common;
 using namespace kuzu::planner;
 
 namespace kuzu {
 namespace processor {
 
-unique_ptr<PhysicalPlan> PlanMapper::mapLogicalPlanToPhysical(LogicalPlan* logicalPlan) {
-    auto prevOperator = mapLogicalOperatorToPhysical(logicalPlan->getLastOperator());
-    auto lastOperator = appendResultCollector(
-        logicalPlan->getExpressionsToCollect(), *logicalPlan->getSchema(), move(prevOperator));
-    return make_unique<PhysicalPlan>(move(lastOperator), logicalPlan->isReadOnly());
+std::unique_ptr<PhysicalPlan> PlanMapper::mapLogicalPlanToPhysical(LogicalPlan* logicalPlan,
+    const binder::expression_vector& expressionsToCollect, common::StatementType statementType) {
+    auto lastOperator = mapLogicalOperatorToPhysical(logicalPlan->getLastOperator());
+    if (!StatementTypeUtils::isCopyCSV(statementType)) {
+        lastOperator = appendResultCollector(
+            expressionsToCollect, *logicalPlan->getSchema(), std::move(lastOperator));
+    }
+    return make_unique<PhysicalPlan>(std::move(lastOperator));
 }
 
-unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
-    const shared_ptr<LogicalOperator>& logicalOperator) {
-    unique_ptr<PhysicalOperator> physicalOperator;
+std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
+    const std::shared_ptr<LogicalOperator>& logicalOperator) {
+    std::unique_ptr<PhysicalOperator> physicalOperator;
     auto operatorType = logicalOperator->getOperatorType();
     switch (operatorType) {
     case LogicalOperatorType::SCAN_NODE: {
@@ -116,13 +120,25 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
         physicalOperator = mapLogicalCreateRelTableToPhysical(logicalOperator.get());
     } break;
     case LogicalOperatorType::COPY_CSV: {
-        physicalOperator = mapLogicalCopyCSVToPhysical(logicalOperator.get());
+        physicalOperator = mapLogicalCopyToPhysical(logicalOperator.get());
     } break;
     case LogicalOperatorType::DROP_TABLE: {
         physicalOperator = mapLogicalDropTableToPhysical(logicalOperator.get());
     } break;
     case LogicalOperatorType::SHORTEST_PATH: {
         physicalOperator = mapLogicalShortestPathToPhysical(logicalOperator.get());
+    }
+    case LogicalOperatorType::RENAME_TABLE: {
+        physicalOperator = mapLogicalRenameTableToPhysical(logicalOperator.get());
+    } break;
+    case LogicalOperatorType::ADD_PROPERTY: {
+        physicalOperator = mapLogicalAddPropertyToPhysical(logicalOperator.get());
+    } break;
+    case LogicalOperatorType::DROP_PROPERTY: {
+        physicalOperator = mapLogicalDropPropertyToPhysical(logicalOperator.get());
+    } break;
+    case LogicalOperatorType::RENAME_PROPERTY: {
+        physicalOperator = mapLogicalRenamePropertyToPhysical(logicalOperator.get());
     } break;
     default:
         assert(false);
@@ -130,7 +146,7 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     return physicalOperator;
 }
 
-unique_ptr<PhysicalOperator> PlanMapper::mapLogicalShortestPathToPhysical(
+/*std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalShortestPathToPhysical(
     LogicalOperator* logicalOperator) {
     auto* logicalShortestPath = (LogicalShortestPath*)logicalOperator;
     auto prevOperator = mapLogicalOperatorToPhysical(logicalOperator->getChild(0));
@@ -145,7 +161,7 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalShortestPathToPhysical(
         logicalShortestPath->getSchema()->getExpressionPos(*destNode->getInternalIDProperty()));
     auto& relStore = storageManager.getRelsStore();
     if (relStore.hasAdjColumn(direction, sourceNode->getSingleTableID(), rel->getSingleTableID())) {
-        Column* column = relStore.getAdjColumn(
+        storage::Column* column = relStore.getAdjColumn(
             direction, sourceNode->getSingleTableID(), rel->getSingleTableID());
         return make_unique<ShortestPathAdjCol>(srcDataPos, destDataPos, column,
             rel->getLowerBound(), rel->getUpperBound(), move(prevOperator), getOperatorID(),
@@ -157,19 +173,19 @@ unique_ptr<PhysicalOperator> PlanMapper::mapLogicalShortestPathToPhysical(
             (PropertyExpression*)logicalShortestPath->getRelPropertyExpression().get();
         auto relIDLists = relStore.getRelPropertyLists(direction, sourceNode->getSingleTableID(),
             rel->getSingleTableID(), relProperties->getPropertyID(rel->getSingleTableID()));
-        AdjLists* adjLists = relStore.getAdjLists(
+        storage::AdjLists* adjLists = relStore.getAdjLists(
             direction, sourceNode->getSingleTableID(), rel->getSingleTableID());
         return make_unique<ShortestPathAdjList>(srcDataPos, destDataPos, adjLists, relIDLists,
             rel->getLowerBound(), rel->getUpperBound(), move(prevOperator), getOperatorID(),
             logicalShortestPath->getExpressionsForPrinting());
     }
-}
+}*/
 
-unique_ptr<ResultCollector> PlanMapper::appendResultCollector(
-    const expression_vector& expressionsToCollect, const Schema& schema,
-    unique_ptr<PhysicalOperator> prevOperator) {
-    vector<pair<DataPos, DataType>> payloadsPosAndType;
-    vector<bool> isPayloadFlat;
+std::unique_ptr<ResultCollector> PlanMapper::appendResultCollector(
+    const binder::expression_vector& expressionsToCollect, const Schema& schema,
+    std::unique_ptr<PhysicalOperator> prevOperator) {
+    std::vector<std::pair<DataPos, DataType>> payloadsPosAndType;
+    std::vector<bool> isPayloadFlat;
     for (auto& expression : expressionsToCollect) {
         auto expressionName = expression->getUniqueName();
         auto dataPos = DataPos(schema.getExpressionPos(*expression));
@@ -177,10 +193,10 @@ unique_ptr<ResultCollector> PlanMapper::appendResultCollector(
         payloadsPosAndType.emplace_back(dataPos, expression->dataType);
         isPayloadFlat.push_back(isFlat);
     }
-    auto sharedState = make_shared<FTableSharedState>();
-    return make_unique<ResultCollector>(make_unique<ResultSetDescriptor>(schema),
+    auto sharedState = std::make_shared<FTableSharedState>();
+    return make_unique<ResultCollector>(std::make_unique<ResultSetDescriptor>(schema),
         payloadsPosAndType, isPayloadFlat, sharedState, std::move(prevOperator), getOperatorID(),
-        ExpressionUtil::toString(expressionsToCollect));
+        binder::ExpressionUtil::toString(expressionsToCollect));
 }
 
 } // namespace processor

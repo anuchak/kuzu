@@ -17,14 +17,14 @@ namespace processor {
 
 class ShortestPathAdjList : public BaseShortestPath {
 public:
-    ShortestPathAdjList(const DataPos& srcDataPos, const DataPos& destDataPos, AdjLists* adjList,
-        Lists* relPropertyLists, uint64_t lowerBound, uint64_t upperBound,
-        unique_ptr<PhysicalOperator> child, uint32_t id, const string& paramsString)
+    ShortestPathAdjList(const DataPos& srcDataPos, const DataPos& destDataPos, storage::AdjLists* adjList,
+        storage::Lists* relPropertyLists, uint64_t lowerBound, uint64_t upperBound,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : BaseShortestPath{PhysicalOperatorType::SHORTEST_PATH_ADJ_LIST, srcDataPos, destDataPos,
               lowerBound, upperBound, move(child), id, paramsString},
-          listSyncState{make_shared<ListSyncState>()}, listHandle{make_shared<ListHandle>(
+          listSyncState{std::make_shared<storage::ListSyncState>()}, listHandle{std::make_shared<storage::ListHandle>(
                                                            *listSyncState)},
-          lists{adjList}, relPropertyLists{move(relPropertyLists)} {}
+          lists{adjList}, relPropertyLists{std::move(relPropertyLists)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
@@ -32,29 +32,29 @@ public:
 
     bool computeShortestPath(uint64_t currIdx, uint64_t destIdx);
 
-    bool addToNextFrontier(node_offset_t parentNodeOffset, node_offset_t destNodeOffset);
+    bool addToNextFrontier(common::offset_t parentNodeOffset, common::offset_t destNodeOffset);
 
     bool getNextBatchOfChildNodes();
 
-    bool extendToNextFrontier(node_offset_t destNodeOffset);
+    bool extendToNextFrontier(common::offset_t destNodeOffset);
 
-    void printShortestPath(node_offset_t destNodeOffset);
+    void printShortestPath(common::offset_t destNodeOffset);
 
     void resetFrontier();
 
-    inline unique_ptr<PhysicalOperator> clone() override {
+    inline std::unique_ptr<PhysicalOperator> clone() override {
         return make_unique<ShortestPathAdjList>(srcDataPos, destDataPos, lists, relPropertyLists,
             lowerBound, upperBound, children[0]->clone(), id, paramsString);
     }
 
 private:
-    shared_ptr<ValueVector> adjNodeIDVector;
-    shared_ptr<ValueVector> relIDVector;
-    shared_ptr<ListSyncState> listSyncState;
-    shared_ptr<ListHandle> listHandle;
-    AdjLists* lists;
-    Lists* relPropertyLists;
-    shared_ptr<ListHandle> relListHandles;
+    std::shared_ptr<common::ValueVector> adjNodeIDVector;
+    std::shared_ptr<common::ValueVector> relIDVector;
+    std::shared_ptr<storage::ListSyncState> listSyncState;
+    std::shared_ptr<storage::ListHandle> listHandle;
+    storage::AdjLists* lists;
+    storage::Lists* relPropertyLists;
+    std::shared_ptr<storage::ListHandle> listHandles;
 };
 
 } // namespace processor

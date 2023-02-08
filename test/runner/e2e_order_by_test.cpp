@@ -1,11 +1,11 @@
-#include "test_helper/test_helper.h"
+#include "graph_test/graph_test.h"
 
 using namespace kuzu::testing;
 
 class OrderByTests : public DBTest {
 
 public:
-    string getInputCSVDir() override {
+    std::string getInputDir() override {
         return TestHelper::appendKuzuRootPath("dataset/order-by-tests/");
     }
 };

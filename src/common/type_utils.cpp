@@ -4,7 +4,6 @@
 #include <climits>
 
 #include "common/exception.h"
-#include "common/types/value.h"
 #include "common/utils.h"
 
 namespace kuzu {
@@ -23,7 +22,7 @@ int64_t TypeUtils::convertToInt64(const char* data) {
 }
 
 uint32_t TypeUtils::convertToUint32(const char* data) {
-    istringstream iss(data);
+    std::istringstream iss(data);
     uint32_t val;
     if (!(iss >> val)) {
         throw ConversionException(
@@ -57,7 +56,8 @@ bool TypeUtils::convertToBoolean(const char* data) {
         ". Input is not equal to True or False (in a case-insensitive manner)");
 }
 
-string TypeUtils::elementToString(const DataType& dataType, uint8_t* overflowPtr, uint64_t pos) {
+std::string TypeUtils::elementToString(
+    const DataType& dataType, uint8_t* overflowPtr, uint64_t pos) {
     switch (dataType.typeID) {
     case BOOL:
         return TypeUtils::toString(((bool*)overflowPtr)[pos]);
@@ -81,8 +81,8 @@ string TypeUtils::elementToString(const DataType& dataType, uint8_t* overflowPtr
     }
 }
 
-string TypeUtils::toString(const ku_list_t& val, const DataType& dataType) {
-    string result = "[";
+std::string TypeUtils::toString(const ku_list_t& val, const DataType& dataType) {
+    std::string result = "[";
     for (auto i = 0u; i < val.size - 1; ++i) {
         result +=
             elementToString(*dataType.childType, reinterpret_cast<uint8_t*>(val.overflowPtr), i) +
@@ -94,48 +94,9 @@ string TypeUtils::toString(const ku_list_t& val, const DataType& dataType) {
     return result;
 }
 
-string TypeUtils::toString(const Literal& literal) {
-    if (literal.isNull()) {
-        return "NULL";
-    }
-    switch (literal.dataType.typeID) {
-    case BOOL:
-        return TypeUtils::toString(literal.val.booleanVal);
-    case INT64:
-        return TypeUtils::toString(literal.val.int64Val);
-    case DOUBLE:
-        return TypeUtils::toString(literal.val.doubleVal);
-    case NODE_ID:
-        return TypeUtils::toString(literal.val.nodeID);
-    case DATE:
-        return TypeUtils::toString(literal.val.dateVal);
-    case TIMESTAMP:
-        return TypeUtils::toString(literal.val.timestampVal);
-    case INTERVAL:
-        return TypeUtils::toString(literal.val.intervalVal);
-    case STRING:
-        return literal.strVal;
-    case LIST: {
-        if (literal.listVal.empty()) {
-            return "[]";
-        }
-        string result = "[";
-        for (auto i = 0u; i < literal.listVal.size() - 1; i++) {
-            result += toString(literal.listVal[i]) + ",";
-        }
-        result += toString(literal.listVal[literal.listVal.size() - 1]);
-        result += "]";
-        return result;
-    }
-    default:
-        throw RuntimeException("Invalid data type " + Types::dataTypeToString(literal.dataType) +
-                               " for TypeUtils::toString.");
-    }
-}
-
-string TypeUtils::prefixConversionExceptionMessage(const char* data, DataTypeID dataTypeID) {
-    return "Cannot convert string " + string(data) + " to " + Types::dataTypeToString(dataTypeID) +
-           ".";
+std::string TypeUtils::prefixConversionExceptionMessage(const char* data, DataTypeID dataTypeID) {
+    return "Cannot convert string " + std::string(data) + " to " +
+           Types::dataTypeToString(dataTypeID) + ".";
 }
 
 void TypeUtils::throwConversionExceptionIfNoOrNotEveryCharacterIsConsumed(

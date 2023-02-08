@@ -4,7 +4,6 @@
 
 #include "common/exception.h"
 #include "common/types/types_include.h"
-#include "common/types/value.h"
 
 namespace kuzu {
 namespace common {
@@ -33,19 +32,19 @@ bool DataType::operator==(const DataType& other) const {
     return true;
 }
 
-unique_ptr<DataType> DataType::copy() {
+std::unique_ptr<DataType> DataType::copy() {
     if (childType) {
         return make_unique<DataType>(typeID, childType->copy());
     } else {
-        return make_unique<DataType>(typeID);
+        return std::make_unique<DataType>(typeID);
     }
 }
 
-DataType Types::dataTypeFromString(const string& dataTypeString) {
+DataType Types::dataTypeFromString(const std::string& dataTypeString) {
     DataType dataType;
     if (dataTypeString.ends_with("[]")) {
         dataType.typeID = LIST;
-        dataType.childType = make_unique<DataType>(
+        dataType.childType = std::make_unique<DataType>(
             dataTypeFromString(dataTypeString.substr(0, dataTypeString.size() - 2)));
         return dataType;
     } else {
@@ -55,8 +54,8 @@ DataType Types::dataTypeFromString(const string& dataTypeString) {
 }
 
 DataTypeID Types::dataTypeIDFromString(const std::string& dataTypeIDString) {
-    if ("NODE_ID" == dataTypeIDString) {
-        return NODE_ID;
+    if ("INTERNAL_ID" == dataTypeIDString) {
+        return INTERNAL_ID;
     } else if ("INT64" == dataTypeIDString) {
         return INT64;
     } else if ("DOUBLE" == dataTypeIDString) {
@@ -76,7 +75,7 @@ DataTypeID Types::dataTypeIDFromString(const std::string& dataTypeIDString) {
     }
 }
 
-string Types::dataTypeToString(const DataType& dataType) {
+std::string Types::dataTypeToString(const DataType& dataType) {
     if (dataType.typeID == LIST) {
         assert(dataType.childType);
         auto result = dataTypeToString(*dataType.childType) + "[]";
@@ -86,7 +85,7 @@ string Types::dataTypeToString(const DataType& dataType) {
     }
 }
 
-string Types::dataTypeToString(DataTypeID dataTypeID) {
+std::string Types::dataTypeToString(DataTypeID dataTypeID) {
     switch (dataTypeID) {
     case ANY:
         return "ANY";
@@ -94,8 +93,8 @@ string Types::dataTypeToString(DataTypeID dataTypeID) {
         return "NODE";
     case REL:
         return "REL";
-    case NODE_ID:
-        return "NODE_ID";
+    case INTERNAL_ID:
+        return "INTERNAL_ID";
     case BOOL:
         return "BOOL";
     case INT64:
@@ -117,19 +116,19 @@ string Types::dataTypeToString(DataTypeID dataTypeID) {
     }
 }
 
-string Types::dataTypesToString(const vector<DataType>& dataTypes) {
-    vector<DataTypeID> dataTypeIDs;
+std::string Types::dataTypesToString(const std::vector<DataType>& dataTypes) {
+    std::vector<DataTypeID> dataTypeIDs;
     for (auto& dataType : dataTypes) {
         dataTypeIDs.push_back(dataType.typeID);
     }
     return dataTypesToString(dataTypeIDs);
 }
 
-string Types::dataTypesToString(const vector<DataTypeID>& dataTypeIDs) {
+std::string Types::dataTypesToString(const std::vector<DataTypeID>& dataTypeIDs) {
     if (dataTypeIDs.empty()) {
-        return string("");
+        return {""};
     }
-    string result = "(" + Types::dataTypeToString(dataTypeIDs[0]);
+    std::string result = "(" + Types::dataTypeToString(dataTypeIDs[0]);
     for (auto i = 1u; i < dataTypeIDs.size(); ++i) {
         result += "," + Types::dataTypeToString(dataTypeIDs[i]);
     }
@@ -139,8 +138,8 @@ string Types::dataTypesToString(const vector<DataTypeID>& dataTypeIDs) {
 
 uint32_t Types::getDataTypeSize(DataTypeID dataTypeID) {
     switch (dataTypeID) {
-    case NODE_ID:
-        return sizeof(nodeID_t);
+    case INTERNAL_ID:
+        return sizeof(internalID_t);
     case BOOL:
         return sizeof(uint8_t);
     case INT64:
@@ -167,7 +166,7 @@ RelDirection operator!(RelDirection& direction) {
     return (FWD == direction) ? BWD : FWD;
 }
 
-string getRelDirectionAsString(RelDirection direction) {
+std::string getRelDirectionAsString(RelDirection direction) {
     return (FWD == direction) ? "forward" : "backward";
 }
 

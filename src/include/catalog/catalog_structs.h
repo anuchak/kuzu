@@ -196,5 +196,14 @@ public:
     vector<pair<table_id_t, table_id_t>> srcDstTableIDs;
 };
 
+struct Model {
+public:
+    string path;
+    string name;
+    NodeTableSchema &nodeTable;
+    RelTableSchema &relTable;
+    Model(string path, string name, NodeTableSchema &nodeTable, RelTableSchema &relTable) :
+        path{std::move(path)}, name{std::move(name)}, nodeTable{nodeTable}, relTable{relTable} {};
+};
 } // namespace catalog
 } // namespace kuzu

@@ -1,6 +1,7 @@
 #include <set>
 
 #include "binder/binder.h"
+#include "binder/expression/literal_expression.h"
 
 using namespace kuzu::common;
 using namespace kuzu::parser;
@@ -39,6 +40,19 @@ std::unique_ptr<QueryGraph> Binder::bindPatternElement(
         bindQueryRel(
             *patternElementChain->getRelPattern(), leftNode, rightNode, *queryGraph, collection);
         leftNode = rightNode;
+    }
+    if(!patternElement.getPathVariable().empty()) {
+        expression_vector pathChildExpressions;
+        for(int i = 0; i < queryGraph->getNumQueryNodes(); i++) {
+            pathChildExpressions.push_back(queryGraph->getQueryNode(i));
+        }
+        for(int i = 0; i < queryGraph->getNumQueryRels(); i++) {
+            pathChildExpressions.push_back(queryGraph->getQueryRel(i));
+        }
+        auto pathVariableExpression = std::make_shared<Expression>(ExpressionType::VARIABLE,
+            DataType(DataTypeID::LOGICAL_PATH), pathChildExpressions, patternElement.getPathVariable());
+        variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
+        queryGraph->setPathExpression(pathVariableExpression);
     }
     return queryGraph;
 }

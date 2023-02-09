@@ -338,6 +338,7 @@ void BuiltInVectorOperations::registerInternalIDOperation() {
 }
 
 void BuiltInVectorOperations::registerPathOperation() {
+    vectorOperations.insert({PATH_CREATION_FUNC_NAME, PathCreationVectorOperation::getDefinitions()});
     vectorOperations.insert({PATH_LENGTH_FUNC_NAME, PathLengthVectorOperation::getDefinitions()});
 }
 

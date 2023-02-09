@@ -1,7 +1,9 @@
 #include <set>
 
 #include "binder/binder.h"
+#include "binder/expression/function_expression.h"
 #include "binder/expression/literal_expression.h"
+#include "function/path/operations/path_creation_operation.h"
 
 using namespace kuzu::common;
 using namespace kuzu::parser;
@@ -41,16 +43,22 @@ std::unique_ptr<QueryGraph> Binder::bindPatternElement(
             *patternElementChain->getRelPattern(), leftNode, rightNode, *queryGraph, collection);
         leftNode = rightNode;
     }
-    if(!patternElement.getPathVariable().empty()) {
+    if (!patternElement.getPathVariable().empty()) {
         expression_vector pathChildExpressions;
-        for(int i = 0; i < queryGraph->getNumQueryNodes(); i++) {
-            pathChildExpressions.push_back(queryGraph->getQueryNode(i));
+        for (int i = 0; i < queryGraph->getNumQueryNodes(); i++) {
+            pathChildExpressions.push_back(queryGraph->getQueryNode(i)->getInternalIDProperty());
         }
-        for(int i = 0; i < queryGraph->getNumQueryRels(); i++) {
-            pathChildExpressions.push_back(queryGraph->getQueryRel(i));
+        for (int i = 0; i < queryGraph->getNumQueryRels(); i++) {
+            pathChildExpressions.push_back(queryGraph->getQueryRel(i)->getInternalIDProperty());
         }
-        auto pathVariableExpression = std::make_shared<Expression>(ExpressionType::VARIABLE,
-            DataType(DataTypeID::LOGICAL_PATH), pathChildExpressions, patternElement.getPathVariable());
+        auto childDataType = std::make_unique<DataType>(pathChildExpressions[0]->getDataType());
+        auto dataType = DataType(LIST, std::move(childDataType));
+        auto function = catalog.getBuiltInScalarFunctions()->matchFunction(
+            PATH_CREATION_FUNC_NAME, std::vector<DataType>{std::move(dataType)});
+        auto execFunc = function->execFunc;
+        auto pathVariableExpression = make_shared<ScalarFunctionExpression>(FUNCTION,
+            DataType(STRING), std::move(pathChildExpressions), execFunc, nullptr,
+            patternElement.getPathVariable());
         variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
         queryGraph->setPathExpression(pathVariableExpression);
     }

@@ -35,6 +35,8 @@ protected:
 
     virtual bool allowCopyCSV() = 0;
 
+    virtual bool allowCopyCSV() = 0;
+
 protected:
     catalog::Catalog* catalog;
     common::CopyDescription copyDescription;

@@ -36,6 +36,11 @@ private:
     }
 
 private:
+    inline bool allowCopyCSV() override {
+        return nodesStatistics->getNodeStatisticsAndDeletedIDs(tableID)->getNumTuples() == 0;
+    }
+
+private:
     storage::NodesStatisticsAndDeletedIDs* nodesStatistics;
     storage::RelsStore& relsStore;
 };

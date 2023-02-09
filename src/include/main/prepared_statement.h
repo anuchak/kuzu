@@ -1,19 +1,16 @@
 #pragma once
 
+#include "common/api.h"
+#include "kuzu_fwd.h"
 #include "query_summary.h"
-
-namespace kuzu::testing {
-class TestHelper;
-}
-
-namespace kuzu::transaction {
-class TinySnbDDLTest;
-class TinySnbCopyCSVTransactionTest;
-} // namespace kuzu::transaction
 
 namespace kuzu {
 namespace main {
 
+/**
+ * @brief A prepared statement is a parameterized query which can avoid planning the same query for
+ * repeated execution.
+ */
 class PreparedStatement {
     friend class Connection;
     friend class JOConnection;
@@ -22,19 +19,28 @@ class PreparedStatement {
     friend class kuzu::transaction::TinySnbCopyCSVTransactionTest;
 
 public:
-    inline bool allowActiveTransaction() const {
-        return !common::StatementTypeUtils::isDDLOrCopyCSV(statementType);
-    }
-
-    inline bool isSuccess() const { return success; }
-
-    inline std::string getErrorMessage() const { return errMsg; }
-
-    inline bool isReadOnly() const { return readOnly; }
-
-    inline binder::expression_vector getExpressionsToCollect() {
-        return statementResult->getExpressionsToCollect();
-    }
+    /**
+     * @brief DDL and COPY_CSV statements are automatically wrapped in a transaction and committed.
+     * As such, they cannot be part of an active transaction.
+     * @return the prepared statement is allowed to be part of an active transaction.
+     */
+    KUZU_API bool allowActiveTransaction() const;
+    /**
+     * @return the query is prepared successfully or not.
+     */
+    KUZU_API bool isSuccess() const;
+    /**
+     * @return the error message if the query is not prepared successfully.
+     */
+    KUZU_API std::string getErrorMessage() const;
+    /**
+     * @return the prepared statement is read-only or not.
+     */
+    KUZU_API bool isReadOnly() const;
+    /**
+     * @return expressions for generating query results.
+     */
+    std::vector<std::shared_ptr<binder::Expression>> getExpressionsToCollect();
 
 private:
     common::StatementType statementType;

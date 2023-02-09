@@ -4,8 +4,12 @@
 #include <cctype>
 #include <regex>
 
+#include "catalog/catalog.h"
 #include "common/logging_level_utils.h"
 #include "common/type_utils.h"
+#include "json.hpp"
+#include "processor/result/factorized_table.h"
+#include "processor/result/flat_tuple.h"
 #include "utf8proc.h"
 #include "utf8proc_wrapper.h"
 
@@ -404,10 +408,9 @@ void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
 void EmbeddedShell::setLoggingLevel(const std::string& loggingLevel) {
     auto level = ltrim(loggingLevel);
     try {
-        auto logLevelEnum = LoggingLevelUtils::convertStrToLevelEnum(level);
-        database->setLoggingLevel(logLevelEnum);
+        database->setLoggingLevel(level);
         printf("logging level has been set to: %s.\n", level.c_str());
-    } catch (ConversionException& e) { printf("%s", e.what()); }
+    } catch (Exception& e) { printf("%s", e.what()); }
 }
 
 } // namespace main

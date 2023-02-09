@@ -1,9 +1,13 @@
 #include "main/database.h"
 
-#include "common/configs.h"
+#include <utility>
+
 #include "common/logging_level_utils.h"
+#include "processor/processor.h"
 #include "spdlog/spdlog.h"
+#include "storage/storage_manager.h"
 #include "storage/wal_replayer.h"
+#include "transaction/transaction_manager.h"
 
 using namespace kuzu::catalog;
 using namespace kuzu::common;
@@ -12,6 +16,8 @@ using namespace kuzu::transaction;
 
 namespace kuzu {
 namespace main {
+
+SystemConfig::SystemConfig() : SystemConfig(-1u) {}
 
 SystemConfig::SystemConfig(uint64_t bufferPoolSize) {
     if (bufferPoolSize == -1u) {
@@ -24,24 +30,32 @@ SystemConfig::SystemConfig(uint64_t bufferPoolSize) {
         (uint64_t)((double_t)bufferPoolSize * StorageConfig::DEFAULT_PAGES_BUFFER_RATIO);
     largePageBufferPoolSize =
         (uint64_t)((double_t)bufferPoolSize * StorageConfig::LARGE_PAGES_BUFFER_RATIO);
+    maxNumThreads = std::thread::hardware_concurrency();
 }
 
-Database::Database(const DatabaseConfig& databaseConfig, const SystemConfig& systemConfig)
-    : databaseConfig{databaseConfig},
+DatabaseConfig::DatabaseConfig(std::string databasePath) : databasePath{std::move(databasePath)} {}
+
+Database::Database(DatabaseConfig databaseConfig)
+    : Database{std::move(databaseConfig), SystemConfig()} {}
+
+Database::Database(DatabaseConfig databaseConfig, SystemConfig systemConfig)
+    : databaseConfig{std::move(databaseConfig)},
       systemConfig{systemConfig}, logger{LoggerUtils::getOrCreateLogger("database")} {
     initLoggers();
     initDBDirAndCoreFilesIfNecessary();
     bufferManager = std::make_unique<BufferManager>(
-        systemConfig.defaultPageBufferPoolSize, systemConfig.largePageBufferPoolSize);
+        this->systemConfig.defaultPageBufferPoolSize, this->systemConfig.largePageBufferPoolSize);
     memoryManager = std::make_unique<MemoryManager>(bufferManager.get());
-    wal = std::make_unique<WAL>(databaseConfig.databasePath, *bufferManager);
+    wal = std::make_unique<WAL>(this->databaseConfig.databasePath, *bufferManager);
     recoverIfNecessary();
-    queryProcessor = std::make_unique<processor::QueryProcessor>(systemConfig.maxNumThreads);
+    queryProcessor = std::make_unique<processor::QueryProcessor>(this->systemConfig.maxNumThreads);
     catalog = std::make_unique<catalog::Catalog>(wal.get());
     storageManager = std::make_unique<storage::StorageManager>(
         *catalog, *bufferManager, *memoryManager, wal.get());
     transactionManager = std::make_unique<transaction::TransactionManager>(*wal);
 }
+
+Database::~Database() = default;
 
 void Database::initDBDirAndCoreFilesIfNecessary() const {
     if (!FileUtils::fileOrPathExists(databaseConfig.databasePath)) {
@@ -76,15 +90,8 @@ void Database::initLoggers() {
     spdlog::set_level(spdlog::level::err);
 }
 
-void Database::setLoggingLevel(spdlog::level::level_enum loggingLevel) {
-    if (loggingLevel != spdlog::level::level_enum::debug &&
-        loggingLevel != spdlog::level::level_enum::info &&
-        loggingLevel != spdlog::level::level_enum::err) {
-        printf("Unsupported logging level: %s.",
-            LoggingLevelUtils::convertLevelEnumToStr(loggingLevel).c_str());
-        return;
-    }
-    spdlog::set_level(loggingLevel);
+void Database::setLoggingLevel(std::string loggingLevel) {
+    spdlog::set_level(LoggingLevelUtils::convertStrToLevelEnum(std::move(loggingLevel)));
 }
 
 void Database::resizeBufferManager(uint64_t newSize) {
@@ -159,6 +166,15 @@ void Database::commitAndCheckpointOrRollback(
     if (isCommit) {
         transactionManager->allowReceivingNewTransactions();
     }
+}
+
+void Database::checkpointAndClearWAL() {
+    checkpointOrRollbackAndClearWAL(false /* is not recovering */, true /* isCheckpoint */);
+}
+
+void Database::rollbackAndClearWAL() {
+    checkpointOrRollbackAndClearWAL(
+        false /* is not recovering */, false /* rolling back updates */);
 }
 
 void Database::recoverIfNecessary() {

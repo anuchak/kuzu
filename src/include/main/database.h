@@ -1,40 +1,53 @@
 #pragma once
 
-// TODO: Consider using forward declaration
-#include "common/configs.h"
-#include "common/logging_level_utils.h"
-#include "processor/processor.h"
-#include "storage/buffer_manager/buffer_manager.h"
-#include "storage/buffer_manager/memory_manager.h"
-#include "storage/storage_manager.h"
-#include "transaction/transaction.h"
-#include "transaction/transaction_manager.h"
+#include <memory>
+#include <thread>
 
-namespace kuzu {
-namespace testing {
-class BaseGraphTest;
-} // namespace testing
-} // namespace kuzu
+#include "common/api.h"
+#include "common/configs.h"
+#include "kuzu_fwd.h"
 
 namespace kuzu {
 namespace main {
 
-struct SystemConfig {
-    explicit SystemConfig(
-        uint64_t bufferPoolSize = common::StorageConfig::DEFAULT_BUFFER_POOL_SIZE);
+/**
+ * @brief Stores buffer pool size and max number of threads configurations.
+ */
+KUZU_API struct SystemConfig {
+    /**
+     * @brief Creates a SystemConfig object with default buffer pool size and max num of threads.
+     */
+    explicit SystemConfig();
+    /**
+     * @brief Creates a SystemConfig object.
+     * @param bufferPoolSize Buffer pool size in bytes.
+     * @note defaultPageBufferPoolSize and largePageBufferPoolSize are calculated based on the
+     * DEFAULT_PAGES_BUFFER_RATIO and LARGE_PAGES_BUFFER_RATIO constants in StorageConfig.
+     */
+    explicit SystemConfig(uint64_t bufferPoolSize);
 
     uint64_t defaultPageBufferPoolSize;
     uint64_t largePageBufferPoolSize;
-
-    uint64_t maxNumThreads = std::thread::hardware_concurrency();
+    uint64_t maxNumThreads;
 };
 
-struct DatabaseConfig {
-    explicit DatabaseConfig(std::string databasePath) : databasePath{std::move(databasePath)} {}
+/**
+ * @brief Stores databasePath.
+ */
+KUZU_API struct DatabaseConfig {
+    /**
+     * @brief Creates a DatabaseConfig object.
+     * @param databasePath Path to store the database files.
+     */
+    explicit DatabaseConfig(std::string databasePath);
 
     std::string databasePath;
 };
 
+/**
+ * @brief Database class is the main class of the KuzuDB. It manages all database configurations and
+ * files.
+ */
 class Database {
     friend class EmbeddedShell;
     friend class Connection;
@@ -42,20 +55,38 @@ class Database {
     friend class kuzu::testing::BaseGraphTest;
 
 public:
-    explicit Database(const DatabaseConfig& databaseConfig)
-        : Database{databaseConfig, SystemConfig()} {}
+    /**
+     * @brief Creates a database object with default buffer pool size and max num threads.
+     * @param databaseConfig Database configurations(database path).
+     */
+    KUZU_API explicit Database(DatabaseConfig databaseConfig);
+    /**
+     * @brief Creates a database object.
+     * @param databaseConfig Database configurations(database path).
+     * @param systemConfig System configurations(buffer pool size and max num threads).
+     */
+    KUZU_API Database(DatabaseConfig databaseConfig, SystemConfig systemConfig);
+    /**
+     * @brief Deconstructs the database object.
+     */
+    KUZU_API ~Database();
 
-    explicit Database(const DatabaseConfig& databaseConfig, const SystemConfig& systemConfig);
+    /**
+     * @brief Sets the logging level of the database instance.
+     * @param loggingLevel New logging level. (Supported logging levels are: "info", "debug",
+     * "err").
+     */
+    void setLoggingLevel(std::string loggingLevel);
 
-    void setLoggingLevel(spdlog::level::level_enum loggingLevel);
-
-    void resizeBufferManager(uint64_t newSize);
-
-    ~Database() = default;
+    /**
+     * @brief Resizes the buffer pool size of the database instance.
+     * @param newSize New buffer pool size in bytes.
+     * @throws BufferManagerException if the new size is smaller than the current buffer manager
+     * size.
+     */
+    KUZU_API void resizeBufferManager(uint64_t newSize);
 
 private:
-    // TODO(Semih): This is refactored here for now to be able to test transaction behavior
-    // in absence of the frontend support. Consider moving this code to connection.cpp.
     // Commits and checkpoints a write transaction or rolls that transaction back. This involves
     // either replaying the WAL and either redoing or undoing and in either case at the end WAL is
     // cleared.
@@ -66,13 +97,8 @@ private:
     void initDBDirAndCoreFilesIfNecessary() const;
     void initLoggers();
 
-    inline void checkpointAndClearWAL() {
-        checkpointOrRollbackAndClearWAL(false /* is not recovering */, true /* isCheckpoint */);
-    }
-    inline void rollbackAndClearWAL() {
-        checkpointOrRollbackAndClearWAL(
-            false /* is not recovering */, false /* rolling back updates */);
-    }
+    void checkpointAndClearWAL();
+    void rollbackAndClearWAL();
     void recoverIfNecessary();
     void checkpointOrRollbackAndClearWAL(bool isRecovering, bool isCheckpoint);
 

@@ -1,0 +1,8 @@
+//
+// Created by a8chakra on 08/02/23.
+//
+
+#ifndef KUZU_VECTOR_PATH_OPERATIONS_H
+#define KUZU_VECTOR_PATH_OPERATIONS_H
+
+#endif // KUZU_VECTOR_PATH_OPERATIONS_H

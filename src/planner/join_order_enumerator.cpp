@@ -52,6 +52,15 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::enumerate(
             queryPlanner->appendFilter(predicate, *plan);
         }
     }
+    for(auto i = 0u; i < queryGraphCollection.getNumQueryGraphs(); i++) {
+        if(queryGraphCollection.getQueryGraph(i)->getPathExpression() != nullptr) {
+            for (auto& plan : result) {
+                auto &pathExpression = queryGraphCollection.getQueryGraph(i)->getPathExpression();
+                auto groupPos = plan->getSchema()->createGroup();
+                plan->getSchema()->insertToGroupAndScope(pathExpression, groupPos);
+            }
+        }
+    }
     return result;
 }
 

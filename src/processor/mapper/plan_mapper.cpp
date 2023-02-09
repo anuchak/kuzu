@@ -125,9 +125,9 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     case LogicalOperatorType::DROP_TABLE: {
         physicalOperator = mapLogicalDropTableToPhysical(logicalOperator.get());
     } break;
-    case LogicalOperatorType::SHORTEST_PATH: {
+    /*case LogicalOperatorType::SHORTEST_PATH: {
         physicalOperator = mapLogicalShortestPathToPhysical(logicalOperator.get());
-    }
+    }*/
     case LogicalOperatorType::RENAME_TABLE: {
         physicalOperator = mapLogicalRenameTableToPhysical(logicalOperator.get());
     } break;

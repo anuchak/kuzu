@@ -131,9 +131,22 @@ public:
 
     void merge(const QueryGraph& other);
 
+    bool hasPathExpression() {
+        return pathExpression != nullptr;
+    }
+
+    std::shared_ptr<Expression>& getPathExpression() {
+        return pathExpression;
+    }
+
+    void setPathExpression(std::shared_ptr<Expression> &pathExpression_) {
+        this->pathExpression = pathExpression_;
+    }
+
     inline std::unique_ptr<QueryGraph> copy() const { return std::make_unique<QueryGraph>(*this); }
 
 private:
+    std::shared_ptr<Expression> pathExpression;
     std::unordered_map<std::string, uint32_t> queryNodeNameToPosMap;
     std::unordered_map<std::string, uint32_t> queryRelNameToPosMap;
     std::vector<std::shared_ptr<NodeExpression>> queryNodes;

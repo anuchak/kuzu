@@ -1,8 +1,15 @@
-//
-// Created by a8chakra on 08/02/23.
-//
+#include <vector>
+#include "common/types/internal_id_t.h"
 
-#ifndef KUZU_PATH_ID_T_H
-#define KUZU_PATH_ID_T_H
+namespace kuzu {
+namespace common {
 
-#endif // KUZU_PATH_ID_T_H
+struct ku_path_t {
+    std::vector <internalID_t> path;
+
+public:
+    void setPathInternalID(internalID_t internalID);
+    std::vector<internalID_t> getPath();
+};
+}
+}

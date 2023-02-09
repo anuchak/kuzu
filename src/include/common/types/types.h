@@ -42,6 +42,7 @@ enum DataTypeID : uint8_t {
     ANY = 0,
     NODE = 10,
     REL = 11,
+    LOGICAL_PATH = 12,
 
     // physical types
 
@@ -58,6 +59,7 @@ enum DataTypeID : uint8_t {
     // variable size types
     STRING = 50,
     LIST = 52,
+    PHYSICAL_PATH = 53,
 };
 
 class DataType {

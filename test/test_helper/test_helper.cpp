@@ -103,7 +103,6 @@ bool TestHelper::testQuery(TestQueryConfig* config, Connection& conn) {
     auto numPlans = preparedStatement->logicalPlans.size();
     auto numPassedPlans = 0u;
     for (auto i = 0u; i < numPlans; ++i) {
-        auto plan = preparedStatement->logicalPlans[i].get();
         auto planStr = preparedStatement->logicalPlans[i]->toString();
         auto result = conn.executeAndAutoCommitIfNecessaryNoLock(preparedStatement.get(), i);
         assert(result->isSuccess());

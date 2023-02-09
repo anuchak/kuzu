@@ -51,6 +51,7 @@ private:
     void registerCastOperations();
     void registerListOperations();
     void registerInternalIDOperation();
+    void registerPathOperation();
 
 private:
     std::unordered_map<std::string, std::vector<std::unique_ptr<VectorOperationDefinition>>>

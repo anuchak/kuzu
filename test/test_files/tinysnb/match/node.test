@@ -1,5 +1,5 @@
 -NAME node1
--QUERY MATCH (a:person) RETURN COUNT(*)
+-QUERY MATCH p=(a:person)-[:knows]->(b:person) RETURN a, path_length(p)
 ---- 1
 8
 

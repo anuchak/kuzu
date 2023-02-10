@@ -34,6 +34,11 @@ jobs:
             ./scripts/pre-compiled-bins/kuzu.h
             ./scripts/pre-compiled-bins/kuzu.hpp
             ./scripts/pre-compiled-bins/libkuzu.dylib
+      
+      - uses: actions/upload-artifact@v3
+        with:
+          name: kuzu_cli-${{ github.event.inputs.packageVersion }}-osx-arm64
+          path: ./scripts/pre-compiled-bins/kuzu
 
       - uses: actions/upload-artifact@v3
         with:
@@ -54,6 +59,11 @@ jobs:
             ./scripts/pre-compiled-bins/kuzu.h
             ./scripts/pre-compiled-bins/kuzu.hpp
             ./scripts/pre-compiled-bins/libkuzu.dylib
+            
+      - uses: actions/upload-artifact@v3
+        with:
+          name: kuzu_cli-${{ github.event.inputs.packageVersion }}-osx-x86_64
+          path: ./scripts/pre-compiled-bins/kuzu
 
       - uses: actions/upload-artifact@v3
         with:

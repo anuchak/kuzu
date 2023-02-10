@@ -31,6 +31,11 @@ jobs:
             ./scripts/pre-compiled-bins/kuzu.h
             ./scripts/pre-compiled-bins/kuzu.hpp
             ./scripts/pre-compiled-bins/libkuzu.so
+      
+      - uses: actions/upload-artifact@v3
+        with:
+          name: kuzu_cli-${{ github.event.inputs.packageVersion }}-linux-x86_64
+          path: ./scripts/pre-compiled-bins/kuzu
 
       - uses: actions/upload-artifact@v3
         with:

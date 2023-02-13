@@ -19,6 +19,7 @@ public:
     T__26 = 27, T__27 = 28, T__28 = 29, T__29 = 30, T__30 = 31, T__31 = 32, 
     T__32 = 33, T__33 = 34, T__34 = 35, T__35 = 36, T__36 = 37, T__37 = 38, 
     T__38 = 39, T__39 = 40, T__40 = 41, T__41 = 42, T__42 = 43, T__43 = 44, 
+<<<<<<< HEAD
     T__44 = 45, T__45 = 46, GLOB = 47, COPY = 48, FROM = 49, NPY = 50, COLUMN = 51, 
     NODE = 52, TABLE = 53, DROP = 54, ALTER = 55, DEFAULT = 56, RENAME = 57, 
     ADD = 58, PRIMARY = 59, KEY = 60, REL = 61, TO = 62, EXPLAIN = 63, PROFILE = 64, 
@@ -34,6 +35,23 @@ public:
     ZeroDigit = 115, RegularDecimalReal = 116, UnescapedSymbolicName = 117, 
     IdentifierStart = 118, IdentifierPart = 119, EscapedSymbolicName = 120, 
     SP = 121, WHITESPACE = 122, Comment = 123, Unknown = 124
+=======
+    T__44 = 45, T__45 = 46, COPY = 47, FROM = 48, NODE = 49, TABLE = 50, 
+    DROP = 51, ALTER = 52, DEFAULT = 53, RENAME = 54, ADD = 55, PRIMARY = 56, 
+    KEY = 57, REL = 58, TO = 59, EXPLAIN = 60, PROFILE = 61, UNION = 62, 
+    ALL = 63, OPTIONAL = 64, MATCH = 65, UNWIND = 66, CREATE = 67, SET = 68, 
+    DELETE = 69, WITH = 70, RETURN = 71, DISTINCT = 72, STAR = 73, AS = 74, 
+    ORDER = 75, BY = 76, L_SKIP = 77, LIMIT = 78, ASCENDING = 79, ASC = 80, 
+    DESCENDING = 81, DESC = 82, WHERE = 83, SHORTEST = 84, OR = 85, XOR = 86, 
+    AND = 87, NOT = 88, INVALID_NOT_EQUAL = 89, MINUS = 90, FACTORIAL = 91, 
+    STARTS = 92, ENDS = 93, CONTAINS = 94, IS = 95, NULL_ = 96, TRUE = 97, 
+    FALSE = 98, EXISTS = 99, CASE = 100, ELSE = 101, END = 102, WHEN = 103, 
+    THEN = 104, StringLiteral = 105, EscapedChar = 106, DecimalInteger = 107, 
+    HexLetter = 108, HexDigit = 109, Digit = 110, NonZeroDigit = 111, NonZeroOctDigit = 112, 
+    ZeroDigit = 113, RegularDecimalReal = 114, UnescapedSymbolicName = 115, 
+    IdentifierStart = 116, IdentifierPart = 117, EscapedSymbolicName = 118, 
+    SP = 119, WHITESPACE = 120, Comment = 121, Unknown = 122
+>>>>>>> d678da15 (frontend changes for path)
   };
 
   explicit CypherLexer(antlr4::CharStream *input);

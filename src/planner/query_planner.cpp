@@ -175,6 +175,19 @@ void QueryPlanner::planMatchClause(
             }
         }
     }
+    /*for (auto i = 0u; i < queryGraphCollection->getNumQueryGraphs(); i++) {
+        if (queryGraphCollection->getQueryGraph(i)->hasPathExpression()) {
+            for (auto& plan : plans) {
+                auto& pathExpression = queryGraphCollection->getQueryGraph(i)->getPathExpression();
+                auto dependentGroupPos = plan->getSchema()->getDependentGroupsPos(pathExpression);
+                if (!dependentGroupPos.empty()) {
+                    appendFlattens(dependentGroupPos, *plan);
+                }
+                auto groupPos = plan->getSchema()->createGroup();
+                plan->getSchema()->insertToGroupAndScope(pathExpression, groupPos);
+            }
+        }
+    }*/
 }
 
 void QueryPlanner::planUnwindClause(

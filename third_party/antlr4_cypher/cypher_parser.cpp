@@ -88,12 +88,20 @@ CypherParser::OC_CypherContext* CypherParser::oC_Cypher() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(229);
+=======
+    setState(227);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 0, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(228);
+=======
+      setState(226);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::SP);
       break;
     }
@@ -101,22 +109,37 @@ CypherParser::OC_CypherContext* CypherParser::oC_Cypher() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(232);
+=======
+    setState(230);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::EXPLAIN
 
     || _la == CypherParser::PROFILE) {
+<<<<<<< HEAD
       setState(231);
       oC_AnyCypherOption();
     }
     setState(235);
+=======
+      setState(229);
+      oC_AnyCypherOption();
+    }
+    setState(233);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 2, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(234);
+=======
+      setState(232);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::SP);
       break;
     }
@@ -124,22 +147,35 @@ CypherParser::OC_CypherContext* CypherParser::oC_Cypher() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(241);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 3, _ctx)) {
     case 1: {
       setState(237);
+=======
+    setState(238);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 3, _ctx)) {
+    case 1: {
+      setState(235);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Statement();
       break;
     }
 
     case 2: {
+<<<<<<< HEAD
       setState(238);
+=======
+      setState(236);
+>>>>>>> d678da15 (frontend changes for path)
       kU_DDL();
       break;
     }
 
     case 3: {
+<<<<<<< HEAD
       setState(239);
       kU_CopyNPY();
       break;
@@ -147,6 +183,9 @@ CypherParser::OC_CypherContext* CypherParser::oC_Cypher() {
 
     case 4: {
       setState(240);
+=======
+      setState(237);
+>>>>>>> d678da15 (frontend changes for path)
       kU_CopyCSV();
       break;
     }
@@ -154,20 +193,35 @@ CypherParser::OC_CypherContext* CypherParser::oC_Cypher() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(247);
+=======
+    setState(244);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 5, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(244);
+=======
+      setState(241);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(243);
         match(CypherParser::SP);
       }
       setState(246);
+=======
+        setState(240);
+        match(CypherParser::SP);
+      }
+      setState(243);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::T__0);
       break;
     }
@@ -175,15 +229,26 @@ CypherParser::OC_CypherContext* CypherParser::oC_Cypher() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(250);
+=======
+    setState(247);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(249);
       match(CypherParser::SP);
     }
     setState(252);
+=======
+      setState(246);
+      match(CypherParser::SP);
+    }
+    setState(249);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::EOF);
    
   }
@@ -250,9 +315,19 @@ CypherParser::KU_CopyCSVContext* CypherParser::kU_CopyCSV() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
+=======
+    setState(251);
+    match(CypherParser::COPY);
+    setState(252);
+    match(CypherParser::SP);
+    setState(253);
+    oC_SchemaName();
+>>>>>>> d678da15 (frontend changes for path)
     setState(254);
     match(CypherParser::COPY);
     setState(255);
+<<<<<<< HEAD
     match(CypherParser::SP);
     setState(256);
     oC_SchemaName();
@@ -265,15 +340,28 @@ CypherParser::KU_CopyCSVContext* CypherParser::kU_CopyCSV() {
     setState(260);
     kU_FilePaths();
     setState(274);
+=======
+    match(CypherParser::FROM);
+    setState(256);
+    match(CypherParser::SP);
+    setState(257);
+    match(CypherParser::StringLiteral);
+    setState(271);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 10, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(262);
+=======
+      setState(259);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(261);
         match(CypherParser::SP);
       }
@@ -290,14 +378,39 @@ CypherParser::KU_CopyCSVContext* CypherParser::kU_CopyCSV() {
       setState(268);
       kU_ParsingOptions();
       setState(270);
+=======
+        setState(258);
+        match(CypherParser::SP);
+      }
+      setState(261);
+      match(CypherParser::T__1);
+      setState(263);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(269);
         match(CypherParser::SP);
       }
       setState(272);
+=======
+        setState(262);
+        match(CypherParser::SP);
+      }
+      setState(265);
+      kU_ParsingOptions();
+      setState(267);
+      _errHandler->sync(this);
+
+      _la = _input->LA(1);
+      if (_la == CypherParser::SP) {
+        setState(266);
+        match(CypherParser::SP);
+      }
+      setState(269);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::T__2);
       break;
     }
@@ -647,13 +760,20 @@ CypherParser::KU_ParsingOptionsContext* CypherParser::kU_ParsingOptions() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(341);
     kU_ParsingOption();
     setState(352);
+=======
+    setState(273);
+    kU_ParsingOption();
+    setState(284);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 25, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
+<<<<<<< HEAD
         setState(343);
         _errHandler->sync(this);
 
@@ -665,10 +785,14 @@ CypherParser::KU_ParsingOptionsContext* CypherParser::kU_ParsingOptions() {
         setState(345);
         match(CypherParser::T__3);
         setState(347);
+=======
+        setState(275);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(346);
           match(CypherParser::SP);
         }
@@ -676,6 +800,25 @@ CypherParser::KU_ParsingOptionsContext* CypherParser::kU_ParsingOptions() {
         kU_ParsingOption(); 
       }
       setState(354);
+=======
+          setState(274);
+          match(CypherParser::SP);
+        }
+        setState(277);
+        match(CypherParser::T__3);
+        setState(279);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::SP) {
+          setState(278);
+          match(CypherParser::SP);
+        }
+        setState(281);
+        kU_ParsingOption(); 
+      }
+      setState(286);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 25, _ctx);
     }
@@ -732,6 +875,7 @@ CypherParser::KU_ParsingOptionContext* CypherParser::kU_ParsingOption() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(355);
     oC_SymbolicName();
     setState(357);
@@ -745,14 +889,36 @@ CypherParser::KU_ParsingOptionContext* CypherParser::kU_ParsingOption() {
     setState(359);
     match(CypherParser::T__6);
     setState(361);
+=======
+    setState(287);
+    oC_SymbolicName();
+    setState(289);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(360);
       match(CypherParser::SP);
     }
     setState(363);
+=======
+      setState(288);
+      match(CypherParser::SP);
+    }
+    setState(291);
+    match(CypherParser::T__4);
+    setState(293);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::SP) {
+      setState(292);
+      match(CypherParser::SP);
+    }
+    setState(295);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Literal();
    
   }
@@ -805,33 +971,53 @@ CypherParser::KU_DDLContext* CypherParser::kU_DDL() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(369);
+=======
+    setState(301);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 28, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(365);
+=======
+      setState(297);
+>>>>>>> d678da15 (frontend changes for path)
       kU_CreateNode();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(366);
+=======
+      setState(298);
+>>>>>>> d678da15 (frontend changes for path)
       kU_CreateRel();
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
       setState(367);
+=======
+      setState(299);
+>>>>>>> d678da15 (frontend changes for path)
       kU_DropTable();
       break;
     }
 
     case 4: {
       enterOuterAlt(_localctx, 4);
+<<<<<<< HEAD
       setState(368);
+=======
+      setState(300);
+>>>>>>> d678da15 (frontend changes for path)
       kU_AlterTable();
       break;
     }
@@ -908,6 +1094,7 @@ CypherParser::KU_CreateNodeContext* CypherParser::kU_CreateNode() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(371);
     match(CypherParser::CREATE);
     setState(372);
@@ -923,30 +1110,66 @@ CypherParser::KU_CreateNodeContext* CypherParser::kU_CreateNode() {
     setState(377);
     oC_SchemaName();
     setState(379);
+=======
+    setState(303);
+    match(CypherParser::CREATE);
+    setState(304);
+    match(CypherParser::SP);
+    setState(305);
+    match(CypherParser::NODE);
+    setState(306);
+    match(CypherParser::SP);
+    setState(307);
+    match(CypherParser::TABLE);
+    setState(308);
+    match(CypherParser::SP);
+    setState(309);
+    oC_SchemaName();
+    setState(311);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(378);
       match(CypherParser::SP);
     }
     setState(381);
     match(CypherParser::T__1);
     setState(383);
+=======
+      setState(310);
+      match(CypherParser::SP);
+    }
+    setState(313);
+    match(CypherParser::T__1);
+    setState(315);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(382);
       match(CypherParser::SP);
     }
     setState(385);
     kU_PropertyDefinitions();
     setState(387);
+=======
+      setState(314);
+      match(CypherParser::SP);
+    }
+    setState(317);
+    kU_PropertyDefinitions();
+    setState(319);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(386);
       match(CypherParser::SP);
     }
@@ -964,14 +1187,40 @@ CypherParser::KU_CreateNodeContext* CypherParser::kU_CreateNode() {
     setState(393);
     kU_CreateNodeConstraint();
     setState(396);
+=======
+      setState(318);
+      match(CypherParser::SP);
+    }
+
+    setState(321);
+    match(CypherParser::T__3);
+    setState(323);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(395);
       match(CypherParser::SP);
     }
     setState(398);
+=======
+      setState(322);
+      match(CypherParser::SP);
+    }
+    setState(325);
+    kU_CreateNodeConstraint();
+    setState(328);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::SP) {
+      setState(327);
+      match(CypherParser::SP);
+    }
+    setState(330);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::T__2);
    
   }
@@ -1054,6 +1303,7 @@ CypherParser::KU_CreateRelContext* CypherParser::kU_CreateRel() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(400);
     match(CypherParser::CREATE);
     setState(401);
@@ -1101,36 +1351,111 @@ CypherParser::KU_CreateRelContext* CypherParser::kU_CreateRel() {
     setState(420);
     oC_SchemaName();
     setState(422);
+=======
+    setState(332);
+    match(CypherParser::CREATE);
+    setState(333);
+    match(CypherParser::SP);
+    setState(334);
+    match(CypherParser::REL);
+    setState(335);
+    match(CypherParser::SP);
+    setState(336);
+    match(CypherParser::TABLE);
+    setState(337);
+    match(CypherParser::SP);
+    setState(338);
+    oC_SchemaName();
+    setState(340);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+      setState(339);
+      match(CypherParser::SP);
+    }
+    setState(342);
+    match(CypherParser::T__1);
+    setState(344);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::SP) {
+      setState(343);
+      match(CypherParser::SP);
+    }
+    setState(346);
+    match(CypherParser::FROM);
+    setState(347);
+    match(CypherParser::SP);
+    setState(348);
+    oC_SchemaName();
+    setState(349);
+    match(CypherParser::SP);
+    setState(350);
+    match(CypherParser::TO);
+    setState(351);
+    match(CypherParser::SP);
+    setState(352);
+    oC_SchemaName();
+    setState(354);
+>>>>>>> d678da15 (frontend changes for path)
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(421);
       match(CypherParser::SP);
     }
     setState(432);
+=======
+      setState(353);
+      match(CypherParser::SP);
+    }
+    setState(364);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 39, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(424);
       match(CypherParser::T__3);
       setState(426);
+=======
+      setState(356);
+      match(CypherParser::T__3);
+      setState(358);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(425);
         match(CypherParser::SP);
       }
       setState(428);
       kU_PropertyDefinitions();
       setState(430);
+=======
+        setState(357);
+        match(CypherParser::SP);
+      }
+      setState(360);
+      kU_PropertyDefinitions();
+      setState(362);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(429);
+=======
+        setState(361);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::SP);
       }
       break;
@@ -1139,33 +1464,60 @@ CypherParser::KU_CreateRelContext* CypherParser::kU_CreateRel() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(442);
+=======
+    setState(374);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::T__3) {
+<<<<<<< HEAD
       setState(434);
       match(CypherParser::T__3);
       setState(436);
+=======
+      setState(366);
+      match(CypherParser::T__3);
+      setState(368);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(435);
         match(CypherParser::SP);
       }
       setState(438);
       oC_SymbolicName();
       setState(440);
+=======
+        setState(367);
+        match(CypherParser::SP);
+      }
+      setState(370);
+      oC_SymbolicName();
+      setState(372);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(439);
         match(CypherParser::SP);
       }
     }
     setState(444);
+=======
+        setState(371);
+        match(CypherParser::SP);
+      }
+    }
+    setState(376);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::T__2);
    
   }
@@ -1223,6 +1575,7 @@ CypherParser::KU_DropTableContext* CypherParser::kU_DropTable() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(446);
     match(CypherParser::DROP);
     setState(447);
@@ -1232,6 +1585,17 @@ CypherParser::KU_DropTableContext* CypherParser::kU_DropTable() {
     setState(449);
     match(CypherParser::SP);
     setState(450);
+=======
+    setState(378);
+    match(CypherParser::DROP);
+    setState(379);
+    match(CypherParser::SP);
+    setState(380);
+    match(CypherParser::TABLE);
+    setState(381);
+    match(CypherParser::SP);
+    setState(382);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SchemaName();
    
   }
@@ -1293,6 +1657,7 @@ CypherParser::KU_AlterTableContext* CypherParser::kU_AlterTable() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(452);
     match(CypherParser::ALTER);
     setState(453);
@@ -1306,6 +1671,21 @@ CypherParser::KU_AlterTableContext* CypherParser::kU_AlterTable() {
     setState(457);
     match(CypherParser::SP);
     setState(458);
+=======
+    setState(384);
+    match(CypherParser::ALTER);
+    setState(385);
+    match(CypherParser::SP);
+    setState(386);
+    match(CypherParser::TABLE);
+    setState(387);
+    match(CypherParser::SP);
+    setState(388);
+    oC_SchemaName();
+    setState(389);
+    match(CypherParser::SP);
+    setState(390);
+>>>>>>> d678da15 (frontend changes for path)
     kU_AlterOptions();
    
   }
@@ -1358,33 +1738,53 @@ CypherParser::KU_AlterOptionsContext* CypherParser::kU_AlterOptions() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(464);
+=======
+    setState(396);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 43, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(460);
+=======
+      setState(392);
+>>>>>>> d678da15 (frontend changes for path)
       kU_AddProperty();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(461);
+=======
+      setState(393);
+>>>>>>> d678da15 (frontend changes for path)
       kU_DropProperty();
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
       setState(462);
+=======
+      setState(394);
+>>>>>>> d678da15 (frontend changes for path)
       kU_RenameTable();
       break;
     }
 
     case 4: {
       enterOuterAlt(_localctx, 4);
+<<<<<<< HEAD
       setState(463);
+=======
+      setState(395);
+>>>>>>> d678da15 (frontend changes for path)
       kU_RenameProperty();
       break;
     }
@@ -1456,6 +1856,7 @@ CypherParser::KU_AddPropertyContext* CypherParser::kU_AddProperty() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(466);
     match(CypherParser::ADD);
     setState(467);
@@ -1467,10 +1868,24 @@ CypherParser::KU_AddPropertyContext* CypherParser::kU_AddProperty() {
     setState(470);
     kU_DataType();
     setState(475);
+=======
+    setState(398);
+    match(CypherParser::ADD);
+    setState(399);
+    match(CypherParser::SP);
+    setState(400);
+    oC_PropertyKeyName();
+    setState(401);
+    match(CypherParser::SP);
+    setState(402);
+    kU_DataType();
+    setState(407);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 44, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(471);
       match(CypherParser::SP);
       setState(472);
@@ -1478,6 +1893,15 @@ CypherParser::KU_AddPropertyContext* CypherParser::kU_AddProperty() {
       setState(473);
       match(CypherParser::SP);
       setState(474);
+=======
+      setState(403);
+      match(CypherParser::SP);
+      setState(404);
+      match(CypherParser::DEFAULT);
+      setState(405);
+      match(CypherParser::SP);
+      setState(406);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Expression();
       break;
     }
@@ -1533,11 +1957,19 @@ CypherParser::KU_DropPropertyContext* CypherParser::kU_DropProperty() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(477);
     match(CypherParser::DROP);
     setState(478);
     match(CypherParser::SP);
     setState(479);
+=======
+    setState(409);
+    match(CypherParser::DROP);
+    setState(410);
+    match(CypherParser::SP);
+    setState(411);
+>>>>>>> d678da15 (frontend changes for path)
     oC_PropertyKeyName();
    
   }
@@ -1595,6 +2027,7 @@ CypherParser::KU_RenameTableContext* CypherParser::kU_RenameTable() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(481);
     match(CypherParser::RENAME);
     setState(482);
@@ -1604,6 +2037,17 @@ CypherParser::KU_RenameTableContext* CypherParser::kU_RenameTable() {
     setState(484);
     match(CypherParser::SP);
     setState(485);
+=======
+    setState(413);
+    match(CypherParser::RENAME);
+    setState(414);
+    match(CypherParser::SP);
+    setState(415);
+    match(CypherParser::TO);
+    setState(416);
+    match(CypherParser::SP);
+    setState(417);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SchemaName();
    
   }
@@ -1665,6 +2109,7 @@ CypherParser::KU_RenamePropertyContext* CypherParser::kU_RenameProperty() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(487);
     match(CypherParser::RENAME);
     setState(488);
@@ -1678,6 +2123,21 @@ CypherParser::KU_RenamePropertyContext* CypherParser::kU_RenameProperty() {
     setState(492);
     match(CypherParser::SP);
     setState(493);
+=======
+    setState(419);
+    match(CypherParser::RENAME);
+    setState(420);
+    match(CypherParser::SP);
+    setState(421);
+    oC_PropertyKeyName();
+    setState(422);
+    match(CypherParser::SP);
+    setState(423);
+    match(CypherParser::TO);
+    setState(424);
+    match(CypherParser::SP);
+    setState(425);
+>>>>>>> d678da15 (frontend changes for path)
     oC_PropertyKeyName();
    
   }
@@ -1733,13 +2193,20 @@ CypherParser::KU_PropertyDefinitionsContext* CypherParser::kU_PropertyDefinition
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(495);
     kU_PropertyDefinition();
     setState(506);
+=======
+    setState(427);
+    kU_PropertyDefinition();
+    setState(438);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 47, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
+<<<<<<< HEAD
         setState(497);
         _errHandler->sync(this);
 
@@ -1751,10 +2218,14 @@ CypherParser::KU_PropertyDefinitionsContext* CypherParser::kU_PropertyDefinition
         setState(499);
         match(CypherParser::T__3);
         setState(501);
+=======
+        setState(429);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(500);
           match(CypherParser::SP);
         }
@@ -1762,6 +2233,25 @@ CypherParser::KU_PropertyDefinitionsContext* CypherParser::kU_PropertyDefinition
         kU_PropertyDefinition(); 
       }
       setState(508);
+=======
+          setState(428);
+          match(CypherParser::SP);
+        }
+        setState(431);
+        match(CypherParser::T__3);
+        setState(433);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::SP) {
+          setState(432);
+          match(CypherParser::SP);
+        }
+        setState(435);
+        kU_PropertyDefinition(); 
+      }
+      setState(440);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 47, _ctx);
     }
@@ -1813,11 +2303,19 @@ CypherParser::KU_PropertyDefinitionContext* CypherParser::kU_PropertyDefinition(
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(509);
     oC_PropertyKeyName();
     setState(510);
     match(CypherParser::SP);
     setState(511);
+=======
+    setState(441);
+    oC_PropertyKeyName();
+    setState(442);
+    match(CypherParser::SP);
+    setState(443);
+>>>>>>> d678da15 (frontend changes for path)
     kU_DataType();
    
   }
@@ -1876,6 +2374,7 @@ CypherParser::KU_CreateNodeConstraintContext* CypherParser::kU_CreateNodeConstra
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(513);
     match(CypherParser::PRIMARY);
     setState(514);
@@ -1883,10 +2382,20 @@ CypherParser::KU_CreateNodeConstraintContext* CypherParser::kU_CreateNodeConstra
     setState(515);
     match(CypherParser::KEY);
     setState(517);
+=======
+    setState(445);
+    match(CypherParser::PRIMARY);
+    setState(446);
+    match(CypherParser::SP);
+    setState(447);
+    match(CypherParser::KEY);
+    setState(449);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(516);
       match(CypherParser::SP);
     }
@@ -1903,14 +2412,39 @@ CypherParser::KU_CreateNodeConstraintContext* CypherParser::kU_CreateNodeConstra
     setState(523);
     oC_PropertyKeyName();
     setState(525);
+=======
+      setState(448);
+      match(CypherParser::SP);
+    }
+    setState(451);
+    match(CypherParser::T__1);
+    setState(453);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(524);
       match(CypherParser::SP);
     }
     setState(527);
+=======
+      setState(452);
+      match(CypherParser::SP);
+    }
+    setState(455);
+    oC_PropertyKeyName();
+    setState(457);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::SP) {
+      setState(456);
+      match(CypherParser::SP);
+    }
+    setState(459);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::T__2);
    
   }
@@ -1968,21 +2502,35 @@ CypherParser::KU_DataTypeContext* CypherParser::kU_DataType() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(547);
+=======
+    setState(465);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 54, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(529);
+=======
+      setState(461);
+>>>>>>> d678da15 (frontend changes for path)
       oC_SymbolicName();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(530);
       oC_SymbolicName();
       setState(531);
+=======
+      setState(462);
+      oC_SymbolicName();
+      setState(463);
+>>>>>>> d678da15 (frontend changes for path)
       kU_ListIdentifiers();
       break;
     }
@@ -2072,6 +2620,7 @@ CypherParser::KU_ListIdentifiersContext* CypherParser::kU_ListIdentifiers() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(549);
     kU_ListIdentifier();
     setState(553);
@@ -2081,6 +2630,17 @@ CypherParser::KU_ListIdentifiersContext* CypherParser::kU_ListIdentifiers() {
       setState(550);
       kU_ListIdentifier();
       setState(555);
+=======
+    setState(467);
+    kU_ListIdentifier();
+    setState(471);
+    _errHandler->sync(this);
+    _la = _input->LA(1);
+    while (_la == CypherParser::T__5) {
+      setState(468);
+      kU_ListIdentifier();
+      setState(473);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -2125,6 +2685,7 @@ CypherParser::KU_ListIdentifierContext* CypherParser::kU_ListIdentifier() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(556);
     match(CypherParser::T__4);
     setState(558);
@@ -2137,6 +2698,12 @@ CypherParser::KU_ListIdentifierContext* CypherParser::kU_ListIdentifier() {
     }
     setState(560);
     match(CypherParser::T__5);
+=======
+    setState(474);
+    match(CypherParser::T__5);
+    setState(475);
+    match(CypherParser::T__6);
+>>>>>>> d678da15 (frontend changes for path)
    
   }
   catch (RecognitionException &e) {
@@ -2180,19 +2747,31 @@ CypherParser::OC_AnyCypherOptionContext* CypherParser::oC_AnyCypherOption() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(564);
+=======
+    setState(479);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::EXPLAIN: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(562);
+=======
+        setState(477);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Explain();
         break;
       }
 
       case CypherParser::PROFILE: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(563);
+=======
+        setState(478);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Profile();
         break;
       }
@@ -2240,7 +2819,11 @@ CypherParser::OC_ExplainContext* CypherParser::oC_Explain() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(566);
+=======
+    setState(481);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::EXPLAIN);
    
   }
@@ -2282,7 +2865,11 @@ CypherParser::OC_ProfileContext* CypherParser::oC_Profile() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(568);
+=======
+    setState(483);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::PROFILE);
    
   }
@@ -2324,7 +2911,11 @@ CypherParser::OC_StatementContext* CypherParser::oC_Statement() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(570);
+=======
+    setState(485);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Query();
    
   }
@@ -2366,7 +2957,11 @@ CypherParser::OC_QueryContext* CypherParser::oC_Query() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(572);
+=======
+    setState(487);
+>>>>>>> d678da15 (frontend changes for path)
     oC_RegularQuery();
    
   }
@@ -2433,23 +3028,38 @@ CypherParser::OC_RegularQueryContext* CypherParser::oC_RegularQuery() {
   });
   try {
     size_t alt;
+<<<<<<< HEAD
     setState(595);
+=======
+    setState(510);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 62, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(574);
       oC_SingleQuery();
       setState(581);
+=======
+      setState(489);
+      oC_SingleQuery();
+      setState(496);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 59, _ctx);
       while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
         if (alt == 1) {
+<<<<<<< HEAD
           setState(576);
+=======
+          setState(491);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           _la = _input->LA(1);
           if (_la == CypherParser::SP) {
+<<<<<<< HEAD
             setState(575);
             match(CypherParser::SP);
           }
@@ -2457,6 +3067,15 @@ CypherParser::OC_RegularQueryContext* CypherParser::oC_RegularQuery() {
           oC_Union(); 
         }
         setState(583);
+=======
+            setState(490);
+            match(CypherParser::SP);
+          }
+          setState(493);
+          oC_Union(); 
+        }
+        setState(498);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 59, _ctx);
       }
@@ -2465,20 +3084,34 @@ CypherParser::OC_RegularQueryContext* CypherParser::oC_RegularQuery() {
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(588); 
+=======
+      setState(503); 
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = 1;
       do {
         switch (alt) {
           case 1: {
+<<<<<<< HEAD
                 setState(584);
                 oC_Return();
                 setState(586);
+=======
+                setState(499);
+                oC_Return();
+                setState(501);
+>>>>>>> d678da15 (frontend changes for path)
                 _errHandler->sync(this);
 
                 switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 60, _ctx)) {
                 case 1: {
+<<<<<<< HEAD
                   setState(585);
+=======
+                  setState(500);
+>>>>>>> d678da15 (frontend changes for path)
                   match(CypherParser::SP);
                   break;
                 }
@@ -2492,11 +3125,19 @@ CypherParser::OC_RegularQueryContext* CypherParser::oC_RegularQuery() {
         default:
           throw NoViableAltException(this);
         }
+<<<<<<< HEAD
         setState(590); 
+=======
+        setState(505); 
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 61, _ctx);
       } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
+<<<<<<< HEAD
       setState(592);
+=======
+      setState(507);
+>>>>>>> d678da15 (frontend changes for path)
       oC_SingleQuery();
        notifyReturnNotAtEnd(_localctx->start); 
       break;
@@ -2560,11 +3201,16 @@ CypherParser::OC_UnionContext* CypherParser::oC_Union() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(609);
+=======
+    setState(524);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 65, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(597);
       match(CypherParser::UNION);
       setState(598);
@@ -2572,11 +3218,24 @@ CypherParser::OC_UnionContext* CypherParser::oC_Union() {
       setState(599);
       match(CypherParser::ALL);
       setState(601);
+=======
+      setState(512);
+      match(CypherParser::UNION);
+      setState(513);
+      match(CypherParser::SP);
+      setState(514);
+      match(CypherParser::ALL);
+      setState(516);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 63, _ctx)) {
       case 1: {
+<<<<<<< HEAD
         setState(600);
+=======
+        setState(515);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::SP);
         break;
       }
@@ -2584,21 +3243,35 @@ CypherParser::OC_UnionContext* CypherParser::oC_Union() {
       default:
         break;
       }
+<<<<<<< HEAD
       setState(603);
+=======
+      setState(518);
+>>>>>>> d678da15 (frontend changes for path)
       oC_SingleQuery();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(604);
       match(CypherParser::UNION);
       setState(606);
+=======
+      setState(519);
+      match(CypherParser::UNION);
+      setState(521);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 64, _ctx)) {
       case 1: {
+<<<<<<< HEAD
         setState(605);
+=======
+        setState(520);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::SP);
         break;
       }
@@ -2606,7 +3279,11 @@ CypherParser::OC_UnionContext* CypherParser::oC_Union() {
       default:
         break;
       }
+<<<<<<< HEAD
       setState(608);
+=======
+      setState(523);
+>>>>>>> d678da15 (frontend changes for path)
       oC_SingleQuery();
       break;
     }
@@ -2657,19 +3334,31 @@ CypherParser::OC_SingleQueryContext* CypherParser::oC_SingleQuery() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(613);
+=======
+    setState(528);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 66, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(611);
+=======
+      setState(526);
+>>>>>>> d678da15 (frontend changes for path)
       oC_SinglePartQuery();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(612);
+=======
+      setState(527);
+>>>>>>> d678da15 (frontend changes for path)
       oC_MultiPartQuery();
       break;
     }
@@ -2742,11 +3431,16 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
   });
   try {
     size_t alt;
+<<<<<<< HEAD
     setState(660);
+=======
+    setState(575);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 77, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(621);
       _errHandler->sync(this);
       _la = _input->LA(1);
@@ -2757,10 +3451,23 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
         setState(615);
         oC_ReadingClause();
         setState(617);
+=======
+      setState(536);
+      _errHandler->sync(this);
+      _la = _input->LA(1);
+      while (((((_la - 64) & ~ 0x3fULL) == 0) &&
+        ((1ULL << (_la - 64)) & ((1ULL << (CypherParser::OPTIONAL - 64))
+        | (1ULL << (CypherParser::MATCH - 64))
+        | (1ULL << (CypherParser::UNWIND - 64)))) != 0)) {
+        setState(530);
+        oC_ReadingClause();
+        setState(532);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(616);
           match(CypherParser::SP);
         }
@@ -2769,12 +3476,23 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
         _la = _input->LA(1);
       }
       setState(624);
+=======
+          setState(531);
+          match(CypherParser::SP);
+        }
+        setState(538);
+        _errHandler->sync(this);
+        _la = _input->LA(1);
+      }
+      setState(539);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Return();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(631);
       _errHandler->sync(this);
       _la = _input->LA(1);
@@ -2785,10 +3503,23 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
         setState(625);
         oC_ReadingClause();
         setState(627);
+=======
+      setState(546);
+      _errHandler->sync(this);
+      _la = _input->LA(1);
+      while (((((_la - 64) & ~ 0x3fULL) == 0) &&
+        ((1ULL << (_la - 64)) & ((1ULL << (CypherParser::OPTIONAL - 64))
+        | (1ULL << (CypherParser::MATCH - 64))
+        | (1ULL << (CypherParser::UNWIND - 64)))) != 0)) {
+        setState(540);
+        oC_ReadingClause();
+        setState(542);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(626);
           match(CypherParser::SP);
         }
@@ -2799,15 +3530,32 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
       setState(634);
       oC_UpdatingClause();
       setState(641);
+=======
+          setState(541);
+          match(CypherParser::SP);
+        }
+        setState(548);
+        _errHandler->sync(this);
+        _la = _input->LA(1);
+      }
+      setState(549);
+      oC_UpdatingClause();
+      setState(556);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 72, _ctx);
       while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
         if (alt == 1) {
+<<<<<<< HEAD
           setState(636);
+=======
+          setState(551);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           _la = _input->LA(1);
           if (_la == CypherParser::SP) {
+<<<<<<< HEAD
             setState(635);
             match(CypherParser::SP);
           }
@@ -2815,23 +3563,47 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
           oC_UpdatingClause(); 
         }
         setState(643);
+=======
+            setState(550);
+            match(CypherParser::SP);
+          }
+          setState(553);
+          oC_UpdatingClause(); 
+        }
+        setState(558);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 72, _ctx);
       }
+<<<<<<< HEAD
       setState(648);
+=======
+      setState(563);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 74, _ctx)) {
       case 1: {
+<<<<<<< HEAD
         setState(645);
+=======
+        setState(560);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(644);
           match(CypherParser::SP);
         }
         setState(647);
+=======
+          setState(559);
+          match(CypherParser::SP);
+        }
+        setState(562);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Return();
         break;
       }
@@ -2844,6 +3616,7 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
 
     case 3: {
       enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
       setState(656);
       _errHandler->sync(this);
       _la = _input->LA(1);
@@ -2854,11 +3627,27 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
         setState(650);
         oC_ReadingClause();
         setState(652);
+=======
+      setState(571);
+      _errHandler->sync(this);
+      _la = _input->LA(1);
+      while (((((_la - 64) & ~ 0x3fULL) == 0) &&
+        ((1ULL << (_la - 64)) & ((1ULL << (CypherParser::OPTIONAL - 64))
+        | (1ULL << (CypherParser::MATCH - 64))
+        | (1ULL << (CypherParser::UNWIND - 64)))) != 0)) {
+        setState(565);
+        oC_ReadingClause();
+        setState(567);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 75, _ctx)) {
         case 1: {
+<<<<<<< HEAD
           setState(651);
+=======
+          setState(566);
+>>>>>>> d678da15 (frontend changes for path)
           match(CypherParser::SP);
           break;
         }
@@ -2866,7 +3655,11 @@ CypherParser::OC_SinglePartQueryContext* CypherParser::oC_SinglePartQuery() {
         default:
           break;
         }
+<<<<<<< HEAD
         setState(658);
+=======
+        setState(573);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         _la = _input->LA(1);
       }
@@ -2934,20 +3727,34 @@ CypherParser::OC_MultiPartQueryContext* CypherParser::oC_MultiPartQuery() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(666); 
+=======
+    setState(581); 
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = 1;
     do {
       switch (alt) {
         case 1: {
+<<<<<<< HEAD
               setState(662);
               kU_QueryPart();
               setState(664);
+=======
+              setState(577);
+              kU_QueryPart();
+              setState(579);
+>>>>>>> d678da15 (frontend changes for path)
               _errHandler->sync(this);
 
               switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 78, _ctx)) {
               case 1: {
+<<<<<<< HEAD
                 setState(663);
+=======
+                setState(578);
+>>>>>>> d678da15 (frontend changes for path)
                 match(CypherParser::SP);
                 break;
               }
@@ -2961,11 +3768,19 @@ CypherParser::OC_MultiPartQueryContext* CypherParser::oC_MultiPartQuery() {
       default:
         throw NoViableAltException(this);
       }
+<<<<<<< HEAD
       setState(668); 
+=======
+      setState(583); 
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 79, _ctx);
     } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
+<<<<<<< HEAD
     setState(670);
+=======
+    setState(585);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SinglePartQuery();
    
   }
@@ -3032,6 +3847,7 @@ CypherParser::KU_QueryPartContext* CypherParser::kU_QueryPart() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(678);
     _errHandler->sync(this);
     _la = _input->LA(1);
@@ -3042,10 +3858,44 @@ CypherParser::KU_QueryPartContext* CypherParser::kU_QueryPart() {
       setState(672);
       oC_ReadingClause();
       setState(674);
+=======
+    setState(593);
+    _errHandler->sync(this);
+    _la = _input->LA(1);
+    while (((((_la - 64) & ~ 0x3fULL) == 0) &&
+      ((1ULL << (_la - 64)) & ((1ULL << (CypherParser::OPTIONAL - 64))
+      | (1ULL << (CypherParser::MATCH - 64))
+      | (1ULL << (CypherParser::UNWIND - 64)))) != 0)) {
+      setState(587);
+      oC_ReadingClause();
+      setState(589);
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+        setState(588);
+        match(CypherParser::SP);
+      }
+      setState(595);
+      _errHandler->sync(this);
+      _la = _input->LA(1);
+    }
+    setState(602);
+    _errHandler->sync(this);
+    _la = _input->LA(1);
+    while (((((_la - 67) & ~ 0x3fULL) == 0) &&
+      ((1ULL << (_la - 67)) & ((1ULL << (CypherParser::CREATE - 67))
+      | (1ULL << (CypherParser::SET - 67))
+      | (1ULL << (CypherParser::DELETE - 67)))) != 0)) {
+      setState(596);
+      oC_UpdatingClause();
+      setState(598);
+>>>>>>> d678da15 (frontend changes for path)
+      _errHandler->sync(this);
+
+      _la = _input->LA(1);
+      if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(673);
         match(CypherParser::SP);
       }
@@ -3075,6 +3925,16 @@ CypherParser::KU_QueryPartContext* CypherParser::kU_QueryPart() {
       _la = _input->LA(1);
     }
     setState(690);
+=======
+        setState(597);
+        match(CypherParser::SP);
+      }
+      setState(604);
+      _errHandler->sync(this);
+      _la = _input->LA(1);
+    }
+    setState(605);
+>>>>>>> d678da15 (frontend changes for path)
     oC_With();
    
   }
@@ -3123,26 +3983,42 @@ CypherParser::OC_UpdatingClauseContext* CypherParser::oC_UpdatingClause() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(695);
+=======
+    setState(610);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::CREATE: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(692);
+=======
+        setState(607);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Create();
         break;
       }
 
       case CypherParser::SET: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(693);
+=======
+        setState(608);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Set();
         break;
       }
 
       case CypherParser::DELETE: {
         enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
         setState(694);
+=======
+        setState(609);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Delete();
         break;
       }
@@ -3193,20 +4069,32 @@ CypherParser::OC_ReadingClauseContext* CypherParser::oC_ReadingClause() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(699);
+=======
+    setState(614);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::OPTIONAL:
       case CypherParser::MATCH: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(697);
+=======
+        setState(612);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Match();
         break;
       }
 
       case CypherParser::UNWIND: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(698);
+=======
+        setState(613);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Unwind();
         break;
       }
@@ -3275,11 +4163,16 @@ CypherParser::OC_MatchContext* CypherParser::oC_Match() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(703);
+=======
+    setState(618);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::OPTIONAL) {
+<<<<<<< HEAD
       setState(701);
       match(CypherParser::OPTIONAL);
       setState(702);
@@ -3288,11 +4181,25 @@ CypherParser::OC_MatchContext* CypherParser::oC_Match() {
     setState(705);
     match(CypherParser::MATCH);
     setState(707);
+=======
+      setState(616);
+      match(CypherParser::OPTIONAL);
+      setState(617);
+      match(CypherParser::SP);
+    }
+    setState(620);
+    match(CypherParser::MATCH);
+    setState(622);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 87, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(706);
+=======
+      setState(621);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::SP);
       break;
     }
@@ -3300,22 +4207,39 @@ CypherParser::OC_MatchContext* CypherParser::oC_Match() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(709);
     oC_Pattern();
     setState(714);
+=======
+    setState(624);
+    oC_Pattern();
+    setState(629);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 89, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(711);
+=======
+      setState(626);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(710);
         match(CypherParser::SP);
       }
       setState(713);
+=======
+        setState(625);
+        match(CypherParser::SP);
+      }
+      setState(628);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Where();
       break;
     }
@@ -3384,13 +4308,20 @@ CypherParser::OC_UnwindContext* CypherParser::oC_Unwind() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(716);
     match(CypherParser::UNWIND);
     setState(718);
+=======
+    setState(631);
+    match(CypherParser::UNWIND);
+    setState(633);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(717);
       match(CypherParser::SP);
     }
@@ -3403,6 +4334,20 @@ CypherParser::OC_UnwindContext* CypherParser::oC_Unwind() {
     setState(723);
     match(CypherParser::SP);
     setState(724);
+=======
+      setState(632);
+      match(CypherParser::SP);
+    }
+    setState(635);
+    oC_Expression();
+    setState(636);
+    match(CypherParser::SP);
+    setState(637);
+    match(CypherParser::AS);
+    setState(638);
+    match(CypherParser::SP);
+    setState(639);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Variable();
    
   }
@@ -3452,14 +4397,24 @@ CypherParser::OC_CreateContext* CypherParser::oC_Create() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(726);
     match(CypherParser::CREATE);
     setState(728);
+=======
+    setState(641);
+    match(CypherParser::CREATE);
+    setState(643);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 91, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(727);
+=======
+      setState(642);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::SP);
       break;
     }
@@ -3467,7 +4422,11 @@ CypherParser::OC_CreateContext* CypherParser::oC_Create() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(730);
+=======
+    setState(645);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Pattern();
    
   }
@@ -3527,23 +4486,39 @@ CypherParser::OC_SetContext* CypherParser::oC_Set() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(732);
     match(CypherParser::SET);
     setState(734);
+=======
+    setState(647);
+    match(CypherParser::SET);
+    setState(649);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(733);
       match(CypherParser::SP);
     }
     setState(736);
     oC_SetItem();
     setState(747);
+=======
+      setState(648);
+      match(CypherParser::SP);
+    }
+    setState(651);
+    oC_SetItem();
+    setState(662);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 95, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
+<<<<<<< HEAD
         setState(738);
         _errHandler->sync(this);
 
@@ -3555,10 +4530,14 @@ CypherParser::OC_SetContext* CypherParser::oC_Set() {
         setState(740);
         match(CypherParser::T__3);
         setState(742);
+=======
+        setState(653);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(741);
           match(CypherParser::SP);
         }
@@ -3566,6 +4545,25 @@ CypherParser::OC_SetContext* CypherParser::oC_Set() {
         oC_SetItem(); 
       }
       setState(749);
+=======
+          setState(652);
+          match(CypherParser::SP);
+        }
+        setState(655);
+        match(CypherParser::T__3);
+        setState(657);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::SP) {
+          setState(656);
+          match(CypherParser::SP);
+        }
+        setState(659);
+        oC_SetItem(); 
+      }
+      setState(664);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 95, _ctx);
     }
@@ -3622,6 +4620,7 @@ CypherParser::OC_SetItemContext* CypherParser::oC_SetItem() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(750);
     oC_PropertyExpression();
     setState(752);
@@ -3635,14 +4634,36 @@ CypherParser::OC_SetItemContext* CypherParser::oC_SetItem() {
     setState(754);
     match(CypherParser::T__6);
     setState(756);
+=======
+    setState(665);
+    oC_PropertyExpression();
+    setState(667);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(755);
       match(CypherParser::SP);
     }
     setState(758);
+=======
+      setState(666);
+      match(CypherParser::SP);
+    }
+    setState(669);
+    match(CypherParser::T__4);
+    setState(671);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::SP) {
+      setState(670);
+      match(CypherParser::SP);
+    }
+    setState(673);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Expression();
    
   }
@@ -3702,23 +4723,39 @@ CypherParser::OC_DeleteContext* CypherParser::oC_Delete() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(760);
     match(CypherParser::DELETE);
     setState(762);
+=======
+    setState(675);
+    match(CypherParser::DELETE);
+    setState(677);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(761);
       match(CypherParser::SP);
     }
     setState(764);
     oC_Expression();
     setState(775);
+=======
+      setState(676);
+      match(CypherParser::SP);
+    }
+    setState(679);
+    oC_Expression();
+    setState(690);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 101, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
+<<<<<<< HEAD
         setState(766);
         _errHandler->sync(this);
 
@@ -3730,10 +4767,14 @@ CypherParser::OC_DeleteContext* CypherParser::oC_Delete() {
         setState(768);
         match(CypherParser::T__3);
         setState(770);
+=======
+        setState(681);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(769);
           match(CypherParser::SP);
         }
@@ -3741,6 +4782,25 @@ CypherParser::OC_DeleteContext* CypherParser::oC_Delete() {
         oC_Expression(); 
       }
       setState(777);
+=======
+          setState(680);
+          match(CypherParser::SP);
+        }
+        setState(683);
+        match(CypherParser::T__3);
+        setState(685);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::SP) {
+          setState(684);
+          match(CypherParser::SP);
+        }
+        setState(687);
+        oC_Expression(); 
+      }
+      setState(692);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 101, _ctx);
     }
@@ -3797,24 +4857,43 @@ CypherParser::OC_WithContext* CypherParser::oC_With() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(778);
     match(CypherParser::WITH);
     setState(779);
     oC_ProjectionBody();
     setState(784);
+=======
+    setState(693);
+    match(CypherParser::WITH);
+    setState(694);
+    oC_ProjectionBody();
+    setState(699);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 103, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(781);
+=======
+      setState(696);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(780);
         match(CypherParser::SP);
       }
       setState(783);
+=======
+        setState(695);
+        match(CypherParser::SP);
+      }
+      setState(698);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Where();
       break;
     }
@@ -3866,9 +4945,15 @@ CypherParser::OC_ReturnContext* CypherParser::oC_Return() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(786);
     match(CypherParser::RETURN);
     setState(787);
+=======
+    setState(701);
+    match(CypherParser::RETURN);
+    setState(702);
+>>>>>>> d678da15 (frontend changes for path)
     oC_ProjectionBody();
    
   }
@@ -3935,20 +5020,35 @@ CypherParser::OC_ProjectionBodyContext* CypherParser::oC_ProjectionBody() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(793);
+=======
+    setState(708);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 105, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(790);
+=======
+      setState(705);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(789);
         match(CypherParser::SP);
       }
       setState(792);
+=======
+        setState(704);
+        match(CypherParser::SP);
+      }
+      setState(707);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::DISTINCT);
       break;
     }
@@ -3956,18 +5056,32 @@ CypherParser::OC_ProjectionBodyContext* CypherParser::oC_ProjectionBody() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(795);
     match(CypherParser::SP);
     setState(796);
     oC_ProjectionItems();
     setState(799);
+=======
+    setState(710);
+    match(CypherParser::SP);
+    setState(711);
+    oC_ProjectionItems();
+    setState(714);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 106, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(797);
       match(CypherParser::SP);
       setState(798);
+=======
+      setState(712);
+      match(CypherParser::SP);
+      setState(713);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Order();
       break;
     }
@@ -3975,14 +5089,24 @@ CypherParser::OC_ProjectionBodyContext* CypherParser::oC_ProjectionBody() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(803);
+=======
+    setState(718);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 107, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(801);
       match(CypherParser::SP);
       setState(802);
+=======
+      setState(716);
+      match(CypherParser::SP);
+      setState(717);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Skip();
       break;
     }
@@ -3990,14 +5114,24 @@ CypherParser::OC_ProjectionBodyContext* CypherParser::oC_ProjectionBody() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(807);
+=======
+    setState(722);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 108, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(805);
       match(CypherParser::SP);
       setState(806);
+=======
+      setState(720);
+      match(CypherParser::SP);
+      setState(721);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Limit();
       break;
     }
@@ -4062,18 +5196,29 @@ CypherParser::OC_ProjectionItemsContext* CypherParser::oC_ProjectionItems() {
   });
   try {
     size_t alt;
+<<<<<<< HEAD
     setState(837);
+=======
+    setState(752);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::STAR: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(809);
         match(CypherParser::STAR);
         setState(820);
+=======
+        setState(724);
+        match(CypherParser::STAR);
+        setState(735);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 111, _ctx);
         while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
           if (alt == 1) {
+<<<<<<< HEAD
             setState(811);
             _errHandler->sync(this);
 
@@ -4085,10 +5230,14 @@ CypherParser::OC_ProjectionItemsContext* CypherParser::oC_ProjectionItems() {
             setState(813);
             match(CypherParser::T__3);
             setState(815);
+=======
+            setState(726);
+>>>>>>> d678da15 (frontend changes for path)
             _errHandler->sync(this);
 
             _la = _input->LA(1);
             if (_la == CypherParser::SP) {
+<<<<<<< HEAD
               setState(814);
               match(CypherParser::SP);
             }
@@ -4096,6 +5245,25 @@ CypherParser::OC_ProjectionItemsContext* CypherParser::oC_ProjectionItems() {
             oC_ProjectionItem(); 
           }
           setState(822);
+=======
+              setState(725);
+              match(CypherParser::SP);
+            }
+            setState(728);
+            match(CypherParser::T__3);
+            setState(730);
+            _errHandler->sync(this);
+
+            _la = _input->LA(1);
+            if (_la == CypherParser::SP) {
+              setState(729);
+              match(CypherParser::SP);
+            }
+            setState(732);
+            oC_ProjectionItem(); 
+          }
+          setState(737);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
           alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 111, _ctx);
         }
@@ -4119,13 +5287,20 @@ CypherParser::OC_ProjectionItemsContext* CypherParser::oC_ProjectionItems() {
       case CypherParser::UnescapedSymbolicName:
       case CypherParser::EscapedSymbolicName: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(823);
         oC_ProjectionItem();
         setState(834);
+=======
+        setState(738);
+        oC_ProjectionItem();
+        setState(749);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 114, _ctx);
         while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
           if (alt == 1) {
+<<<<<<< HEAD
             setState(825);
             _errHandler->sync(this);
 
@@ -4137,10 +5312,14 @@ CypherParser::OC_ProjectionItemsContext* CypherParser::oC_ProjectionItems() {
             setState(827);
             match(CypherParser::T__3);
             setState(829);
+=======
+            setState(740);
+>>>>>>> d678da15 (frontend changes for path)
             _errHandler->sync(this);
 
             _la = _input->LA(1);
             if (_la == CypherParser::SP) {
+<<<<<<< HEAD
               setState(828);
               match(CypherParser::SP);
             }
@@ -4148,6 +5327,25 @@ CypherParser::OC_ProjectionItemsContext* CypherParser::oC_ProjectionItems() {
             oC_ProjectionItem(); 
           }
           setState(836);
+=======
+              setState(739);
+              match(CypherParser::SP);
+            }
+            setState(742);
+            match(CypherParser::T__3);
+            setState(744);
+            _errHandler->sync(this);
+
+            _la = _input->LA(1);
+            if (_la == CypherParser::SP) {
+              setState(743);
+              match(CypherParser::SP);
+            }
+            setState(746);
+            oC_ProjectionItem(); 
+          }
+          setState(751);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
           alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 114, _ctx);
         }
@@ -4212,11 +5410,16 @@ CypherParser::OC_ProjectionItemContext* CypherParser::oC_ProjectionItem() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(846);
+=======
+    setState(761);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 116, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(839);
       oC_Expression();
       setState(840);
@@ -4226,13 +5429,28 @@ CypherParser::OC_ProjectionItemContext* CypherParser::oC_ProjectionItem() {
       setState(842);
       match(CypherParser::SP);
       setState(843);
+=======
+      setState(754);
+      oC_Expression();
+      setState(755);
+      match(CypherParser::SP);
+      setState(756);
+      match(CypherParser::AS);
+      setState(757);
+      match(CypherParser::SP);
+      setState(758);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Variable();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(845);
+=======
+      setState(760);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Expression();
       break;
     }
@@ -4301,6 +5519,7 @@ CypherParser::OC_OrderContext* CypherParser::oC_Order() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(848);
     match(CypherParser::ORDER);
     setState(849);
@@ -4318,16 +5537,44 @@ CypherParser::OC_OrderContext* CypherParser::oC_Order() {
       setState(853);
       match(CypherParser::T__3);
       setState(855);
+=======
+    setState(763);
+    match(CypherParser::ORDER);
+    setState(764);
+    match(CypherParser::SP);
+    setState(765);
+    match(CypherParser::BY);
+    setState(766);
+    match(CypherParser::SP);
+    setState(767);
+    oC_SortItem();
+    setState(775);
+    _errHandler->sync(this);
+    _la = _input->LA(1);
+    while (_la == CypherParser::T__3) {
+      setState(768);
+      match(CypherParser::T__3);
+      setState(770);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(854);
         match(CypherParser::SP);
       }
       setState(857);
       oC_SortItem();
       setState(862);
+=======
+        setState(769);
+        match(CypherParser::SP);
+      }
+      setState(772);
+      oC_SortItem();
+      setState(777);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -4379,11 +5626,19 @@ CypherParser::OC_SkipContext* CypherParser::oC_Skip() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(863);
     match(CypherParser::L_SKIP);
     setState(864);
     match(CypherParser::SP);
     setState(865);
+=======
+    setState(778);
+    match(CypherParser::L_SKIP);
+    setState(779);
+    match(CypherParser::SP);
+    setState(780);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Expression();
    
   }
@@ -4433,11 +5688,19 @@ CypherParser::OC_LimitContext* CypherParser::oC_Limit() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(867);
     match(CypherParser::LIMIT);
     setState(868);
     match(CypherParser::SP);
     setState(869);
+=======
+    setState(782);
+    match(CypherParser::LIMIT);
+    setState(783);
+    match(CypherParser::SP);
+    setState(784);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Expression();
    
   }
@@ -4500,22 +5763,39 @@ CypherParser::OC_SortItemContext* CypherParser::oC_SortItem() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(871);
     oC_Expression();
     setState(876);
+=======
+    setState(786);
+    oC_Expression();
+    setState(791);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 120, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(873);
+=======
+      setState(788);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(872);
         match(CypherParser::SP);
       }
       setState(875);
+=======
+        setState(787);
+        match(CypherParser::SP);
+      }
+      setState(790);
+>>>>>>> d678da15 (frontend changes for path)
       _la = _input->LA(1);
       if (!(((((_la - 82) & ~ 0x3fULL) == 0) &&
         ((1ULL << (_la - 82)) & ((1ULL << (CypherParser::ASCENDING - 82))
@@ -4582,11 +5862,19 @@ CypherParser::OC_WhereContext* CypherParser::oC_Where() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(878);
     match(CypherParser::WHERE);
     setState(879);
     match(CypherParser::SP);
     setState(880);
+=======
+    setState(793);
+    match(CypherParser::WHERE);
+    setState(794);
+    match(CypherParser::SP);
+    setState(795);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Expression();
    
   }
@@ -4642,29 +5930,52 @@ CypherParser::OC_PatternContext* CypherParser::oC_Pattern() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(882);
     oC_PatternPart();
     setState(893);
+=======
+    setState(797);
+    oC_PatternPart();
+    setState(808);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 123, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
+<<<<<<< HEAD
         setState(884);
+=======
+        setState(799);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(883);
           match(CypherParser::SP);
         }
         setState(886);
         match(CypherParser::T__3);
         setState(888);
+=======
+          setState(798);
+          match(CypherParser::SP);
+        }
+        setState(801);
+        match(CypherParser::T__3);
+        setState(803);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 122, _ctx)) {
         case 1: {
+<<<<<<< HEAD
           setState(887);
+=======
+          setState(802);
+>>>>>>> d678da15 (frontend changes for path)
           match(CypherParser::SP);
           break;
         }
@@ -4672,10 +5983,17 @@ CypherParser::OC_PatternContext* CypherParser::oC_Pattern() {
         default:
           break;
         }
+<<<<<<< HEAD
         setState(890);
         oC_PatternPart(); 
       }
       setState(895);
+=======
+        setState(805);
+        oC_PatternPart(); 
+      }
+      setState(810);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 123, _ctx);
     }
@@ -4718,9 +6036,36 @@ CypherParser::OC_PatternPartContext* CypherParser::oC_PatternPart() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     enterOuterAlt(_localctx, 1);
     setState(896);
     oC_AnonymousPatternPart();
+=======
+    setState(816);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 108, _ctx)) {
+    case 1: {
+      enterOuterAlt(_localctx, 1);
+      setState(811);
+      oC_Variable();
+      setState(812);
+      match(CypherParser::T__4);
+      setState(813);
+      oC_AnonymousPatternPart();
+      break;
+    }
+
+    case 2: {
+      enterOuterAlt(_localctx, 2);
+      setState(815);
+      oC_AnonymousPatternPart();
+      break;
+    }
+
+    default:
+      break;
+    }
+>>>>>>> d678da15 (frontend changes for path)
    
   }
   catch (RecognitionException &e) {
@@ -4761,7 +6106,11 @@ CypherParser::OC_AnonymousPatternPartContext* CypherParser::oC_AnonymousPatternP
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(898);
+=======
+    setState(818);
+>>>>>>> d678da15 (frontend changes for path)
     oC_PatternElement();
    
   }
@@ -4824,23 +6173,38 @@ CypherParser::OC_PatternElementContext* CypherParser::oC_PatternElement() {
   });
   try {
     size_t alt;
+<<<<<<< HEAD
     setState(914);
+=======
+    setState(834);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 126, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
       setState(900);
       oC_NodePattern();
       setState(907);
+=======
+      setState(820);
+      oC_NodePattern();
+      setState(827);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 125, _ctx);
       while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
         if (alt == 1) {
+<<<<<<< HEAD
           setState(902);
+=======
+          setState(822);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           _la = _input->LA(1);
           if (_la == CypherParser::SP) {
+<<<<<<< HEAD
             setState(901);
             match(CypherParser::SP);
           }
@@ -4848,6 +6212,15 @@ CypherParser::OC_PatternElementContext* CypherParser::oC_PatternElement() {
           oC_PatternElementChain(); 
         }
         setState(909);
+=======
+            setState(821);
+            match(CypherParser::SP);
+          }
+          setState(824);
+          oC_PatternElementChain(); 
+        }
+        setState(829);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 125, _ctx);
       }
@@ -4856,11 +6229,19 @@ CypherParser::OC_PatternElementContext* CypherParser::oC_PatternElement() {
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(910);
       match(CypherParser::T__1);
       setState(911);
       oC_PatternElement();
       setState(912);
+=======
+      setState(830);
+      match(CypherParser::T__1);
+      setState(831);
+      oC_PatternElement();
+      setState(832);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::T__2);
       break;
     }
@@ -4924,18 +6305,29 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(961);
+=======
+    setState(881);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::T__1: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(916);
         match(CypherParser::T__1);
         setState(918);
+=======
+        setState(836);
+        match(CypherParser::T__1);
+        setState(838);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(917);
           match(CypherParser::SP);
         }
@@ -4950,26 +6342,57 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
           setState(920);
           oC_Variable();
           setState(922);
+=======
+          setState(837);
+          match(CypherParser::SP);
+        }
+        setState(844);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (((((_la - 108) & ~ 0x3fULL) == 0) &&
+          ((1ULL << (_la - 108)) & ((1ULL << (CypherParser::HexLetter - 108))
+          | (1ULL << (CypherParser::UnescapedSymbolicName - 108))
+          | (1ULL << (CypherParser::EscapedSymbolicName - 108)))) != 0)) {
+          setState(840);
+          oC_Variable();
+          setState(842);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           _la = _input->LA(1);
           if (_la == CypherParser::SP) {
+<<<<<<< HEAD
             setState(921);
             match(CypherParser::SP);
           }
         }
         setState(930);
+=======
+            setState(841);
+            match(CypherParser::SP);
+          }
+        }
+        setState(850);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::T__8) {
+<<<<<<< HEAD
           setState(926);
           oC_NodeLabels();
           setState(928);
+=======
+          setState(846);
+          oC_NodeLabels();
+          setState(848);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           _la = _input->LA(1);
           if (_la == CypherParser::SP) {
+<<<<<<< HEAD
             setState(927);
             match(CypherParser::SP);
           }
@@ -4991,6 +6414,29 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
           }
         }
         setState(938);
+=======
+            setState(847);
+            match(CypherParser::SP);
+          }
+        }
+        setState(856);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::T__7) {
+          setState(852);
+          kU_Properties();
+          setState(854);
+          _errHandler->sync(this);
+
+          _la = _input->LA(1);
+          if (_la == CypherParser::SP) {
+            setState(853);
+            match(CypherParser::SP);
+          }
+        }
+        setState(858);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::T__2);
         break;
       }
@@ -5034,12 +6480,20 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
       case CypherParser::EscapedSymbolicName:
       case CypherParser::SP: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(940);
+=======
+        setState(860);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 134, _ctx)) {
         case 1: {
+<<<<<<< HEAD
           setState(939);
+=======
+          setState(859);
+>>>>>>> d678da15 (frontend changes for path)
           match(CypherParser::SP);
           break;
         }
@@ -5047,6 +6501,7 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
         default:
           break;
         }
+<<<<<<< HEAD
         setState(946);
         _errHandler->sync(this);
 
@@ -5058,11 +6513,28 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
           setState(942);
           dynamic_cast<OC_NodePatternContext *>(_localctx)->oC_VariableContext = oC_Variable();
           setState(944);
+=======
+        setState(866);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (((((_la - 108) & ~ 0x3fULL) == 0) &&
+          ((1ULL << (_la - 108)) & ((1ULL << (CypherParser::HexLetter - 108))
+          | (1ULL << (CypherParser::UnescapedSymbolicName - 108))
+          | (1ULL << (CypherParser::EscapedSymbolicName - 108)))) != 0)) {
+          setState(862);
+          dynamic_cast<OC_NodePatternContext *>(_localctx)->oC_VariableContext = oC_Variable();
+          setState(864);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 135, _ctx)) {
           case 1: {
+<<<<<<< HEAD
             setState(943);
+=======
+            setState(863);
+>>>>>>> d678da15 (frontend changes for path)
             match(CypherParser::SP);
             break;
           }
@@ -5071,19 +6543,33 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
             break;
           }
         }
+<<<<<<< HEAD
         setState(952);
+=======
+        setState(872);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::T__8) {
+<<<<<<< HEAD
           setState(948);
           oC_NodeLabels();
           setState(950);
+=======
+          setState(868);
+          oC_NodeLabels();
+          setState(870);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 137, _ctx)) {
           case 1: {
+<<<<<<< HEAD
             setState(949);
+=======
+            setState(869);
+>>>>>>> d678da15 (frontend changes for path)
             match(CypherParser::SP);
             break;
           }
@@ -5092,19 +6578,33 @@ CypherParser::OC_NodePatternContext* CypherParser::oC_NodePattern() {
             break;
           }
         }
+<<<<<<< HEAD
         setState(958);
+=======
+        setState(878);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::T__7) {
+<<<<<<< HEAD
           setState(954);
           kU_Properties();
           setState(956);
+=======
+          setState(874);
+          kU_Properties();
+          setState(876);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 139, _ctx)) {
           case 1: {
+<<<<<<< HEAD
             setState(955);
+=======
+            setState(875);
+>>>>>>> d678da15 (frontend changes for path)
             match(CypherParser::SP);
             break;
           }
@@ -5168,14 +6668,24 @@ CypherParser::OC_PatternElementChainContext* CypherParser::oC_PatternElementChai
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(963);
     oC_RelationshipPattern();
     setState(965);
+=======
+    setState(883);
+    oC_RelationshipPattern();
+    setState(885);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 142, _ctx)) {
     case 1: {
+<<<<<<< HEAD
       setState(964);
+=======
+      setState(884);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::SP);
       break;
     }
@@ -5183,7 +6693,11 @@ CypherParser::OC_PatternElementChainContext* CypherParser::oC_PatternElementChai
     default:
       break;
     }
+<<<<<<< HEAD
     setState(967);
+=======
+    setState(887);
+>>>>>>> d678da15 (frontend changes for path)
     oC_NodePattern();
    
   }
@@ -5249,7 +6763,11 @@ CypherParser::OC_RelationshipPatternContext* CypherParser::oC_RelationshipPatter
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(1001);
+=======
+    setState(921);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::T__13:
@@ -5258,24 +6776,43 @@ CypherParser::OC_RelationshipPatternContext* CypherParser::oC_RelationshipPatter
       case CypherParser::T__29:
       case CypherParser::T__30: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(969);
         oC_LeftArrowHead();
         setState(971);
+=======
+        setState(889);
+        oC_LeftArrowHead();
+        setState(891);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(970);
           match(CypherParser::SP);
         }
         setState(973);
         oC_Dash();
         setState(975);
+=======
+          setState(890);
+          match(CypherParser::SP);
+        }
+        setState(893);
+        oC_Dash();
+        setState(895);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 144, _ctx)) {
         case 1: {
+<<<<<<< HEAD
           setState(974);
+=======
+          setState(894);
+>>>>>>> d678da15 (frontend changes for path)
           match(CypherParser::SP);
           break;
         }
@@ -5283,6 +6820,7 @@ CypherParser::OC_RelationshipPatternContext* CypherParser::oC_RelationshipPatter
         default:
           break;
         }
+<<<<<<< HEAD
         setState(978);
         _errHandler->sync(this);
 
@@ -5292,14 +6830,32 @@ CypherParser::OC_RelationshipPatternContext* CypherParser::oC_RelationshipPatter
           oC_RelationshipDetail();
         }
         setState(981);
+=======
+        setState(898);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::T__5) {
+          setState(897);
+          oC_RelationshipDetail();
+        }
+        setState(901);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(980);
           match(CypherParser::SP);
         }
         setState(983);
+=======
+          setState(900);
+          match(CypherParser::SP);
+        }
+        setState(903);
+>>>>>>> d678da15 (frontend changes for path)
         oC_Dash();
         break;
       }
@@ -5317,14 +6873,24 @@ CypherParser::OC_RelationshipPatternContext* CypherParser::oC_RelationshipPatter
       case CypherParser::T__45:
       case CypherParser::MINUS: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(985);
         oC_Dash();
         setState(987);
+=======
+        setState(905);
+        oC_Dash();
+        setState(907);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 147, _ctx)) {
         case 1: {
+<<<<<<< HEAD
           setState(986);
+=======
+          setState(906);
+>>>>>>> d678da15 (frontend changes for path)
           match(CypherParser::SP);
           break;
         }
@@ -5332,6 +6898,7 @@ CypherParser::OC_RelationshipPatternContext* CypherParser::oC_RelationshipPatter
         default:
           break;
         }
+<<<<<<< HEAD
         setState(990);
         _errHandler->sync(this);
 
@@ -5351,14 +6918,42 @@ CypherParser::OC_RelationshipPatternContext* CypherParser::oC_RelationshipPatter
         setState(995);
         oC_Dash();
         setState(997);
+=======
+        setState(910);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::T__5) {
+          setState(909);
+          oC_RelationshipDetail();
+        }
+        setState(913);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(996);
           match(CypherParser::SP);
         }
         setState(999);
+=======
+          setState(912);
+          match(CypherParser::SP);
+        }
+        setState(915);
+        oC_Dash();
+        setState(917);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::SP) {
+          setState(916);
+          match(CypherParser::SP);
+        }
+        setState(919);
+>>>>>>> d678da15 (frontend changes for path)
         oC_RightArrowHead();
         break;
       }
@@ -5399,8 +6994,8 @@ CypherParser::OC_RelationshipTypesContext* CypherParser::OC_RelationshipDetailCo
   return getRuleContext<CypherParser::OC_RelationshipTypesContext>(0);
 }
 
-CypherParser::OC_RangeLiteralContext* CypherParser::OC_RelationshipDetailContext::oC_RangeLiteral() {
-  return getRuleContext<CypherParser::OC_RangeLiteralContext>(0);
+CypherParser::OC_RangePatternContext* CypherParser::OC_RelationshipDetailContext::oC_RangePattern() {
+  return getRuleContext<CypherParser::OC_RangePatternContext>(0);
 }
 
 CypherParser::KU_PropertiesContext* CypherParser::OC_RelationshipDetailContext::kU_Properties() {
@@ -5427,13 +7022,20 @@ CypherParser::OC_RelationshipDetailContext* CypherParser::oC_RelationshipDetail(
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1003);
     match(CypherParser::T__4);
     setState(1005);
+=======
+    setState(923);
+    match(CypherParser::T__5);
+    setState(925);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1004);
       match(CypherParser::SP);
     }
@@ -5448,42 +7050,87 @@ CypherParser::OC_RelationshipDetailContext* CypherParser::oC_RelationshipDetail(
       setState(1007);
       oC_Variable();
       setState(1009);
+=======
+      setState(924);
+      match(CypherParser::SP);
+    }
+    setState(931);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (((((_la - 108) & ~ 0x3fULL) == 0) &&
+      ((1ULL << (_la - 108)) & ((1ULL << (CypherParser::HexLetter - 108))
+      | (1ULL << (CypherParser::UnescapedSymbolicName - 108))
+      | (1ULL << (CypherParser::EscapedSymbolicName - 108)))) != 0)) {
+      setState(927);
+      oC_Variable();
+      setState(929);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1008);
         match(CypherParser::SP);
       }
     }
     setState(1017);
+=======
+        setState(928);
+        match(CypherParser::SP);
+      }
+    }
+    setState(937);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::T__8) {
+<<<<<<< HEAD
       setState(1013);
       oC_RelationshipTypes();
       setState(1015);
+=======
+      setState(933);
+      oC_RelationshipTypes();
+      setState(935);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1014);
         match(CypherParser::SP);
       }
     }
     setState(1023);
+=======
+        setState(934);
+        match(CypherParser::SP);
+      }
+    }
+    setState(943);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::STAR) {
+<<<<<<< HEAD
       setState(1019);
       oC_RangeLiteral();
       setState(1021);
+=======
+      setState(939);
+      oC_RangePattern();
+      setState(941);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1020);
         match(CypherParser::SP);
       }
@@ -5506,6 +7153,30 @@ CypherParser::OC_RelationshipDetailContext* CypherParser::oC_RelationshipDetail(
     }
     setState(1031);
     match(CypherParser::T__5);
+=======
+        setState(940);
+        match(CypherParser::SP);
+      }
+    }
+    setState(949);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::T__7) {
+      setState(945);
+      kU_Properties();
+      setState(947);
+      _errHandler->sync(this);
+
+      _la = _input->LA(1);
+      if (_la == CypherParser::SP) {
+        setState(946);
+        match(CypherParser::SP);
+      }
+    }
+    setState(951);
+    match(CypherParser::T__6);
+>>>>>>> d678da15 (frontend changes for path)
    
   }
   catch (RecognitionException &e) {
@@ -5567,13 +7238,20 @@ CypherParser::KU_PropertiesContext* CypherParser::kU_Properties() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1033);
     match(CypherParser::T__7);
     setState(1035);
+=======
+    setState(953);
+    match(CypherParser::T__7);
+    setState(955);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1034);
       match(CypherParser::SP);
     }
@@ -5588,10 +7266,27 @@ CypherParser::KU_PropertiesContext* CypherParser::kU_Properties() {
       setState(1037);
       oC_PropertyKeyName();
       setState(1039);
+=======
+      setState(954);
+      match(CypherParser::SP);
+    }
+    setState(990);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (((((_la - 108) & ~ 0x3fULL) == 0) &&
+      ((1ULL << (_la - 108)) & ((1ULL << (CypherParser::HexLetter - 108))
+      | (1ULL << (CypherParser::UnescapedSymbolicName - 108))
+      | (1ULL << (CypherParser::EscapedSymbolicName - 108)))) != 0)) {
+      setState(957);
+      oC_PropertyKeyName();
+      setState(959);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1038);
         match(CypherParser::SP);
       }
@@ -5608,10 +7303,19 @@ CypherParser::KU_PropertiesContext* CypherParser::kU_Properties() {
       setState(1045);
       oC_Expression();
       setState(1047);
+=======
+        setState(958);
+        match(CypherParser::SP);
+      }
+      setState(961);
+      match(CypherParser::T__8);
+      setState(963);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1046);
         match(CypherParser::SP);
       }
@@ -5622,20 +7326,52 @@ CypherParser::KU_PropertiesContext* CypherParser::kU_Properties() {
         setState(1049);
         match(CypherParser::T__3);
         setState(1051);
+=======
+        setState(962);
+        match(CypherParser::SP);
+      }
+      setState(965);
+      oC_Expression();
+      setState(967);
+      _errHandler->sync(this);
+
+      _la = _input->LA(1);
+      if (_la == CypherParser::SP) {
+        setState(966);
+        match(CypherParser::SP);
+      }
+      setState(987);
+      _errHandler->sync(this);
+      _la = _input->LA(1);
+      while (_la == CypherParser::T__3) {
+        setState(969);
+        match(CypherParser::T__3);
+        setState(971);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1050);
           match(CypherParser::SP);
         }
         setState(1053);
         oC_PropertyKeyName();
         setState(1055);
+=======
+          setState(970);
+          match(CypherParser::SP);
+        }
+        setState(973);
+        oC_PropertyKeyName();
+        setState(975);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1054);
           match(CypherParser::SP);
         }
@@ -5652,19 +7388,48 @@ CypherParser::KU_PropertiesContext* CypherParser::kU_Properties() {
         setState(1061);
         oC_Expression();
         setState(1063);
+=======
+          setState(974);
+          match(CypherParser::SP);
+        }
+        setState(977);
+        match(CypherParser::T__8);
+        setState(979);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1062);
           match(CypherParser::SP);
         }
         setState(1069);
+=======
+          setState(978);
+          match(CypherParser::SP);
+        }
+        setState(981);
+        oC_Expression();
+        setState(983);
+        _errHandler->sync(this);
+
+        _la = _input->LA(1);
+        if (_la == CypherParser::SP) {
+          setState(982);
+          match(CypherParser::SP);
+        }
+        setState(989);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         _la = _input->LA(1);
       }
     }
+<<<<<<< HEAD
     setState(1072);
+=======
+    setState(992);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::T__9);
    
   }
@@ -5720,46 +7485,82 @@ CypherParser::OC_RelationshipTypesContext* CypherParser::oC_RelationshipTypes() 
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1074);
     match(CypherParser::T__8);
     setState(1076);
+=======
+    setState(994);
+    match(CypherParser::T__8);
+    setState(996);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1075);
       match(CypherParser::SP);
     }
     setState(1078);
     oC_RelTypeName();
     setState(1092);
+=======
+      setState(995);
+      match(CypherParser::SP);
+    }
+    setState(998);
+    oC_RelTypeName();
+    setState(1012);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 175, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
+<<<<<<< HEAD
         setState(1080);
+=======
+        setState(1000);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1079);
           match(CypherParser::SP);
         }
         setState(1082);
         match(CypherParser::T__10);
         setState(1084);
+=======
+          setState(999);
+          match(CypherParser::SP);
+        }
+        setState(1002);
+        match(CypherParser::T__10);
+        setState(1004);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::T__8) {
+<<<<<<< HEAD
           setState(1083);
           match(CypherParser::T__8);
         }
         setState(1087);
+=======
+          setState(1003);
+          match(CypherParser::T__8);
+        }
+        setState(1007);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1086);
           match(CypherParser::SP);
         }
@@ -5767,6 +7568,15 @@ CypherParser::OC_RelationshipTypesContext* CypherParser::oC_RelationshipTypes() 
         oC_RelTypeName(); 
       }
       setState(1094);
+=======
+          setState(1006);
+          match(CypherParser::SP);
+        }
+        setState(1009);
+        oC_RelTypeName(); 
+      }
+      setState(1014);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 175, _ctx);
     }
@@ -5824,18 +7634,29 @@ CypherParser::OC_NodeLabelsContext* CypherParser::oC_NodeLabels() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1095);
     oC_NodeLabel();
     setState(1102);
+=======
+    setState(1015);
+    oC_NodeLabel();
+    setState(1022);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 177, _ctx);
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
+<<<<<<< HEAD
         setState(1097);
+=======
+        setState(1017);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1096);
           match(CypherParser::SP);
         }
@@ -5843,6 +7664,15 @@ CypherParser::OC_NodeLabelsContext* CypherParser::oC_NodeLabels() {
         oC_NodeLabel(); 
       }
       setState(1104);
+=======
+          setState(1016);
+          match(CypherParser::SP);
+        }
+        setState(1019);
+        oC_NodeLabel(); 
+      }
+      setState(1024);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 177, _ctx);
     }
@@ -5891,18 +7721,132 @@ CypherParser::OC_NodeLabelContext* CypherParser::oC_NodeLabel() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1105);
     match(CypherParser::T__8);
     setState(1107);
+=======
+    setState(1025);
+    match(CypherParser::T__8);
+    setState(1027);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1106);
       match(CypherParser::SP);
     }
     setState(1109);
+=======
+      setState(1026);
+      match(CypherParser::SP);
+    }
+    setState(1029);
+>>>>>>> d678da15 (frontend changes for path)
     oC_LabelName();
+   
+  }
+  catch (RecognitionException &e) {
+    _errHandler->reportError(this, e);
+    _localctx->exception = std::current_exception();
+    _errHandler->recover(this, _localctx->exception);
+  }
+
+  return _localctx;
+}
+
+//----------------- OC_RangePatternContext ------------------------------------------------------------------
+
+CypherParser::OC_RangePatternContext::OC_RangePatternContext(ParserRuleContext *parent, size_t invokingState)
+  : ParserRuleContext(parent, invokingState) {
+}
+
+tree::TerminalNode* CypherParser::OC_RangePatternContext::STAR() {
+  return getToken(CypherParser::STAR, 0);
+}
+
+std::vector<tree::TerminalNode *> CypherParser::OC_RangePatternContext::SP() {
+  return getTokens(CypherParser::SP);
+}
+
+tree::TerminalNode* CypherParser::OC_RangePatternContext::SP(size_t i) {
+  return getToken(CypherParser::SP, i);
+}
+
+tree::TerminalNode* CypherParser::OC_RangePatternContext::SHORTEST() {
+  return getToken(CypherParser::SHORTEST, 0);
+}
+
+CypherParser::OC_RangeLiteralContext* CypherParser::OC_RangePatternContext::oC_RangeLiteral() {
+  return getRuleContext<CypherParser::OC_RangeLiteralContext>(0);
+}
+
+
+size_t CypherParser::OC_RangePatternContext::getRuleIndex() const {
+  return CypherParser::RuleOC_RangePattern;
+}
+
+
+CypherParser::OC_RangePatternContext* CypherParser::oC_RangePattern() {
+  OC_RangePatternContext *_localctx = _tracker.createInstance<OC_RangePatternContext>(_ctx, getState());
+  enterRule(_localctx, 122, CypherParser::RuleOC_RangePattern);
+  size_t _la = 0;
+
+#if __cplusplus > 201703L
+  auto onExit = finally([=, this] {
+#else
+  auto onExit = finally([=] {
+#endif
+    exitRule();
+  });
+  try {
+    enterOuterAlt(_localctx, 1);
+    setState(1031);
+    match(CypherParser::STAR);
+    setState(1033);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 164, _ctx)) {
+    case 1: {
+      setState(1032);
+      match(CypherParser::SP);
+      break;
+    }
+
+    default:
+      break;
+    }
+    setState(1036);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::SHORTEST) {
+      setState(1035);
+      match(CypherParser::SHORTEST);
+    }
+    setState(1039);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 166, _ctx)) {
+    case 1: {
+      setState(1038);
+      match(CypherParser::SP);
+      break;
+    }
+
+    default:
+      break;
+    }
+    setState(1042);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == CypherParser::DecimalInteger) {
+      setState(1041);
+      oC_RangeLiteral();
+    }
    
   }
   catch (RecognitionException &e) {
@@ -5918,10 +7862,6 @@ CypherParser::OC_NodeLabelContext* CypherParser::oC_NodeLabel() {
 
 CypherParser::OC_RangeLiteralContext::OC_RangeLiteralContext(ParserRuleContext *parent, size_t invokingState)
   : ParserRuleContext(parent, invokingState) {
-}
-
-tree::TerminalNode* CypherParser::OC_RangeLiteralContext::STAR() {
-  return getToken(CypherParser::STAR, 0);
 }
 
 std::vector<CypherParser::OC_IntegerLiteralContext *> CypherParser::OC_RangeLiteralContext::oC_IntegerLiteral() {
@@ -5948,7 +7888,11 @@ size_t CypherParser::OC_RangeLiteralContext::getRuleIndex() const {
 
 CypherParser::OC_RangeLiteralContext* CypherParser::oC_RangeLiteral() {
   OC_RangeLiteralContext *_localctx = _tracker.createInstance<OC_RangeLiteralContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 126, CypherParser::RuleOC_RangeLiteral);
+=======
+  enterRule(_localctx, 124, CypherParser::RuleOC_RangeLiteral);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -5960,11 +7904,22 @@ CypherParser::OC_RangeLiteralContext* CypherParser::oC_RangeLiteral() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1111);
     match(CypherParser::STAR);
     setState(1113);
+=======
+    setState(1060);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 171, _ctx)) {
+    case 1: {
+      setState(1044);
+      oC_IntegerLiteral();
+      setState(1046);
+      _errHandler->sync(this);
 
+<<<<<<< HEAD
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
       setState(1112);
@@ -5992,6 +7947,47 @@ CypherParser::OC_RangeLiteralContext* CypherParser::oC_RangeLiteral() {
     }
     setState(1123);
     oC_IntegerLiteral();
+=======
+      _la = _input->LA(1);
+      if (_la == CypherParser::SP) {
+        setState(1045);
+        match(CypherParser::SP);
+      }
+      setState(1048);
+      match(CypherParser::T__11);
+      break;
+    }
+
+    case 2: {
+      setState(1050);
+      oC_IntegerLiteral();
+      setState(1052);
+      _errHandler->sync(this);
+
+      _la = _input->LA(1);
+      if (_la == CypherParser::SP) {
+        setState(1051);
+        match(CypherParser::SP);
+      }
+      setState(1054);
+      match(CypherParser::T__11);
+      setState(1056);
+      _errHandler->sync(this);
+
+      _la = _input->LA(1);
+      if (_la == CypherParser::SP) {
+        setState(1055);
+        match(CypherParser::SP);
+      }
+      setState(1058);
+      oC_IntegerLiteral();
+      break;
+    }
+
+    default:
+      break;
+    }
+>>>>>>> d678da15 (frontend changes for path)
    
   }
   catch (RecognitionException &e) {
@@ -6021,7 +8017,11 @@ size_t CypherParser::OC_LabelNameContext::getRuleIndex() const {
 
 CypherParser::OC_LabelNameContext* CypherParser::oC_LabelName() {
   OC_LabelNameContext *_localctx = _tracker.createInstance<OC_LabelNameContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 128, CypherParser::RuleOC_LabelName);
+=======
+  enterRule(_localctx, 126, CypherParser::RuleOC_LabelName);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -6032,7 +8032,11 @@ CypherParser::OC_LabelNameContext* CypherParser::oC_LabelName() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1125);
+=======
+    setState(1062);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SchemaName();
    
   }
@@ -6063,7 +8067,11 @@ size_t CypherParser::OC_RelTypeNameContext::getRuleIndex() const {
 
 CypherParser::OC_RelTypeNameContext* CypherParser::oC_RelTypeName() {
   OC_RelTypeNameContext *_localctx = _tracker.createInstance<OC_RelTypeNameContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 130, CypherParser::RuleOC_RelTypeName);
+=======
+  enterRule(_localctx, 128, CypherParser::RuleOC_RelTypeName);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -6074,7 +8082,11 @@ CypherParser::OC_RelTypeNameContext* CypherParser::oC_RelTypeName() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1127);
+=======
+    setState(1064);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SchemaName();
    
   }
@@ -6105,7 +8117,11 @@ size_t CypherParser::OC_ExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_ExpressionContext* CypherParser::oC_Expression() {
   OC_ExpressionContext *_localctx = _tracker.createInstance<OC_ExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 132, CypherParser::RuleOC_Expression);
+=======
+  enterRule(_localctx, 130, CypherParser::RuleOC_Expression);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -6116,7 +8132,11 @@ CypherParser::OC_ExpressionContext* CypherParser::oC_Expression() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1129);
+=======
+    setState(1066);
+>>>>>>> d678da15 (frontend changes for path)
     oC_OrExpression();
    
   }
@@ -6167,7 +8187,11 @@ size_t CypherParser::OC_OrExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_OrExpressionContext* CypherParser::oC_OrExpression() {
   OC_OrExpressionContext *_localctx = _tracker.createInstance<OC_OrExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 134, CypherParser::RuleOC_OrExpression);
+=======
+  enterRule(_localctx, 132, CypherParser::RuleOC_OrExpression);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -6179,6 +8203,7 @@ CypherParser::OC_OrExpressionContext* CypherParser::oC_OrExpression() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1131);
     oC_XorExpression();
     setState(1138);
@@ -6198,6 +8223,27 @@ CypherParser::OC_OrExpressionContext* CypherParser::oC_OrExpression() {
       setState(1140);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 182, _ctx);
+=======
+    setState(1068);
+    oC_XorExpression();
+    setState(1075);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 172, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1069);
+        match(CypherParser::SP);
+        setState(1070);
+        match(CypherParser::OR);
+        setState(1071);
+        match(CypherParser::SP);
+        setState(1072);
+        oC_XorExpression(); 
+      }
+      setState(1077);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 172, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -6248,7 +8294,11 @@ size_t CypherParser::OC_XorExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_XorExpressionContext* CypherParser::oC_XorExpression() {
   OC_XorExpressionContext *_localctx = _tracker.createInstance<OC_XorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 136, CypherParser::RuleOC_XorExpression);
+=======
+  enterRule(_localctx, 134, CypherParser::RuleOC_XorExpression);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -6260,6 +8310,7 @@ CypherParser::OC_XorExpressionContext* CypherParser::oC_XorExpression() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1141);
     oC_AndExpression();
     setState(1148);
@@ -6279,6 +8330,27 @@ CypherParser::OC_XorExpressionContext* CypherParser::oC_XorExpression() {
       setState(1150);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 183, _ctx);
+=======
+    setState(1078);
+    oC_AndExpression();
+    setState(1085);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 173, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1079);
+        match(CypherParser::SP);
+        setState(1080);
+        match(CypherParser::XOR);
+        setState(1081);
+        match(CypherParser::SP);
+        setState(1082);
+        oC_AndExpression(); 
+      }
+      setState(1087);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 173, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -6329,7 +8401,11 @@ size_t CypherParser::OC_AndExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_AndExpressionContext* CypherParser::oC_AndExpression() {
   OC_AndExpressionContext *_localctx = _tracker.createInstance<OC_AndExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 138, CypherParser::RuleOC_AndExpression);
+=======
+  enterRule(_localctx, 136, CypherParser::RuleOC_AndExpression);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -6341,6 +8417,7 @@ CypherParser::OC_AndExpressionContext* CypherParser::oC_AndExpression() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1151);
     oC_NotExpression();
     setState(1158);
@@ -6360,6 +8437,27 @@ CypherParser::OC_AndExpressionContext* CypherParser::oC_AndExpression() {
       setState(1160);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 184, _ctx);
+=======
+    setState(1088);
+    oC_NotExpression();
+    setState(1095);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 174, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1089);
+        match(CypherParser::SP);
+        setState(1090);
+        match(CypherParser::AND);
+        setState(1091);
+        match(CypherParser::SP);
+        setState(1092);
+        oC_NotExpression(); 
+      }
+      setState(1097);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 174, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -6398,7 +8496,11 @@ size_t CypherParser::OC_NotExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_NotExpressionContext* CypherParser::oC_NotExpression() {
   OC_NotExpressionContext *_localctx = _tracker.createInstance<OC_NotExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 140, CypherParser::RuleOC_NotExpression);
+=======
+  enterRule(_localctx, 138, CypherParser::RuleOC_NotExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -6410,23 +8512,41 @@ CypherParser::OC_NotExpressionContext* CypherParser::oC_NotExpression() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1165);
+=======
+    setState(1102);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::NOT) {
+<<<<<<< HEAD
       setState(1161);
       match(CypherParser::NOT);
       setState(1163);
+=======
+      setState(1098);
+      match(CypherParser::NOT);
+      setState(1100);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1162);
         match(CypherParser::SP);
       }
     }
     setState(1167);
+=======
+        setState(1099);
+        match(CypherParser::SP);
+      }
+    }
+    setState(1104);
+>>>>>>> d678da15 (frontend changes for path)
     oC_ComparisonExpression();
    
   }
@@ -6481,7 +8601,11 @@ size_t CypherParser::OC_ComparisonExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_ComparisonExpressionContext* CypherParser::oC_ComparisonExpression() {
   OC_ComparisonExpressionContext *_localctx = _tracker.createInstance<OC_ComparisonExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 142, CypherParser::RuleOC_ComparisonExpression);
+=======
+  enterRule(_localctx, 140, CypherParser::RuleOC_ComparisonExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -6493,6 +8617,7 @@ CypherParser::OC_ComparisonExpressionContext* CypherParser::oC_ComparisonExpress
   });
   try {
     size_t alt;
+<<<<<<< HEAD
     setState(1217);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 197, _ctx)) {
@@ -6506,24 +8631,55 @@ CypherParser::OC_ComparisonExpressionContext* CypherParser::oC_ComparisonExpress
       switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 189, _ctx)) {
       case 1: {
         setState(1171);
+=======
+    setState(1154);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 187, _ctx)) {
+    case 1: {
+      enterOuterAlt(_localctx, 1);
+      setState(1106);
+      kU_BitwiseOrOperatorExpression();
+      setState(1116);
+      _errHandler->sync(this);
+
+      switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 179, _ctx)) {
+      case 1: {
+        setState(1108);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1170);
           match(CypherParser::SP);
         }
         setState(1173);
         kU_ComparisonOperator();
         setState(1175);
+=======
+          setState(1107);
+          match(CypherParser::SP);
+        }
+        setState(1110);
+        kU_ComparisonOperator();
+        setState(1112);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1174);
           match(CypherParser::SP);
         }
         setState(1177);
+=======
+          setState(1111);
+          match(CypherParser::SP);
+        }
+        setState(1114);
+>>>>>>> d678da15 (frontend changes for path)
         kU_BitwiseOrOperatorExpression();
         break;
       }
@@ -6536,28 +8692,51 @@ CypherParser::OC_ComparisonExpressionContext* CypherParser::oC_ComparisonExpress
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(1181);
       kU_BitwiseOrOperatorExpression();
 
       setState(1183);
+=======
+      setState(1118);
+      kU_BitwiseOrOperatorExpression();
+
+      setState(1120);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1182);
         match(CypherParser::SP);
       }
       setState(1185);
       dynamic_cast<OC_ComparisonExpressionContext *>(_localctx)->invalid_not_equalToken = match(CypherParser::INVALID_NOT_EQUAL);
       setState(1187);
+=======
+        setState(1119);
+        match(CypherParser::SP);
+      }
+      setState(1122);
+      dynamic_cast<OC_ComparisonExpressionContext *>(_localctx)->invalid_not_equalToken = match(CypherParser::INVALID_NOT_EQUAL);
+      setState(1124);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1186);
         match(CypherParser::SP);
       }
       setState(1189);
+=======
+        setState(1123);
+        match(CypherParser::SP);
+      }
+      setState(1126);
+>>>>>>> d678da15 (frontend changes for path)
       kU_BitwiseOrOperatorExpression();
        notifyInvalidNotEqualOperator(dynamic_cast<OC_ComparisonExpressionContext *>(_localctx)->invalid_not_equalToken); 
       break;
@@ -6565,53 +8744,97 @@ CypherParser::OC_ComparisonExpressionContext* CypherParser::oC_ComparisonExpress
 
     case 3: {
       enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
       setState(1193);
       kU_BitwiseOrOperatorExpression();
       setState(1195);
+=======
+      setState(1130);
+      kU_BitwiseOrOperatorExpression();
+      setState(1132);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1194);
         match(CypherParser::SP);
       }
       setState(1197);
       kU_ComparisonOperator();
       setState(1199);
+=======
+        setState(1131);
+        match(CypherParser::SP);
+      }
+      setState(1134);
+      kU_ComparisonOperator();
+      setState(1136);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1198);
         match(CypherParser::SP);
       }
       setState(1201);
       kU_BitwiseOrOperatorExpression();
       setState(1211); 
+=======
+        setState(1135);
+        match(CypherParser::SP);
+      }
+      setState(1138);
+      kU_BitwiseOrOperatorExpression();
+      setState(1148); 
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = 1;
       do {
         switch (alt) {
           case 1: {
+<<<<<<< HEAD
                 setState(1203);
+=======
+                setState(1140);
+>>>>>>> d678da15 (frontend changes for path)
                 _errHandler->sync(this);
 
                 _la = _input->LA(1);
                 if (_la == CypherParser::SP) {
+<<<<<<< HEAD
                   setState(1202);
                   match(CypherParser::SP);
                 }
                 setState(1205);
                 kU_ComparisonOperator();
                 setState(1207);
+=======
+                  setState(1139);
+                  match(CypherParser::SP);
+                }
+                setState(1142);
+                kU_ComparisonOperator();
+                setState(1144);
+>>>>>>> d678da15 (frontend changes for path)
                 _errHandler->sync(this);
 
                 _la = _input->LA(1);
                 if (_la == CypherParser::SP) {
+<<<<<<< HEAD
                   setState(1206);
                   match(CypherParser::SP);
                 }
                 setState(1209);
+=======
+                  setState(1143);
+                  match(CypherParser::SP);
+                }
+                setState(1146);
+>>>>>>> d678da15 (frontend changes for path)
                 kU_BitwiseOrOperatorExpression();
                 break;
               }
@@ -6619,9 +8842,15 @@ CypherParser::OC_ComparisonExpressionContext* CypherParser::oC_ComparisonExpress
         default:
           throw NoViableAltException(this);
         }
+<<<<<<< HEAD
         setState(1213); 
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 196, _ctx);
+=======
+        setState(1150); 
+        _errHandler->sync(this);
+        alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 186, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
       } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
        notifyNonBinaryComparison(_localctx->start); 
       break;
@@ -6655,7 +8884,11 @@ size_t CypherParser::KU_ComparisonOperatorContext::getRuleIndex() const {
 
 CypherParser::KU_ComparisonOperatorContext* CypherParser::kU_ComparisonOperator() {
   KU_ComparisonOperatorContext *_localctx = _tracker.createInstance<KU_ComparisonOperatorContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 144, CypherParser::RuleKU_ComparisonOperator);
+=======
+  enterRule(_localctx, 142, CypherParser::RuleKU_ComparisonOperator);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -6667,7 +8900,11 @@ CypherParser::KU_ComparisonOperatorContext* CypherParser::kU_ComparisonOperator(
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1219);
+=======
+    setState(1156);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & ((1ULL << CypherParser::T__6)
@@ -6723,7 +8960,11 @@ size_t CypherParser::KU_BitwiseOrOperatorExpressionContext::getRuleIndex() const
 
 CypherParser::KU_BitwiseOrOperatorExpressionContext* CypherParser::kU_BitwiseOrOperatorExpression() {
   KU_BitwiseOrOperatorExpressionContext *_localctx = _tracker.createInstance<KU_BitwiseOrOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 146, CypherParser::RuleKU_BitwiseOrOperatorExpression);
+=======
+  enterRule(_localctx, 144, CypherParser::RuleKU_BitwiseOrOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -6736,6 +8977,7 @@ CypherParser::KU_BitwiseOrOperatorExpressionContext* CypherParser::kU_BitwiseOrO
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1221);
     kU_BitwiseAndOperatorExpression();
     setState(1232);
@@ -6744,20 +8986,40 @@ CypherParser::KU_BitwiseOrOperatorExpressionContext* CypherParser::kU_BitwiseOrO
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         setState(1223);
+=======
+    setState(1158);
+    kU_BitwiseAndOperatorExpression();
+    setState(1169);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 190, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1160);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1222);
           match(CypherParser::SP);
         }
         setState(1225);
         match(CypherParser::T__10);
         setState(1227);
+=======
+          setState(1159);
+          match(CypherParser::SP);
+        }
+        setState(1162);
+        match(CypherParser::T__10);
+        setState(1164);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1226);
           match(CypherParser::SP);
         }
@@ -6767,6 +9029,17 @@ CypherParser::KU_BitwiseOrOperatorExpressionContext* CypherParser::kU_BitwiseOrO
       setState(1234);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 200, _ctx);
+=======
+          setState(1163);
+          match(CypherParser::SP);
+        }
+        setState(1166);
+        kU_BitwiseAndOperatorExpression(); 
+      }
+      setState(1171);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 190, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -6809,7 +9082,11 @@ size_t CypherParser::KU_BitwiseAndOperatorExpressionContext::getRuleIndex() cons
 
 CypherParser::KU_BitwiseAndOperatorExpressionContext* CypherParser::kU_BitwiseAndOperatorExpression() {
   KU_BitwiseAndOperatorExpressionContext *_localctx = _tracker.createInstance<KU_BitwiseAndOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 148, CypherParser::RuleKU_BitwiseAndOperatorExpression);
+=======
+  enterRule(_localctx, 146, CypherParser::RuleKU_BitwiseAndOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -6822,6 +9099,7 @@ CypherParser::KU_BitwiseAndOperatorExpressionContext* CypherParser::kU_BitwiseAn
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1235);
     kU_BitShiftOperatorExpression();
     setState(1246);
@@ -6830,20 +9108,40 @@ CypherParser::KU_BitwiseAndOperatorExpressionContext* CypherParser::kU_BitwiseAn
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         setState(1237);
+=======
+    setState(1172);
+    kU_BitShiftOperatorExpression();
+    setState(1183);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 193, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1174);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1236);
           match(CypherParser::SP);
         }
         setState(1239);
         match(CypherParser::T__17);
         setState(1241);
+=======
+          setState(1173);
+          match(CypherParser::SP);
+        }
+        setState(1176);
+        match(CypherParser::T__17);
+        setState(1178);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1240);
           match(CypherParser::SP);
         }
@@ -6853,6 +9151,17 @@ CypherParser::KU_BitwiseAndOperatorExpressionContext* CypherParser::kU_BitwiseAn
       setState(1248);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 203, _ctx);
+=======
+          setState(1177);
+          match(CypherParser::SP);
+        }
+        setState(1180);
+        kU_BitShiftOperatorExpression(); 
+      }
+      setState(1185);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 193, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -6903,7 +9212,11 @@ size_t CypherParser::KU_BitShiftOperatorExpressionContext::getRuleIndex() const 
 
 CypherParser::KU_BitShiftOperatorExpressionContext* CypherParser::kU_BitShiftOperatorExpression() {
   KU_BitShiftOperatorExpressionContext *_localctx = _tracker.createInstance<KU_BitShiftOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 150, CypherParser::RuleKU_BitShiftOperatorExpression);
+=======
+  enterRule(_localctx, 148, CypherParser::RuleKU_BitShiftOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -6916,6 +9229,7 @@ CypherParser::KU_BitShiftOperatorExpressionContext* CypherParser::kU_BitShiftOpe
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1249);
     oC_AddOrSubtractExpression();
     setState(1261);
@@ -6924,20 +9238,40 @@ CypherParser::KU_BitShiftOperatorExpressionContext* CypherParser::kU_BitShiftOpe
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         setState(1251);
+=======
+    setState(1186);
+    oC_AddOrSubtractExpression();
+    setState(1198);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 196, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1188);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1250);
           match(CypherParser::SP);
         }
         setState(1253);
         kU_BitShiftOperator();
         setState(1255);
+=======
+          setState(1187);
+          match(CypherParser::SP);
+        }
+        setState(1190);
+        kU_BitShiftOperator();
+        setState(1192);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1254);
           match(CypherParser::SP);
         }
@@ -6947,6 +9281,17 @@ CypherParser::KU_BitShiftOperatorExpressionContext* CypherParser::kU_BitShiftOpe
       setState(1263);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 206, _ctx);
+=======
+          setState(1191);
+          match(CypherParser::SP);
+        }
+        setState(1194);
+        oC_AddOrSubtractExpression(); 
+      }
+      setState(1200);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 196, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -6973,7 +9318,11 @@ size_t CypherParser::KU_BitShiftOperatorContext::getRuleIndex() const {
 
 CypherParser::KU_BitShiftOperatorContext* CypherParser::kU_BitShiftOperator() {
   KU_BitShiftOperatorContext *_localctx = _tracker.createInstance<KU_BitShiftOperatorContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 152, CypherParser::RuleKU_BitShiftOperator);
+=======
+  enterRule(_localctx, 150, CypherParser::RuleKU_BitShiftOperator);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -6985,7 +9334,11 @@ CypherParser::KU_BitShiftOperatorContext* CypherParser::kU_BitShiftOperator() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1264);
+=======
+    setState(1201);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!(_la == CypherParser::T__18
 
@@ -7045,7 +9398,11 @@ size_t CypherParser::OC_AddOrSubtractExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_AddOrSubtractExpressionContext* CypherParser::oC_AddOrSubtractExpression() {
   OC_AddOrSubtractExpressionContext *_localctx = _tracker.createInstance<OC_AddOrSubtractExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 154, CypherParser::RuleOC_AddOrSubtractExpression);
+=======
+  enterRule(_localctx, 152, CypherParser::RuleOC_AddOrSubtractExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7058,6 +9415,7 @@ CypherParser::OC_AddOrSubtractExpressionContext* CypherParser::oC_AddOrSubtractE
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1266);
     oC_MultiplyDivideModuloExpression();
     setState(1278);
@@ -7066,20 +9424,40 @@ CypherParser::OC_AddOrSubtractExpressionContext* CypherParser::oC_AddOrSubtractE
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         setState(1268);
+=======
+    setState(1203);
+    oC_MultiplyDivideModuloExpression();
+    setState(1215);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 199, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1205);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1267);
           match(CypherParser::SP);
         }
         setState(1270);
         kU_AddOrSubtractOperator();
         setState(1272);
+=======
+          setState(1204);
+          match(CypherParser::SP);
+        }
+        setState(1207);
+        kU_AddOrSubtractOperator();
+        setState(1209);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1271);
           match(CypherParser::SP);
         }
@@ -7089,6 +9467,17 @@ CypherParser::OC_AddOrSubtractExpressionContext* CypherParser::oC_AddOrSubtractE
       setState(1280);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 209, _ctx);
+=======
+          setState(1208);
+          match(CypherParser::SP);
+        }
+        setState(1211);
+        oC_MultiplyDivideModuloExpression(); 
+      }
+      setState(1217);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 199, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -7119,7 +9508,11 @@ size_t CypherParser::KU_AddOrSubtractOperatorContext::getRuleIndex() const {
 
 CypherParser::KU_AddOrSubtractOperatorContext* CypherParser::kU_AddOrSubtractOperator() {
   KU_AddOrSubtractOperatorContext *_localctx = _tracker.createInstance<KU_AddOrSubtractOperatorContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 156, CypherParser::RuleKU_AddOrSubtractOperator);
+=======
+  enterRule(_localctx, 154, CypherParser::RuleKU_AddOrSubtractOperator);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7131,7 +9524,11 @@ CypherParser::KU_AddOrSubtractOperatorContext* CypherParser::kU_AddOrSubtractOpe
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1281);
+=======
+    setState(1218);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!(_la == CypherParser::T__20 || _la == CypherParser::MINUS)) {
     _errHandler->recoverInline(this);
@@ -7189,7 +9586,11 @@ size_t CypherParser::OC_MultiplyDivideModuloExpressionContext::getRuleIndex() co
 
 CypherParser::OC_MultiplyDivideModuloExpressionContext* CypherParser::oC_MultiplyDivideModuloExpression() {
   OC_MultiplyDivideModuloExpressionContext *_localctx = _tracker.createInstance<OC_MultiplyDivideModuloExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 158, CypherParser::RuleOC_MultiplyDivideModuloExpression);
+=======
+  enterRule(_localctx, 156, CypherParser::RuleOC_MultiplyDivideModuloExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7202,6 +9603,7 @@ CypherParser::OC_MultiplyDivideModuloExpressionContext* CypherParser::oC_Multipl
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1283);
     oC_PowerOfExpression();
     setState(1295);
@@ -7210,20 +9612,40 @@ CypherParser::OC_MultiplyDivideModuloExpressionContext* CypherParser::oC_Multipl
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         setState(1285);
+=======
+    setState(1220);
+    oC_PowerOfExpression();
+    setState(1232);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 202, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1222);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1284);
           match(CypherParser::SP);
         }
         setState(1287);
         kU_MultiplyDivideModuloOperator();
         setState(1289);
+=======
+          setState(1221);
+          match(CypherParser::SP);
+        }
+        setState(1224);
+        kU_MultiplyDivideModuloOperator();
+        setState(1226);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1288);
           match(CypherParser::SP);
         }
@@ -7233,6 +9655,17 @@ CypherParser::OC_MultiplyDivideModuloExpressionContext* CypherParser::oC_Multipl
       setState(1297);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 212, _ctx);
+=======
+          setState(1225);
+          match(CypherParser::SP);
+        }
+        setState(1228);
+        oC_PowerOfExpression(); 
+      }
+      setState(1234);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 202, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -7263,7 +9696,11 @@ size_t CypherParser::KU_MultiplyDivideModuloOperatorContext::getRuleIndex() cons
 
 CypherParser::KU_MultiplyDivideModuloOperatorContext* CypherParser::kU_MultiplyDivideModuloOperator() {
   KU_MultiplyDivideModuloOperatorContext *_localctx = _tracker.createInstance<KU_MultiplyDivideModuloOperatorContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 160, CypherParser::RuleKU_MultiplyDivideModuloOperator);
+=======
+  enterRule(_localctx, 158, CypherParser::RuleKU_MultiplyDivideModuloOperator);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7275,7 +9712,11 @@ CypherParser::KU_MultiplyDivideModuloOperatorContext* CypherParser::kU_MultiplyD
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1298);
+=======
+    setState(1235);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!(((((_la - 22) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 22)) & ((1ULL << (CypherParser::T__21 - 22))
@@ -7328,7 +9769,11 @@ size_t CypherParser::OC_PowerOfExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_PowerOfExpressionContext* CypherParser::oC_PowerOfExpression() {
   OC_PowerOfExpressionContext *_localctx = _tracker.createInstance<OC_PowerOfExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 162, CypherParser::RuleOC_PowerOfExpression);
+=======
+  enterRule(_localctx, 160, CypherParser::RuleOC_PowerOfExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7341,6 +9786,7 @@ CypherParser::OC_PowerOfExpressionContext* CypherParser::oC_PowerOfExpression() 
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1300);
     oC_UnaryAddSubtractOrFactorialExpression();
     setState(1311);
@@ -7349,20 +9795,40 @@ CypherParser::OC_PowerOfExpressionContext* CypherParser::oC_PowerOfExpression() 
     while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1) {
         setState(1302);
+=======
+    setState(1237);
+    oC_UnaryAddSubtractOrFactorialExpression();
+    setState(1248);
+    _errHandler->sync(this);
+    alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 205, _ctx);
+    while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER) {
+      if (alt == 1) {
+        setState(1239);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1301);
           match(CypherParser::SP);
         }
         setState(1304);
         match(CypherParser::T__23);
         setState(1306);
+=======
+          setState(1238);
+          match(CypherParser::SP);
+        }
+        setState(1241);
+        match(CypherParser::T__23);
+        setState(1243);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1305);
           match(CypherParser::SP);
         }
@@ -7372,6 +9838,17 @@ CypherParser::OC_PowerOfExpressionContext* CypherParser::oC_PowerOfExpression() 
       setState(1313);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 215, _ctx);
+=======
+          setState(1242);
+          match(CypherParser::SP);
+        }
+        setState(1245);
+        oC_UnaryAddSubtractOrFactorialExpression(); 
+      }
+      setState(1250);
+      _errHandler->sync(this);
+      alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 205, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
     }
    
   }
@@ -7418,7 +9895,11 @@ size_t CypherParser::OC_UnaryAddSubtractOrFactorialExpressionContext::getRuleInd
 
 CypherParser::OC_UnaryAddSubtractOrFactorialExpressionContext* CypherParser::oC_UnaryAddSubtractOrFactorialExpression() {
   OC_UnaryAddSubtractOrFactorialExpressionContext *_localctx = _tracker.createInstance<OC_UnaryAddSubtractOrFactorialExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 164, CypherParser::RuleOC_UnaryAddSubtractOrFactorialExpression);
+=======
+  enterRule(_localctx, 162, CypherParser::RuleOC_UnaryAddSubtractOrFactorialExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7430,18 +9911,29 @@ CypherParser::OC_UnaryAddSubtractOrFactorialExpressionContext* CypherParser::oC_
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1318);
+=======
+    setState(1255);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::MINUS) {
+<<<<<<< HEAD
       setState(1314);
       match(CypherParser::MINUS);
       setState(1316);
+=======
+      setState(1251);
+      match(CypherParser::MINUS);
+      setState(1253);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1315);
         match(CypherParser::SP);
       }
@@ -7454,14 +9946,35 @@ CypherParser::OC_UnaryAddSubtractOrFactorialExpressionContext* CypherParser::oC_
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 219, _ctx)) {
     case 1: {
       setState(1322);
+=======
+        setState(1252);
+        match(CypherParser::SP);
+      }
+    }
+    setState(1257);
+    oC_StringListNullOperatorExpression();
+    setState(1262);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 209, _ctx)) {
+    case 1: {
+      setState(1259);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1321);
         match(CypherParser::SP);
       }
       setState(1324);
+=======
+        setState(1258);
+        match(CypherParser::SP);
+      }
+      setState(1261);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::FACTORIAL);
       break;
     }
@@ -7510,7 +10023,11 @@ size_t CypherParser::OC_StringListNullOperatorExpressionContext::getRuleIndex() 
 
 CypherParser::OC_StringListNullOperatorExpressionContext* CypherParser::oC_StringListNullOperatorExpression() {
   OC_StringListNullOperatorExpressionContext *_localctx = _tracker.createInstance<OC_StringListNullOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 166, CypherParser::RuleOC_StringListNullOperatorExpression);
+=======
+  enterRule(_localctx, 164, CypherParser::RuleOC_StringListNullOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -7521,6 +10038,7 @@ CypherParser::OC_StringListNullOperatorExpressionContext* CypherParser::oC_Strin
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1327);
     oC_PropertyOrLabelsExpression();
     setState(1331);
@@ -7529,18 +10047,36 @@ CypherParser::OC_StringListNullOperatorExpressionContext* CypherParser::oC_Strin
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 220, _ctx)) {
     case 1: {
       setState(1328);
+=======
+    setState(1264);
+    oC_PropertyOrLabelsExpression();
+    setState(1268);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 210, _ctx)) {
+    case 1: {
+      setState(1265);
+>>>>>>> d678da15 (frontend changes for path)
       oC_StringOperatorExpression();
       break;
     }
 
     case 2: {
+<<<<<<< HEAD
       setState(1329);
+=======
+      setState(1266);
+>>>>>>> d678da15 (frontend changes for path)
       oC_ListOperatorExpression();
       break;
     }
 
     case 3: {
+<<<<<<< HEAD
       setState(1330);
+=======
+      setState(1267);
+>>>>>>> d678da15 (frontend changes for path)
       oC_NullOperatorExpression();
       break;
     }
@@ -7585,7 +10121,11 @@ size_t CypherParser::OC_ListOperatorExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_ListOperatorExpressionContext* CypherParser::oC_ListOperatorExpression() {
   OC_ListOperatorExpressionContext *_localctx = _tracker.createInstance<OC_ListOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 168, CypherParser::RuleOC_ListOperatorExpression);
+=======
+  enterRule(_localctx, 166, CypherParser::RuleOC_ListOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -7596,17 +10136,29 @@ CypherParser::OC_ListOperatorExpressionContext* CypherParser::oC_ListOperatorExp
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1335);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 221, _ctx)) {
     case 1: {
       setState(1333);
+=======
+    setState(1272);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 211, _ctx)) {
+    case 1: {
+      setState(1270);
+>>>>>>> d678da15 (frontend changes for path)
       kU_ListExtractOperatorExpression();
       break;
     }
 
     case 2: {
+<<<<<<< HEAD
       setState(1334);
+=======
+      setState(1271);
+>>>>>>> d678da15 (frontend changes for path)
       kU_ListSliceOperatorExpression();
       break;
     }
@@ -7614,12 +10166,21 @@ CypherParser::OC_ListOperatorExpressionContext* CypherParser::oC_ListOperatorExp
     default:
       break;
     }
+<<<<<<< HEAD
     setState(1338);
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 222, _ctx)) {
     case 1: {
       setState(1337);
+=======
+    setState(1275);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 212, _ctx)) {
+    case 1: {
+      setState(1274);
+>>>>>>> d678da15 (frontend changes for path)
       oC_ListOperatorExpression();
       break;
     }
@@ -7660,7 +10221,11 @@ size_t CypherParser::KU_ListExtractOperatorExpressionContext::getRuleIndex() con
 
 CypherParser::KU_ListExtractOperatorExpressionContext* CypherParser::kU_ListExtractOperatorExpression() {
   KU_ListExtractOperatorExpressionContext *_localctx = _tracker.createInstance<KU_ListExtractOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 170, CypherParser::RuleKU_ListExtractOperatorExpression);
+=======
+  enterRule(_localctx, 168, CypherParser::RuleKU_ListExtractOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7672,11 +10237,16 @@ CypherParser::KU_ListExtractOperatorExpressionContext* CypherParser::kU_ListExtr
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1341);
+=======
+    setState(1278);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1340);
       match(CypherParser::SP);
     }
@@ -7686,6 +10256,17 @@ CypherParser::KU_ListExtractOperatorExpressionContext* CypherParser::kU_ListExtr
     oC_Expression();
     setState(1345);
     match(CypherParser::T__5);
+=======
+      setState(1277);
+      match(CypherParser::SP);
+    }
+    setState(1280);
+    match(CypherParser::T__5);
+    setState(1281);
+    oC_Expression();
+    setState(1282);
+    match(CypherParser::T__6);
+>>>>>>> d678da15 (frontend changes for path)
    
   }
   catch (RecognitionException &e) {
@@ -7723,7 +10304,11 @@ size_t CypherParser::KU_ListSliceOperatorExpressionContext::getRuleIndex() const
 
 CypherParser::KU_ListSliceOperatorExpressionContext* CypherParser::kU_ListSliceOperatorExpression() {
   KU_ListSliceOperatorExpressionContext *_localctx = _tracker.createInstance<KU_ListSliceOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 172, CypherParser::RuleKU_ListSliceOperatorExpression);
+=======
+  enterRule(_localctx, 170, CypherParser::RuleKU_ListSliceOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7735,22 +10320,36 @@ CypherParser::KU_ListSliceOperatorExpressionContext* CypherParser::kU_ListSliceO
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1348);
+=======
+    setState(1285);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1347);
       match(CypherParser::SP);
     }
     setState(1350);
     match(CypherParser::T__4);
     setState(1352);
+=======
+      setState(1284);
+      match(CypherParser::SP);
+    }
+    setState(1287);
+    match(CypherParser::T__5);
+    setState(1289);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if ((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & ((1ULL << CypherParser::T__1)
+<<<<<<< HEAD
       | (1ULL << CypherParser::T__4)
       | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 90) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 90)) & ((1ULL << (CypherParser::NOT - 90))
@@ -7772,11 +10371,35 @@ CypherParser::KU_ListSliceOperatorExpressionContext* CypherParser::kU_ListSliceO
     setState(1354);
     match(CypherParser::T__8);
     setState(1356);
+=======
+      | (1ULL << CypherParser::T__5)
+      | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 88) & ~ 0x3fULL) == 0) &&
+      ((1ULL << (_la - 88)) & ((1ULL << (CypherParser::NOT - 88))
+      | (1ULL << (CypherParser::MINUS - 88))
+      | (1ULL << (CypherParser::NULL_ - 88))
+      | (1ULL << (CypherParser::TRUE - 88))
+      | (1ULL << (CypherParser::FALSE - 88))
+      | (1ULL << (CypherParser::EXISTS - 88))
+      | (1ULL << (CypherParser::CASE - 88))
+      | (1ULL << (CypherParser::StringLiteral - 88))
+      | (1ULL << (CypherParser::DecimalInteger - 88))
+      | (1ULL << (CypherParser::HexLetter - 88))
+      | (1ULL << (CypherParser::RegularDecimalReal - 88))
+      | (1ULL << (CypherParser::UnescapedSymbolicName - 88))
+      | (1ULL << (CypherParser::EscapedSymbolicName - 88)))) != 0)) {
+      setState(1288);
+      oC_Expression();
+    }
+    setState(1291);
+    match(CypherParser::T__8);
+    setState(1293);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if ((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & ((1ULL << CypherParser::T__1)
+<<<<<<< HEAD
       | (1ULL << CypherParser::T__4)
       | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 90) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 90)) & ((1ULL << (CypherParser::NOT - 90))
@@ -7797,6 +10420,28 @@ CypherParser::KU_ListSliceOperatorExpressionContext* CypherParser::kU_ListSliceO
     }
     setState(1358);
     match(CypherParser::T__5);
+=======
+      | (1ULL << CypherParser::T__5)
+      | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 88) & ~ 0x3fULL) == 0) &&
+      ((1ULL << (_la - 88)) & ((1ULL << (CypherParser::NOT - 88))
+      | (1ULL << (CypherParser::MINUS - 88))
+      | (1ULL << (CypherParser::NULL_ - 88))
+      | (1ULL << (CypherParser::TRUE - 88))
+      | (1ULL << (CypherParser::FALSE - 88))
+      | (1ULL << (CypherParser::EXISTS - 88))
+      | (1ULL << (CypherParser::CASE - 88))
+      | (1ULL << (CypherParser::StringLiteral - 88))
+      | (1ULL << (CypherParser::DecimalInteger - 88))
+      | (1ULL << (CypherParser::HexLetter - 88))
+      | (1ULL << (CypherParser::RegularDecimalReal - 88))
+      | (1ULL << (CypherParser::UnescapedSymbolicName - 88))
+      | (1ULL << (CypherParser::EscapedSymbolicName - 88)))) != 0)) {
+      setState(1292);
+      oC_Expression();
+    }
+    setState(1295);
+    match(CypherParser::T__6);
+>>>>>>> d678da15 (frontend changes for path)
    
   }
   catch (RecognitionException &e) {
@@ -7854,7 +10499,11 @@ size_t CypherParser::OC_StringOperatorExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_StringOperatorExpressionContext* CypherParser::oC_StringOperatorExpression() {
   OC_StringOperatorExpressionContext *_localctx = _tracker.createInstance<OC_StringOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 174, CypherParser::RuleOC_StringOperatorExpression);
+=======
+  enterRule(_localctx, 172, CypherParser::RuleOC_StringOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7866,16 +10515,25 @@ CypherParser::OC_StringOperatorExpressionContext* CypherParser::oC_StringOperato
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1371);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 227, _ctx)) {
     case 1: {
       setState(1360);
+=======
+    setState(1308);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 217, _ctx)) {
+    case 1: {
+      setState(1297);
+>>>>>>> d678da15 (frontend changes for path)
       oC_RegularExpression();
       break;
     }
 
     case 2: {
+<<<<<<< HEAD
       setState(1361);
       match(CypherParser::SP);
       setState(1362);
@@ -7883,11 +10541,21 @@ CypherParser::OC_StringOperatorExpressionContext* CypherParser::oC_StringOperato
       setState(1363);
       match(CypherParser::SP);
       setState(1364);
+=======
+      setState(1298);
+      match(CypherParser::SP);
+      setState(1299);
+      match(CypherParser::STARTS);
+      setState(1300);
+      match(CypherParser::SP);
+      setState(1301);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::WITH);
       break;
     }
 
     case 3: {
+<<<<<<< HEAD
       setState(1365);
       match(CypherParser::SP);
       setState(1366);
@@ -7895,14 +10563,29 @@ CypherParser::OC_StringOperatorExpressionContext* CypherParser::oC_StringOperato
       setState(1367);
       match(CypherParser::SP);
       setState(1368);
+=======
+      setState(1302);
+      match(CypherParser::SP);
+      setState(1303);
+      match(CypherParser::ENDS);
+      setState(1304);
+      match(CypherParser::SP);
+      setState(1305);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::WITH);
       break;
     }
 
     case 4: {
+<<<<<<< HEAD
       setState(1369);
       match(CypherParser::SP);
       setState(1370);
+=======
+      setState(1306);
+      match(CypherParser::SP);
+      setState(1307);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::CONTAINS);
       break;
     }
@@ -7910,15 +10593,26 @@ CypherParser::OC_StringOperatorExpressionContext* CypherParser::oC_StringOperato
     default:
       break;
     }
+<<<<<<< HEAD
     setState(1374);
+=======
+    setState(1311);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1373);
       match(CypherParser::SP);
     }
     setState(1376);
+=======
+      setState(1310);
+      match(CypherParser::SP);
+    }
+    setState(1313);
+>>>>>>> d678da15 (frontend changes for path)
     oC_PropertyOrLabelsExpression();
    
   }
@@ -7949,7 +10643,11 @@ size_t CypherParser::OC_RegularExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_RegularExpressionContext* CypherParser::oC_RegularExpression() {
   OC_RegularExpressionContext *_localctx = _tracker.createInstance<OC_RegularExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 176, CypherParser::RuleOC_RegularExpression);
+=======
+  enterRule(_localctx, 174, CypherParser::RuleOC_RegularExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -7961,15 +10659,26 @@ CypherParser::OC_RegularExpressionContext* CypherParser::oC_RegularExpression() 
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1379);
+=======
+    setState(1316);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1378);
       match(CypherParser::SP);
     }
     setState(1381);
+=======
+      setState(1315);
+      match(CypherParser::SP);
+    }
+    setState(1318);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::T__24);
    
   }
@@ -8016,7 +10725,11 @@ size_t CypherParser::OC_NullOperatorExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_NullOperatorExpressionContext* CypherParser::oC_NullOperatorExpression() {
   OC_NullOperatorExpressionContext *_localctx = _tracker.createInstance<OC_NullOperatorExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 178, CypherParser::RuleOC_NullOperatorExpression);
+=======
+  enterRule(_localctx, 176, CypherParser::RuleOC_NullOperatorExpression);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -8026,6 +10739,7 @@ CypherParser::OC_NullOperatorExpressionContext* CypherParser::oC_NullOperatorExp
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(1393);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 230, _ctx)) {
@@ -8038,12 +10752,27 @@ CypherParser::OC_NullOperatorExpressionContext* CypherParser::oC_NullOperatorExp
       setState(1385);
       match(CypherParser::SP);
       setState(1386);
+=======
+    setState(1330);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 220, _ctx)) {
+    case 1: {
+      enterOuterAlt(_localctx, 1);
+      setState(1320);
+      match(CypherParser::SP);
+      setState(1321);
+      match(CypherParser::IS);
+      setState(1322);
+      match(CypherParser::SP);
+      setState(1323);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::NULL_);
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(1387);
       match(CypherParser::SP);
       setState(1388);
@@ -8055,6 +10784,19 @@ CypherParser::OC_NullOperatorExpressionContext* CypherParser::oC_NullOperatorExp
       setState(1391);
       match(CypherParser::SP);
       setState(1392);
+=======
+      setState(1324);
+      match(CypherParser::SP);
+      setState(1325);
+      match(CypherParser::IS);
+      setState(1326);
+      match(CypherParser::SP);
+      setState(1327);
+      match(CypherParser::NOT);
+      setState(1328);
+      match(CypherParser::SP);
+      setState(1329);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::NULL_);
       break;
     }
@@ -8099,7 +10841,11 @@ size_t CypherParser::OC_PropertyOrLabelsExpressionContext::getRuleIndex() const 
 
 CypherParser::OC_PropertyOrLabelsExpressionContext* CypherParser::oC_PropertyOrLabelsExpression() {
   OC_PropertyOrLabelsExpressionContext *_localctx = _tracker.createInstance<OC_PropertyOrLabelsExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 180, CypherParser::RuleOC_PropertyOrLabelsExpression);
+=======
+  enterRule(_localctx, 178, CypherParser::RuleOC_PropertyOrLabelsExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -8111,6 +10857,7 @@ CypherParser::OC_PropertyOrLabelsExpressionContext* CypherParser::oC_PropertyOrL
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1395);
     oC_Atom();
     setState(1400);
@@ -8119,14 +10866,31 @@ CypherParser::OC_PropertyOrLabelsExpressionContext* CypherParser::oC_PropertyOrL
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 232, _ctx)) {
     case 1: {
       setState(1397);
+=======
+    setState(1332);
+    oC_Atom();
+    setState(1337);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 222, _ctx)) {
+    case 1: {
+      setState(1334);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1396);
         match(CypherParser::SP);
       }
       setState(1399);
+=======
+        setState(1333);
+        match(CypherParser::SP);
+      }
+      setState(1336);
+>>>>>>> d678da15 (frontend changes for path)
       oC_PropertyLookup();
       break;
     }
@@ -8187,7 +10951,11 @@ size_t CypherParser::OC_AtomContext::getRuleIndex() const {
 
 CypherParser::OC_AtomContext* CypherParser::oC_Atom() {
   OC_AtomContext *_localctx = _tracker.createInstance<OC_AtomContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 182, CypherParser::RuleOC_Atom);
+=======
+  enterRule(_localctx, 180, CypherParser::RuleOC_Atom);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -8197,54 +10965,87 @@ CypherParser::OC_AtomContext* CypherParser::oC_Atom() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(1409);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 233, _ctx)) {
     case 1: {
       enterOuterAlt(_localctx, 1);
       setState(1402);
+=======
+    setState(1346);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 223, _ctx)) {
+    case 1: {
+      enterOuterAlt(_localctx, 1);
+      setState(1339);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Literal();
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(1403);
+=======
+      setState(1340);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Parameter();
       break;
     }
 
     case 3: {
       enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
       setState(1404);
+=======
+      setState(1341);
+>>>>>>> d678da15 (frontend changes for path)
       oC_CaseExpression();
       break;
     }
 
     case 4: {
       enterOuterAlt(_localctx, 4);
+<<<<<<< HEAD
       setState(1405);
+=======
+      setState(1342);
+>>>>>>> d678da15 (frontend changes for path)
       oC_ParenthesizedExpression();
       break;
     }
 
     case 5: {
       enterOuterAlt(_localctx, 5);
+<<<<<<< HEAD
       setState(1406);
+=======
+      setState(1343);
+>>>>>>> d678da15 (frontend changes for path)
       oC_FunctionInvocation();
       break;
     }
 
     case 6: {
       enterOuterAlt(_localctx, 6);
+<<<<<<< HEAD
       setState(1407);
+=======
+      setState(1344);
+>>>>>>> d678da15 (frontend changes for path)
       oC_ExistentialSubquery();
       break;
     }
 
     case 7: {
       enterOuterAlt(_localctx, 7);
+<<<<<<< HEAD
       setState(1408);
+=======
+      setState(1345);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Variable();
       break;
     }
@@ -8297,7 +11098,11 @@ size_t CypherParser::OC_LiteralContext::getRuleIndex() const {
 
 CypherParser::OC_LiteralContext* CypherParser::oC_Literal() {
   OC_LiteralContext *_localctx = _tracker.createInstance<OC_LiteralContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 184, CypherParser::RuleOC_Literal);
+=======
+  enterRule(_localctx, 182, CypherParser::RuleOC_Literal);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -8307,20 +11112,32 @@ CypherParser::OC_LiteralContext* CypherParser::oC_Literal() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(1416);
+=======
+    setState(1353);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::DecimalInteger:
       case CypherParser::RegularDecimalReal: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(1411);
+=======
+        setState(1348);
+>>>>>>> d678da15 (frontend changes for path)
         oC_NumberLiteral();
         break;
       }
 
       case CypherParser::StringLiteral: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(1412);
+=======
+        setState(1349);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::StringLiteral);
         break;
       }
@@ -8328,21 +11145,33 @@ CypherParser::OC_LiteralContext* CypherParser::oC_Literal() {
       case CypherParser::TRUE:
       case CypherParser::FALSE: {
         enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
         setState(1413);
+=======
+        setState(1350);
+>>>>>>> d678da15 (frontend changes for path)
         oC_BooleanLiteral();
         break;
       }
 
       case CypherParser::NULL_: {
         enterOuterAlt(_localctx, 4);
+<<<<<<< HEAD
         setState(1414);
+=======
+        setState(1351);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::NULL_);
         break;
       }
 
       case CypherParser::T__4: {
         enterOuterAlt(_localctx, 5);
+<<<<<<< HEAD
         setState(1415);
+=======
+        setState(1352);
+>>>>>>> d678da15 (frontend changes for path)
         oC_ListLiteral();
         break;
       }
@@ -8383,7 +11212,11 @@ size_t CypherParser::OC_BooleanLiteralContext::getRuleIndex() const {
 
 CypherParser::OC_BooleanLiteralContext* CypherParser::oC_BooleanLiteral() {
   OC_BooleanLiteralContext *_localctx = _tracker.createInstance<OC_BooleanLiteralContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 186, CypherParser::RuleOC_BooleanLiteral);
+=======
+  enterRule(_localctx, 184, CypherParser::RuleOC_BooleanLiteral);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -8395,7 +11228,11 @@ CypherParser::OC_BooleanLiteralContext* CypherParser::oC_BooleanLiteral() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1418);
+=======
+    setState(1355);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!(_la == CypherParser::TRUE
 
@@ -8447,7 +11284,11 @@ size_t CypherParser::OC_ListLiteralContext::getRuleIndex() const {
 
 CypherParser::OC_ListLiteralContext* CypherParser::oC_ListLiteral() {
   OC_ListLiteralContext *_localctx = _tracker.createInstance<OC_ListLiteralContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 188, CypherParser::RuleOC_ListLiteral);
+=======
+  enterRule(_localctx, 186, CypherParser::RuleOC_ListLiteral);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -8459,22 +11300,36 @@ CypherParser::OC_ListLiteralContext* CypherParser::oC_ListLiteral() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1420);
     match(CypherParser::T__4);
     setState(1422);
+=======
+    setState(1357);
+    match(CypherParser::T__5);
+    setState(1359);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1421);
       match(CypherParser::SP);
     }
     setState(1441);
+=======
+      setState(1358);
+      match(CypherParser::SP);
+    }
+    setState(1378);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if ((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & ((1ULL << CypherParser::T__1)
+<<<<<<< HEAD
       | (1ULL << CypherParser::T__4)
       | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 90) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 90)) & ((1ULL << (CypherParser::NOT - 90))
@@ -8493,10 +11348,31 @@ CypherParser::OC_ListLiteralContext* CypherParser::oC_ListLiteral() {
       setState(1424);
       oC_Expression();
       setState(1426);
+=======
+      | (1ULL << CypherParser::T__5)
+      | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 88) & ~ 0x3fULL) == 0) &&
+      ((1ULL << (_la - 88)) & ((1ULL << (CypherParser::NOT - 88))
+      | (1ULL << (CypherParser::MINUS - 88))
+      | (1ULL << (CypherParser::NULL_ - 88))
+      | (1ULL << (CypherParser::TRUE - 88))
+      | (1ULL << (CypherParser::FALSE - 88))
+      | (1ULL << (CypherParser::EXISTS - 88))
+      | (1ULL << (CypherParser::CASE - 88))
+      | (1ULL << (CypherParser::StringLiteral - 88))
+      | (1ULL << (CypherParser::DecimalInteger - 88))
+      | (1ULL << (CypherParser::HexLetter - 88))
+      | (1ULL << (CypherParser::RegularDecimalReal - 88))
+      | (1ULL << (CypherParser::UnescapedSymbolicName - 88))
+      | (1ULL << (CypherParser::EscapedSymbolicName - 88)))) != 0)) {
+      setState(1361);
+      oC_Expression();
+      setState(1363);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1425);
         match(CypherParser::SP);
       }
@@ -8507,30 +11383,63 @@ CypherParser::OC_ListLiteralContext* CypherParser::oC_ListLiteral() {
         setState(1428);
         match(CypherParser::T__3);
         setState(1430);
+=======
+        setState(1362);
+        match(CypherParser::SP);
+      }
+      setState(1375);
+      _errHandler->sync(this);
+      _la = _input->LA(1);
+      while (_la == CypherParser::T__3) {
+        setState(1365);
+        match(CypherParser::T__3);
+        setState(1367);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1429);
           match(CypherParser::SP);
         }
         setState(1432);
         oC_Expression();
         setState(1434);
+=======
+          setState(1366);
+          match(CypherParser::SP);
+        }
+        setState(1369);
+        oC_Expression();
+        setState(1371);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1433);
           match(CypherParser::SP);
         }
         setState(1440);
+=======
+          setState(1370);
+          match(CypherParser::SP);
+        }
+        setState(1377);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
         _la = _input->LA(1);
       }
     }
+<<<<<<< HEAD
     setState(1443);
     match(CypherParser::T__5);
+=======
+    setState(1380);
+    match(CypherParser::T__6);
+>>>>>>> d678da15 (frontend changes for path)
    
   }
   catch (RecognitionException &e) {
@@ -8568,7 +11477,11 @@ size_t CypherParser::OC_ParenthesizedExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_ParenthesizedExpressionContext* CypherParser::oC_ParenthesizedExpression() {
   OC_ParenthesizedExpressionContext *_localctx = _tracker.createInstance<OC_ParenthesizedExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 190, CypherParser::RuleOC_ParenthesizedExpression);
+=======
+  enterRule(_localctx, 188, CypherParser::RuleOC_ParenthesizedExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -8580,27 +11493,49 @@ CypherParser::OC_ParenthesizedExpressionContext* CypherParser::oC_ParenthesizedE
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1445);
     match(CypherParser::T__1);
     setState(1447);
+=======
+    setState(1382);
+    match(CypherParser::T__1);
+    setState(1384);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1446);
       match(CypherParser::SP);
     }
     setState(1449);
     oC_Expression();
     setState(1451);
+=======
+      setState(1383);
+      match(CypherParser::SP);
+    }
+    setState(1386);
+    oC_Expression();
+    setState(1388);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1450);
       match(CypherParser::SP);
     }
     setState(1453);
+=======
+      setState(1387);
+      match(CypherParser::SP);
+    }
+    setState(1390);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::T__2);
    
   }
@@ -8655,7 +11590,11 @@ size_t CypherParser::OC_FunctionInvocationContext::getRuleIndex() const {
 
 CypherParser::OC_FunctionInvocationContext* CypherParser::oC_FunctionInvocation() {
   OC_FunctionInvocationContext *_localctx = _tracker.createInstance<OC_FunctionInvocationContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 192, CypherParser::RuleOC_FunctionInvocation);
+=======
+  enterRule(_localctx, 190, CypherParser::RuleOC_FunctionInvocation);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -8666,6 +11605,7 @@ CypherParser::OC_FunctionInvocationContext* CypherParser::oC_FunctionInvocation(
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(1504);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 255, _ctx)) {
@@ -8674,82 +11614,154 @@ CypherParser::OC_FunctionInvocationContext* CypherParser::oC_FunctionInvocation(
       setState(1455);
       oC_FunctionName();
       setState(1457);
+=======
+    setState(1441);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 245, _ctx)) {
+    case 1: {
+      enterOuterAlt(_localctx, 1);
+      setState(1392);
+      oC_FunctionName();
+      setState(1394);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1456);
         match(CypherParser::SP);
       }
       setState(1459);
       match(CypherParser::T__1);
       setState(1461);
+=======
+        setState(1393);
+        match(CypherParser::SP);
+      }
+      setState(1396);
+      match(CypherParser::T__1);
+      setState(1398);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1460);
         match(CypherParser::SP);
       }
       setState(1463);
       match(CypherParser::STAR);
       setState(1465);
+=======
+        setState(1397);
+        match(CypherParser::SP);
+      }
+      setState(1400);
+      match(CypherParser::STAR);
+      setState(1402);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1464);
         match(CypherParser::SP);
       }
       setState(1467);
+=======
+        setState(1401);
+        match(CypherParser::SP);
+      }
+      setState(1404);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::T__2);
       break;
     }
 
     case 2: {
       enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
       setState(1469);
       oC_FunctionName();
       setState(1471);
+=======
+      setState(1406);
+      oC_FunctionName();
+      setState(1408);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1470);
         match(CypherParser::SP);
       }
       setState(1473);
       match(CypherParser::T__1);
       setState(1475);
+=======
+        setState(1407);
+        match(CypherParser::SP);
+      }
+      setState(1410);
+      match(CypherParser::T__1);
+      setState(1412);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1474);
         match(CypherParser::SP);
       }
       setState(1481);
+=======
+        setState(1411);
+        match(CypherParser::SP);
+      }
+      setState(1418);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::DISTINCT) {
+<<<<<<< HEAD
         setState(1477);
         match(CypherParser::DISTINCT);
         setState(1479);
+=======
+        setState(1414);
+        match(CypherParser::DISTINCT);
+        setState(1416);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1478);
           match(CypherParser::SP);
         }
       }
       setState(1500);
+=======
+          setState(1415);
+          match(CypherParser::SP);
+        }
+      }
+      setState(1437);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if ((((_la & ~ 0x3fULL) == 0) &&
         ((1ULL << _la) & ((1ULL << CypherParser::T__1)
+<<<<<<< HEAD
         | (1ULL << CypherParser::T__4)
         | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 90) & ~ 0x3fULL) == 0) &&
         ((1ULL << (_la - 90)) & ((1ULL << (CypherParser::NOT - 90))
@@ -8768,10 +11780,31 @@ CypherParser::OC_FunctionInvocationContext* CypherParser::oC_FunctionInvocation(
         setState(1483);
         oC_Expression();
         setState(1485);
+=======
+        | (1ULL << CypherParser::T__5)
+        | (1ULL << CypherParser::T__26))) != 0) || ((((_la - 88) & ~ 0x3fULL) == 0) &&
+        ((1ULL << (_la - 88)) & ((1ULL << (CypherParser::NOT - 88))
+        | (1ULL << (CypherParser::MINUS - 88))
+        | (1ULL << (CypherParser::NULL_ - 88))
+        | (1ULL << (CypherParser::TRUE - 88))
+        | (1ULL << (CypherParser::FALSE - 88))
+        | (1ULL << (CypherParser::EXISTS - 88))
+        | (1ULL << (CypherParser::CASE - 88))
+        | (1ULL << (CypherParser::StringLiteral - 88))
+        | (1ULL << (CypherParser::DecimalInteger - 88))
+        | (1ULL << (CypherParser::HexLetter - 88))
+        | (1ULL << (CypherParser::RegularDecimalReal - 88))
+        | (1ULL << (CypherParser::UnescapedSymbolicName - 88))
+        | (1ULL << (CypherParser::EscapedSymbolicName - 88)))) != 0)) {
+        setState(1420);
+        oC_Expression();
+        setState(1422);
+>>>>>>> d678da15 (frontend changes for path)
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == CypherParser::SP) {
+<<<<<<< HEAD
           setState(1484);
           match(CypherParser::SP);
         }
@@ -8782,29 +11815,61 @@ CypherParser::OC_FunctionInvocationContext* CypherParser::oC_FunctionInvocation(
           setState(1487);
           match(CypherParser::T__3);
           setState(1489);
+=======
+          setState(1421);
+          match(CypherParser::SP);
+        }
+        setState(1434);
+        _errHandler->sync(this);
+        _la = _input->LA(1);
+        while (_la == CypherParser::T__3) {
+          setState(1424);
+          match(CypherParser::T__3);
+          setState(1426);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           _la = _input->LA(1);
           if (_la == CypherParser::SP) {
+<<<<<<< HEAD
             setState(1488);
             match(CypherParser::SP);
           }
           setState(1491);
           oC_Expression();
           setState(1493);
+=======
+            setState(1425);
+            match(CypherParser::SP);
+          }
+          setState(1428);
+          oC_Expression();
+          setState(1430);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
 
           _la = _input->LA(1);
           if (_la == CypherParser::SP) {
+<<<<<<< HEAD
             setState(1492);
             match(CypherParser::SP);
           }
           setState(1499);
+=======
+            setState(1429);
+            match(CypherParser::SP);
+          }
+          setState(1436);
+>>>>>>> d678da15 (frontend changes for path)
           _errHandler->sync(this);
           _la = _input->LA(1);
         }
       }
+<<<<<<< HEAD
       setState(1502);
+=======
+      setState(1439);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::T__2);
       break;
     }
@@ -8841,7 +11906,11 @@ size_t CypherParser::OC_FunctionNameContext::getRuleIndex() const {
 
 CypherParser::OC_FunctionNameContext* CypherParser::oC_FunctionName() {
   OC_FunctionNameContext *_localctx = _tracker.createInstance<OC_FunctionNameContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 194, CypherParser::RuleOC_FunctionName);
+=======
+  enterRule(_localctx, 192, CypherParser::RuleOC_FunctionName);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -8852,7 +11921,11 @@ CypherParser::OC_FunctionNameContext* CypherParser::oC_FunctionName() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1506);
+=======
+    setState(1443);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SymbolicName();
    
   }
@@ -8903,7 +11976,11 @@ size_t CypherParser::OC_ExistentialSubqueryContext::getRuleIndex() const {
 
 CypherParser::OC_ExistentialSubqueryContext* CypherParser::oC_ExistentialSubquery() {
   OC_ExistentialSubqueryContext *_localctx = _tracker.createInstance<OC_ExistentialSubqueryContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 196, CypherParser::RuleOC_ExistentialSubquery);
+=======
+  enterRule(_localctx, 194, CypherParser::RuleOC_ExistentialSubquery);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -8915,23 +11992,39 @@ CypherParser::OC_ExistentialSubqueryContext* CypherParser::oC_ExistentialSubquer
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1508);
     match(CypherParser::EXISTS);
     setState(1510);
+=======
+    setState(1445);
+    match(CypherParser::EXISTS);
+    setState(1447);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1509);
       match(CypherParser::SP);
     }
     setState(1512);
     match(CypherParser::T__7);
     setState(1514);
+=======
+      setState(1446);
+      match(CypherParser::SP);
+    }
+    setState(1449);
+    match(CypherParser::T__7);
+    setState(1451);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1513);
       match(CypherParser::SP);
     }
@@ -8943,6 +12036,19 @@ CypherParser::OC_ExistentialSubqueryContext* CypherParser::oC_ExistentialSubquer
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 258, _ctx)) {
     case 1: {
       setState(1517);
+=======
+      setState(1450);
+      match(CypherParser::SP);
+    }
+    setState(1453);
+    match(CypherParser::MATCH);
+    setState(1455);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 248, _ctx)) {
+    case 1: {
+      setState(1454);
+>>>>>>> d678da15 (frontend changes for path)
       match(CypherParser::SP);
       break;
     }
@@ -8950,6 +12056,7 @@ CypherParser::OC_ExistentialSubqueryContext* CypherParser::oC_ExistentialSubquer
     default:
       break;
     }
+<<<<<<< HEAD
     setState(1520);
     oC_Pattern();
     setState(1525);
@@ -8958,14 +12065,31 @@ CypherParser::OC_ExistentialSubqueryContext* CypherParser::oC_ExistentialSubquer
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 260, _ctx)) {
     case 1: {
       setState(1522);
+=======
+    setState(1457);
+    oC_Pattern();
+    setState(1462);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 250, _ctx)) {
+    case 1: {
+      setState(1459);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1521);
         match(CypherParser::SP);
       }
       setState(1524);
+=======
+        setState(1458);
+        match(CypherParser::SP);
+      }
+      setState(1461);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Where();
       break;
     }
@@ -8973,15 +12097,26 @@ CypherParser::OC_ExistentialSubqueryContext* CypherParser::oC_ExistentialSubquer
     default:
       break;
     }
+<<<<<<< HEAD
     setState(1528);
+=======
+    setState(1465);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1527);
       match(CypherParser::SP);
     }
     setState(1530);
+=======
+      setState(1464);
+      match(CypherParser::SP);
+    }
+    setState(1467);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::T__9);
    
   }
@@ -9016,7 +12151,11 @@ size_t CypherParser::OC_PropertyLookupContext::getRuleIndex() const {
 
 CypherParser::OC_PropertyLookupContext* CypherParser::oC_PropertyLookup() {
   OC_PropertyLookupContext *_localctx = _tracker.createInstance<OC_PropertyLookupContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 198, CypherParser::RuleOC_PropertyLookup);
+=======
+  enterRule(_localctx, 196, CypherParser::RuleOC_PropertyLookup);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9028,18 +12167,32 @@ CypherParser::OC_PropertyLookupContext* CypherParser::oC_PropertyLookup() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1532);
     match(CypherParser::T__25);
     setState(1534);
+=======
+    setState(1469);
+    match(CypherParser::T__25);
+    setState(1471);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1533);
       match(CypherParser::SP);
     }
 
     setState(1536);
+=======
+      setState(1470);
+      match(CypherParser::SP);
+    }
+
+    setState(1473);
+>>>>>>> d678da15 (frontend changes for path)
     oC_PropertyKeyName();
    
   }
@@ -9102,7 +12255,11 @@ size_t CypherParser::OC_CaseExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_CaseExpressionContext* CypherParser::oC_CaseExpression() {
   OC_CaseExpressionContext *_localctx = _tracker.createInstance<OC_CaseExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 200, CypherParser::RuleOC_CaseExpression);
+=======
+  enterRule(_localctx, 198, CypherParser::RuleOC_CaseExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9115,6 +12272,7 @@ CypherParser::OC_CaseExpressionContext* CypherParser::oC_CaseExpression() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1560);
     _errHandler->sync(this);
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 268, _ctx)) {
@@ -9122,20 +12280,40 @@ CypherParser::OC_CaseExpressionContext* CypherParser::oC_CaseExpression() {
       setState(1538);
       match(CypherParser::CASE);
       setState(1543); 
+=======
+    setState(1497);
+    _errHandler->sync(this);
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 258, _ctx)) {
+    case 1: {
+      setState(1475);
+      match(CypherParser::CASE);
+      setState(1480); 
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = 1;
       do {
         switch (alt) {
           case 1: {
+<<<<<<< HEAD
                 setState(1540);
+=======
+                setState(1477);
+>>>>>>> d678da15 (frontend changes for path)
                 _errHandler->sync(this);
 
                 _la = _input->LA(1);
                 if (_la == CypherParser::SP) {
+<<<<<<< HEAD
                   setState(1539);
                   match(CypherParser::SP);
                 }
                 setState(1542);
+=======
+                  setState(1476);
+                  match(CypherParser::SP);
+                }
+                setState(1479);
+>>>>>>> d678da15 (frontend changes for path)
                 oC_CaseAlternative();
                 break;
               }
@@ -9143,41 +12321,73 @@ CypherParser::OC_CaseExpressionContext* CypherParser::oC_CaseExpression() {
         default:
           throw NoViableAltException(this);
         }
+<<<<<<< HEAD
         setState(1545); 
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 264, _ctx);
+=======
+        setState(1482); 
+        _errHandler->sync(this);
+        alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 254, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
       } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
       break;
     }
 
     case 2: {
+<<<<<<< HEAD
       setState(1547);
       match(CypherParser::CASE);
       setState(1549);
+=======
+      setState(1484);
+      match(CypherParser::CASE);
+      setState(1486);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1548);
         match(CypherParser::SP);
       }
       setState(1551);
       oC_Expression();
       setState(1556); 
+=======
+        setState(1485);
+        match(CypherParser::SP);
+      }
+      setState(1488);
+      oC_Expression();
+      setState(1493); 
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
       alt = 1;
       do {
         switch (alt) {
           case 1: {
+<<<<<<< HEAD
                 setState(1553);
+=======
+                setState(1490);
+>>>>>>> d678da15 (frontend changes for path)
                 _errHandler->sync(this);
 
                 _la = _input->LA(1);
                 if (_la == CypherParser::SP) {
+<<<<<<< HEAD
                   setState(1552);
                   match(CypherParser::SP);
                 }
                 setState(1555);
+=======
+                  setState(1489);
+                  match(CypherParser::SP);
+                }
+                setState(1492);
+>>>>>>> d678da15 (frontend changes for path)
                 oC_CaseAlternative();
                 break;
               }
@@ -9185,9 +12395,15 @@ CypherParser::OC_CaseExpressionContext* CypherParser::oC_CaseExpression() {
         default:
           throw NoViableAltException(this);
         }
+<<<<<<< HEAD
         setState(1558); 
         _errHandler->sync(this);
         alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 267, _ctx);
+=======
+        setState(1495); 
+        _errHandler->sync(this);
+        alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 257, _ctx);
+>>>>>>> d678da15 (frontend changes for path)
       } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
       break;
     }
@@ -9195,30 +12411,55 @@ CypherParser::OC_CaseExpressionContext* CypherParser::oC_CaseExpression() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(1570);
     _errHandler->sync(this);
 
     switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 271, _ctx)) {
     case 1: {
       setState(1563);
+=======
+    setState(1507);
+    _errHandler->sync(this);
+
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 261, _ctx)) {
+    case 1: {
+      setState(1500);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1562);
         match(CypherParser::SP);
       }
       setState(1565);
       match(CypherParser::ELSE);
       setState(1567);
+=======
+        setState(1499);
+        match(CypherParser::SP);
+      }
+      setState(1502);
+      match(CypherParser::ELSE);
+      setState(1504);
+>>>>>>> d678da15 (frontend changes for path)
       _errHandler->sync(this);
 
       _la = _input->LA(1);
       if (_la == CypherParser::SP) {
+<<<<<<< HEAD
         setState(1566);
         match(CypherParser::SP);
       }
       setState(1569);
+=======
+        setState(1503);
+        match(CypherParser::SP);
+      }
+      setState(1506);
+>>>>>>> d678da15 (frontend changes for path)
       oC_Expression();
       break;
     }
@@ -9226,15 +12467,26 @@ CypherParser::OC_CaseExpressionContext* CypherParser::oC_CaseExpression() {
     default:
       break;
     }
+<<<<<<< HEAD
     setState(1573);
+=======
+    setState(1510);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1572);
       match(CypherParser::SP);
     }
     setState(1575);
+=======
+      setState(1509);
+      match(CypherParser::SP);
+    }
+    setState(1512);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::END);
    
   }
@@ -9285,7 +12537,11 @@ size_t CypherParser::OC_CaseAlternativeContext::getRuleIndex() const {
 
 CypherParser::OC_CaseAlternativeContext* CypherParser::oC_CaseAlternative() {
   OC_CaseAlternativeContext *_localctx = _tracker.createInstance<OC_CaseAlternativeContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 202, CypherParser::RuleOC_CaseAlternative);
+=======
+  enterRule(_localctx, 200, CypherParser::RuleOC_CaseAlternative);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9297,37 +12553,68 @@ CypherParser::OC_CaseAlternativeContext* CypherParser::oC_CaseAlternative() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1577);
     match(CypherParser::WHEN);
     setState(1579);
+=======
+    setState(1514);
+    match(CypherParser::WHEN);
+    setState(1516);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1578);
       match(CypherParser::SP);
     }
     setState(1581);
     oC_Expression();
     setState(1583);
+=======
+      setState(1515);
+      match(CypherParser::SP);
+    }
+    setState(1518);
+    oC_Expression();
+    setState(1520);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1582);
       match(CypherParser::SP);
     }
     setState(1585);
     match(CypherParser::THEN);
     setState(1587);
+=======
+      setState(1519);
+      match(CypherParser::SP);
+    }
+    setState(1522);
+    match(CypherParser::THEN);
+    setState(1524);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1586);
       match(CypherParser::SP);
     }
     setState(1589);
+=======
+      setState(1523);
+      match(CypherParser::SP);
+    }
+    setState(1526);
+>>>>>>> d678da15 (frontend changes for path)
     oC_Expression();
    
   }
@@ -9358,7 +12645,11 @@ size_t CypherParser::OC_VariableContext::getRuleIndex() const {
 
 CypherParser::OC_VariableContext* CypherParser::oC_Variable() {
   OC_VariableContext *_localctx = _tracker.createInstance<OC_VariableContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 204, CypherParser::RuleOC_Variable);
+=======
+  enterRule(_localctx, 202, CypherParser::RuleOC_Variable);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9369,7 +12660,11 @@ CypherParser::OC_VariableContext* CypherParser::oC_Variable() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1591);
+=======
+    setState(1528);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SymbolicName();
    
   }
@@ -9404,7 +12699,11 @@ size_t CypherParser::OC_NumberLiteralContext::getRuleIndex() const {
 
 CypherParser::OC_NumberLiteralContext* CypherParser::oC_NumberLiteral() {
   OC_NumberLiteralContext *_localctx = _tracker.createInstance<OC_NumberLiteralContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 206, CypherParser::RuleOC_NumberLiteral);
+=======
+  enterRule(_localctx, 204, CypherParser::RuleOC_NumberLiteral);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9414,19 +12713,31 @@ CypherParser::OC_NumberLiteralContext* CypherParser::oC_NumberLiteral() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(1595);
+=======
+    setState(1532);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::RegularDecimalReal: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(1593);
+=======
+        setState(1530);
+>>>>>>> d678da15 (frontend changes for path)
         oC_DoubleLiteral();
         break;
       }
 
       case CypherParser::DecimalInteger: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(1594);
+=======
+        setState(1531);
+>>>>>>> d678da15 (frontend changes for path)
         oC_IntegerLiteral();
         break;
       }
@@ -9467,7 +12778,11 @@ size_t CypherParser::OC_ParameterContext::getRuleIndex() const {
 
 CypherParser::OC_ParameterContext* CypherParser::oC_Parameter() {
   OC_ParameterContext *_localctx = _tracker.createInstance<OC_ParameterContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 208, CypherParser::RuleOC_Parameter);
+=======
+  enterRule(_localctx, 206, CypherParser::RuleOC_Parameter);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9478,21 +12793,35 @@ CypherParser::OC_ParameterContext* CypherParser::oC_Parameter() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1597);
     match(CypherParser::T__26);
     setState(1600);
+=======
+    setState(1534);
+    match(CypherParser::T__26);
+    setState(1537);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::HexLetter:
       case CypherParser::UnescapedSymbolicName:
       case CypherParser::EscapedSymbolicName: {
+<<<<<<< HEAD
         setState(1598);
+=======
+        setState(1535);
+>>>>>>> d678da15 (frontend changes for path)
         oC_SymbolicName();
         break;
       }
 
       case CypherParser::DecimalInteger: {
+<<<<<<< HEAD
         setState(1599);
+=======
+        setState(1536);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::DecimalInteger);
         break;
       }
@@ -9537,7 +12866,11 @@ size_t CypherParser::OC_PropertyExpressionContext::getRuleIndex() const {
 
 CypherParser::OC_PropertyExpressionContext* CypherParser::oC_PropertyExpression() {
   OC_PropertyExpressionContext *_localctx = _tracker.createInstance<OC_PropertyExpressionContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 210, CypherParser::RuleOC_PropertyExpression);
+=======
+  enterRule(_localctx, 208, CypherParser::RuleOC_PropertyExpression);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9549,17 +12882,30 @@ CypherParser::OC_PropertyExpressionContext* CypherParser::oC_PropertyExpression(
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1602);
     oC_Atom();
     setState(1604);
+=======
+    setState(1539);
+    oC_Atom();
+    setState(1541);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == CypherParser::SP) {
+<<<<<<< HEAD
       setState(1603);
       match(CypherParser::SP);
     }
     setState(1606);
+=======
+      setState(1540);
+      match(CypherParser::SP);
+    }
+    setState(1543);
+>>>>>>> d678da15 (frontend changes for path)
     oC_PropertyLookup();
    
   }
@@ -9590,7 +12936,11 @@ size_t CypherParser::OC_PropertyKeyNameContext::getRuleIndex() const {
 
 CypherParser::OC_PropertyKeyNameContext* CypherParser::oC_PropertyKeyName() {
   OC_PropertyKeyNameContext *_localctx = _tracker.createInstance<OC_PropertyKeyNameContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 212, CypherParser::RuleOC_PropertyKeyName);
+=======
+  enterRule(_localctx, 210, CypherParser::RuleOC_PropertyKeyName);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9601,7 +12951,11 @@ CypherParser::OC_PropertyKeyNameContext* CypherParser::oC_PropertyKeyName() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1608);
+=======
+    setState(1545);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SchemaName();
    
   }
@@ -9632,7 +12986,11 @@ size_t CypherParser::OC_IntegerLiteralContext::getRuleIndex() const {
 
 CypherParser::OC_IntegerLiteralContext* CypherParser::oC_IntegerLiteral() {
   OC_IntegerLiteralContext *_localctx = _tracker.createInstance<OC_IntegerLiteralContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 214, CypherParser::RuleOC_IntegerLiteral);
+=======
+  enterRule(_localctx, 212, CypherParser::RuleOC_IntegerLiteral);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9643,7 +13001,11 @@ CypherParser::OC_IntegerLiteralContext* CypherParser::oC_IntegerLiteral() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1610);
+=======
+    setState(1547);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::DecimalInteger);
    
   }
@@ -9674,7 +13036,11 @@ size_t CypherParser::OC_DoubleLiteralContext::getRuleIndex() const {
 
 CypherParser::OC_DoubleLiteralContext* CypherParser::oC_DoubleLiteral() {
   OC_DoubleLiteralContext *_localctx = _tracker.createInstance<OC_DoubleLiteralContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 216, CypherParser::RuleOC_DoubleLiteral);
+=======
+  enterRule(_localctx, 214, CypherParser::RuleOC_DoubleLiteral);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9685,7 +13051,11 @@ CypherParser::OC_DoubleLiteralContext* CypherParser::oC_DoubleLiteral() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1612);
+=======
+    setState(1549);
+>>>>>>> d678da15 (frontend changes for path)
     match(CypherParser::RegularDecimalReal);
    
   }
@@ -9716,7 +13086,11 @@ size_t CypherParser::OC_SchemaNameContext::getRuleIndex() const {
 
 CypherParser::OC_SchemaNameContext* CypherParser::oC_SchemaName() {
   OC_SchemaNameContext *_localctx = _tracker.createInstance<OC_SchemaNameContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 218, CypherParser::RuleOC_SchemaName);
+=======
+  enterRule(_localctx, 216, CypherParser::RuleOC_SchemaName);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9727,7 +13101,11 @@ CypherParser::OC_SchemaNameContext* CypherParser::oC_SchemaName() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1614);
+=======
+    setState(1551);
+>>>>>>> d678da15 (frontend changes for path)
     oC_SymbolicName();
    
   }
@@ -9766,7 +13144,11 @@ size_t CypherParser::OC_SymbolicNameContext::getRuleIndex() const {
 
 CypherParser::OC_SymbolicNameContext* CypherParser::oC_SymbolicName() {
   OC_SymbolicNameContext *_localctx = _tracker.createInstance<OC_SymbolicNameContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 220, CypherParser::RuleOC_SymbolicName);
+=======
+  enterRule(_localctx, 218, CypherParser::RuleOC_SymbolicName);
+>>>>>>> d678da15 (frontend changes for path)
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -9776,19 +13158,31 @@ CypherParser::OC_SymbolicNameContext* CypherParser::oC_SymbolicName() {
     exitRule();
   });
   try {
+<<<<<<< HEAD
     setState(1620);
+=======
+    setState(1557);
+>>>>>>> d678da15 (frontend changes for path)
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case CypherParser::UnescapedSymbolicName: {
         enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
         setState(1616);
+=======
+        setState(1553);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::UnescapedSymbolicName);
         break;
       }
 
       case CypherParser::EscapedSymbolicName: {
         enterOuterAlt(_localctx, 2);
+<<<<<<< HEAD
         setState(1617);
+=======
+        setState(1554);
+>>>>>>> d678da15 (frontend changes for path)
         dynamic_cast<OC_SymbolicNameContext *>(_localctx)->escapedsymbolicnameToken = match(CypherParser::EscapedSymbolicName);
         if ((dynamic_cast<OC_SymbolicNameContext *>(_localctx)->escapedsymbolicnameToken != nullptr ? dynamic_cast<OC_SymbolicNameContext *>(_localctx)->escapedsymbolicnameToken->getText() : "") == "``") { notifyEmptyToken(dynamic_cast<OC_SymbolicNameContext *>(_localctx)->escapedsymbolicnameToken); }
         break;
@@ -9796,7 +13190,11 @@ CypherParser::OC_SymbolicNameContext* CypherParser::oC_SymbolicName() {
 
       case CypherParser::HexLetter: {
         enterOuterAlt(_localctx, 3);
+<<<<<<< HEAD
         setState(1619);
+=======
+        setState(1556);
+>>>>>>> d678da15 (frontend changes for path)
         match(CypherParser::HexLetter);
         break;
       }
@@ -9829,7 +13227,11 @@ size_t CypherParser::OC_LeftArrowHeadContext::getRuleIndex() const {
 
 CypherParser::OC_LeftArrowHeadContext* CypherParser::oC_LeftArrowHead() {
   OC_LeftArrowHeadContext *_localctx = _tracker.createInstance<OC_LeftArrowHeadContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 222, CypherParser::RuleOC_LeftArrowHead);
+=======
+  enterRule(_localctx, 220, CypherParser::RuleOC_LeftArrowHead);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9841,7 +13243,11 @@ CypherParser::OC_LeftArrowHeadContext* CypherParser::oC_LeftArrowHead() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1622);
+=======
+    setState(1559);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & ((1ULL << CypherParser::T__13)
@@ -9880,7 +13286,11 @@ size_t CypherParser::OC_RightArrowHeadContext::getRuleIndex() const {
 
 CypherParser::OC_RightArrowHeadContext* CypherParser::oC_RightArrowHead() {
   OC_RightArrowHeadContext *_localctx = _tracker.createInstance<OC_RightArrowHeadContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 224, CypherParser::RuleOC_RightArrowHead);
+=======
+  enterRule(_localctx, 222, CypherParser::RuleOC_RightArrowHead);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9892,7 +13302,11 @@ CypherParser::OC_RightArrowHeadContext* CypherParser::oC_RightArrowHead() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1624);
+=======
+    setState(1561);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & ((1ULL << CypherParser::T__15)
@@ -9935,7 +13349,11 @@ size_t CypherParser::OC_DashContext::getRuleIndex() const {
 
 CypherParser::OC_DashContext* CypherParser::oC_Dash() {
   OC_DashContext *_localctx = _tracker.createInstance<OC_DashContext>(_ctx, getState());
+<<<<<<< HEAD
   enterRule(_localctx, 226, CypherParser::RuleOC_Dash);
+=======
+  enterRule(_localctx, 224, CypherParser::RuleOC_Dash);
+>>>>>>> d678da15 (frontend changes for path)
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -9947,7 +13365,11 @@ CypherParser::OC_DashContext* CypherParser::oC_Dash() {
   });
   try {
     enterOuterAlt(_localctx, 1);
+<<<<<<< HEAD
     setState(1626);
+=======
+    setState(1563);
+>>>>>>> d678da15 (frontend changes for path)
     _la = _input->LA(1);
     if (!(((((_la - 36) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 36)) & ((1ULL << (CypherParser::T__35 - 36))
@@ -9988,6 +13410,7 @@ atn::ATN CypherParser::_atn;
 std::vector<uint16_t> CypherParser::_serializedATN;
 
 std::vector<std::string> CypherParser::_ruleNames = {
+<<<<<<< HEAD
   "oC_Cypher", "kU_CopyCSV", "kU_CopyNPY", "kU_FilePaths", "kU_ParsingOptions", 
   "kU_ParsingOption", "kU_DDL", "kU_CreateNode", "kU_CreateRel", "kU_DropTable", 
   "kU_AlterTable", "kU_AlterOptions", "kU_AddProperty", "kU_DropProperty", 
@@ -10017,6 +13440,37 @@ std::vector<std::string> CypherParser::_ruleNames = {
   "oC_NumberLiteral", "oC_Parameter", "oC_PropertyExpression", "oC_PropertyKeyName", 
   "oC_IntegerLiteral", "oC_DoubleLiteral", "oC_SchemaName", "oC_SymbolicName", 
   "oC_LeftArrowHead", "oC_RightArrowHead", "oC_Dash"
+=======
+  "oC_Cypher", "kU_CopyCSV", "kU_ParsingOptions", "kU_ParsingOption", "kU_DDL", 
+  "kU_CreateNode", "kU_CreateRel", "kU_DropTable", "kU_AlterTable", "kU_AlterOptions", 
+  "kU_AddProperty", "kU_DropProperty", "kU_RenameTable", "kU_RenameProperty", 
+  "kU_PropertyDefinitions", "kU_PropertyDefinition", "kU_CreateNodeConstraint", 
+  "kU_DataType", "kU_ListIdentifiers", "kU_ListIdentifier", "oC_AnyCypherOption", 
+  "oC_Explain", "oC_Profile", "oC_Statement", "oC_Query", "oC_RegularQuery", 
+  "oC_Union", "oC_SingleQuery", "oC_SinglePartQuery", "oC_MultiPartQuery", 
+  "kU_QueryPart", "oC_UpdatingClause", "oC_ReadingClause", "oC_Match", "oC_Unwind", 
+  "oC_Create", "oC_Set", "oC_SetItem", "oC_Delete", "oC_With", "oC_Return", 
+  "oC_ProjectionBody", "oC_ProjectionItems", "oC_ProjectionItem", "oC_Order", 
+  "oC_Skip", "oC_Limit", "oC_SortItem", "oC_Where", "oC_Pattern", "oC_PatternPart", 
+  "oC_AnonymousPatternPart", "oC_PatternElement", "oC_NodePattern", "oC_PatternElementChain", 
+  "oC_RelationshipPattern", "oC_RelationshipDetail", "kU_Properties", "oC_RelationshipTypes", 
+  "oC_NodeLabels", "oC_NodeLabel", "oC_RangePattern", "oC_RangeLiteral", 
+  "oC_LabelName", "oC_RelTypeName", "oC_Expression", "oC_OrExpression", 
+  "oC_XorExpression", "oC_AndExpression", "oC_NotExpression", "oC_ComparisonExpression", 
+  "kU_ComparisonOperator", "kU_BitwiseOrOperatorExpression", "kU_BitwiseAndOperatorExpression", 
+  "kU_BitShiftOperatorExpression", "kU_BitShiftOperator", "oC_AddOrSubtractExpression", 
+  "kU_AddOrSubtractOperator", "oC_MultiplyDivideModuloExpression", "kU_MultiplyDivideModuloOperator", 
+  "oC_PowerOfExpression", "oC_UnaryAddSubtractOrFactorialExpression", "oC_StringListNullOperatorExpression", 
+  "oC_ListOperatorExpression", "kU_ListExtractOperatorExpression", "kU_ListSliceOperatorExpression", 
+  "oC_StringOperatorExpression", "oC_RegularExpression", "oC_NullOperatorExpression", 
+  "oC_PropertyOrLabelsExpression", "oC_Atom", "oC_Literal", "oC_BooleanLiteral", 
+  "oC_ListLiteral", "oC_ParenthesizedExpression", "oC_FunctionInvocation", 
+  "oC_FunctionName", "oC_ExistentialSubquery", "oC_PropertyLookup", "oC_CaseExpression", 
+  "oC_CaseAlternative", "oC_Variable", "oC_NumberLiteral", "oC_Parameter", 
+  "oC_PropertyExpression", "oC_PropertyKeyName", "oC_IntegerLiteral", "oC_DoubleLiteral", 
+  "oC_SchemaName", "oC_SymbolicName", "oC_LeftArrowHead", "oC_RightArrowHead", 
+  "oC_Dash"
+>>>>>>> d678da15 (frontend changes for path)
 };
 
 std::vector<std::string> CypherParser::_literalNames = {
@@ -10027,20 +13481,35 @@ std::vector<std::string> CypherParser::_literalNames = {
   "'\u00AD'", "'\u2010'", "'\u2011'", "'\u2012'", "'\u2013'", "'\u2014'", 
   "'\u2015'", "'\u2212'", "'\uFE58'", "'\uFE63'", "'\uFF0D'", "", "", "", 
   "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 
+<<<<<<< HEAD
   "", "", "", "", "", "", "", "", "'*'", "", "", "", "", "", "", "", "", 
   "", "", "", "", "", "", "'!='", "'-'", "'!'", "", "", "", "", "", "", 
   "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "'0'"
+=======
+  "", "", "", "", "", "'*'", "", "", "", "", "", "", "", "", "", "", "", 
+  "", "", "", "", "'!='", "'-'", "'!'", "", "", "", "", "", "", "", "", 
+  "", "", "", "", "", "", "", "", "", "", "", "", "", "'0'"
+>>>>>>> d678da15 (frontend changes for path)
 };
 
 std::vector<std::string> CypherParser::_symbolicNames = {
   "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 
   "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 
+<<<<<<< HEAD
   "", "", "", "", "", "", "", "", "", "", "", "GLOB", "COPY", "FROM", "NPY", 
   "COLUMN", "NODE", "TABLE", "DROP", "ALTER", "DEFAULT", "RENAME", "ADD", 
   "PRIMARY", "KEY", "REL", "TO", "EXPLAIN", "PROFILE", "UNION", "ALL", "OPTIONAL", 
   "MATCH", "UNWIND", "CREATE", "SET", "DELETE", "WITH", "RETURN", "DISTINCT", 
   "STAR", "AS", "ORDER", "BY", "L_SKIP", "LIMIT", "ASCENDING", "ASC", "DESCENDING", 
   "DESC", "WHERE", "OR", "XOR", "AND", "NOT", "INVALID_NOT_EQUAL", "MINUS", 
+=======
+  "", "", "", "", "", "", "", "", "", "", "", "COPY", "FROM", "NODE", "TABLE", 
+  "DROP", "ALTER", "DEFAULT", "RENAME", "ADD", "PRIMARY", "KEY", "REL", 
+  "TO", "EXPLAIN", "PROFILE", "UNION", "ALL", "OPTIONAL", "MATCH", "UNWIND", 
+  "CREATE", "SET", "DELETE", "WITH", "RETURN", "DISTINCT", "STAR", "AS", 
+  "ORDER", "BY", "L_SKIP", "LIMIT", "ASCENDING", "ASC", "DESCENDING", "DESC", 
+  "WHERE", "SHORTEST", "OR", "XOR", "AND", "NOT", "INVALID_NOT_EQUAL", "MINUS", 
+>>>>>>> d678da15 (frontend changes for path)
   "FACTORIAL", "STARTS", "ENDS", "CONTAINS", "IS", "NULL_", "TRUE", "FALSE", 
   "EXISTS", "CASE", "ELSE", "END", "WHEN", "THEN", "StringLiteral", "EscapedChar", 
   "DecimalInteger", "HexLetter", "HexDigit", "Digit", "NonZeroDigit", "NonZeroOctDigit", 
@@ -10069,7 +13538,11 @@ CypherParser::Initializer::Initializer() {
 
   _serializedATN = {
     0x3, 0x608b, 0xa72a, 0x8133, 0xb9ed, 0x417c, 0x3be7, 0x7786, 0x5964, 
+<<<<<<< HEAD
     0x3, 0x7e, 0x65f, 0x4, 0x2, 0x9, 0x2, 0x4, 0x3, 0x9, 0x3, 0x4, 0x4, 
+=======
+    0x3, 0x7c, 0x620, 0x4, 0x2, 0x9, 0x2, 0x4, 0x3, 0x9, 0x3, 0x4, 0x4, 
+>>>>>>> d678da15 (frontend changes for path)
     0x9, 0x4, 0x4, 0x5, 0x9, 0x5, 0x4, 0x6, 0x9, 0x6, 0x4, 0x7, 0x9, 0x7, 
     0x4, 0x8, 0x9, 0x8, 0x4, 0x9, 0x9, 0x9, 0x4, 0xa, 0x9, 0xa, 0x4, 0xb, 
     0x9, 0xb, 0x4, 0xc, 0x9, 0xc, 0x4, 0xd, 0x9, 0xd, 0x4, 0xe, 0x9, 0xe, 
@@ -10103,6 +13576,7 @@ CypherParser::Initializer::Initializer() {
     0x66, 0x4, 0x67, 0x9, 0x67, 0x4, 0x68, 0x9, 0x68, 0x4, 0x69, 0x9, 0x69, 
     0x4, 0x6a, 0x9, 0x6a, 0x4, 0x6b, 0x9, 0x6b, 0x4, 0x6c, 0x9, 0x6c, 0x4, 
     0x6d, 0x9, 0x6d, 0x4, 0x6e, 0x9, 0x6e, 0x4, 0x6f, 0x9, 0x6f, 0x4, 0x70, 
+<<<<<<< HEAD
     0x9, 0x70, 0x4, 0x71, 0x9, 0x71, 0x4, 0x72, 0x9, 0x72, 0x4, 0x73, 0x9, 
     0x73, 0x3, 0x2, 0x5, 0x2, 0xe8, 0xa, 0x2, 0x3, 0x2, 0x5, 0x2, 0xeb, 
     0xa, 0x2, 0x3, 0x2, 0x5, 0x2, 0xee, 0xa, 0x2, 0x3, 0x2, 0x3, 0x2, 0x3, 
@@ -10349,6 +13823,244 @@ CypherParser::Initializer::Initializer() {
     0x6d, 0x3, 0x6e, 0x3, 0x6e, 0x3, 0x6f, 0x3, 0x6f, 0x3, 0x70, 0x3, 0x70, 
     0x3, 0x70, 0x3, 0x70, 0x5, 0x70, 0x657, 0xa, 0x70, 0x3, 0x71, 0x3, 0x71, 
     0x3, 0x72, 0x3, 0x72, 0x3, 0x73, 0x3, 0x73, 0x3, 0x73, 0x2, 0x2, 0x74, 
+=======
+    0x9, 0x70, 0x4, 0x71, 0x9, 0x71, 0x4, 0x72, 0x9, 0x72, 0x3, 0x2, 0x5, 
+    0x2, 0xe6, 0xa, 0x2, 0x3, 0x2, 0x5, 0x2, 0xe9, 0xa, 0x2, 0x3, 0x2, 0x5, 
+    0x2, 0xec, 0xa, 0x2, 0x3, 0x2, 0x3, 0x2, 0x3, 0x2, 0x5, 0x2, 0xf1, 0xa, 
+    0x2, 0x3, 0x2, 0x5, 0x2, 0xf4, 0xa, 0x2, 0x3, 0x2, 0x5, 0x2, 0xf7, 0xa, 
+    0x2, 0x3, 0x2, 0x5, 0x2, 0xfa, 0xa, 0x2, 0x3, 0x2, 0x3, 0x2, 0x3, 0x3, 
+    0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 
+    0x5, 0x3, 0x106, 0xa, 0x3, 0x3, 0x3, 0x3, 0x3, 0x5, 0x3, 0x10a, 0xa, 
+    0x3, 0x3, 0x3, 0x3, 0x3, 0x5, 0x3, 0x10e, 0xa, 0x3, 0x3, 0x3, 0x3, 0x3, 
+    0x5, 0x3, 0x112, 0xa, 0x3, 0x3, 0x4, 0x3, 0x4, 0x5, 0x4, 0x116, 0xa, 
+    0x4, 0x3, 0x4, 0x3, 0x4, 0x5, 0x4, 0x11a, 0xa, 0x4, 0x3, 0x4, 0x7, 0x4, 
+    0x11d, 0xa, 0x4, 0xc, 0x4, 0xe, 0x4, 0x120, 0xb, 0x4, 0x3, 0x5, 0x3, 
+    0x5, 0x5, 0x5, 0x124, 0xa, 0x5, 0x3, 0x5, 0x3, 0x5, 0x5, 0x5, 0x128, 
+    0xa, 0x5, 0x3, 0x5, 0x3, 0x5, 0x3, 0x6, 0x3, 0x6, 0x3, 0x6, 0x3, 0x6, 
+    0x5, 0x6, 0x130, 0xa, 0x6, 0x3, 0x7, 0x3, 0x7, 0x3, 0x7, 0x3, 0x7, 0x3, 
+    0x7, 0x3, 0x7, 0x3, 0x7, 0x3, 0x7, 0x5, 0x7, 0x13a, 0xa, 0x7, 0x3, 0x7, 
+    0x3, 0x7, 0x5, 0x7, 0x13e, 0xa, 0x7, 0x3, 0x7, 0x3, 0x7, 0x5, 0x7, 0x142, 
+    0xa, 0x7, 0x3, 0x7, 0x3, 0x7, 0x5, 0x7, 0x146, 0xa, 0x7, 0x3, 0x7, 0x3, 
+    0x7, 0x3, 0x7, 0x5, 0x7, 0x14b, 0xa, 0x7, 0x3, 0x7, 0x3, 0x7, 0x3, 0x8, 
+    0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 
+    0x5, 0x8, 0x157, 0xa, 0x8, 0x3, 0x8, 0x3, 0x8, 0x5, 0x8, 0x15b, 0xa, 
+    0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 
+    0x8, 0x3, 0x8, 0x5, 0x8, 0x165, 0xa, 0x8, 0x3, 0x8, 0x3, 0x8, 0x5, 0x8, 
+    0x169, 0xa, 0x8, 0x3, 0x8, 0x3, 0x8, 0x5, 0x8, 0x16d, 0xa, 0x8, 0x5, 
+    0x8, 0x16f, 0xa, 0x8, 0x3, 0x8, 0x3, 0x8, 0x5, 0x8, 0x173, 0xa, 0x8, 
+    0x3, 0x8, 0x3, 0x8, 0x5, 0x8, 0x177, 0xa, 0x8, 0x5, 0x8, 0x179, 0xa, 
+    0x8, 0x3, 0x8, 0x3, 0x8, 0x3, 0x9, 0x3, 0x9, 0x3, 0x9, 0x3, 0x9, 0x3, 
+    0x9, 0x3, 0x9, 0x3, 0xa, 0x3, 0xa, 0x3, 0xa, 0x3, 0xa, 0x3, 0xa, 0x3, 
+    0xa, 0x3, 0xa, 0x3, 0xa, 0x3, 0xb, 0x3, 0xb, 0x3, 0xb, 0x3, 0xb, 0x5, 
+    0xb, 0x18f, 0xa, 0xb, 0x3, 0xc, 0x3, 0xc, 0x3, 0xc, 0x3, 0xc, 0x3, 0xc, 
+    0x3, 0xc, 0x3, 0xc, 0x3, 0xc, 0x3, 0xc, 0x5, 0xc, 0x19a, 0xa, 0xc, 0x3, 
+    0xd, 0x3, 0xd, 0x3, 0xd, 0x3, 0xd, 0x3, 0xe, 0x3, 0xe, 0x3, 0xe, 0x3, 
+    0xe, 0x3, 0xe, 0x3, 0xe, 0x3, 0xf, 0x3, 0xf, 0x3, 0xf, 0x3, 0xf, 0x3, 
+    0xf, 0x3, 0xf, 0x3, 0xf, 0x3, 0xf, 0x3, 0x10, 0x3, 0x10, 0x5, 0x10, 
+    0x1b0, 0xa, 0x10, 0x3, 0x10, 0x3, 0x10, 0x5, 0x10, 0x1b4, 0xa, 0x10, 
+    0x3, 0x10, 0x7, 0x10, 0x1b7, 0xa, 0x10, 0xc, 0x10, 0xe, 0x10, 0x1ba, 
+    0xb, 0x10, 0x3, 0x11, 0x3, 0x11, 0x3, 0x11, 0x3, 0x11, 0x3, 0x12, 0x3, 
+    0x12, 0x3, 0x12, 0x3, 0x12, 0x5, 0x12, 0x1c4, 0xa, 0x12, 0x3, 0x12, 
+    0x3, 0x12, 0x5, 0x12, 0x1c8, 0xa, 0x12, 0x3, 0x12, 0x3, 0x12, 0x5, 0x12, 
+    0x1cc, 0xa, 0x12, 0x3, 0x12, 0x3, 0x12, 0x3, 0x13, 0x3, 0x13, 0x3, 0x13, 
+    0x3, 0x13, 0x5, 0x13, 0x1d4, 0xa, 0x13, 0x3, 0x14, 0x3, 0x14, 0x7, 0x14, 
+    0x1d8, 0xa, 0x14, 0xc, 0x14, 0xe, 0x14, 0x1db, 0xb, 0x14, 0x3, 0x15, 
+    0x3, 0x15, 0x3, 0x15, 0x3, 0x16, 0x3, 0x16, 0x5, 0x16, 0x1e2, 0xa, 0x16, 
+    0x3, 0x17, 0x3, 0x17, 0x3, 0x18, 0x3, 0x18, 0x3, 0x19, 0x3, 0x19, 0x3, 
+    0x1a, 0x3, 0x1a, 0x3, 0x1b, 0x3, 0x1b, 0x5, 0x1b, 0x1ee, 0xa, 0x1b, 
+    0x3, 0x1b, 0x7, 0x1b, 0x1f1, 0xa, 0x1b, 0xc, 0x1b, 0xe, 0x1b, 0x1f4, 
+    0xb, 0x1b, 0x3, 0x1b, 0x3, 0x1b, 0x5, 0x1b, 0x1f8, 0xa, 0x1b, 0x6, 0x1b, 
+    0x1fa, 0xa, 0x1b, 0xd, 0x1b, 0xe, 0x1b, 0x1fb, 0x3, 0x1b, 0x3, 0x1b, 
+    0x3, 0x1b, 0x5, 0x1b, 0x201, 0xa, 0x1b, 0x3, 0x1c, 0x3, 0x1c, 0x3, 0x1c, 
+    0x3, 0x1c, 0x5, 0x1c, 0x207, 0xa, 0x1c, 0x3, 0x1c, 0x3, 0x1c, 0x3, 0x1c, 
+    0x5, 0x1c, 0x20c, 0xa, 0x1c, 0x3, 0x1c, 0x5, 0x1c, 0x20f, 0xa, 0x1c, 
+    0x3, 0x1d, 0x3, 0x1d, 0x5, 0x1d, 0x213, 0xa, 0x1d, 0x3, 0x1e, 0x3, 0x1e, 
+    0x5, 0x1e, 0x217, 0xa, 0x1e, 0x7, 0x1e, 0x219, 0xa, 0x1e, 0xc, 0x1e, 
+    0xe, 0x1e, 0x21c, 0xb, 0x1e, 0x3, 0x1e, 0x3, 0x1e, 0x3, 0x1e, 0x5, 0x1e, 
+    0x221, 0xa, 0x1e, 0x7, 0x1e, 0x223, 0xa, 0x1e, 0xc, 0x1e, 0xe, 0x1e, 
+    0x226, 0xb, 0x1e, 0x3, 0x1e, 0x3, 0x1e, 0x5, 0x1e, 0x22a, 0xa, 0x1e, 
+    0x3, 0x1e, 0x7, 0x1e, 0x22d, 0xa, 0x1e, 0xc, 0x1e, 0xe, 0x1e, 0x230, 
+    0xb, 0x1e, 0x3, 0x1e, 0x5, 0x1e, 0x233, 0xa, 0x1e, 0x3, 0x1e, 0x5, 0x1e, 
+    0x236, 0xa, 0x1e, 0x3, 0x1e, 0x3, 0x1e, 0x5, 0x1e, 0x23a, 0xa, 0x1e, 
+    0x7, 0x1e, 0x23c, 0xa, 0x1e, 0xc, 0x1e, 0xe, 0x1e, 0x23f, 0xb, 0x1e, 
+    0x3, 0x1e, 0x5, 0x1e, 0x242, 0xa, 0x1e, 0x3, 0x1f, 0x3, 0x1f, 0x5, 0x1f, 
+    0x246, 0xa, 0x1f, 0x6, 0x1f, 0x248, 0xa, 0x1f, 0xd, 0x1f, 0xe, 0x1f, 
+    0x249, 0x3, 0x1f, 0x3, 0x1f, 0x3, 0x20, 0x3, 0x20, 0x5, 0x20, 0x250, 
+    0xa, 0x20, 0x7, 0x20, 0x252, 0xa, 0x20, 0xc, 0x20, 0xe, 0x20, 0x255, 
+    0xb, 0x20, 0x3, 0x20, 0x3, 0x20, 0x5, 0x20, 0x259, 0xa, 0x20, 0x7, 0x20, 
+    0x25b, 0xa, 0x20, 0xc, 0x20, 0xe, 0x20, 0x25e, 0xb, 0x20, 0x3, 0x20, 
+    0x3, 0x20, 0x3, 0x21, 0x3, 0x21, 0x3, 0x21, 0x5, 0x21, 0x265, 0xa, 0x21, 
+    0x3, 0x22, 0x3, 0x22, 0x5, 0x22, 0x269, 0xa, 0x22, 0x3, 0x23, 0x3, 0x23, 
+    0x5, 0x23, 0x26d, 0xa, 0x23, 0x3, 0x23, 0x3, 0x23, 0x5, 0x23, 0x271, 
+    0xa, 0x23, 0x3, 0x23, 0x3, 0x23, 0x5, 0x23, 0x275, 0xa, 0x23, 0x3, 0x23, 
+    0x5, 0x23, 0x278, 0xa, 0x23, 0x3, 0x24, 0x3, 0x24, 0x5, 0x24, 0x27c, 
+    0xa, 0x24, 0x3, 0x24, 0x3, 0x24, 0x3, 0x24, 0x3, 0x24, 0x3, 0x24, 0x3, 
+    0x24, 0x3, 0x25, 0x3, 0x25, 0x5, 0x25, 0x286, 0xa, 0x25, 0x3, 0x25, 
+    0x3, 0x25, 0x3, 0x26, 0x3, 0x26, 0x5, 0x26, 0x28c, 0xa, 0x26, 0x3, 0x26, 
+    0x3, 0x26, 0x5, 0x26, 0x290, 0xa, 0x26, 0x3, 0x26, 0x3, 0x26, 0x5, 0x26, 
+    0x294, 0xa, 0x26, 0x3, 0x26, 0x7, 0x26, 0x297, 0xa, 0x26, 0xc, 0x26, 
+    0xe, 0x26, 0x29a, 0xb, 0x26, 0x3, 0x27, 0x3, 0x27, 0x5, 0x27, 0x29e, 
+    0xa, 0x27, 0x3, 0x27, 0x3, 0x27, 0x5, 0x27, 0x2a2, 0xa, 0x27, 0x3, 0x27, 
+    0x3, 0x27, 0x3, 0x28, 0x3, 0x28, 0x5, 0x28, 0x2a8, 0xa, 0x28, 0x3, 0x28, 
+    0x3, 0x28, 0x5, 0x28, 0x2ac, 0xa, 0x28, 0x3, 0x28, 0x3, 0x28, 0x5, 0x28, 
+    0x2b0, 0xa, 0x28, 0x3, 0x28, 0x7, 0x28, 0x2b3, 0xa, 0x28, 0xc, 0x28, 
+    0xe, 0x28, 0x2b6, 0xb, 0x28, 0x3, 0x29, 0x3, 0x29, 0x3, 0x29, 0x5, 0x29, 
+    0x2bb, 0xa, 0x29, 0x3, 0x29, 0x5, 0x29, 0x2be, 0xa, 0x29, 0x3, 0x2a, 
+    0x3, 0x2a, 0x3, 0x2a, 0x3, 0x2b, 0x5, 0x2b, 0x2c4, 0xa, 0x2b, 0x3, 0x2b, 
+    0x5, 0x2b, 0x2c7, 0xa, 0x2b, 0x3, 0x2b, 0x3, 0x2b, 0x3, 0x2b, 0x3, 0x2b, 
+    0x5, 0x2b, 0x2cd, 0xa, 0x2b, 0x3, 0x2b, 0x3, 0x2b, 0x5, 0x2b, 0x2d1, 
+    0xa, 0x2b, 0x3, 0x2b, 0x3, 0x2b, 0x5, 0x2b, 0x2d5, 0xa, 0x2b, 0x3, 0x2c, 
+    0x3, 0x2c, 0x5, 0x2c, 0x2d9, 0xa, 0x2c, 0x3, 0x2c, 0x3, 0x2c, 0x5, 0x2c, 
+    0x2dd, 0xa, 0x2c, 0x3, 0x2c, 0x7, 0x2c, 0x2e0, 0xa, 0x2c, 0xc, 0x2c, 
+    0xe, 0x2c, 0x2e3, 0xb, 0x2c, 0x3, 0x2c, 0x3, 0x2c, 0x5, 0x2c, 0x2e7, 
+    0xa, 0x2c, 0x3, 0x2c, 0x3, 0x2c, 0x5, 0x2c, 0x2eb, 0xa, 0x2c, 0x3, 0x2c, 
+    0x7, 0x2c, 0x2ee, 0xa, 0x2c, 0xc, 0x2c, 0xe, 0x2c, 0x2f1, 0xb, 0x2c, 
+    0x5, 0x2c, 0x2f3, 0xa, 0x2c, 0x3, 0x2d, 0x3, 0x2d, 0x3, 0x2d, 0x3, 0x2d, 
+    0x3, 0x2d, 0x3, 0x2d, 0x3, 0x2d, 0x5, 0x2d, 0x2fc, 0xa, 0x2d, 0x3, 0x2e, 
+    0x3, 0x2e, 0x3, 0x2e, 0x3, 0x2e, 0x3, 0x2e, 0x3, 0x2e, 0x3, 0x2e, 0x5, 
+    0x2e, 0x305, 0xa, 0x2e, 0x3, 0x2e, 0x7, 0x2e, 0x308, 0xa, 0x2e, 0xc, 
+    0x2e, 0xe, 0x2e, 0x30b, 0xb, 0x2e, 0x3, 0x2f, 0x3, 0x2f, 0x3, 0x2f, 
+    0x3, 0x2f, 0x3, 0x30, 0x3, 0x30, 0x3, 0x30, 0x3, 0x30, 0x3, 0x31, 0x3, 
+    0x31, 0x5, 0x31, 0x317, 0xa, 0x31, 0x3, 0x31, 0x5, 0x31, 0x31a, 0xa, 
+    0x31, 0x3, 0x32, 0x3, 0x32, 0x3, 0x32, 0x3, 0x32, 0x3, 0x33, 0x3, 0x33, 
+    0x5, 0x33, 0x322, 0xa, 0x33, 0x3, 0x33, 0x3, 0x33, 0x5, 0x33, 0x326, 
+    0xa, 0x33, 0x3, 0x33, 0x7, 0x33, 0x329, 0xa, 0x33, 0xc, 0x33, 0xe, 0x33, 
+    0x32c, 0xb, 0x33, 0x3, 0x34, 0x3, 0x34, 0x3, 0x34, 0x3, 0x34, 0x3, 0x34, 
+    0x5, 0x34, 0x333, 0xa, 0x34, 0x3, 0x35, 0x3, 0x35, 0x3, 0x36, 0x3, 0x36, 
+    0x5, 0x36, 0x339, 0xa, 0x36, 0x3, 0x36, 0x7, 0x36, 0x33c, 0xa, 0x36, 
+    0xc, 0x36, 0xe, 0x36, 0x33f, 0xb, 0x36, 0x3, 0x36, 0x3, 0x36, 0x3, 0x36, 
+    0x3, 0x36, 0x5, 0x36, 0x345, 0xa, 0x36, 0x3, 0x37, 0x3, 0x37, 0x5, 0x37, 
+    0x349, 0xa, 0x37, 0x3, 0x37, 0x3, 0x37, 0x5, 0x37, 0x34d, 0xa, 0x37, 
+    0x5, 0x37, 0x34f, 0xa, 0x37, 0x3, 0x37, 0x3, 0x37, 0x5, 0x37, 0x353, 
+    0xa, 0x37, 0x5, 0x37, 0x355, 0xa, 0x37, 0x3, 0x37, 0x3, 0x37, 0x5, 0x37, 
+    0x359, 0xa, 0x37, 0x5, 0x37, 0x35b, 0xa, 0x37, 0x3, 0x37, 0x3, 0x37, 
+    0x5, 0x37, 0x35f, 0xa, 0x37, 0x3, 0x37, 0x3, 0x37, 0x5, 0x37, 0x363, 
+    0xa, 0x37, 0x5, 0x37, 0x365, 0xa, 0x37, 0x3, 0x37, 0x3, 0x37, 0x5, 0x37, 
+    0x369, 0xa, 0x37, 0x5, 0x37, 0x36b, 0xa, 0x37, 0x3, 0x37, 0x3, 0x37, 
+    0x5, 0x37, 0x36f, 0xa, 0x37, 0x5, 0x37, 0x371, 0xa, 0x37, 0x3, 0x37, 
+    0x5, 0x37, 0x374, 0xa, 0x37, 0x3, 0x38, 0x3, 0x38, 0x5, 0x38, 0x378, 
+    0xa, 0x38, 0x3, 0x38, 0x3, 0x38, 0x3, 0x39, 0x3, 0x39, 0x5, 0x39, 0x37e, 
+    0xa, 0x39, 0x3, 0x39, 0x3, 0x39, 0x5, 0x39, 0x382, 0xa, 0x39, 0x3, 0x39, 
+    0x5, 0x39, 0x385, 0xa, 0x39, 0x3, 0x39, 0x5, 0x39, 0x388, 0xa, 0x39, 
+    0x3, 0x39, 0x3, 0x39, 0x3, 0x39, 0x3, 0x39, 0x5, 0x39, 0x38e, 0xa, 0x39, 
+    0x3, 0x39, 0x5, 0x39, 0x391, 0xa, 0x39, 0x3, 0x39, 0x5, 0x39, 0x394, 
+    0xa, 0x39, 0x3, 0x39, 0x3, 0x39, 0x5, 0x39, 0x398, 0xa, 0x39, 0x3, 0x39, 
+    0x3, 0x39, 0x5, 0x39, 0x39c, 0xa, 0x39, 0x3, 0x3a, 0x3, 0x3a, 0x5, 0x3a, 
+    0x3a0, 0xa, 0x3a, 0x3, 0x3a, 0x3, 0x3a, 0x5, 0x3a, 0x3a4, 0xa, 0x3a, 
+    0x5, 0x3a, 0x3a6, 0xa, 0x3a, 0x3, 0x3a, 0x3, 0x3a, 0x5, 0x3a, 0x3aa, 
+    0xa, 0x3a, 0x5, 0x3a, 0x3ac, 0xa, 0x3a, 0x3, 0x3a, 0x3, 0x3a, 0x5, 0x3a, 
+    0x3b0, 0xa, 0x3a, 0x5, 0x3a, 0x3b2, 0xa, 0x3a, 0x3, 0x3a, 0x3, 0x3a, 
+    0x5, 0x3a, 0x3b6, 0xa, 0x3a, 0x5, 0x3a, 0x3b8, 0xa, 0x3a, 0x3, 0x3a, 
+    0x3, 0x3a, 0x3, 0x3b, 0x3, 0x3b, 0x5, 0x3b, 0x3be, 0xa, 0x3b, 0x3, 0x3b, 
+    0x3, 0x3b, 0x5, 0x3b, 0x3c2, 0xa, 0x3b, 0x3, 0x3b, 0x3, 0x3b, 0x5, 0x3b, 
+    0x3c6, 0xa, 0x3b, 0x3, 0x3b, 0x3, 0x3b, 0x5, 0x3b, 0x3ca, 0xa, 0x3b, 
+    0x3, 0x3b, 0x3, 0x3b, 0x5, 0x3b, 0x3ce, 0xa, 0x3b, 0x3, 0x3b, 0x3, 0x3b, 
+    0x5, 0x3b, 0x3d2, 0xa, 0x3b, 0x3, 0x3b, 0x3, 0x3b, 0x5, 0x3b, 0x3d6, 
+    0xa, 0x3b, 0x3, 0x3b, 0x3, 0x3b, 0x5, 0x3b, 0x3da, 0xa, 0x3b, 0x7, 0x3b, 
+    0x3dc, 0xa, 0x3b, 0xc, 0x3b, 0xe, 0x3b, 0x3df, 0xb, 0x3b, 0x5, 0x3b, 
+    0x3e1, 0xa, 0x3b, 0x3, 0x3b, 0x3, 0x3b, 0x3, 0x3c, 0x3, 0x3c, 0x5, 0x3c, 
+    0x3e7, 0xa, 0x3c, 0x3, 0x3c, 0x3, 0x3c, 0x5, 0x3c, 0x3eb, 0xa, 0x3c, 
+    0x3, 0x3c, 0x3, 0x3c, 0x5, 0x3c, 0x3ef, 0xa, 0x3c, 0x3, 0x3c, 0x5, 0x3c, 
+    0x3f2, 0xa, 0x3c, 0x3, 0x3c, 0x7, 0x3c, 0x3f5, 0xa, 0x3c, 0xc, 0x3c, 
+    0xe, 0x3c, 0x3f8, 0xb, 0x3c, 0x3, 0x3d, 0x3, 0x3d, 0x5, 0x3d, 0x3fc, 
+    0xa, 0x3d, 0x3, 0x3d, 0x7, 0x3d, 0x3ff, 0xa, 0x3d, 0xc, 0x3d, 0xe, 0x3d, 
+    0x402, 0xb, 0x3d, 0x3, 0x3e, 0x3, 0x3e, 0x5, 0x3e, 0x406, 0xa, 0x3e, 
+    0x3, 0x3e, 0x3, 0x3e, 0x3, 0x3f, 0x3, 0x3f, 0x5, 0x3f, 0x40c, 0xa, 0x3f, 
+    0x3, 0x3f, 0x5, 0x3f, 0x40f, 0xa, 0x3f, 0x3, 0x3f, 0x5, 0x3f, 0x412, 
+    0xa, 0x3f, 0x3, 0x3f, 0x5, 0x3f, 0x415, 0xa, 0x3f, 0x3, 0x40, 0x3, 0x40, 
+    0x5, 0x40, 0x419, 0xa, 0x40, 0x3, 0x40, 0x3, 0x40, 0x3, 0x40, 0x3, 0x40, 
+    0x5, 0x40, 0x41f, 0xa, 0x40, 0x3, 0x40, 0x3, 0x40, 0x5, 0x40, 0x423, 
+    0xa, 0x40, 0x3, 0x40, 0x3, 0x40, 0x5, 0x40, 0x427, 0xa, 0x40, 0x3, 0x41, 
+    0x3, 0x41, 0x3, 0x42, 0x3, 0x42, 0x3, 0x43, 0x3, 0x43, 0x3, 0x44, 0x3, 
+    0x44, 0x3, 0x44, 0x3, 0x44, 0x3, 0x44, 0x7, 0x44, 0x434, 0xa, 0x44, 
+    0xc, 0x44, 0xe, 0x44, 0x437, 0xb, 0x44, 0x3, 0x45, 0x3, 0x45, 0x3, 0x45, 
+    0x3, 0x45, 0x3, 0x45, 0x7, 0x45, 0x43e, 0xa, 0x45, 0xc, 0x45, 0xe, 0x45, 
+    0x441, 0xb, 0x45, 0x3, 0x46, 0x3, 0x46, 0x3, 0x46, 0x3, 0x46, 0x3, 0x46, 
+    0x7, 0x46, 0x448, 0xa, 0x46, 0xc, 0x46, 0xe, 0x46, 0x44b, 0xb, 0x46, 
+    0x3, 0x47, 0x3, 0x47, 0x5, 0x47, 0x44f, 0xa, 0x47, 0x5, 0x47, 0x451, 
+    0xa, 0x47, 0x3, 0x47, 0x3, 0x47, 0x3, 0x48, 0x3, 0x48, 0x5, 0x48, 0x457, 
+    0xa, 0x48, 0x3, 0x48, 0x3, 0x48, 0x5, 0x48, 0x45b, 0xa, 0x48, 0x3, 0x48, 
+    0x3, 0x48, 0x5, 0x48, 0x45f, 0xa, 0x48, 0x3, 0x48, 0x3, 0x48, 0x5, 0x48, 
+    0x463, 0xa, 0x48, 0x3, 0x48, 0x3, 0x48, 0x5, 0x48, 0x467, 0xa, 0x48, 
+    0x3, 0x48, 0x3, 0x48, 0x3, 0x48, 0x3, 0x48, 0x3, 0x48, 0x3, 0x48, 0x5, 
+    0x48, 0x46f, 0xa, 0x48, 0x3, 0x48, 0x3, 0x48, 0x5, 0x48, 0x473, 0xa, 
+    0x48, 0x3, 0x48, 0x3, 0x48, 0x5, 0x48, 0x477, 0xa, 0x48, 0x3, 0x48, 
+    0x3, 0x48, 0x5, 0x48, 0x47b, 0xa, 0x48, 0x3, 0x48, 0x3, 0x48, 0x6, 0x48, 
+    0x47f, 0xa, 0x48, 0xd, 0x48, 0xe, 0x48, 0x480, 0x3, 0x48, 0x3, 0x48, 
+    0x5, 0x48, 0x485, 0xa, 0x48, 0x3, 0x49, 0x3, 0x49, 0x3, 0x4a, 0x3, 0x4a, 
+    0x5, 0x4a, 0x48b, 0xa, 0x4a, 0x3, 0x4a, 0x3, 0x4a, 0x5, 0x4a, 0x48f, 
+    0xa, 0x4a, 0x3, 0x4a, 0x7, 0x4a, 0x492, 0xa, 0x4a, 0xc, 0x4a, 0xe, 0x4a, 
+    0x495, 0xb, 0x4a, 0x3, 0x4b, 0x3, 0x4b, 0x5, 0x4b, 0x499, 0xa, 0x4b, 
+    0x3, 0x4b, 0x3, 0x4b, 0x5, 0x4b, 0x49d, 0xa, 0x4b, 0x3, 0x4b, 0x7, 0x4b, 
+    0x4a0, 0xa, 0x4b, 0xc, 0x4b, 0xe, 0x4b, 0x4a3, 0xb, 0x4b, 0x3, 0x4c, 
+    0x3, 0x4c, 0x5, 0x4c, 0x4a7, 0xa, 0x4c, 0x3, 0x4c, 0x3, 0x4c, 0x5, 0x4c, 
+    0x4ab, 0xa, 0x4c, 0x3, 0x4c, 0x3, 0x4c, 0x7, 0x4c, 0x4af, 0xa, 0x4c, 
+    0xc, 0x4c, 0xe, 0x4c, 0x4b2, 0xb, 0x4c, 0x3, 0x4d, 0x3, 0x4d, 0x3, 0x4e, 
+    0x3, 0x4e, 0x5, 0x4e, 0x4b8, 0xa, 0x4e, 0x3, 0x4e, 0x3, 0x4e, 0x5, 0x4e, 
+    0x4bc, 0xa, 0x4e, 0x3, 0x4e, 0x3, 0x4e, 0x7, 0x4e, 0x4c0, 0xa, 0x4e, 
+    0xc, 0x4e, 0xe, 0x4e, 0x4c3, 0xb, 0x4e, 0x3, 0x4f, 0x3, 0x4f, 0x3, 0x50, 
+    0x3, 0x50, 0x5, 0x50, 0x4c9, 0xa, 0x50, 0x3, 0x50, 0x3, 0x50, 0x5, 0x50, 
+    0x4cd, 0xa, 0x50, 0x3, 0x50, 0x3, 0x50, 0x7, 0x50, 0x4d1, 0xa, 0x50, 
+    0xc, 0x50, 0xe, 0x50, 0x4d4, 0xb, 0x50, 0x3, 0x51, 0x3, 0x51, 0x3, 0x52, 
+    0x3, 0x52, 0x5, 0x52, 0x4da, 0xa, 0x52, 0x3, 0x52, 0x3, 0x52, 0x5, 0x52, 
+    0x4de, 0xa, 0x52, 0x3, 0x52, 0x7, 0x52, 0x4e1, 0xa, 0x52, 0xc, 0x52, 
+    0xe, 0x52, 0x4e4, 0xb, 0x52, 0x3, 0x53, 0x3, 0x53, 0x5, 0x53, 0x4e8, 
+    0xa, 0x53, 0x5, 0x53, 0x4ea, 0xa, 0x53, 0x3, 0x53, 0x3, 0x53, 0x5, 0x53, 
+    0x4ee, 0xa, 0x53, 0x3, 0x53, 0x5, 0x53, 0x4f1, 0xa, 0x53, 0x3, 0x54, 
+    0x3, 0x54, 0x3, 0x54, 0x3, 0x54, 0x5, 0x54, 0x4f7, 0xa, 0x54, 0x3, 0x55, 
+    0x3, 0x55, 0x5, 0x55, 0x4fb, 0xa, 0x55, 0x3, 0x55, 0x5, 0x55, 0x4fe, 
+    0xa, 0x55, 0x3, 0x56, 0x5, 0x56, 0x501, 0xa, 0x56, 0x3, 0x56, 0x3, 0x56, 
+    0x3, 0x56, 0x3, 0x56, 0x3, 0x57, 0x5, 0x57, 0x508, 0xa, 0x57, 0x3, 0x57, 
+    0x3, 0x57, 0x5, 0x57, 0x50c, 0xa, 0x57, 0x3, 0x57, 0x3, 0x57, 0x5, 0x57, 
+    0x510, 0xa, 0x57, 0x3, 0x57, 0x3, 0x57, 0x3, 0x58, 0x3, 0x58, 0x3, 0x58, 
+    0x3, 0x58, 0x3, 0x58, 0x3, 0x58, 0x3, 0x58, 0x3, 0x58, 0x3, 0x58, 0x3, 
+    0x58, 0x3, 0x58, 0x5, 0x58, 0x51f, 0xa, 0x58, 0x3, 0x58, 0x5, 0x58, 
+    0x522, 0xa, 0x58, 0x3, 0x58, 0x3, 0x58, 0x3, 0x59, 0x5, 0x59, 0x527, 
+    0xa, 0x59, 0x3, 0x59, 0x3, 0x59, 0x3, 0x5a, 0x3, 0x5a, 0x3, 0x5a, 0x3, 
+    0x5a, 0x3, 0x5a, 0x3, 0x5a, 0x3, 0x5a, 0x3, 0x5a, 0x3, 0x5a, 0x3, 0x5a, 
+    0x5, 0x5a, 0x535, 0xa, 0x5a, 0x3, 0x5b, 0x3, 0x5b, 0x5, 0x5b, 0x539, 
+    0xa, 0x5b, 0x3, 0x5b, 0x5, 0x5b, 0x53c, 0xa, 0x5b, 0x3, 0x5c, 0x3, 0x5c, 
+    0x3, 0x5c, 0x3, 0x5c, 0x3, 0x5c, 0x3, 0x5c, 0x3, 0x5c, 0x5, 0x5c, 0x545, 
+    0xa, 0x5c, 0x3, 0x5d, 0x3, 0x5d, 0x3, 0x5d, 0x3, 0x5d, 0x3, 0x5d, 0x5, 
+    0x5d, 0x54c, 0xa, 0x5d, 0x3, 0x5e, 0x3, 0x5e, 0x3, 0x5f, 0x3, 0x5f, 
+    0x5, 0x5f, 0x552, 0xa, 0x5f, 0x3, 0x5f, 0x3, 0x5f, 0x5, 0x5f, 0x556, 
+    0xa, 0x5f, 0x3, 0x5f, 0x3, 0x5f, 0x5, 0x5f, 0x55a, 0xa, 0x5f, 0x3, 0x5f, 
+    0x3, 0x5f, 0x5, 0x5f, 0x55e, 0xa, 0x5f, 0x7, 0x5f, 0x560, 0xa, 0x5f, 
+    0xc, 0x5f, 0xe, 0x5f, 0x563, 0xb, 0x5f, 0x5, 0x5f, 0x565, 0xa, 0x5f, 
+    0x3, 0x5f, 0x3, 0x5f, 0x3, 0x60, 0x3, 0x60, 0x5, 0x60, 0x56b, 0xa, 0x60, 
+    0x3, 0x60, 0x3, 0x60, 0x5, 0x60, 0x56f, 0xa, 0x60, 0x3, 0x60, 0x3, 0x60, 
+    0x3, 0x61, 0x3, 0x61, 0x5, 0x61, 0x575, 0xa, 0x61, 0x3, 0x61, 0x3, 0x61, 
+    0x5, 0x61, 0x579, 0xa, 0x61, 0x3, 0x61, 0x3, 0x61, 0x5, 0x61, 0x57d, 
+    0xa, 0x61, 0x3, 0x61, 0x3, 0x61, 0x3, 0x61, 0x3, 0x61, 0x5, 0x61, 0x583, 
+    0xa, 0x61, 0x3, 0x61, 0x3, 0x61, 0x5, 0x61, 0x587, 0xa, 0x61, 0x3, 0x61, 
+    0x3, 0x61, 0x5, 0x61, 0x58b, 0xa, 0x61, 0x5, 0x61, 0x58d, 0xa, 0x61, 
+    0x3, 0x61, 0x3, 0x61, 0x5, 0x61, 0x591, 0xa, 0x61, 0x3, 0x61, 0x3, 0x61, 
+    0x5, 0x61, 0x595, 0xa, 0x61, 0x3, 0x61, 0x3, 0x61, 0x5, 0x61, 0x599, 
+    0xa, 0x61, 0x7, 0x61, 0x59b, 0xa, 0x61, 0xc, 0x61, 0xe, 0x61, 0x59e, 
+    0xb, 0x61, 0x5, 0x61, 0x5a0, 0xa, 0x61, 0x3, 0x61, 0x3, 0x61, 0x5, 0x61, 
+    0x5a4, 0xa, 0x61, 0x3, 0x62, 0x3, 0x62, 0x3, 0x63, 0x3, 0x63, 0x5, 0x63, 
+    0x5aa, 0xa, 0x63, 0x3, 0x63, 0x3, 0x63, 0x5, 0x63, 0x5ae, 0xa, 0x63, 
+    0x3, 0x63, 0x3, 0x63, 0x5, 0x63, 0x5b2, 0xa, 0x63, 0x3, 0x63, 0x3, 0x63, 
+    0x5, 0x63, 0x5b6, 0xa, 0x63, 0x3, 0x63, 0x5, 0x63, 0x5b9, 0xa, 0x63, 
+    0x3, 0x63, 0x5, 0x63, 0x5bc, 0xa, 0x63, 0x3, 0x63, 0x3, 0x63, 0x3, 0x64, 
+    0x3, 0x64, 0x5, 0x64, 0x5c2, 0xa, 0x64, 0x3, 0x64, 0x3, 0x64, 0x3, 0x65, 
+    0x3, 0x65, 0x5, 0x65, 0x5c8, 0xa, 0x65, 0x3, 0x65, 0x6, 0x65, 0x5cb, 
+    0xa, 0x65, 0xd, 0x65, 0xe, 0x65, 0x5cc, 0x3, 0x65, 0x3, 0x65, 0x5, 0x65, 
+    0x5d1, 0xa, 0x65, 0x3, 0x65, 0x3, 0x65, 0x5, 0x65, 0x5d5, 0xa, 0x65, 
+    0x3, 0x65, 0x6, 0x65, 0x5d8, 0xa, 0x65, 0xd, 0x65, 0xe, 0x65, 0x5d9, 
+    0x5, 0x65, 0x5dc, 0xa, 0x65, 0x3, 0x65, 0x5, 0x65, 0x5df, 0xa, 0x65, 
+    0x3, 0x65, 0x3, 0x65, 0x5, 0x65, 0x5e3, 0xa, 0x65, 0x3, 0x65, 0x5, 0x65, 
+    0x5e6, 0xa, 0x65, 0x3, 0x65, 0x5, 0x65, 0x5e9, 0xa, 0x65, 0x3, 0x65, 
+    0x3, 0x65, 0x3, 0x66, 0x3, 0x66, 0x5, 0x66, 0x5ef, 0xa, 0x66, 0x3, 0x66, 
+    0x3, 0x66, 0x5, 0x66, 0x5f3, 0xa, 0x66, 0x3, 0x66, 0x3, 0x66, 0x5, 0x66, 
+    0x5f7, 0xa, 0x66, 0x3, 0x66, 0x3, 0x66, 0x3, 0x67, 0x3, 0x67, 0x3, 0x68, 
+    0x3, 0x68, 0x5, 0x68, 0x5ff, 0xa, 0x68, 0x3, 0x69, 0x3, 0x69, 0x3, 0x69, 
+    0x5, 0x69, 0x604, 0xa, 0x69, 0x3, 0x6a, 0x3, 0x6a, 0x5, 0x6a, 0x608, 
+    0xa, 0x6a, 0x3, 0x6a, 0x3, 0x6a, 0x3, 0x6b, 0x3, 0x6b, 0x3, 0x6c, 0x3, 
+    0x6c, 0x3, 0x6d, 0x3, 0x6d, 0x3, 0x6e, 0x3, 0x6e, 0x3, 0x6f, 0x3, 0x6f, 
+    0x3, 0x6f, 0x3, 0x6f, 0x5, 0x6f, 0x618, 0xa, 0x6f, 0x3, 0x70, 0x3, 0x70, 
+    0x3, 0x71, 0x3, 0x71, 0x3, 0x72, 0x3, 0x72, 0x3, 0x72, 0x2, 0x2, 0x73, 
+>>>>>>> d678da15 (frontend changes for path)
     0x2, 0x4, 0x6, 0x8, 0xa, 0xc, 0xe, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1a, 
     0x1c, 0x1e, 0x20, 0x22, 0x24, 0x26, 0x28, 0x2a, 0x2c, 0x2e, 0x30, 0x32, 
     0x34, 0x36, 0x38, 0x3a, 0x3c, 0x3e, 0x40, 0x42, 0x44, 0x46, 0x48, 0x4a, 
@@ -10358,6 +14070,7 @@ CypherParser::Initializer::Initializer() {
     0x94, 0x96, 0x98, 0x9a, 0x9c, 0x9e, 0xa0, 0xa2, 0xa4, 0xa6, 0xa8, 0xaa, 
     0xac, 0xae, 0xb0, 0xb2, 0xb4, 0xb6, 0xb8, 0xba, 0xbc, 0xbe, 0xc0, 0xc2, 
     0xc4, 0xc6, 0xc8, 0xca, 0xcc, 0xce, 0xd0, 0xd2, 0xd4, 0xd6, 0xd8, 0xda, 
+<<<<<<< HEAD
     0xdc, 0xde, 0xe0, 0xe2, 0xe4, 0x2, 0xb, 0x3, 0x2, 0x54, 0x57, 0x4, 0x2, 
     0x9, 0x9, 0xf, 0x13, 0x3, 0x2, 0x15, 0x16, 0x4, 0x2, 0x17, 0x17, 0x5e, 
     0x5e, 0x4, 0x2, 0x18, 0x19, 0x4e, 0x4e, 0x3, 0x2, 0x65, 0x66, 0x4, 0x2, 
@@ -11290,6 +15003,901 @@ CypherParser::Initializer::Initializer() {
     0x5f4, 0x5f7, 0x5fa, 0x600, 0x606, 0x60b, 0x60f, 0x613, 0x618, 0x61a, 
     0x61d, 0x621, 0x624, 0x627, 0x62d, 0x631, 0x635, 0x63d, 0x642, 0x646, 
     0x656, 
+=======
+    0xdc, 0xde, 0xe0, 0xe2, 0x2, 0xb, 0x3, 0x2, 0x51, 0x54, 0x4, 0x2, 0x7, 
+    0x7, 0xf, 0x13, 0x3, 0x2, 0x15, 0x16, 0x4, 0x2, 0x17, 0x17, 0x5c, 0x5c, 
+    0x4, 0x2, 0x18, 0x19, 0x4b, 0x4b, 0x3, 0x2, 0x63, 0x64, 0x4, 0x2, 0x10, 
+    0x10, 0x1e, 0x21, 0x4, 0x2, 0x12, 0x12, 0x22, 0x25, 0x4, 0x2, 0x26, 
+    0x30, 0x5c, 0x5c, 0x2, 0x6d1, 0x2, 0xe5, 0x3, 0x2, 0x2, 0x2, 0x4, 0xfd, 
+    0x3, 0x2, 0x2, 0x2, 0x6, 0x113, 0x3, 0x2, 0x2, 0x2, 0x8, 0x121, 0x3, 
+    0x2, 0x2, 0x2, 0xa, 0x12f, 0x3, 0x2, 0x2, 0x2, 0xc, 0x131, 0x3, 0x2, 
+    0x2, 0x2, 0xe, 0x14e, 0x3, 0x2, 0x2, 0x2, 0x10, 0x17c, 0x3, 0x2, 0x2, 
+    0x2, 0x12, 0x182, 0x3, 0x2, 0x2, 0x2, 0x14, 0x18e, 0x3, 0x2, 0x2, 0x2, 
+    0x16, 0x190, 0x3, 0x2, 0x2, 0x2, 0x18, 0x19b, 0x3, 0x2, 0x2, 0x2, 0x1a, 
+    0x19f, 0x3, 0x2, 0x2, 0x2, 0x1c, 0x1a5, 0x3, 0x2, 0x2, 0x2, 0x1e, 0x1ad, 
+    0x3, 0x2, 0x2, 0x2, 0x20, 0x1bb, 0x3, 0x2, 0x2, 0x2, 0x22, 0x1bf, 0x3, 
+    0x2, 0x2, 0x2, 0x24, 0x1d3, 0x3, 0x2, 0x2, 0x2, 0x26, 0x1d5, 0x3, 0x2, 
+    0x2, 0x2, 0x28, 0x1dc, 0x3, 0x2, 0x2, 0x2, 0x2a, 0x1e1, 0x3, 0x2, 0x2, 
+    0x2, 0x2c, 0x1e3, 0x3, 0x2, 0x2, 0x2, 0x2e, 0x1e5, 0x3, 0x2, 0x2, 0x2, 
+    0x30, 0x1e7, 0x3, 0x2, 0x2, 0x2, 0x32, 0x1e9, 0x3, 0x2, 0x2, 0x2, 0x34, 
+    0x200, 0x3, 0x2, 0x2, 0x2, 0x36, 0x20e, 0x3, 0x2, 0x2, 0x2, 0x38, 0x212, 
+    0x3, 0x2, 0x2, 0x2, 0x3a, 0x241, 0x3, 0x2, 0x2, 0x2, 0x3c, 0x247, 0x3, 
+    0x2, 0x2, 0x2, 0x3e, 0x253, 0x3, 0x2, 0x2, 0x2, 0x40, 0x264, 0x3, 0x2, 
+    0x2, 0x2, 0x42, 0x268, 0x3, 0x2, 0x2, 0x2, 0x44, 0x26c, 0x3, 0x2, 0x2, 
+    0x2, 0x46, 0x279, 0x3, 0x2, 0x2, 0x2, 0x48, 0x283, 0x3, 0x2, 0x2, 0x2, 
+    0x4a, 0x289, 0x3, 0x2, 0x2, 0x2, 0x4c, 0x29b, 0x3, 0x2, 0x2, 0x2, 0x4e, 
+    0x2a5, 0x3, 0x2, 0x2, 0x2, 0x50, 0x2b7, 0x3, 0x2, 0x2, 0x2, 0x52, 0x2bf, 
+    0x3, 0x2, 0x2, 0x2, 0x54, 0x2c6, 0x3, 0x2, 0x2, 0x2, 0x56, 0x2f2, 0x3, 
+    0x2, 0x2, 0x2, 0x58, 0x2fb, 0x3, 0x2, 0x2, 0x2, 0x5a, 0x2fd, 0x3, 0x2, 
+    0x2, 0x2, 0x5c, 0x30c, 0x3, 0x2, 0x2, 0x2, 0x5e, 0x310, 0x3, 0x2, 0x2, 
+    0x2, 0x60, 0x314, 0x3, 0x2, 0x2, 0x2, 0x62, 0x31b, 0x3, 0x2, 0x2, 0x2, 
+    0x64, 0x31f, 0x3, 0x2, 0x2, 0x2, 0x66, 0x332, 0x3, 0x2, 0x2, 0x2, 0x68, 
+    0x334, 0x3, 0x2, 0x2, 0x2, 0x6a, 0x344, 0x3, 0x2, 0x2, 0x2, 0x6c, 0x373, 
+    0x3, 0x2, 0x2, 0x2, 0x6e, 0x375, 0x3, 0x2, 0x2, 0x2, 0x70, 0x39b, 0x3, 
+    0x2, 0x2, 0x2, 0x72, 0x39d, 0x3, 0x2, 0x2, 0x2, 0x74, 0x3bb, 0x3, 0x2, 
+    0x2, 0x2, 0x76, 0x3e4, 0x3, 0x2, 0x2, 0x2, 0x78, 0x3f9, 0x3, 0x2, 0x2, 
+    0x2, 0x7a, 0x403, 0x3, 0x2, 0x2, 0x2, 0x7c, 0x409, 0x3, 0x2, 0x2, 0x2, 
+    0x7e, 0x426, 0x3, 0x2, 0x2, 0x2, 0x80, 0x428, 0x3, 0x2, 0x2, 0x2, 0x82, 
+    0x42a, 0x3, 0x2, 0x2, 0x2, 0x84, 0x42c, 0x3, 0x2, 0x2, 0x2, 0x86, 0x42e, 
+    0x3, 0x2, 0x2, 0x2, 0x88, 0x438, 0x3, 0x2, 0x2, 0x2, 0x8a, 0x442, 0x3, 
+    0x2, 0x2, 0x2, 0x8c, 0x450, 0x3, 0x2, 0x2, 0x2, 0x8e, 0x484, 0x3, 0x2, 
+    0x2, 0x2, 0x90, 0x486, 0x3, 0x2, 0x2, 0x2, 0x92, 0x488, 0x3, 0x2, 0x2, 
+    0x2, 0x94, 0x496, 0x3, 0x2, 0x2, 0x2, 0x96, 0x4a4, 0x3, 0x2, 0x2, 0x2, 
+    0x98, 0x4b3, 0x3, 0x2, 0x2, 0x2, 0x9a, 0x4b5, 0x3, 0x2, 0x2, 0x2, 0x9c, 
+    0x4c4, 0x3, 0x2, 0x2, 0x2, 0x9e, 0x4c6, 0x3, 0x2, 0x2, 0x2, 0xa0, 0x4d5, 
+    0x3, 0x2, 0x2, 0x2, 0xa2, 0x4d7, 0x3, 0x2, 0x2, 0x2, 0xa4, 0x4e9, 0x3, 
+    0x2, 0x2, 0x2, 0xa6, 0x4f2, 0x3, 0x2, 0x2, 0x2, 0xa8, 0x4fa, 0x3, 0x2, 
+    0x2, 0x2, 0xaa, 0x500, 0x3, 0x2, 0x2, 0x2, 0xac, 0x507, 0x3, 0x2, 0x2, 
+    0x2, 0xae, 0x51e, 0x3, 0x2, 0x2, 0x2, 0xb0, 0x526, 0x3, 0x2, 0x2, 0x2, 
+    0xb2, 0x534, 0x3, 0x2, 0x2, 0x2, 0xb4, 0x536, 0x3, 0x2, 0x2, 0x2, 0xb6, 
+    0x544, 0x3, 0x2, 0x2, 0x2, 0xb8, 0x54b, 0x3, 0x2, 0x2, 0x2, 0xba, 0x54d, 
+    0x3, 0x2, 0x2, 0x2, 0xbc, 0x54f, 0x3, 0x2, 0x2, 0x2, 0xbe, 0x568, 0x3, 
+    0x2, 0x2, 0x2, 0xc0, 0x5a3, 0x3, 0x2, 0x2, 0x2, 0xc2, 0x5a5, 0x3, 0x2, 
+    0x2, 0x2, 0xc4, 0x5a7, 0x3, 0x2, 0x2, 0x2, 0xc6, 0x5bf, 0x3, 0x2, 0x2, 
+    0x2, 0xc8, 0x5db, 0x3, 0x2, 0x2, 0x2, 0xca, 0x5ec, 0x3, 0x2, 0x2, 0x2, 
+    0xcc, 0x5fa, 0x3, 0x2, 0x2, 0x2, 0xce, 0x5fe, 0x3, 0x2, 0x2, 0x2, 0xd0, 
+    0x600, 0x3, 0x2, 0x2, 0x2, 0xd2, 0x605, 0x3, 0x2, 0x2, 0x2, 0xd4, 0x60b, 
+    0x3, 0x2, 0x2, 0x2, 0xd6, 0x60d, 0x3, 0x2, 0x2, 0x2, 0xd8, 0x60f, 0x3, 
+    0x2, 0x2, 0x2, 0xda, 0x611, 0x3, 0x2, 0x2, 0x2, 0xdc, 0x617, 0x3, 0x2, 
+    0x2, 0x2, 0xde, 0x619, 0x3, 0x2, 0x2, 0x2, 0xe0, 0x61b, 0x3, 0x2, 0x2, 
+    0x2, 0xe2, 0x61d, 0x3, 0x2, 0x2, 0x2, 0xe4, 0xe6, 0x7, 0x79, 0x2, 0x2, 
+    0xe5, 0xe4, 0x3, 0x2, 0x2, 0x2, 0xe5, 0xe6, 0x3, 0x2, 0x2, 0x2, 0xe6, 
+    0xe8, 0x3, 0x2, 0x2, 0x2, 0xe7, 0xe9, 0x5, 0x2a, 0x16, 0x2, 0xe8, 0xe7, 
+    0x3, 0x2, 0x2, 0x2, 0xe8, 0xe9, 0x3, 0x2, 0x2, 0x2, 0xe9, 0xeb, 0x3, 
+    0x2, 0x2, 0x2, 0xea, 0xec, 0x7, 0x79, 0x2, 0x2, 0xeb, 0xea, 0x3, 0x2, 
+    0x2, 0x2, 0xeb, 0xec, 0x3, 0x2, 0x2, 0x2, 0xec, 0xf0, 0x3, 0x2, 0x2, 
+    0x2, 0xed, 0xf1, 0x5, 0x30, 0x19, 0x2, 0xee, 0xf1, 0x5, 0xa, 0x6, 0x2, 
+    0xef, 0xf1, 0x5, 0x4, 0x3, 0x2, 0xf0, 0xed, 0x3, 0x2, 0x2, 0x2, 0xf0, 
+    0xee, 0x3, 0x2, 0x2, 0x2, 0xf0, 0xef, 0x3, 0x2, 0x2, 0x2, 0xf1, 0xf6, 
+    0x3, 0x2, 0x2, 0x2, 0xf2, 0xf4, 0x7, 0x79, 0x2, 0x2, 0xf3, 0xf2, 0x3, 
+    0x2, 0x2, 0x2, 0xf3, 0xf4, 0x3, 0x2, 0x2, 0x2, 0xf4, 0xf5, 0x3, 0x2, 
+    0x2, 0x2, 0xf5, 0xf7, 0x7, 0x3, 0x2, 0x2, 0xf6, 0xf3, 0x3, 0x2, 0x2, 
+    0x2, 0xf6, 0xf7, 0x3, 0x2, 0x2, 0x2, 0xf7, 0xf9, 0x3, 0x2, 0x2, 0x2, 
+    0xf8, 0xfa, 0x7, 0x79, 0x2, 0x2, 0xf9, 0xf8, 0x3, 0x2, 0x2, 0x2, 0xf9, 
+    0xfa, 0x3, 0x2, 0x2, 0x2, 0xfa, 0xfb, 0x3, 0x2, 0x2, 0x2, 0xfb, 0xfc, 
+    0x7, 0x2, 0x2, 0x3, 0xfc, 0x3, 0x3, 0x2, 0x2, 0x2, 0xfd, 0xfe, 0x7, 
+    0x31, 0x2, 0x2, 0xfe, 0xff, 0x7, 0x79, 0x2, 0x2, 0xff, 0x100, 0x5, 0xda, 
+    0x6e, 0x2, 0x100, 0x101, 0x7, 0x79, 0x2, 0x2, 0x101, 0x102, 0x7, 0x32, 
+    0x2, 0x2, 0x102, 0x103, 0x7, 0x79, 0x2, 0x2, 0x103, 0x111, 0x7, 0x6b, 
+    0x2, 0x2, 0x104, 0x106, 0x7, 0x79, 0x2, 0x2, 0x105, 0x104, 0x3, 0x2, 
+    0x2, 0x2, 0x105, 0x106, 0x3, 0x2, 0x2, 0x2, 0x106, 0x107, 0x3, 0x2, 
+    0x2, 0x2, 0x107, 0x109, 0x7, 0x4, 0x2, 0x2, 0x108, 0x10a, 0x7, 0x79, 
+    0x2, 0x2, 0x109, 0x108, 0x3, 0x2, 0x2, 0x2, 0x109, 0x10a, 0x3, 0x2, 
+    0x2, 0x2, 0x10a, 0x10b, 0x3, 0x2, 0x2, 0x2, 0x10b, 0x10d, 0x5, 0x6, 
+    0x4, 0x2, 0x10c, 0x10e, 0x7, 0x79, 0x2, 0x2, 0x10d, 0x10c, 0x3, 0x2, 
+    0x2, 0x2, 0x10d, 0x10e, 0x3, 0x2, 0x2, 0x2, 0x10e, 0x10f, 0x3, 0x2, 
+    0x2, 0x2, 0x10f, 0x110, 0x7, 0x5, 0x2, 0x2, 0x110, 0x112, 0x3, 0x2, 
+    0x2, 0x2, 0x111, 0x105, 0x3, 0x2, 0x2, 0x2, 0x111, 0x112, 0x3, 0x2, 
+    0x2, 0x2, 0x112, 0x5, 0x3, 0x2, 0x2, 0x2, 0x113, 0x11e, 0x5, 0x8, 0x5, 
+    0x2, 0x114, 0x116, 0x7, 0x79, 0x2, 0x2, 0x115, 0x114, 0x3, 0x2, 0x2, 
+    0x2, 0x115, 0x116, 0x3, 0x2, 0x2, 0x2, 0x116, 0x117, 0x3, 0x2, 0x2, 
+    0x2, 0x117, 0x119, 0x7, 0x6, 0x2, 0x2, 0x118, 0x11a, 0x7, 0x79, 0x2, 
+    0x2, 0x119, 0x118, 0x3, 0x2, 0x2, 0x2, 0x119, 0x11a, 0x3, 0x2, 0x2, 
+    0x2, 0x11a, 0x11b, 0x3, 0x2, 0x2, 0x2, 0x11b, 0x11d, 0x5, 0x8, 0x5, 
+    0x2, 0x11c, 0x115, 0x3, 0x2, 0x2, 0x2, 0x11d, 0x120, 0x3, 0x2, 0x2, 
+    0x2, 0x11e, 0x11c, 0x3, 0x2, 0x2, 0x2, 0x11e, 0x11f, 0x3, 0x2, 0x2, 
+    0x2, 0x11f, 0x7, 0x3, 0x2, 0x2, 0x2, 0x120, 0x11e, 0x3, 0x2, 0x2, 0x2, 
+    0x121, 0x123, 0x5, 0xdc, 0x6f, 0x2, 0x122, 0x124, 0x7, 0x79, 0x2, 0x2, 
+    0x123, 0x122, 0x3, 0x2, 0x2, 0x2, 0x123, 0x124, 0x3, 0x2, 0x2, 0x2, 
+    0x124, 0x125, 0x3, 0x2, 0x2, 0x2, 0x125, 0x127, 0x7, 0x7, 0x2, 0x2, 
+    0x126, 0x128, 0x7, 0x79, 0x2, 0x2, 0x127, 0x126, 0x3, 0x2, 0x2, 0x2, 
+    0x127, 0x128, 0x3, 0x2, 0x2, 0x2, 0x128, 0x129, 0x3, 0x2, 0x2, 0x2, 
+    0x129, 0x12a, 0x5, 0xb8, 0x5d, 0x2, 0x12a, 0x9, 0x3, 0x2, 0x2, 0x2, 
+    0x12b, 0x130, 0x5, 0xc, 0x7, 0x2, 0x12c, 0x130, 0x5, 0xe, 0x8, 0x2, 
+    0x12d, 0x130, 0x5, 0x10, 0x9, 0x2, 0x12e, 0x130, 0x5, 0x12, 0xa, 0x2, 
+    0x12f, 0x12b, 0x3, 0x2, 0x2, 0x2, 0x12f, 0x12c, 0x3, 0x2, 0x2, 0x2, 
+    0x12f, 0x12d, 0x3, 0x2, 0x2, 0x2, 0x12f, 0x12e, 0x3, 0x2, 0x2, 0x2, 
+    0x130, 0xb, 0x3, 0x2, 0x2, 0x2, 0x131, 0x132, 0x7, 0x45, 0x2, 0x2, 0x132, 
+    0x133, 0x7, 0x79, 0x2, 0x2, 0x133, 0x134, 0x7, 0x33, 0x2, 0x2, 0x134, 
+    0x135, 0x7, 0x79, 0x2, 0x2, 0x135, 0x136, 0x7, 0x34, 0x2, 0x2, 0x136, 
+    0x137, 0x7, 0x79, 0x2, 0x2, 0x137, 0x139, 0x5, 0xda, 0x6e, 0x2, 0x138, 
+    0x13a, 0x7, 0x79, 0x2, 0x2, 0x139, 0x138, 0x3, 0x2, 0x2, 0x2, 0x139, 
+    0x13a, 0x3, 0x2, 0x2, 0x2, 0x13a, 0x13b, 0x3, 0x2, 0x2, 0x2, 0x13b, 
+    0x13d, 0x7, 0x4, 0x2, 0x2, 0x13c, 0x13e, 0x7, 0x79, 0x2, 0x2, 0x13d, 
+    0x13c, 0x3, 0x2, 0x2, 0x2, 0x13d, 0x13e, 0x3, 0x2, 0x2, 0x2, 0x13e, 
+    0x13f, 0x3, 0x2, 0x2, 0x2, 0x13f, 0x141, 0x5, 0x1e, 0x10, 0x2, 0x140, 
+    0x142, 0x7, 0x79, 0x2, 0x2, 0x141, 0x140, 0x3, 0x2, 0x2, 0x2, 0x141, 
+    0x142, 0x3, 0x2, 0x2, 0x2, 0x142, 0x143, 0x3, 0x2, 0x2, 0x2, 0x143, 
+    0x145, 0x7, 0x6, 0x2, 0x2, 0x144, 0x146, 0x7, 0x79, 0x2, 0x2, 0x145, 
+    0x144, 0x3, 0x2, 0x2, 0x2, 0x145, 0x146, 0x3, 0x2, 0x2, 0x2, 0x146, 
+    0x147, 0x3, 0x2, 0x2, 0x2, 0x147, 0x148, 0x5, 0x22, 0x12, 0x2, 0x148, 
+    0x14a, 0x3, 0x2, 0x2, 0x2, 0x149, 0x14b, 0x7, 0x79, 0x2, 0x2, 0x14a, 
+    0x149, 0x3, 0x2, 0x2, 0x2, 0x14a, 0x14b, 0x3, 0x2, 0x2, 0x2, 0x14b, 
+    0x14c, 0x3, 0x2, 0x2, 0x2, 0x14c, 0x14d, 0x7, 0x5, 0x2, 0x2, 0x14d, 
+    0xd, 0x3, 0x2, 0x2, 0x2, 0x14e, 0x14f, 0x7, 0x45, 0x2, 0x2, 0x14f, 0x150, 
+    0x7, 0x79, 0x2, 0x2, 0x150, 0x151, 0x7, 0x3c, 0x2, 0x2, 0x151, 0x152, 
+    0x7, 0x79, 0x2, 0x2, 0x152, 0x153, 0x7, 0x34, 0x2, 0x2, 0x153, 0x154, 
+    0x7, 0x79, 0x2, 0x2, 0x154, 0x156, 0x5, 0xda, 0x6e, 0x2, 0x155, 0x157, 
+    0x7, 0x79, 0x2, 0x2, 0x156, 0x155, 0x3, 0x2, 0x2, 0x2, 0x156, 0x157, 
+    0x3, 0x2, 0x2, 0x2, 0x157, 0x158, 0x3, 0x2, 0x2, 0x2, 0x158, 0x15a, 
+    0x7, 0x4, 0x2, 0x2, 0x159, 0x15b, 0x7, 0x79, 0x2, 0x2, 0x15a, 0x159, 
+    0x3, 0x2, 0x2, 0x2, 0x15a, 0x15b, 0x3, 0x2, 0x2, 0x2, 0x15b, 0x15c, 
+    0x3, 0x2, 0x2, 0x2, 0x15c, 0x15d, 0x7, 0x32, 0x2, 0x2, 0x15d, 0x15e, 
+    0x7, 0x79, 0x2, 0x2, 0x15e, 0x15f, 0x5, 0xda, 0x6e, 0x2, 0x15f, 0x160, 
+    0x7, 0x79, 0x2, 0x2, 0x160, 0x161, 0x7, 0x3d, 0x2, 0x2, 0x161, 0x162, 
+    0x7, 0x79, 0x2, 0x2, 0x162, 0x164, 0x5, 0xda, 0x6e, 0x2, 0x163, 0x165, 
+    0x7, 0x79, 0x2, 0x2, 0x164, 0x163, 0x3, 0x2, 0x2, 0x2, 0x164, 0x165, 
+    0x3, 0x2, 0x2, 0x2, 0x165, 0x16e, 0x3, 0x2, 0x2, 0x2, 0x166, 0x168, 
+    0x7, 0x6, 0x2, 0x2, 0x167, 0x169, 0x7, 0x79, 0x2, 0x2, 0x168, 0x167, 
+    0x3, 0x2, 0x2, 0x2, 0x168, 0x169, 0x3, 0x2, 0x2, 0x2, 0x169, 0x16a, 
+    0x3, 0x2, 0x2, 0x2, 0x16a, 0x16c, 0x5, 0x1e, 0x10, 0x2, 0x16b, 0x16d, 
+    0x7, 0x79, 0x2, 0x2, 0x16c, 0x16b, 0x3, 0x2, 0x2, 0x2, 0x16c, 0x16d, 
+    0x3, 0x2, 0x2, 0x2, 0x16d, 0x16f, 0x3, 0x2, 0x2, 0x2, 0x16e, 0x166, 
+    0x3, 0x2, 0x2, 0x2, 0x16e, 0x16f, 0x3, 0x2, 0x2, 0x2, 0x16f, 0x178, 
+    0x3, 0x2, 0x2, 0x2, 0x170, 0x172, 0x7, 0x6, 0x2, 0x2, 0x171, 0x173, 
+    0x7, 0x79, 0x2, 0x2, 0x172, 0x171, 0x3, 0x2, 0x2, 0x2, 0x172, 0x173, 
+    0x3, 0x2, 0x2, 0x2, 0x173, 0x174, 0x3, 0x2, 0x2, 0x2, 0x174, 0x176, 
+    0x5, 0xdc, 0x6f, 0x2, 0x175, 0x177, 0x7, 0x79, 0x2, 0x2, 0x176, 0x175, 
+    0x3, 0x2, 0x2, 0x2, 0x176, 0x177, 0x3, 0x2, 0x2, 0x2, 0x177, 0x179, 
+    0x3, 0x2, 0x2, 0x2, 0x178, 0x170, 0x3, 0x2, 0x2, 0x2, 0x178, 0x179, 
+    0x3, 0x2, 0x2, 0x2, 0x179, 0x17a, 0x3, 0x2, 0x2, 0x2, 0x17a, 0x17b, 
+    0x7, 0x5, 0x2, 0x2, 0x17b, 0xf, 0x3, 0x2, 0x2, 0x2, 0x17c, 0x17d, 0x7, 
+    0x35, 0x2, 0x2, 0x17d, 0x17e, 0x7, 0x79, 0x2, 0x2, 0x17e, 0x17f, 0x7, 
+    0x34, 0x2, 0x2, 0x17f, 0x180, 0x7, 0x79, 0x2, 0x2, 0x180, 0x181, 0x5, 
+    0xda, 0x6e, 0x2, 0x181, 0x11, 0x3, 0x2, 0x2, 0x2, 0x182, 0x183, 0x7, 
+    0x36, 0x2, 0x2, 0x183, 0x184, 0x7, 0x79, 0x2, 0x2, 0x184, 0x185, 0x7, 
+    0x34, 0x2, 0x2, 0x185, 0x186, 0x7, 0x79, 0x2, 0x2, 0x186, 0x187, 0x5, 
+    0xda, 0x6e, 0x2, 0x187, 0x188, 0x7, 0x79, 0x2, 0x2, 0x188, 0x189, 0x5, 
+    0x14, 0xb, 0x2, 0x189, 0x13, 0x3, 0x2, 0x2, 0x2, 0x18a, 0x18f, 0x5, 
+    0x16, 0xc, 0x2, 0x18b, 0x18f, 0x5, 0x18, 0xd, 0x2, 0x18c, 0x18f, 0x5, 
+    0x1a, 0xe, 0x2, 0x18d, 0x18f, 0x5, 0x1c, 0xf, 0x2, 0x18e, 0x18a, 0x3, 
+    0x2, 0x2, 0x2, 0x18e, 0x18b, 0x3, 0x2, 0x2, 0x2, 0x18e, 0x18c, 0x3, 
+    0x2, 0x2, 0x2, 0x18e, 0x18d, 0x3, 0x2, 0x2, 0x2, 0x18f, 0x15, 0x3, 0x2, 
+    0x2, 0x2, 0x190, 0x191, 0x7, 0x39, 0x2, 0x2, 0x191, 0x192, 0x7, 0x79, 
+    0x2, 0x2, 0x192, 0x193, 0x5, 0xd4, 0x6b, 0x2, 0x193, 0x194, 0x7, 0x79, 
+    0x2, 0x2, 0x194, 0x199, 0x5, 0x24, 0x13, 0x2, 0x195, 0x196, 0x7, 0x79, 
+    0x2, 0x2, 0x196, 0x197, 0x7, 0x37, 0x2, 0x2, 0x197, 0x198, 0x7, 0x79, 
+    0x2, 0x2, 0x198, 0x19a, 0x5, 0x84, 0x43, 0x2, 0x199, 0x195, 0x3, 0x2, 
+    0x2, 0x2, 0x199, 0x19a, 0x3, 0x2, 0x2, 0x2, 0x19a, 0x17, 0x3, 0x2, 0x2, 
+    0x2, 0x19b, 0x19c, 0x7, 0x35, 0x2, 0x2, 0x19c, 0x19d, 0x7, 0x79, 0x2, 
+    0x2, 0x19d, 0x19e, 0x5, 0xd4, 0x6b, 0x2, 0x19e, 0x19, 0x3, 0x2, 0x2, 
+    0x2, 0x19f, 0x1a0, 0x7, 0x38, 0x2, 0x2, 0x1a0, 0x1a1, 0x7, 0x79, 0x2, 
+    0x2, 0x1a1, 0x1a2, 0x7, 0x3d, 0x2, 0x2, 0x1a2, 0x1a3, 0x7, 0x79, 0x2, 
+    0x2, 0x1a3, 0x1a4, 0x5, 0xda, 0x6e, 0x2, 0x1a4, 0x1b, 0x3, 0x2, 0x2, 
+    0x2, 0x1a5, 0x1a6, 0x7, 0x38, 0x2, 0x2, 0x1a6, 0x1a7, 0x7, 0x79, 0x2, 
+    0x2, 0x1a7, 0x1a8, 0x5, 0xd4, 0x6b, 0x2, 0x1a8, 0x1a9, 0x7, 0x79, 0x2, 
+    0x2, 0x1a9, 0x1aa, 0x7, 0x3d, 0x2, 0x2, 0x1aa, 0x1ab, 0x7, 0x79, 0x2, 
+    0x2, 0x1ab, 0x1ac, 0x5, 0xd4, 0x6b, 0x2, 0x1ac, 0x1d, 0x3, 0x2, 0x2, 
+    0x2, 0x1ad, 0x1b8, 0x5, 0x20, 0x11, 0x2, 0x1ae, 0x1b0, 0x7, 0x79, 0x2, 
+    0x2, 0x1af, 0x1ae, 0x3, 0x2, 0x2, 0x2, 0x1af, 0x1b0, 0x3, 0x2, 0x2, 
+    0x2, 0x1b0, 0x1b1, 0x3, 0x2, 0x2, 0x2, 0x1b1, 0x1b3, 0x7, 0x6, 0x2, 
+    0x2, 0x1b2, 0x1b4, 0x7, 0x79, 0x2, 0x2, 0x1b3, 0x1b2, 0x3, 0x2, 0x2, 
+    0x2, 0x1b3, 0x1b4, 0x3, 0x2, 0x2, 0x2, 0x1b4, 0x1b5, 0x3, 0x2, 0x2, 
+    0x2, 0x1b5, 0x1b7, 0x5, 0x20, 0x11, 0x2, 0x1b6, 0x1af, 0x3, 0x2, 0x2, 
+    0x2, 0x1b7, 0x1ba, 0x3, 0x2, 0x2, 0x2, 0x1b8, 0x1b6, 0x3, 0x2, 0x2, 
+    0x2, 0x1b8, 0x1b9, 0x3, 0x2, 0x2, 0x2, 0x1b9, 0x1f, 0x3, 0x2, 0x2, 0x2, 
+    0x1ba, 0x1b8, 0x3, 0x2, 0x2, 0x2, 0x1bb, 0x1bc, 0x5, 0xd4, 0x6b, 0x2, 
+    0x1bc, 0x1bd, 0x7, 0x79, 0x2, 0x2, 0x1bd, 0x1be, 0x5, 0x24, 0x13, 0x2, 
+    0x1be, 0x21, 0x3, 0x2, 0x2, 0x2, 0x1bf, 0x1c0, 0x7, 0x3a, 0x2, 0x2, 
+    0x1c0, 0x1c1, 0x7, 0x79, 0x2, 0x2, 0x1c1, 0x1c3, 0x7, 0x3b, 0x2, 0x2, 
+    0x1c2, 0x1c4, 0x7, 0x79, 0x2, 0x2, 0x1c3, 0x1c2, 0x3, 0x2, 0x2, 0x2, 
+    0x1c3, 0x1c4, 0x3, 0x2, 0x2, 0x2, 0x1c4, 0x1c5, 0x3, 0x2, 0x2, 0x2, 
+    0x1c5, 0x1c7, 0x7, 0x4, 0x2, 0x2, 0x1c6, 0x1c8, 0x7, 0x79, 0x2, 0x2, 
+    0x1c7, 0x1c6, 0x3, 0x2, 0x2, 0x2, 0x1c7, 0x1c8, 0x3, 0x2, 0x2, 0x2, 
+    0x1c8, 0x1c9, 0x3, 0x2, 0x2, 0x2, 0x1c9, 0x1cb, 0x5, 0xd4, 0x6b, 0x2, 
+    0x1ca, 0x1cc, 0x7, 0x79, 0x2, 0x2, 0x1cb, 0x1ca, 0x3, 0x2, 0x2, 0x2, 
+    0x1cb, 0x1cc, 0x3, 0x2, 0x2, 0x2, 0x1cc, 0x1cd, 0x3, 0x2, 0x2, 0x2, 
+    0x1cd, 0x1ce, 0x7, 0x5, 0x2, 0x2, 0x1ce, 0x23, 0x3, 0x2, 0x2, 0x2, 0x1cf, 
+    0x1d4, 0x5, 0xdc, 0x6f, 0x2, 0x1d0, 0x1d1, 0x5, 0xdc, 0x6f, 0x2, 0x1d1, 
+    0x1d2, 0x5, 0x26, 0x14, 0x2, 0x1d2, 0x1d4, 0x3, 0x2, 0x2, 0x2, 0x1d3, 
+    0x1cf, 0x3, 0x2, 0x2, 0x2, 0x1d3, 0x1d0, 0x3, 0x2, 0x2, 0x2, 0x1d4, 
+    0x25, 0x3, 0x2, 0x2, 0x2, 0x1d5, 0x1d9, 0x5, 0x28, 0x15, 0x2, 0x1d6, 
+    0x1d8, 0x5, 0x28, 0x15, 0x2, 0x1d7, 0x1d6, 0x3, 0x2, 0x2, 0x2, 0x1d8, 
+    0x1db, 0x3, 0x2, 0x2, 0x2, 0x1d9, 0x1d7, 0x3, 0x2, 0x2, 0x2, 0x1d9, 
+    0x1da, 0x3, 0x2, 0x2, 0x2, 0x1da, 0x27, 0x3, 0x2, 0x2, 0x2, 0x1db, 0x1d9, 
+    0x3, 0x2, 0x2, 0x2, 0x1dc, 0x1dd, 0x7, 0x8, 0x2, 0x2, 0x1dd, 0x1de, 
+    0x7, 0x9, 0x2, 0x2, 0x1de, 0x29, 0x3, 0x2, 0x2, 0x2, 0x1df, 0x1e2, 0x5, 
+    0x2c, 0x17, 0x2, 0x1e0, 0x1e2, 0x5, 0x2e, 0x18, 0x2, 0x1e1, 0x1df, 0x3, 
+    0x2, 0x2, 0x2, 0x1e1, 0x1e0, 0x3, 0x2, 0x2, 0x2, 0x1e2, 0x2b, 0x3, 0x2, 
+    0x2, 0x2, 0x1e3, 0x1e4, 0x7, 0x3e, 0x2, 0x2, 0x1e4, 0x2d, 0x3, 0x2, 
+    0x2, 0x2, 0x1e5, 0x1e6, 0x7, 0x3f, 0x2, 0x2, 0x1e6, 0x2f, 0x3, 0x2, 
+    0x2, 0x2, 0x1e7, 0x1e8, 0x5, 0x32, 0x1a, 0x2, 0x1e8, 0x31, 0x3, 0x2, 
+    0x2, 0x2, 0x1e9, 0x1ea, 0x5, 0x34, 0x1b, 0x2, 0x1ea, 0x33, 0x3, 0x2, 
+    0x2, 0x2, 0x1eb, 0x1f2, 0x5, 0x38, 0x1d, 0x2, 0x1ec, 0x1ee, 0x7, 0x79, 
+    0x2, 0x2, 0x1ed, 0x1ec, 0x3, 0x2, 0x2, 0x2, 0x1ed, 0x1ee, 0x3, 0x2, 
+    0x2, 0x2, 0x1ee, 0x1ef, 0x3, 0x2, 0x2, 0x2, 0x1ef, 0x1f1, 0x5, 0x36, 
+    0x1c, 0x2, 0x1f0, 0x1ed, 0x3, 0x2, 0x2, 0x2, 0x1f1, 0x1f4, 0x3, 0x2, 
+    0x2, 0x2, 0x1f2, 0x1f0, 0x3, 0x2, 0x2, 0x2, 0x1f2, 0x1f3, 0x3, 0x2, 
+    0x2, 0x2, 0x1f3, 0x201, 0x3, 0x2, 0x2, 0x2, 0x1f4, 0x1f2, 0x3, 0x2, 
+    0x2, 0x2, 0x1f5, 0x1f7, 0x5, 0x52, 0x2a, 0x2, 0x1f6, 0x1f8, 0x7, 0x79, 
+    0x2, 0x2, 0x1f7, 0x1f6, 0x3, 0x2, 0x2, 0x2, 0x1f7, 0x1f8, 0x3, 0x2, 
+    0x2, 0x2, 0x1f8, 0x1fa, 0x3, 0x2, 0x2, 0x2, 0x1f9, 0x1f5, 0x3, 0x2, 
+    0x2, 0x2, 0x1fa, 0x1fb, 0x3, 0x2, 0x2, 0x2, 0x1fb, 0x1f9, 0x3, 0x2, 
+    0x2, 0x2, 0x1fb, 0x1fc, 0x3, 0x2, 0x2, 0x2, 0x1fc, 0x1fd, 0x3, 0x2, 
+    0x2, 0x2, 0x1fd, 0x1fe, 0x5, 0x38, 0x1d, 0x2, 0x1fe, 0x1ff, 0x8, 0x1b, 
+    0x1, 0x2, 0x1ff, 0x201, 0x3, 0x2, 0x2, 0x2, 0x200, 0x1eb, 0x3, 0x2, 
+    0x2, 0x2, 0x200, 0x1f9, 0x3, 0x2, 0x2, 0x2, 0x201, 0x35, 0x3, 0x2, 0x2, 
+    0x2, 0x202, 0x203, 0x7, 0x40, 0x2, 0x2, 0x203, 0x204, 0x7, 0x79, 0x2, 
+    0x2, 0x204, 0x206, 0x7, 0x41, 0x2, 0x2, 0x205, 0x207, 0x7, 0x79, 0x2, 
+    0x2, 0x206, 0x205, 0x3, 0x2, 0x2, 0x2, 0x206, 0x207, 0x3, 0x2, 0x2, 
+    0x2, 0x207, 0x208, 0x3, 0x2, 0x2, 0x2, 0x208, 0x20f, 0x5, 0x38, 0x1d, 
+    0x2, 0x209, 0x20b, 0x7, 0x40, 0x2, 0x2, 0x20a, 0x20c, 0x7, 0x79, 0x2, 
+    0x2, 0x20b, 0x20a, 0x3, 0x2, 0x2, 0x2, 0x20b, 0x20c, 0x3, 0x2, 0x2, 
+    0x2, 0x20c, 0x20d, 0x3, 0x2, 0x2, 0x2, 0x20d, 0x20f, 0x5, 0x38, 0x1d, 
+    0x2, 0x20e, 0x202, 0x3, 0x2, 0x2, 0x2, 0x20e, 0x209, 0x3, 0x2, 0x2, 
+    0x2, 0x20f, 0x37, 0x3, 0x2, 0x2, 0x2, 0x210, 0x213, 0x5, 0x3a, 0x1e, 
+    0x2, 0x211, 0x213, 0x5, 0x3c, 0x1f, 0x2, 0x212, 0x210, 0x3, 0x2, 0x2, 
+    0x2, 0x212, 0x211, 0x3, 0x2, 0x2, 0x2, 0x213, 0x39, 0x3, 0x2, 0x2, 0x2, 
+    0x214, 0x216, 0x5, 0x42, 0x22, 0x2, 0x215, 0x217, 0x7, 0x79, 0x2, 0x2, 
+    0x216, 0x215, 0x3, 0x2, 0x2, 0x2, 0x216, 0x217, 0x3, 0x2, 0x2, 0x2, 
+    0x217, 0x219, 0x3, 0x2, 0x2, 0x2, 0x218, 0x214, 0x3, 0x2, 0x2, 0x2, 
+    0x219, 0x21c, 0x3, 0x2, 0x2, 0x2, 0x21a, 0x218, 0x3, 0x2, 0x2, 0x2, 
+    0x21a, 0x21b, 0x3, 0x2, 0x2, 0x2, 0x21b, 0x21d, 0x3, 0x2, 0x2, 0x2, 
+    0x21c, 0x21a, 0x3, 0x2, 0x2, 0x2, 0x21d, 0x242, 0x5, 0x52, 0x2a, 0x2, 
+    0x21e, 0x220, 0x5, 0x42, 0x22, 0x2, 0x21f, 0x221, 0x7, 0x79, 0x2, 0x2, 
+    0x220, 0x21f, 0x3, 0x2, 0x2, 0x2, 0x220, 0x221, 0x3, 0x2, 0x2, 0x2, 
+    0x221, 0x223, 0x3, 0x2, 0x2, 0x2, 0x222, 0x21e, 0x3, 0x2, 0x2, 0x2, 
+    0x223, 0x226, 0x3, 0x2, 0x2, 0x2, 0x224, 0x222, 0x3, 0x2, 0x2, 0x2, 
+    0x224, 0x225, 0x3, 0x2, 0x2, 0x2, 0x225, 0x227, 0x3, 0x2, 0x2, 0x2, 
+    0x226, 0x224, 0x3, 0x2, 0x2, 0x2, 0x227, 0x22e, 0x5, 0x40, 0x21, 0x2, 
+    0x228, 0x22a, 0x7, 0x79, 0x2, 0x2, 0x229, 0x228, 0x3, 0x2, 0x2, 0x2, 
+    0x229, 0x22a, 0x3, 0x2, 0x2, 0x2, 0x22a, 0x22b, 0x3, 0x2, 0x2, 0x2, 
+    0x22b, 0x22d, 0x5, 0x40, 0x21, 0x2, 0x22c, 0x229, 0x3, 0x2, 0x2, 0x2, 
+    0x22d, 0x230, 0x3, 0x2, 0x2, 0x2, 0x22e, 0x22c, 0x3, 0x2, 0x2, 0x2, 
+    0x22e, 0x22f, 0x3, 0x2, 0x2, 0x2, 0x22f, 0x235, 0x3, 0x2, 0x2, 0x2, 
+    0x230, 0x22e, 0x3, 0x2, 0x2, 0x2, 0x231, 0x233, 0x7, 0x79, 0x2, 0x2, 
+    0x232, 0x231, 0x3, 0x2, 0x2, 0x2, 0x232, 0x233, 0x3, 0x2, 0x2, 0x2, 
+    0x233, 0x234, 0x3, 0x2, 0x2, 0x2, 0x234, 0x236, 0x5, 0x52, 0x2a, 0x2, 
+    0x235, 0x232, 0x3, 0x2, 0x2, 0x2, 0x235, 0x236, 0x3, 0x2, 0x2, 0x2, 
+    0x236, 0x242, 0x3, 0x2, 0x2, 0x2, 0x237, 0x239, 0x5, 0x42, 0x22, 0x2, 
+    0x238, 0x23a, 0x7, 0x79, 0x2, 0x2, 0x239, 0x238, 0x3, 0x2, 0x2, 0x2, 
+    0x239, 0x23a, 0x3, 0x2, 0x2, 0x2, 0x23a, 0x23c, 0x3, 0x2, 0x2, 0x2, 
+    0x23b, 0x237, 0x3, 0x2, 0x2, 0x2, 0x23c, 0x23f, 0x3, 0x2, 0x2, 0x2, 
+    0x23d, 0x23b, 0x3, 0x2, 0x2, 0x2, 0x23d, 0x23e, 0x3, 0x2, 0x2, 0x2, 
+    0x23e, 0x240, 0x3, 0x2, 0x2, 0x2, 0x23f, 0x23d, 0x3, 0x2, 0x2, 0x2, 
+    0x240, 0x242, 0x8, 0x1e, 0x1, 0x2, 0x241, 0x21a, 0x3, 0x2, 0x2, 0x2, 
+    0x241, 0x224, 0x3, 0x2, 0x2, 0x2, 0x241, 0x23d, 0x3, 0x2, 0x2, 0x2, 
+    0x242, 0x3b, 0x3, 0x2, 0x2, 0x2, 0x243, 0x245, 0x5, 0x3e, 0x20, 0x2, 
+    0x244, 0x246, 0x7, 0x79, 0x2, 0x2, 0x245, 0x244, 0x3, 0x2, 0x2, 0x2, 
+    0x245, 0x246, 0x3, 0x2, 0x2, 0x2, 0x246, 0x248, 0x3, 0x2, 0x2, 0x2, 
+    0x247, 0x243, 0x3, 0x2, 0x2, 0x2, 0x248, 0x249, 0x3, 0x2, 0x2, 0x2, 
+    0x249, 0x247, 0x3, 0x2, 0x2, 0x2, 0x249, 0x24a, 0x3, 0x2, 0x2, 0x2, 
+    0x24a, 0x24b, 0x3, 0x2, 0x2, 0x2, 0x24b, 0x24c, 0x5, 0x3a, 0x1e, 0x2, 
+    0x24c, 0x3d, 0x3, 0x2, 0x2, 0x2, 0x24d, 0x24f, 0x5, 0x42, 0x22, 0x2, 
+    0x24e, 0x250, 0x7, 0x79, 0x2, 0x2, 0x24f, 0x24e, 0x3, 0x2, 0x2, 0x2, 
+    0x24f, 0x250, 0x3, 0x2, 0x2, 0x2, 0x250, 0x252, 0x3, 0x2, 0x2, 0x2, 
+    0x251, 0x24d, 0x3, 0x2, 0x2, 0x2, 0x252, 0x255, 0x3, 0x2, 0x2, 0x2, 
+    0x253, 0x251, 0x3, 0x2, 0x2, 0x2, 0x253, 0x254, 0x3, 0x2, 0x2, 0x2, 
+    0x254, 0x25c, 0x3, 0x2, 0x2, 0x2, 0x255, 0x253, 0x3, 0x2, 0x2, 0x2, 
+    0x256, 0x258, 0x5, 0x40, 0x21, 0x2, 0x257, 0x259, 0x7, 0x79, 0x2, 0x2, 
+    0x258, 0x257, 0x3, 0x2, 0x2, 0x2, 0x258, 0x259, 0x3, 0x2, 0x2, 0x2, 
+    0x259, 0x25b, 0x3, 0x2, 0x2, 0x2, 0x25a, 0x256, 0x3, 0x2, 0x2, 0x2, 
+    0x25b, 0x25e, 0x3, 0x2, 0x2, 0x2, 0x25c, 0x25a, 0x3, 0x2, 0x2, 0x2, 
+    0x25c, 0x25d, 0x3, 0x2, 0x2, 0x2, 0x25d, 0x25f, 0x3, 0x2, 0x2, 0x2, 
+    0x25e, 0x25c, 0x3, 0x2, 0x2, 0x2, 0x25f, 0x260, 0x5, 0x50, 0x29, 0x2, 
+    0x260, 0x3f, 0x3, 0x2, 0x2, 0x2, 0x261, 0x265, 0x5, 0x48, 0x25, 0x2, 
+    0x262, 0x265, 0x5, 0x4a, 0x26, 0x2, 0x263, 0x265, 0x5, 0x4e, 0x28, 0x2, 
+    0x264, 0x261, 0x3, 0x2, 0x2, 0x2, 0x264, 0x262, 0x3, 0x2, 0x2, 0x2, 
+    0x264, 0x263, 0x3, 0x2, 0x2, 0x2, 0x265, 0x41, 0x3, 0x2, 0x2, 0x2, 0x266, 
+    0x269, 0x5, 0x44, 0x23, 0x2, 0x267, 0x269, 0x5, 0x46, 0x24, 0x2, 0x268, 
+    0x266, 0x3, 0x2, 0x2, 0x2, 0x268, 0x267, 0x3, 0x2, 0x2, 0x2, 0x269, 
+    0x43, 0x3, 0x2, 0x2, 0x2, 0x26a, 0x26b, 0x7, 0x42, 0x2, 0x2, 0x26b, 
+    0x26d, 0x7, 0x79, 0x2, 0x2, 0x26c, 0x26a, 0x3, 0x2, 0x2, 0x2, 0x26c, 
+    0x26d, 0x3, 0x2, 0x2, 0x2, 0x26d, 0x26e, 0x3, 0x2, 0x2, 0x2, 0x26e, 
+    0x270, 0x7, 0x43, 0x2, 0x2, 0x26f, 0x271, 0x7, 0x79, 0x2, 0x2, 0x270, 
+    0x26f, 0x3, 0x2, 0x2, 0x2, 0x270, 0x271, 0x3, 0x2, 0x2, 0x2, 0x271, 
+    0x272, 0x3, 0x2, 0x2, 0x2, 0x272, 0x277, 0x5, 0x64, 0x33, 0x2, 0x273, 
+    0x275, 0x7, 0x79, 0x2, 0x2, 0x274, 0x273, 0x3, 0x2, 0x2, 0x2, 0x274, 
+    0x275, 0x3, 0x2, 0x2, 0x2, 0x275, 0x276, 0x3, 0x2, 0x2, 0x2, 0x276, 
+    0x278, 0x5, 0x62, 0x32, 0x2, 0x277, 0x274, 0x3, 0x2, 0x2, 0x2, 0x277, 
+    0x278, 0x3, 0x2, 0x2, 0x2, 0x278, 0x45, 0x3, 0x2, 0x2, 0x2, 0x279, 0x27b, 
+    0x7, 0x44, 0x2, 0x2, 0x27a, 0x27c, 0x7, 0x79, 0x2, 0x2, 0x27b, 0x27a, 
+    0x3, 0x2, 0x2, 0x2, 0x27b, 0x27c, 0x3, 0x2, 0x2, 0x2, 0x27c, 0x27d, 
+    0x3, 0x2, 0x2, 0x2, 0x27d, 0x27e, 0x5, 0x84, 0x43, 0x2, 0x27e, 0x27f, 
+    0x7, 0x79, 0x2, 0x2, 0x27f, 0x280, 0x7, 0x4c, 0x2, 0x2, 0x280, 0x281, 
+    0x7, 0x79, 0x2, 0x2, 0x281, 0x282, 0x5, 0xcc, 0x67, 0x2, 0x282, 0x47, 
+    0x3, 0x2, 0x2, 0x2, 0x283, 0x285, 0x7, 0x45, 0x2, 0x2, 0x284, 0x286, 
+    0x7, 0x79, 0x2, 0x2, 0x285, 0x284, 0x3, 0x2, 0x2, 0x2, 0x285, 0x286, 
+    0x3, 0x2, 0x2, 0x2, 0x286, 0x287, 0x3, 0x2, 0x2, 0x2, 0x287, 0x288, 
+    0x5, 0x64, 0x33, 0x2, 0x288, 0x49, 0x3, 0x2, 0x2, 0x2, 0x289, 0x28b, 
+    0x7, 0x46, 0x2, 0x2, 0x28a, 0x28c, 0x7, 0x79, 0x2, 0x2, 0x28b, 0x28a, 
+    0x3, 0x2, 0x2, 0x2, 0x28b, 0x28c, 0x3, 0x2, 0x2, 0x2, 0x28c, 0x28d, 
+    0x3, 0x2, 0x2, 0x2, 0x28d, 0x298, 0x5, 0x4c, 0x27, 0x2, 0x28e, 0x290, 
+    0x7, 0x79, 0x2, 0x2, 0x28f, 0x28e, 0x3, 0x2, 0x2, 0x2, 0x28f, 0x290, 
+    0x3, 0x2, 0x2, 0x2, 0x290, 0x291, 0x3, 0x2, 0x2, 0x2, 0x291, 0x293, 
+    0x7, 0x6, 0x2, 0x2, 0x292, 0x294, 0x7, 0x79, 0x2, 0x2, 0x293, 0x292, 
+    0x3, 0x2, 0x2, 0x2, 0x293, 0x294, 0x3, 0x2, 0x2, 0x2, 0x294, 0x295, 
+    0x3, 0x2, 0x2, 0x2, 0x295, 0x297, 0x5, 0x4c, 0x27, 0x2, 0x296, 0x28f, 
+    0x3, 0x2, 0x2, 0x2, 0x297, 0x29a, 0x3, 0x2, 0x2, 0x2, 0x298, 0x296, 
+    0x3, 0x2, 0x2, 0x2, 0x298, 0x299, 0x3, 0x2, 0x2, 0x2, 0x299, 0x4b, 0x3, 
+    0x2, 0x2, 0x2, 0x29a, 0x298, 0x3, 0x2, 0x2, 0x2, 0x29b, 0x29d, 0x5, 
+    0xd2, 0x6a, 0x2, 0x29c, 0x29e, 0x7, 0x79, 0x2, 0x2, 0x29d, 0x29c, 0x3, 
+    0x2, 0x2, 0x2, 0x29d, 0x29e, 0x3, 0x2, 0x2, 0x2, 0x29e, 0x29f, 0x3, 
+    0x2, 0x2, 0x2, 0x29f, 0x2a1, 0x7, 0x7, 0x2, 0x2, 0x2a0, 0x2a2, 0x7, 
+    0x79, 0x2, 0x2, 0x2a1, 0x2a0, 0x3, 0x2, 0x2, 0x2, 0x2a1, 0x2a2, 0x3, 
+    0x2, 0x2, 0x2, 0x2a2, 0x2a3, 0x3, 0x2, 0x2, 0x2, 0x2a3, 0x2a4, 0x5, 
+    0x84, 0x43, 0x2, 0x2a4, 0x4d, 0x3, 0x2, 0x2, 0x2, 0x2a5, 0x2a7, 0x7, 
+    0x47, 0x2, 0x2, 0x2a6, 0x2a8, 0x7, 0x79, 0x2, 0x2, 0x2a7, 0x2a6, 0x3, 
+    0x2, 0x2, 0x2, 0x2a7, 0x2a8, 0x3, 0x2, 0x2, 0x2, 0x2a8, 0x2a9, 0x3, 
+    0x2, 0x2, 0x2, 0x2a9, 0x2b4, 0x5, 0x84, 0x43, 0x2, 0x2aa, 0x2ac, 0x7, 
+    0x79, 0x2, 0x2, 0x2ab, 0x2aa, 0x3, 0x2, 0x2, 0x2, 0x2ab, 0x2ac, 0x3, 
+    0x2, 0x2, 0x2, 0x2ac, 0x2ad, 0x3, 0x2, 0x2, 0x2, 0x2ad, 0x2af, 0x7, 
+    0x6, 0x2, 0x2, 0x2ae, 0x2b0, 0x7, 0x79, 0x2, 0x2, 0x2af, 0x2ae, 0x3, 
+    0x2, 0x2, 0x2, 0x2af, 0x2b0, 0x3, 0x2, 0x2, 0x2, 0x2b0, 0x2b1, 0x3, 
+    0x2, 0x2, 0x2, 0x2b1, 0x2b3, 0x5, 0x84, 0x43, 0x2, 0x2b2, 0x2ab, 0x3, 
+    0x2, 0x2, 0x2, 0x2b3, 0x2b6, 0x3, 0x2, 0x2, 0x2, 0x2b4, 0x2b2, 0x3, 
+    0x2, 0x2, 0x2, 0x2b4, 0x2b5, 0x3, 0x2, 0x2, 0x2, 0x2b5, 0x4f, 0x3, 0x2, 
+    0x2, 0x2, 0x2b6, 0x2b4, 0x3, 0x2, 0x2, 0x2, 0x2b7, 0x2b8, 0x7, 0x48, 
+    0x2, 0x2, 0x2b8, 0x2bd, 0x5, 0x54, 0x2b, 0x2, 0x2b9, 0x2bb, 0x7, 0x79, 
+    0x2, 0x2, 0x2ba, 0x2b9, 0x3, 0x2, 0x2, 0x2, 0x2ba, 0x2bb, 0x3, 0x2, 
+    0x2, 0x2, 0x2bb, 0x2bc, 0x3, 0x2, 0x2, 0x2, 0x2bc, 0x2be, 0x5, 0x62, 
+    0x32, 0x2, 0x2bd, 0x2ba, 0x3, 0x2, 0x2, 0x2, 0x2bd, 0x2be, 0x3, 0x2, 
+    0x2, 0x2, 0x2be, 0x51, 0x3, 0x2, 0x2, 0x2, 0x2bf, 0x2c0, 0x7, 0x49, 
+    0x2, 0x2, 0x2c0, 0x2c1, 0x5, 0x54, 0x2b, 0x2, 0x2c1, 0x53, 0x3, 0x2, 
+    0x2, 0x2, 0x2c2, 0x2c4, 0x7, 0x79, 0x2, 0x2, 0x2c3, 0x2c2, 0x3, 0x2, 
+    0x2, 0x2, 0x2c3, 0x2c4, 0x3, 0x2, 0x2, 0x2, 0x2c4, 0x2c5, 0x3, 0x2, 
+    0x2, 0x2, 0x2c5, 0x2c7, 0x7, 0x4a, 0x2, 0x2, 0x2c6, 0x2c3, 0x3, 0x2, 
+    0x2, 0x2, 0x2c6, 0x2c7, 0x3, 0x2, 0x2, 0x2, 0x2c7, 0x2c8, 0x3, 0x2, 
+    0x2, 0x2, 0x2c8, 0x2c9, 0x7, 0x79, 0x2, 0x2, 0x2c9, 0x2cc, 0x5, 0x56, 
+    0x2c, 0x2, 0x2ca, 0x2cb, 0x7, 0x79, 0x2, 0x2, 0x2cb, 0x2cd, 0x5, 0x5a, 
+    0x2e, 0x2, 0x2cc, 0x2ca, 0x3, 0x2, 0x2, 0x2, 0x2cc, 0x2cd, 0x3, 0x2, 
+    0x2, 0x2, 0x2cd, 0x2d0, 0x3, 0x2, 0x2, 0x2, 0x2ce, 0x2cf, 0x7, 0x79, 
+    0x2, 0x2, 0x2cf, 0x2d1, 0x5, 0x5c, 0x2f, 0x2, 0x2d0, 0x2ce, 0x3, 0x2, 
+    0x2, 0x2, 0x2d0, 0x2d1, 0x3, 0x2, 0x2, 0x2, 0x2d1, 0x2d4, 0x3, 0x2, 
+    0x2, 0x2, 0x2d2, 0x2d3, 0x7, 0x79, 0x2, 0x2, 0x2d3, 0x2d5, 0x5, 0x5e, 
+    0x30, 0x2, 0x2d4, 0x2d2, 0x3, 0x2, 0x2, 0x2, 0x2d4, 0x2d5, 0x3, 0x2, 
+    0x2, 0x2, 0x2d5, 0x55, 0x3, 0x2, 0x2, 0x2, 0x2d6, 0x2e1, 0x7, 0x4b, 
+    0x2, 0x2, 0x2d7, 0x2d9, 0x7, 0x79, 0x2, 0x2, 0x2d8, 0x2d7, 0x3, 0x2, 
+    0x2, 0x2, 0x2d8, 0x2d9, 0x3, 0x2, 0x2, 0x2, 0x2d9, 0x2da, 0x3, 0x2, 
+    0x2, 0x2, 0x2da, 0x2dc, 0x7, 0x6, 0x2, 0x2, 0x2db, 0x2dd, 0x7, 0x79, 
+    0x2, 0x2, 0x2dc, 0x2db, 0x3, 0x2, 0x2, 0x2, 0x2dc, 0x2dd, 0x3, 0x2, 
+    0x2, 0x2, 0x2dd, 0x2de, 0x3, 0x2, 0x2, 0x2, 0x2de, 0x2e0, 0x5, 0x58, 
+    0x2d, 0x2, 0x2df, 0x2d8, 0x3, 0x2, 0x2, 0x2, 0x2e0, 0x2e3, 0x3, 0x2, 
+    0x2, 0x2, 0x2e1, 0x2df, 0x3, 0x2, 0x2, 0x2, 0x2e1, 0x2e2, 0x3, 0x2, 
+    0x2, 0x2, 0x2e2, 0x2f3, 0x3, 0x2, 0x2, 0x2, 0x2e3, 0x2e1, 0x3, 0x2, 
+    0x2, 0x2, 0x2e4, 0x2ef, 0x5, 0x58, 0x2d, 0x2, 0x2e5, 0x2e7, 0x7, 0x79, 
+    0x2, 0x2, 0x2e6, 0x2e5, 0x3, 0x2, 0x2, 0x2, 0x2e6, 0x2e7, 0x3, 0x2, 
+    0x2, 0x2, 0x2e7, 0x2e8, 0x3, 0x2, 0x2, 0x2, 0x2e8, 0x2ea, 0x7, 0x6, 
+    0x2, 0x2, 0x2e9, 0x2eb, 0x7, 0x79, 0x2, 0x2, 0x2ea, 0x2e9, 0x3, 0x2, 
+    0x2, 0x2, 0x2ea, 0x2eb, 0x3, 0x2, 0x2, 0x2, 0x2eb, 0x2ec, 0x3, 0x2, 
+    0x2, 0x2, 0x2ec, 0x2ee, 0x5, 0x58, 0x2d, 0x2, 0x2ed, 0x2e6, 0x3, 0x2, 
+    0x2, 0x2, 0x2ee, 0x2f1, 0x3, 0x2, 0x2, 0x2, 0x2ef, 0x2ed, 0x3, 0x2, 
+    0x2, 0x2, 0x2ef, 0x2f0, 0x3, 0x2, 0x2, 0x2, 0x2f0, 0x2f3, 0x3, 0x2, 
+    0x2, 0x2, 0x2f1, 0x2ef, 0x3, 0x2, 0x2, 0x2, 0x2f2, 0x2d6, 0x3, 0x2, 
+    0x2, 0x2, 0x2f2, 0x2e4, 0x3, 0x2, 0x2, 0x2, 0x2f3, 0x57, 0x3, 0x2, 0x2, 
+    0x2, 0x2f4, 0x2f5, 0x5, 0x84, 0x43, 0x2, 0x2f5, 0x2f6, 0x7, 0x79, 0x2, 
+    0x2, 0x2f6, 0x2f7, 0x7, 0x4c, 0x2, 0x2, 0x2f7, 0x2f8, 0x7, 0x79, 0x2, 
+    0x2, 0x2f8, 0x2f9, 0x5, 0xcc, 0x67, 0x2, 0x2f9, 0x2fc, 0x3, 0x2, 0x2, 
+    0x2, 0x2fa, 0x2fc, 0x5, 0x84, 0x43, 0x2, 0x2fb, 0x2f4, 0x3, 0x2, 0x2, 
+    0x2, 0x2fb, 0x2fa, 0x3, 0x2, 0x2, 0x2, 0x2fc, 0x59, 0x3, 0x2, 0x2, 0x2, 
+    0x2fd, 0x2fe, 0x7, 0x4d, 0x2, 0x2, 0x2fe, 0x2ff, 0x7, 0x79, 0x2, 0x2, 
+    0x2ff, 0x300, 0x7, 0x4e, 0x2, 0x2, 0x300, 0x301, 0x7, 0x79, 0x2, 0x2, 
+    0x301, 0x309, 0x5, 0x60, 0x31, 0x2, 0x302, 0x304, 0x7, 0x6, 0x2, 0x2, 
+    0x303, 0x305, 0x7, 0x79, 0x2, 0x2, 0x304, 0x303, 0x3, 0x2, 0x2, 0x2, 
+    0x304, 0x305, 0x3, 0x2, 0x2, 0x2, 0x305, 0x306, 0x3, 0x2, 0x2, 0x2, 
+    0x306, 0x308, 0x5, 0x60, 0x31, 0x2, 0x307, 0x302, 0x3, 0x2, 0x2, 0x2, 
+    0x308, 0x30b, 0x3, 0x2, 0x2, 0x2, 0x309, 0x307, 0x3, 0x2, 0x2, 0x2, 
+    0x309, 0x30a, 0x3, 0x2, 0x2, 0x2, 0x30a, 0x5b, 0x3, 0x2, 0x2, 0x2, 0x30b, 
+    0x309, 0x3, 0x2, 0x2, 0x2, 0x30c, 0x30d, 0x7, 0x4f, 0x2, 0x2, 0x30d, 
+    0x30e, 0x7, 0x79, 0x2, 0x2, 0x30e, 0x30f, 0x5, 0x84, 0x43, 0x2, 0x30f, 
+    0x5d, 0x3, 0x2, 0x2, 0x2, 0x310, 0x311, 0x7, 0x50, 0x2, 0x2, 0x311, 
+    0x312, 0x7, 0x79, 0x2, 0x2, 0x312, 0x313, 0x5, 0x84, 0x43, 0x2, 0x313, 
+    0x5f, 0x3, 0x2, 0x2, 0x2, 0x314, 0x319, 0x5, 0x84, 0x43, 0x2, 0x315, 
+    0x317, 0x7, 0x79, 0x2, 0x2, 0x316, 0x315, 0x3, 0x2, 0x2, 0x2, 0x316, 
+    0x317, 0x3, 0x2, 0x2, 0x2, 0x317, 0x318, 0x3, 0x2, 0x2, 0x2, 0x318, 
+    0x31a, 0x9, 0x2, 0x2, 0x2, 0x319, 0x316, 0x3, 0x2, 0x2, 0x2, 0x319, 
+    0x31a, 0x3, 0x2, 0x2, 0x2, 0x31a, 0x61, 0x3, 0x2, 0x2, 0x2, 0x31b, 0x31c, 
+    0x7, 0x55, 0x2, 0x2, 0x31c, 0x31d, 0x7, 0x79, 0x2, 0x2, 0x31d, 0x31e, 
+    0x5, 0x84, 0x43, 0x2, 0x31e, 0x63, 0x3, 0x2, 0x2, 0x2, 0x31f, 0x32a, 
+    0x5, 0x66, 0x34, 0x2, 0x320, 0x322, 0x7, 0x79, 0x2, 0x2, 0x321, 0x320, 
+    0x3, 0x2, 0x2, 0x2, 0x321, 0x322, 0x3, 0x2, 0x2, 0x2, 0x322, 0x323, 
+    0x3, 0x2, 0x2, 0x2, 0x323, 0x325, 0x7, 0x6, 0x2, 0x2, 0x324, 0x326, 
+    0x7, 0x79, 0x2, 0x2, 0x325, 0x324, 0x3, 0x2, 0x2, 0x2, 0x325, 0x326, 
+    0x3, 0x2, 0x2, 0x2, 0x326, 0x327, 0x3, 0x2, 0x2, 0x2, 0x327, 0x329, 
+    0x5, 0x66, 0x34, 0x2, 0x328, 0x321, 0x3, 0x2, 0x2, 0x2, 0x329, 0x32c, 
+    0x3, 0x2, 0x2, 0x2, 0x32a, 0x328, 0x3, 0x2, 0x2, 0x2, 0x32a, 0x32b, 
+    0x3, 0x2, 0x2, 0x2, 0x32b, 0x65, 0x3, 0x2, 0x2, 0x2, 0x32c, 0x32a, 0x3, 
+    0x2, 0x2, 0x2, 0x32d, 0x32e, 0x5, 0xcc, 0x67, 0x2, 0x32e, 0x32f, 0x7, 
+    0x7, 0x2, 0x2, 0x32f, 0x330, 0x5, 0x68, 0x35, 0x2, 0x330, 0x333, 0x3, 
+    0x2, 0x2, 0x2, 0x331, 0x333, 0x5, 0x68, 0x35, 0x2, 0x332, 0x32d, 0x3, 
+    0x2, 0x2, 0x2, 0x332, 0x331, 0x3, 0x2, 0x2, 0x2, 0x333, 0x67, 0x3, 0x2, 
+    0x2, 0x2, 0x334, 0x335, 0x5, 0x6a, 0x36, 0x2, 0x335, 0x69, 0x3, 0x2, 
+    0x2, 0x2, 0x336, 0x33d, 0x5, 0x6c, 0x37, 0x2, 0x337, 0x339, 0x7, 0x79, 
+    0x2, 0x2, 0x338, 0x337, 0x3, 0x2, 0x2, 0x2, 0x338, 0x339, 0x3, 0x2, 
+    0x2, 0x2, 0x339, 0x33a, 0x3, 0x2, 0x2, 0x2, 0x33a, 0x33c, 0x5, 0x6e, 
+    0x38, 0x2, 0x33b, 0x338, 0x3, 0x2, 0x2, 0x2, 0x33c, 0x33f, 0x3, 0x2, 
+    0x2, 0x2, 0x33d, 0x33b, 0x3, 0x2, 0x2, 0x2, 0x33d, 0x33e, 0x3, 0x2, 
+    0x2, 0x2, 0x33e, 0x345, 0x3, 0x2, 0x2, 0x2, 0x33f, 0x33d, 0x3, 0x2, 
+    0x2, 0x2, 0x340, 0x341, 0x7, 0x4, 0x2, 0x2, 0x341, 0x342, 0x5, 0x6a, 
+    0x36, 0x2, 0x342, 0x343, 0x7, 0x5, 0x2, 0x2, 0x343, 0x345, 0x3, 0x2, 
+    0x2, 0x2, 0x344, 0x336, 0x3, 0x2, 0x2, 0x2, 0x344, 0x340, 0x3, 0x2, 
+    0x2, 0x2, 0x345, 0x6b, 0x3, 0x2, 0x2, 0x2, 0x346, 0x348, 0x7, 0x4, 0x2, 
+    0x2, 0x347, 0x349, 0x7, 0x79, 0x2, 0x2, 0x348, 0x347, 0x3, 0x2, 0x2, 
+    0x2, 0x348, 0x349, 0x3, 0x2, 0x2, 0x2, 0x349, 0x34e, 0x3, 0x2, 0x2, 
+    0x2, 0x34a, 0x34c, 0x5, 0xcc, 0x67, 0x2, 0x34b, 0x34d, 0x7, 0x79, 0x2, 
+    0x2, 0x34c, 0x34b, 0x3, 0x2, 0x2, 0x2, 0x34c, 0x34d, 0x3, 0x2, 0x2, 
+    0x2, 0x34d, 0x34f, 0x3, 0x2, 0x2, 0x2, 0x34e, 0x34a, 0x3, 0x2, 0x2, 
+    0x2, 0x34e, 0x34f, 0x3, 0x2, 0x2, 0x2, 0x34f, 0x354, 0x3, 0x2, 0x2, 
+    0x2, 0x350, 0x352, 0x5, 0x78, 0x3d, 0x2, 0x351, 0x353, 0x7, 0x79, 0x2, 
+    0x2, 0x352, 0x351, 0x3, 0x2, 0x2, 0x2, 0x352, 0x353, 0x3, 0x2, 0x2, 
+    0x2, 0x353, 0x355, 0x3, 0x2, 0x2, 0x2, 0x354, 0x350, 0x3, 0x2, 0x2, 
+    0x2, 0x354, 0x355, 0x3, 0x2, 0x2, 0x2, 0x355, 0x35a, 0x3, 0x2, 0x2, 
+    0x2, 0x356, 0x358, 0x5, 0x74, 0x3b, 0x2, 0x357, 0x359, 0x7, 0x79, 0x2, 
+    0x2, 0x358, 0x357, 0x3, 0x2, 0x2, 0x2, 0x358, 0x359, 0x3, 0x2, 0x2, 
+    0x2, 0x359, 0x35b, 0x3, 0x2, 0x2, 0x2, 0x35a, 0x356, 0x3, 0x2, 0x2, 
+    0x2, 0x35a, 0x35b, 0x3, 0x2, 0x2, 0x2, 0x35b, 0x35c, 0x3, 0x2, 0x2, 
+    0x2, 0x35c, 0x374, 0x7, 0x5, 0x2, 0x2, 0x35d, 0x35f, 0x7, 0x79, 0x2, 
+    0x2, 0x35e, 0x35d, 0x3, 0x2, 0x2, 0x2, 0x35e, 0x35f, 0x3, 0x2, 0x2, 
+    0x2, 0x35f, 0x364, 0x3, 0x2, 0x2, 0x2, 0x360, 0x362, 0x5, 0xcc, 0x67, 
+    0x2, 0x361, 0x363, 0x7, 0x79, 0x2, 0x2, 0x362, 0x361, 0x3, 0x2, 0x2, 
+    0x2, 0x362, 0x363, 0x3, 0x2, 0x2, 0x2, 0x363, 0x365, 0x3, 0x2, 0x2, 
+    0x2, 0x364, 0x360, 0x3, 0x2, 0x2, 0x2, 0x364, 0x365, 0x3, 0x2, 0x2, 
+    0x2, 0x365, 0x36a, 0x3, 0x2, 0x2, 0x2, 0x366, 0x368, 0x5, 0x78, 0x3d, 
+    0x2, 0x367, 0x369, 0x7, 0x79, 0x2, 0x2, 0x368, 0x367, 0x3, 0x2, 0x2, 
+    0x2, 0x368, 0x369, 0x3, 0x2, 0x2, 0x2, 0x369, 0x36b, 0x3, 0x2, 0x2, 
+    0x2, 0x36a, 0x366, 0x3, 0x2, 0x2, 0x2, 0x36a, 0x36b, 0x3, 0x2, 0x2, 
+    0x2, 0x36b, 0x370, 0x3, 0x2, 0x2, 0x2, 0x36c, 0x36e, 0x5, 0x74, 0x3b, 
+    0x2, 0x36d, 0x36f, 0x7, 0x79, 0x2, 0x2, 0x36e, 0x36d, 0x3, 0x2, 0x2, 
+    0x2, 0x36e, 0x36f, 0x3, 0x2, 0x2, 0x2, 0x36f, 0x371, 0x3, 0x2, 0x2, 
+    0x2, 0x370, 0x36c, 0x3, 0x2, 0x2, 0x2, 0x370, 0x371, 0x3, 0x2, 0x2, 
+    0x2, 0x371, 0x372, 0x3, 0x2, 0x2, 0x2, 0x372, 0x374, 0x8, 0x37, 0x1, 
+    0x2, 0x373, 0x346, 0x3, 0x2, 0x2, 0x2, 0x373, 0x35e, 0x3, 0x2, 0x2, 
+    0x2, 0x374, 0x6d, 0x3, 0x2, 0x2, 0x2, 0x375, 0x377, 0x5, 0x70, 0x39, 
+    0x2, 0x376, 0x378, 0x7, 0x79, 0x2, 0x2, 0x377, 0x376, 0x3, 0x2, 0x2, 
+    0x2, 0x377, 0x378, 0x3, 0x2, 0x2, 0x2, 0x378, 0x379, 0x3, 0x2, 0x2, 
+    0x2, 0x379, 0x37a, 0x5, 0x6c, 0x37, 0x2, 0x37a, 0x6f, 0x3, 0x2, 0x2, 
+    0x2, 0x37b, 0x37d, 0x5, 0xde, 0x70, 0x2, 0x37c, 0x37e, 0x7, 0x79, 0x2, 
+    0x2, 0x37d, 0x37c, 0x3, 0x2, 0x2, 0x2, 0x37d, 0x37e, 0x3, 0x2, 0x2, 
+    0x2, 0x37e, 0x37f, 0x3, 0x2, 0x2, 0x2, 0x37f, 0x381, 0x5, 0xe2, 0x72, 
+    0x2, 0x380, 0x382, 0x7, 0x79, 0x2, 0x2, 0x381, 0x380, 0x3, 0x2, 0x2, 
+    0x2, 0x381, 0x382, 0x3, 0x2, 0x2, 0x2, 0x382, 0x384, 0x3, 0x2, 0x2, 
+    0x2, 0x383, 0x385, 0x5, 0x72, 0x3a, 0x2, 0x384, 0x383, 0x3, 0x2, 0x2, 
+    0x2, 0x384, 0x385, 0x3, 0x2, 0x2, 0x2, 0x385, 0x387, 0x3, 0x2, 0x2, 
+    0x2, 0x386, 0x388, 0x7, 0x79, 0x2, 0x2, 0x387, 0x386, 0x3, 0x2, 0x2, 
+    0x2, 0x387, 0x388, 0x3, 0x2, 0x2, 0x2, 0x388, 0x389, 0x3, 0x2, 0x2, 
+    0x2, 0x389, 0x38a, 0x5, 0xe2, 0x72, 0x2, 0x38a, 0x39c, 0x3, 0x2, 0x2, 
+    0x2, 0x38b, 0x38d, 0x5, 0xe2, 0x72, 0x2, 0x38c, 0x38e, 0x7, 0x79, 0x2, 
+    0x2, 0x38d, 0x38c, 0x3, 0x2, 0x2, 0x2, 0x38d, 0x38e, 0x3, 0x2, 0x2, 
+    0x2, 0x38e, 0x390, 0x3, 0x2, 0x2, 0x2, 0x38f, 0x391, 0x5, 0x72, 0x3a, 
+    0x2, 0x390, 0x38f, 0x3, 0x2, 0x2, 0x2, 0x390, 0x391, 0x3, 0x2, 0x2, 
+    0x2, 0x391, 0x393, 0x3, 0x2, 0x2, 0x2, 0x392, 0x394, 0x7, 0x79, 0x2, 
+    0x2, 0x393, 0x392, 0x3, 0x2, 0x2, 0x2, 0x393, 0x394, 0x3, 0x2, 0x2, 
+    0x2, 0x394, 0x395, 0x3, 0x2, 0x2, 0x2, 0x395, 0x397, 0x5, 0xe2, 0x72, 
+    0x2, 0x396, 0x398, 0x7, 0x79, 0x2, 0x2, 0x397, 0x396, 0x3, 0x2, 0x2, 
+    0x2, 0x397, 0x398, 0x3, 0x2, 0x2, 0x2, 0x398, 0x399, 0x3, 0x2, 0x2, 
+    0x2, 0x399, 0x39a, 0x5, 0xe0, 0x71, 0x2, 0x39a, 0x39c, 0x3, 0x2, 0x2, 
+    0x2, 0x39b, 0x37b, 0x3, 0x2, 0x2, 0x2, 0x39b, 0x38b, 0x3, 0x2, 0x2, 
+    0x2, 0x39c, 0x71, 0x3, 0x2, 0x2, 0x2, 0x39d, 0x39f, 0x7, 0x8, 0x2, 0x2, 
+    0x39e, 0x3a0, 0x7, 0x79, 0x2, 0x2, 0x39f, 0x39e, 0x3, 0x2, 0x2, 0x2, 
+    0x39f, 0x3a0, 0x3, 0x2, 0x2, 0x2, 0x3a0, 0x3a5, 0x3, 0x2, 0x2, 0x2, 
+    0x3a1, 0x3a3, 0x5, 0xcc, 0x67, 0x2, 0x3a2, 0x3a4, 0x7, 0x79, 0x2, 0x2, 
+    0x3a3, 0x3a2, 0x3, 0x2, 0x2, 0x2, 0x3a3, 0x3a4, 0x3, 0x2, 0x2, 0x2, 
+    0x3a4, 0x3a6, 0x3, 0x2, 0x2, 0x2, 0x3a5, 0x3a1, 0x3, 0x2, 0x2, 0x2, 
+    0x3a5, 0x3a6, 0x3, 0x2, 0x2, 0x2, 0x3a6, 0x3ab, 0x3, 0x2, 0x2, 0x2, 
+    0x3a7, 0x3a9, 0x5, 0x76, 0x3c, 0x2, 0x3a8, 0x3aa, 0x7, 0x79, 0x2, 0x2, 
+    0x3a9, 0x3a8, 0x3, 0x2, 0x2, 0x2, 0x3a9, 0x3aa, 0x3, 0x2, 0x2, 0x2, 
+    0x3aa, 0x3ac, 0x3, 0x2, 0x2, 0x2, 0x3ab, 0x3a7, 0x3, 0x2, 0x2, 0x2, 
+    0x3ab, 0x3ac, 0x3, 0x2, 0x2, 0x2, 0x3ac, 0x3b1, 0x3, 0x2, 0x2, 0x2, 
+    0x3ad, 0x3af, 0x5, 0x7c, 0x3f, 0x2, 0x3ae, 0x3b0, 0x7, 0x79, 0x2, 0x2, 
+    0x3af, 0x3ae, 0x3, 0x2, 0x2, 0x2, 0x3af, 0x3b0, 0x3, 0x2, 0x2, 0x2, 
+    0x3b0, 0x3b2, 0x3, 0x2, 0x2, 0x2, 0x3b1, 0x3ad, 0x3, 0x2, 0x2, 0x2, 
+    0x3b1, 0x3b2, 0x3, 0x2, 0x2, 0x2, 0x3b2, 0x3b7, 0x3, 0x2, 0x2, 0x2, 
+    0x3b3, 0x3b5, 0x5, 0x74, 0x3b, 0x2, 0x3b4, 0x3b6, 0x7, 0x79, 0x2, 0x2, 
+    0x3b5, 0x3b4, 0x3, 0x2, 0x2, 0x2, 0x3b5, 0x3b6, 0x3, 0x2, 0x2, 0x2, 
+    0x3b6, 0x3b8, 0x3, 0x2, 0x2, 0x2, 0x3b7, 0x3b3, 0x3, 0x2, 0x2, 0x2, 
+    0x3b7, 0x3b8, 0x3, 0x2, 0x2, 0x2, 0x3b8, 0x3b9, 0x3, 0x2, 0x2, 0x2, 
+    0x3b9, 0x3ba, 0x7, 0x9, 0x2, 0x2, 0x3ba, 0x73, 0x3, 0x2, 0x2, 0x2, 0x3bb, 
+    0x3bd, 0x7, 0xa, 0x2, 0x2, 0x3bc, 0x3be, 0x7, 0x79, 0x2, 0x2, 0x3bd, 
+    0x3bc, 0x3, 0x2, 0x2, 0x2, 0x3bd, 0x3be, 0x3, 0x2, 0x2, 0x2, 0x3be, 
+    0x3e0, 0x3, 0x2, 0x2, 0x2, 0x3bf, 0x3c1, 0x5, 0xd4, 0x6b, 0x2, 0x3c0, 
+    0x3c2, 0x7, 0x79, 0x2, 0x2, 0x3c1, 0x3c0, 0x3, 0x2, 0x2, 0x2, 0x3c1, 
+    0x3c2, 0x3, 0x2, 0x2, 0x2, 0x3c2, 0x3c3, 0x3, 0x2, 0x2, 0x2, 0x3c3, 
+    0x3c5, 0x7, 0xb, 0x2, 0x2, 0x3c4, 0x3c6, 0x7, 0x79, 0x2, 0x2, 0x3c5, 
+    0x3c4, 0x3, 0x2, 0x2, 0x2, 0x3c5, 0x3c6, 0x3, 0x2, 0x2, 0x2, 0x3c6, 
+    0x3c7, 0x3, 0x2, 0x2, 0x2, 0x3c7, 0x3c9, 0x5, 0x84, 0x43, 0x2, 0x3c8, 
+    0x3ca, 0x7, 0x79, 0x2, 0x2, 0x3c9, 0x3c8, 0x3, 0x2, 0x2, 0x2, 0x3c9, 
+    0x3ca, 0x3, 0x2, 0x2, 0x2, 0x3ca, 0x3dd, 0x3, 0x2, 0x2, 0x2, 0x3cb, 
+    0x3cd, 0x7, 0x6, 0x2, 0x2, 0x3cc, 0x3ce, 0x7, 0x79, 0x2, 0x2, 0x3cd, 
+    0x3cc, 0x3, 0x2, 0x2, 0x2, 0x3cd, 0x3ce, 0x3, 0x2, 0x2, 0x2, 0x3ce, 
+    0x3cf, 0x3, 0x2, 0x2, 0x2, 0x3cf, 0x3d1, 0x5, 0xd4, 0x6b, 0x2, 0x3d0, 
+    0x3d2, 0x7, 0x79, 0x2, 0x2, 0x3d1, 0x3d0, 0x3, 0x2, 0x2, 0x2, 0x3d1, 
+    0x3d2, 0x3, 0x2, 0x2, 0x2, 0x3d2, 0x3d3, 0x3, 0x2, 0x2, 0x2, 0x3d3, 
+    0x3d5, 0x7, 0xb, 0x2, 0x2, 0x3d4, 0x3d6, 0x7, 0x79, 0x2, 0x2, 0x3d5, 
+    0x3d4, 0x3, 0x2, 0x2, 0x2, 0x3d5, 0x3d6, 0x3, 0x2, 0x2, 0x2, 0x3d6, 
+    0x3d7, 0x3, 0x2, 0x2, 0x2, 0x3d7, 0x3d9, 0x5, 0x84, 0x43, 0x2, 0x3d8, 
+    0x3da, 0x7, 0x79, 0x2, 0x2, 0x3d9, 0x3d8, 0x3, 0x2, 0x2, 0x2, 0x3d9, 
+    0x3da, 0x3, 0x2, 0x2, 0x2, 0x3da, 0x3dc, 0x3, 0x2, 0x2, 0x2, 0x3db, 
+    0x3cb, 0x3, 0x2, 0x2, 0x2, 0x3dc, 0x3df, 0x3, 0x2, 0x2, 0x2, 0x3dd, 
+    0x3db, 0x3, 0x2, 0x2, 0x2, 0x3dd, 0x3de, 0x3, 0x2, 0x2, 0x2, 0x3de, 
+    0x3e1, 0x3, 0x2, 0x2, 0x2, 0x3df, 0x3dd, 0x3, 0x2, 0x2, 0x2, 0x3e0, 
+    0x3bf, 0x3, 0x2, 0x2, 0x2, 0x3e0, 0x3e1, 0x3, 0x2, 0x2, 0x2, 0x3e1, 
+    0x3e2, 0x3, 0x2, 0x2, 0x2, 0x3e2, 0x3e3, 0x7, 0xc, 0x2, 0x2, 0x3e3, 
+    0x75, 0x3, 0x2, 0x2, 0x2, 0x3e4, 0x3e6, 0x7, 0xb, 0x2, 0x2, 0x3e5, 0x3e7, 
+    0x7, 0x79, 0x2, 0x2, 0x3e6, 0x3e5, 0x3, 0x2, 0x2, 0x2, 0x3e6, 0x3e7, 
+    0x3, 0x2, 0x2, 0x2, 0x3e7, 0x3e8, 0x3, 0x2, 0x2, 0x2, 0x3e8, 0x3f6, 
+    0x5, 0x82, 0x42, 0x2, 0x3e9, 0x3eb, 0x7, 0x79, 0x2, 0x2, 0x3ea, 0x3e9, 
+    0x3, 0x2, 0x2, 0x2, 0x3ea, 0x3eb, 0x3, 0x2, 0x2, 0x2, 0x3eb, 0x3ec, 
+    0x3, 0x2, 0x2, 0x2, 0x3ec, 0x3ee, 0x7, 0xd, 0x2, 0x2, 0x3ed, 0x3ef, 
+    0x7, 0xb, 0x2, 0x2, 0x3ee, 0x3ed, 0x3, 0x2, 0x2, 0x2, 0x3ee, 0x3ef, 
+    0x3, 0x2, 0x2, 0x2, 0x3ef, 0x3f1, 0x3, 0x2, 0x2, 0x2, 0x3f0, 0x3f2, 
+    0x7, 0x79, 0x2, 0x2, 0x3f1, 0x3f0, 0x3, 0x2, 0x2, 0x2, 0x3f1, 0x3f2, 
+    0x3, 0x2, 0x2, 0x2, 0x3f2, 0x3f3, 0x3, 0x2, 0x2, 0x2, 0x3f3, 0x3f5, 
+    0x5, 0x82, 0x42, 0x2, 0x3f4, 0x3ea, 0x3, 0x2, 0x2, 0x2, 0x3f5, 0x3f8, 
+    0x3, 0x2, 0x2, 0x2, 0x3f6, 0x3f4, 0x3, 0x2, 0x2, 0x2, 0x3f6, 0x3f7, 
+    0x3, 0x2, 0x2, 0x2, 0x3f7, 0x77, 0x3, 0x2, 0x2, 0x2, 0x3f8, 0x3f6, 0x3, 
+    0x2, 0x2, 0x2, 0x3f9, 0x400, 0x5, 0x7a, 0x3e, 0x2, 0x3fa, 0x3fc, 0x7, 
+    0x79, 0x2, 0x2, 0x3fb, 0x3fa, 0x3, 0x2, 0x2, 0x2, 0x3fb, 0x3fc, 0x3, 
+    0x2, 0x2, 0x2, 0x3fc, 0x3fd, 0x3, 0x2, 0x2, 0x2, 0x3fd, 0x3ff, 0x5, 
+    0x7a, 0x3e, 0x2, 0x3fe, 0x3fb, 0x3, 0x2, 0x2, 0x2, 0x3ff, 0x402, 0x3, 
+    0x2, 0x2, 0x2, 0x400, 0x3fe, 0x3, 0x2, 0x2, 0x2, 0x400, 0x401, 0x3, 
+    0x2, 0x2, 0x2, 0x401, 0x79, 0x3, 0x2, 0x2, 0x2, 0x402, 0x400, 0x3, 0x2, 
+    0x2, 0x2, 0x403, 0x405, 0x7, 0xb, 0x2, 0x2, 0x404, 0x406, 0x7, 0x79, 
+    0x2, 0x2, 0x405, 0x404, 0x3, 0x2, 0x2, 0x2, 0x405, 0x406, 0x3, 0x2, 
+    0x2, 0x2, 0x406, 0x407, 0x3, 0x2, 0x2, 0x2, 0x407, 0x408, 0x5, 0x80, 
+    0x41, 0x2, 0x408, 0x7b, 0x3, 0x2, 0x2, 0x2, 0x409, 0x40b, 0x7, 0x4b, 
+    0x2, 0x2, 0x40a, 0x40c, 0x7, 0x79, 0x2, 0x2, 0x40b, 0x40a, 0x3, 0x2, 
+    0x2, 0x2, 0x40b, 0x40c, 0x3, 0x2, 0x2, 0x2, 0x40c, 0x40e, 0x3, 0x2, 
+    0x2, 0x2, 0x40d, 0x40f, 0x7, 0x56, 0x2, 0x2, 0x40e, 0x40d, 0x3, 0x2, 
+    0x2, 0x2, 0x40e, 0x40f, 0x3, 0x2, 0x2, 0x2, 0x40f, 0x411, 0x3, 0x2, 
+    0x2, 0x2, 0x410, 0x412, 0x7, 0x79, 0x2, 0x2, 0x411, 0x410, 0x3, 0x2, 
+    0x2, 0x2, 0x411, 0x412, 0x3, 0x2, 0x2, 0x2, 0x412, 0x414, 0x3, 0x2, 
+    0x2, 0x2, 0x413, 0x415, 0x5, 0x7e, 0x40, 0x2, 0x414, 0x413, 0x3, 0x2, 
+    0x2, 0x2, 0x414, 0x415, 0x3, 0x2, 0x2, 0x2, 0x415, 0x7d, 0x3, 0x2, 0x2, 
+    0x2, 0x416, 0x418, 0x5, 0xd6, 0x6c, 0x2, 0x417, 0x419, 0x7, 0x79, 0x2, 
+    0x2, 0x418, 0x417, 0x3, 0x2, 0x2, 0x2, 0x418, 0x419, 0x3, 0x2, 0x2, 
+    0x2, 0x419, 0x41a, 0x3, 0x2, 0x2, 0x2, 0x41a, 0x41b, 0x7, 0xe, 0x2, 
+    0x2, 0x41b, 0x427, 0x3, 0x2, 0x2, 0x2, 0x41c, 0x41e, 0x5, 0xd6, 0x6c, 
+    0x2, 0x41d, 0x41f, 0x7, 0x79, 0x2, 0x2, 0x41e, 0x41d, 0x3, 0x2, 0x2, 
+    0x2, 0x41e, 0x41f, 0x3, 0x2, 0x2, 0x2, 0x41f, 0x420, 0x3, 0x2, 0x2, 
+    0x2, 0x420, 0x422, 0x7, 0xe, 0x2, 0x2, 0x421, 0x423, 0x7, 0x79, 0x2, 
+    0x2, 0x422, 0x421, 0x3, 0x2, 0x2, 0x2, 0x422, 0x423, 0x3, 0x2, 0x2, 
+    0x2, 0x423, 0x424, 0x3, 0x2, 0x2, 0x2, 0x424, 0x425, 0x5, 0xd6, 0x6c, 
+    0x2, 0x425, 0x427, 0x3, 0x2, 0x2, 0x2, 0x426, 0x416, 0x3, 0x2, 0x2, 
+    0x2, 0x426, 0x41c, 0x3, 0x2, 0x2, 0x2, 0x427, 0x7f, 0x3, 0x2, 0x2, 0x2, 
+    0x428, 0x429, 0x5, 0xda, 0x6e, 0x2, 0x429, 0x81, 0x3, 0x2, 0x2, 0x2, 
+    0x42a, 0x42b, 0x5, 0xda, 0x6e, 0x2, 0x42b, 0x83, 0x3, 0x2, 0x2, 0x2, 
+    0x42c, 0x42d, 0x5, 0x86, 0x44, 0x2, 0x42d, 0x85, 0x3, 0x2, 0x2, 0x2, 
+    0x42e, 0x435, 0x5, 0x88, 0x45, 0x2, 0x42f, 0x430, 0x7, 0x79, 0x2, 0x2, 
+    0x430, 0x431, 0x7, 0x57, 0x2, 0x2, 0x431, 0x432, 0x7, 0x79, 0x2, 0x2, 
+    0x432, 0x434, 0x5, 0x88, 0x45, 0x2, 0x433, 0x42f, 0x3, 0x2, 0x2, 0x2, 
+    0x434, 0x437, 0x3, 0x2, 0x2, 0x2, 0x435, 0x433, 0x3, 0x2, 0x2, 0x2, 
+    0x435, 0x436, 0x3, 0x2, 0x2, 0x2, 0x436, 0x87, 0x3, 0x2, 0x2, 0x2, 0x437, 
+    0x435, 0x3, 0x2, 0x2, 0x2, 0x438, 0x43f, 0x5, 0x8a, 0x46, 0x2, 0x439, 
+    0x43a, 0x7, 0x79, 0x2, 0x2, 0x43a, 0x43b, 0x7, 0x58, 0x2, 0x2, 0x43b, 
+    0x43c, 0x7, 0x79, 0x2, 0x2, 0x43c, 0x43e, 0x5, 0x8a, 0x46, 0x2, 0x43d, 
+    0x439, 0x3, 0x2, 0x2, 0x2, 0x43e, 0x441, 0x3, 0x2, 0x2, 0x2, 0x43f, 
+    0x43d, 0x3, 0x2, 0x2, 0x2, 0x43f, 0x440, 0x3, 0x2, 0x2, 0x2, 0x440, 
+    0x89, 0x3, 0x2, 0x2, 0x2, 0x441, 0x43f, 0x3, 0x2, 0x2, 0x2, 0x442, 0x449, 
+    0x5, 0x8c, 0x47, 0x2, 0x443, 0x444, 0x7, 0x79, 0x2, 0x2, 0x444, 0x445, 
+    0x7, 0x59, 0x2, 0x2, 0x445, 0x446, 0x7, 0x79, 0x2, 0x2, 0x446, 0x448, 
+    0x5, 0x8c, 0x47, 0x2, 0x447, 0x443, 0x3, 0x2, 0x2, 0x2, 0x448, 0x44b, 
+    0x3, 0x2, 0x2, 0x2, 0x449, 0x447, 0x3, 0x2, 0x2, 0x2, 0x449, 0x44a, 
+    0x3, 0x2, 0x2, 0x2, 0x44a, 0x8b, 0x3, 0x2, 0x2, 0x2, 0x44b, 0x449, 0x3, 
+    0x2, 0x2, 0x2, 0x44c, 0x44e, 0x7, 0x5a, 0x2, 0x2, 0x44d, 0x44f, 0x7, 
+    0x79, 0x2, 0x2, 0x44e, 0x44d, 0x3, 0x2, 0x2, 0x2, 0x44e, 0x44f, 0x3, 
+    0x2, 0x2, 0x2, 0x44f, 0x451, 0x3, 0x2, 0x2, 0x2, 0x450, 0x44c, 0x3, 
+    0x2, 0x2, 0x2, 0x450, 0x451, 0x3, 0x2, 0x2, 0x2, 0x451, 0x452, 0x3, 
+    0x2, 0x2, 0x2, 0x452, 0x453, 0x5, 0x8e, 0x48, 0x2, 0x453, 0x8d, 0x3, 
+    0x2, 0x2, 0x2, 0x454, 0x45e, 0x5, 0x92, 0x4a, 0x2, 0x455, 0x457, 0x7, 
+    0x79, 0x2, 0x2, 0x456, 0x455, 0x3, 0x2, 0x2, 0x2, 0x456, 0x457, 0x3, 
+    0x2, 0x2, 0x2, 0x457, 0x458, 0x3, 0x2, 0x2, 0x2, 0x458, 0x45a, 0x5, 
+    0x90, 0x49, 0x2, 0x459, 0x45b, 0x7, 0x79, 0x2, 0x2, 0x45a, 0x459, 0x3, 
+    0x2, 0x2, 0x2, 0x45a, 0x45b, 0x3, 0x2, 0x2, 0x2, 0x45b, 0x45c, 0x3, 
+    0x2, 0x2, 0x2, 0x45c, 0x45d, 0x5, 0x92, 0x4a, 0x2, 0x45d, 0x45f, 0x3, 
+    0x2, 0x2, 0x2, 0x45e, 0x456, 0x3, 0x2, 0x2, 0x2, 0x45e, 0x45f, 0x3, 
+    0x2, 0x2, 0x2, 0x45f, 0x485, 0x3, 0x2, 0x2, 0x2, 0x460, 0x462, 0x5, 
+    0x92, 0x4a, 0x2, 0x461, 0x463, 0x7, 0x79, 0x2, 0x2, 0x462, 0x461, 0x3, 
+    0x2, 0x2, 0x2, 0x462, 0x463, 0x3, 0x2, 0x2, 0x2, 0x463, 0x464, 0x3, 
+    0x2, 0x2, 0x2, 0x464, 0x466, 0x7, 0x5b, 0x2, 0x2, 0x465, 0x467, 0x7, 
+    0x79, 0x2, 0x2, 0x466, 0x465, 0x3, 0x2, 0x2, 0x2, 0x466, 0x467, 0x3, 
+    0x2, 0x2, 0x2, 0x467, 0x468, 0x3, 0x2, 0x2, 0x2, 0x468, 0x469, 0x5, 
+    0x92, 0x4a, 0x2, 0x469, 0x46a, 0x3, 0x2, 0x2, 0x2, 0x46a, 0x46b, 0x8, 
+    0x48, 0x1, 0x2, 0x46b, 0x485, 0x3, 0x2, 0x2, 0x2, 0x46c, 0x46e, 0x5, 
+    0x92, 0x4a, 0x2, 0x46d, 0x46f, 0x7, 0x79, 0x2, 0x2, 0x46e, 0x46d, 0x3, 
+    0x2, 0x2, 0x2, 0x46e, 0x46f, 0x3, 0x2, 0x2, 0x2, 0x46f, 0x470, 0x3, 
+    0x2, 0x2, 0x2, 0x470, 0x472, 0x5, 0x90, 0x49, 0x2, 0x471, 0x473, 0x7, 
+    0x79, 0x2, 0x2, 0x472, 0x471, 0x3, 0x2, 0x2, 0x2, 0x472, 0x473, 0x3, 
+    0x2, 0x2, 0x2, 0x473, 0x474, 0x3, 0x2, 0x2, 0x2, 0x474, 0x47e, 0x5, 
+    0x92, 0x4a, 0x2, 0x475, 0x477, 0x7, 0x79, 0x2, 0x2, 0x476, 0x475, 0x3, 
+    0x2, 0x2, 0x2, 0x476, 0x477, 0x3, 0x2, 0x2, 0x2, 0x477, 0x478, 0x3, 
+    0x2, 0x2, 0x2, 0x478, 0x47a, 0x5, 0x90, 0x49, 0x2, 0x479, 0x47b, 0x7, 
+    0x79, 0x2, 0x2, 0x47a, 0x479, 0x3, 0x2, 0x2, 0x2, 0x47a, 0x47b, 0x3, 
+    0x2, 0x2, 0x2, 0x47b, 0x47c, 0x3, 0x2, 0x2, 0x2, 0x47c, 0x47d, 0x5, 
+    0x92, 0x4a, 0x2, 0x47d, 0x47f, 0x3, 0x2, 0x2, 0x2, 0x47e, 0x476, 0x3, 
+    0x2, 0x2, 0x2, 0x47f, 0x480, 0x3, 0x2, 0x2, 0x2, 0x480, 0x47e, 0x3, 
+    0x2, 0x2, 0x2, 0x480, 0x481, 0x3, 0x2, 0x2, 0x2, 0x481, 0x482, 0x3, 
+    0x2, 0x2, 0x2, 0x482, 0x483, 0x8, 0x48, 0x1, 0x2, 0x483, 0x485, 0x3, 
+    0x2, 0x2, 0x2, 0x484, 0x454, 0x3, 0x2, 0x2, 0x2, 0x484, 0x460, 0x3, 
+    0x2, 0x2, 0x2, 0x484, 0x46c, 0x3, 0x2, 0x2, 0x2, 0x485, 0x8f, 0x3, 0x2, 
+    0x2, 0x2, 0x486, 0x487, 0x9, 0x3, 0x2, 0x2, 0x487, 0x91, 0x3, 0x2, 0x2, 
+    0x2, 0x488, 0x493, 0x5, 0x94, 0x4b, 0x2, 0x489, 0x48b, 0x7, 0x79, 0x2, 
+    0x2, 0x48a, 0x489, 0x3, 0x2, 0x2, 0x2, 0x48a, 0x48b, 0x3, 0x2, 0x2, 
+    0x2, 0x48b, 0x48c, 0x3, 0x2, 0x2, 0x2, 0x48c, 0x48e, 0x7, 0xd, 0x2, 
+    0x2, 0x48d, 0x48f, 0x7, 0x79, 0x2, 0x2, 0x48e, 0x48d, 0x3, 0x2, 0x2, 
+    0x2, 0x48e, 0x48f, 0x3, 0x2, 0x2, 0x2, 0x48f, 0x490, 0x3, 0x2, 0x2, 
+    0x2, 0x490, 0x492, 0x5, 0x94, 0x4b, 0x2, 0x491, 0x48a, 0x3, 0x2, 0x2, 
+    0x2, 0x492, 0x495, 0x3, 0x2, 0x2, 0x2, 0x493, 0x491, 0x3, 0x2, 0x2, 
+    0x2, 0x493, 0x494, 0x3, 0x2, 0x2, 0x2, 0x494, 0x93, 0x3, 0x2, 0x2, 0x2, 
+    0x495, 0x493, 0x3, 0x2, 0x2, 0x2, 0x496, 0x4a1, 0x5, 0x96, 0x4c, 0x2, 
+    0x497, 0x499, 0x7, 0x79, 0x2, 0x2, 0x498, 0x497, 0x3, 0x2, 0x2, 0x2, 
+    0x498, 0x499, 0x3, 0x2, 0x2, 0x2, 0x499, 0x49a, 0x3, 0x2, 0x2, 0x2, 
+    0x49a, 0x49c, 0x7, 0x14, 0x2, 0x2, 0x49b, 0x49d, 0x7, 0x79, 0x2, 0x2, 
+    0x49c, 0x49b, 0x3, 0x2, 0x2, 0x2, 0x49c, 0x49d, 0x3, 0x2, 0x2, 0x2, 
+    0x49d, 0x49e, 0x3, 0x2, 0x2, 0x2, 0x49e, 0x4a0, 0x5, 0x96, 0x4c, 0x2, 
+    0x49f, 0x498, 0x3, 0x2, 0x2, 0x2, 0x4a0, 0x4a3, 0x3, 0x2, 0x2, 0x2, 
+    0x4a1, 0x49f, 0x3, 0x2, 0x2, 0x2, 0x4a1, 0x4a2, 0x3, 0x2, 0x2, 0x2, 
+    0x4a2, 0x95, 0x3, 0x2, 0x2, 0x2, 0x4a3, 0x4a1, 0x3, 0x2, 0x2, 0x2, 0x4a4, 
+    0x4b0, 0x5, 0x9a, 0x4e, 0x2, 0x4a5, 0x4a7, 0x7, 0x79, 0x2, 0x2, 0x4a6, 
+    0x4a5, 0x3, 0x2, 0x2, 0x2, 0x4a6, 0x4a7, 0x3, 0x2, 0x2, 0x2, 0x4a7, 
+    0x4a8, 0x3, 0x2, 0x2, 0x2, 0x4a8, 0x4aa, 0x5, 0x98, 0x4d, 0x2, 0x4a9, 
+    0x4ab, 0x7, 0x79, 0x2, 0x2, 0x4aa, 0x4a9, 0x3, 0x2, 0x2, 0x2, 0x4aa, 
+    0x4ab, 0x3, 0x2, 0x2, 0x2, 0x4ab, 0x4ac, 0x3, 0x2, 0x2, 0x2, 0x4ac, 
+    0x4ad, 0x5, 0x9a, 0x4e, 0x2, 0x4ad, 0x4af, 0x3, 0x2, 0x2, 0x2, 0x4ae, 
+    0x4a6, 0x3, 0x2, 0x2, 0x2, 0x4af, 0x4b2, 0x3, 0x2, 0x2, 0x2, 0x4b0, 
+    0x4ae, 0x3, 0x2, 0x2, 0x2, 0x4b0, 0x4b1, 0x3, 0x2, 0x2, 0x2, 0x4b1, 
+    0x97, 0x3, 0x2, 0x2, 0x2, 0x4b2, 0x4b0, 0x3, 0x2, 0x2, 0x2, 0x4b3, 0x4b4, 
+    0x9, 0x4, 0x2, 0x2, 0x4b4, 0x99, 0x3, 0x2, 0x2, 0x2, 0x4b5, 0x4c1, 0x5, 
+    0x9e, 0x50, 0x2, 0x4b6, 0x4b8, 0x7, 0x79, 0x2, 0x2, 0x4b7, 0x4b6, 0x3, 
+    0x2, 0x2, 0x2, 0x4b7, 0x4b8, 0x3, 0x2, 0x2, 0x2, 0x4b8, 0x4b9, 0x3, 
+    0x2, 0x2, 0x2, 0x4b9, 0x4bb, 0x5, 0x9c, 0x4f, 0x2, 0x4ba, 0x4bc, 0x7, 
+    0x79, 0x2, 0x2, 0x4bb, 0x4ba, 0x3, 0x2, 0x2, 0x2, 0x4bb, 0x4bc, 0x3, 
+    0x2, 0x2, 0x2, 0x4bc, 0x4bd, 0x3, 0x2, 0x2, 0x2, 0x4bd, 0x4be, 0x5, 
+    0x9e, 0x50, 0x2, 0x4be, 0x4c0, 0x3, 0x2, 0x2, 0x2, 0x4bf, 0x4b7, 0x3, 
+    0x2, 0x2, 0x2, 0x4c0, 0x4c3, 0x3, 0x2, 0x2, 0x2, 0x4c1, 0x4bf, 0x3, 
+    0x2, 0x2, 0x2, 0x4c1, 0x4c2, 0x3, 0x2, 0x2, 0x2, 0x4c2, 0x9b, 0x3, 0x2, 
+    0x2, 0x2, 0x4c3, 0x4c1, 0x3, 0x2, 0x2, 0x2, 0x4c4, 0x4c5, 0x9, 0x5, 
+    0x2, 0x2, 0x4c5, 0x9d, 0x3, 0x2, 0x2, 0x2, 0x4c6, 0x4d2, 0x5, 0xa2, 
+    0x52, 0x2, 0x4c7, 0x4c9, 0x7, 0x79, 0x2, 0x2, 0x4c8, 0x4c7, 0x3, 0x2, 
+    0x2, 0x2, 0x4c8, 0x4c9, 0x3, 0x2, 0x2, 0x2, 0x4c9, 0x4ca, 0x3, 0x2, 
+    0x2, 0x2, 0x4ca, 0x4cc, 0x5, 0xa0, 0x51, 0x2, 0x4cb, 0x4cd, 0x7, 0x79, 
+    0x2, 0x2, 0x4cc, 0x4cb, 0x3, 0x2, 0x2, 0x2, 0x4cc, 0x4cd, 0x3, 0x2, 
+    0x2, 0x2, 0x4cd, 0x4ce, 0x3, 0x2, 0x2, 0x2, 0x4ce, 0x4cf, 0x5, 0xa2, 
+    0x52, 0x2, 0x4cf, 0x4d1, 0x3, 0x2, 0x2, 0x2, 0x4d0, 0x4c8, 0x3, 0x2, 
+    0x2, 0x2, 0x4d1, 0x4d4, 0x3, 0x2, 0x2, 0x2, 0x4d2, 0x4d0, 0x3, 0x2, 
+    0x2, 0x2, 0x4d2, 0x4d3, 0x3, 0x2, 0x2, 0x2, 0x4d3, 0x9f, 0x3, 0x2, 0x2, 
+    0x2, 0x4d4, 0x4d2, 0x3, 0x2, 0x2, 0x2, 0x4d5, 0x4d6, 0x9, 0x6, 0x2, 
+    0x2, 0x4d6, 0xa1, 0x3, 0x2, 0x2, 0x2, 0x4d7, 0x4e2, 0x5, 0xa4, 0x53, 
+    0x2, 0x4d8, 0x4da, 0x7, 0x79, 0x2, 0x2, 0x4d9, 0x4d8, 0x3, 0x2, 0x2, 
+    0x2, 0x4d9, 0x4da, 0x3, 0x2, 0x2, 0x2, 0x4da, 0x4db, 0x3, 0x2, 0x2, 
+    0x2, 0x4db, 0x4dd, 0x7, 0x1a, 0x2, 0x2, 0x4dc, 0x4de, 0x7, 0x79, 0x2, 
+    0x2, 0x4dd, 0x4dc, 0x3, 0x2, 0x2, 0x2, 0x4dd, 0x4de, 0x3, 0x2, 0x2, 
+    0x2, 0x4de, 0x4df, 0x3, 0x2, 0x2, 0x2, 0x4df, 0x4e1, 0x5, 0xa4, 0x53, 
+    0x2, 0x4e0, 0x4d9, 0x3, 0x2, 0x2, 0x2, 0x4e1, 0x4e4, 0x3, 0x2, 0x2, 
+    0x2, 0x4e2, 0x4e0, 0x3, 0x2, 0x2, 0x2, 0x4e2, 0x4e3, 0x3, 0x2, 0x2, 
+    0x2, 0x4e3, 0xa3, 0x3, 0x2, 0x2, 0x2, 0x4e4, 0x4e2, 0x3, 0x2, 0x2, 0x2, 
+    0x4e5, 0x4e7, 0x7, 0x5c, 0x2, 0x2, 0x4e6, 0x4e8, 0x7, 0x79, 0x2, 0x2, 
+    0x4e7, 0x4e6, 0x3, 0x2, 0x2, 0x2, 0x4e7, 0x4e8, 0x3, 0x2, 0x2, 0x2, 
+    0x4e8, 0x4ea, 0x3, 0x2, 0x2, 0x2, 0x4e9, 0x4e5, 0x3, 0x2, 0x2, 0x2, 
+    0x4e9, 0x4ea, 0x3, 0x2, 0x2, 0x2, 0x4ea, 0x4eb, 0x3, 0x2, 0x2, 0x2, 
+    0x4eb, 0x4f0, 0x5, 0xa6, 0x54, 0x2, 0x4ec, 0x4ee, 0x7, 0x79, 0x2, 0x2, 
+    0x4ed, 0x4ec, 0x3, 0x2, 0x2, 0x2, 0x4ed, 0x4ee, 0x3, 0x2, 0x2, 0x2, 
+    0x4ee, 0x4ef, 0x3, 0x2, 0x2, 0x2, 0x4ef, 0x4f1, 0x7, 0x5d, 0x2, 0x2, 
+    0x4f0, 0x4ed, 0x3, 0x2, 0x2, 0x2, 0x4f0, 0x4f1, 0x3, 0x2, 0x2, 0x2, 
+    0x4f1, 0xa5, 0x3, 0x2, 0x2, 0x2, 0x4f2, 0x4f6, 0x5, 0xb4, 0x5b, 0x2, 
+    0x4f3, 0x4f7, 0x5, 0xae, 0x58, 0x2, 0x4f4, 0x4f7, 0x5, 0xa8, 0x55, 0x2, 
+    0x4f5, 0x4f7, 0x5, 0xb2, 0x5a, 0x2, 0x4f6, 0x4f3, 0x3, 0x2, 0x2, 0x2, 
+    0x4f6, 0x4f4, 0x3, 0x2, 0x2, 0x2, 0x4f6, 0x4f5, 0x3, 0x2, 0x2, 0x2, 
+    0x4f6, 0x4f7, 0x3, 0x2, 0x2, 0x2, 0x4f7, 0xa7, 0x3, 0x2, 0x2, 0x2, 0x4f8, 
+    0x4fb, 0x5, 0xaa, 0x56, 0x2, 0x4f9, 0x4fb, 0x5, 0xac, 0x57, 0x2, 0x4fa, 
+    0x4f8, 0x3, 0x2, 0x2, 0x2, 0x4fa, 0x4f9, 0x3, 0x2, 0x2, 0x2, 0x4fb, 
+    0x4fd, 0x3, 0x2, 0x2, 0x2, 0x4fc, 0x4fe, 0x5, 0xa8, 0x55, 0x2, 0x4fd, 
+    0x4fc, 0x3, 0x2, 0x2, 0x2, 0x4fd, 0x4fe, 0x3, 0x2, 0x2, 0x2, 0x4fe, 
+    0xa9, 0x3, 0x2, 0x2, 0x2, 0x4ff, 0x501, 0x7, 0x79, 0x2, 0x2, 0x500, 
+    0x4ff, 0x3, 0x2, 0x2, 0x2, 0x500, 0x501, 0x3, 0x2, 0x2, 0x2, 0x501, 
+    0x502, 0x3, 0x2, 0x2, 0x2, 0x502, 0x503, 0x7, 0x8, 0x2, 0x2, 0x503, 
+    0x504, 0x5, 0x84, 0x43, 0x2, 0x504, 0x505, 0x7, 0x9, 0x2, 0x2, 0x505, 
+    0xab, 0x3, 0x2, 0x2, 0x2, 0x506, 0x508, 0x7, 0x79, 0x2, 0x2, 0x507, 
+    0x506, 0x3, 0x2, 0x2, 0x2, 0x507, 0x508, 0x3, 0x2, 0x2, 0x2, 0x508, 
+    0x509, 0x3, 0x2, 0x2, 0x2, 0x509, 0x50b, 0x7, 0x8, 0x2, 0x2, 0x50a, 
+    0x50c, 0x5, 0x84, 0x43, 0x2, 0x50b, 0x50a, 0x3, 0x2, 0x2, 0x2, 0x50b, 
+    0x50c, 0x3, 0x2, 0x2, 0x2, 0x50c, 0x50d, 0x3, 0x2, 0x2, 0x2, 0x50d, 
+    0x50f, 0x7, 0xb, 0x2, 0x2, 0x50e, 0x510, 0x5, 0x84, 0x43, 0x2, 0x50f, 
+    0x50e, 0x3, 0x2, 0x2, 0x2, 0x50f, 0x510, 0x3, 0x2, 0x2, 0x2, 0x510, 
+    0x511, 0x3, 0x2, 0x2, 0x2, 0x511, 0x512, 0x7, 0x9, 0x2, 0x2, 0x512, 
+    0xad, 0x3, 0x2, 0x2, 0x2, 0x513, 0x51f, 0x5, 0xb0, 0x59, 0x2, 0x514, 
+    0x515, 0x7, 0x79, 0x2, 0x2, 0x515, 0x516, 0x7, 0x5e, 0x2, 0x2, 0x516, 
+    0x517, 0x7, 0x79, 0x2, 0x2, 0x517, 0x51f, 0x7, 0x48, 0x2, 0x2, 0x518, 
+    0x519, 0x7, 0x79, 0x2, 0x2, 0x519, 0x51a, 0x7, 0x5f, 0x2, 0x2, 0x51a, 
+    0x51b, 0x7, 0x79, 0x2, 0x2, 0x51b, 0x51f, 0x7, 0x48, 0x2, 0x2, 0x51c, 
+    0x51d, 0x7, 0x79, 0x2, 0x2, 0x51d, 0x51f, 0x7, 0x60, 0x2, 0x2, 0x51e, 
+    0x513, 0x3, 0x2, 0x2, 0x2, 0x51e, 0x514, 0x3, 0x2, 0x2, 0x2, 0x51e, 
+    0x518, 0x3, 0x2, 0x2, 0x2, 0x51e, 0x51c, 0x3, 0x2, 0x2, 0x2, 0x51f, 
+    0x521, 0x3, 0x2, 0x2, 0x2, 0x520, 0x522, 0x7, 0x79, 0x2, 0x2, 0x521, 
+    0x520, 0x3, 0x2, 0x2, 0x2, 0x521, 0x522, 0x3, 0x2, 0x2, 0x2, 0x522, 
+    0x523, 0x3, 0x2, 0x2, 0x2, 0x523, 0x524, 0x5, 0xb4, 0x5b, 0x2, 0x524, 
+    0xaf, 0x3, 0x2, 0x2, 0x2, 0x525, 0x527, 0x7, 0x79, 0x2, 0x2, 0x526, 
+    0x525, 0x3, 0x2, 0x2, 0x2, 0x526, 0x527, 0x3, 0x2, 0x2, 0x2, 0x527, 
+    0x528, 0x3, 0x2, 0x2, 0x2, 0x528, 0x529, 0x7, 0x1b, 0x2, 0x2, 0x529, 
+    0xb1, 0x3, 0x2, 0x2, 0x2, 0x52a, 0x52b, 0x7, 0x79, 0x2, 0x2, 0x52b, 
+    0x52c, 0x7, 0x61, 0x2, 0x2, 0x52c, 0x52d, 0x7, 0x79, 0x2, 0x2, 0x52d, 
+    0x535, 0x7, 0x62, 0x2, 0x2, 0x52e, 0x52f, 0x7, 0x79, 0x2, 0x2, 0x52f, 
+    0x530, 0x7, 0x61, 0x2, 0x2, 0x530, 0x531, 0x7, 0x79, 0x2, 0x2, 0x531, 
+    0x532, 0x7, 0x5a, 0x2, 0x2, 0x532, 0x533, 0x7, 0x79, 0x2, 0x2, 0x533, 
+    0x535, 0x7, 0x62, 0x2, 0x2, 0x534, 0x52a, 0x3, 0x2, 0x2, 0x2, 0x534, 
+    0x52e, 0x3, 0x2, 0x2, 0x2, 0x535, 0xb3, 0x3, 0x2, 0x2, 0x2, 0x536, 0x53b, 
+    0x5, 0xb6, 0x5c, 0x2, 0x537, 0x539, 0x7, 0x79, 0x2, 0x2, 0x538, 0x537, 
+    0x3, 0x2, 0x2, 0x2, 0x538, 0x539, 0x3, 0x2, 0x2, 0x2, 0x539, 0x53a, 
+    0x3, 0x2, 0x2, 0x2, 0x53a, 0x53c, 0x5, 0xc6, 0x64, 0x2, 0x53b, 0x538, 
+    0x3, 0x2, 0x2, 0x2, 0x53b, 0x53c, 0x3, 0x2, 0x2, 0x2, 0x53c, 0xb5, 0x3, 
+    0x2, 0x2, 0x2, 0x53d, 0x545, 0x5, 0xb8, 0x5d, 0x2, 0x53e, 0x545, 0x5, 
+    0xd0, 0x69, 0x2, 0x53f, 0x545, 0x5, 0xc8, 0x65, 0x2, 0x540, 0x545, 0x5, 
+    0xbe, 0x60, 0x2, 0x541, 0x545, 0x5, 0xc0, 0x61, 0x2, 0x542, 0x545, 0x5, 
+    0xc4, 0x63, 0x2, 0x543, 0x545, 0x5, 0xcc, 0x67, 0x2, 0x544, 0x53d, 0x3, 
+    0x2, 0x2, 0x2, 0x544, 0x53e, 0x3, 0x2, 0x2, 0x2, 0x544, 0x53f, 0x3, 
+    0x2, 0x2, 0x2, 0x544, 0x540, 0x3, 0x2, 0x2, 0x2, 0x544, 0x541, 0x3, 
+    0x2, 0x2, 0x2, 0x544, 0x542, 0x3, 0x2, 0x2, 0x2, 0x544, 0x543, 0x3, 
+    0x2, 0x2, 0x2, 0x545, 0xb7, 0x3, 0x2, 0x2, 0x2, 0x546, 0x54c, 0x5, 0xce, 
+    0x68, 0x2, 0x547, 0x54c, 0x7, 0x6b, 0x2, 0x2, 0x548, 0x54c, 0x5, 0xba, 
+    0x5e, 0x2, 0x549, 0x54c, 0x7, 0x62, 0x2, 0x2, 0x54a, 0x54c, 0x5, 0xbc, 
+    0x5f, 0x2, 0x54b, 0x546, 0x3, 0x2, 0x2, 0x2, 0x54b, 0x547, 0x3, 0x2, 
+    0x2, 0x2, 0x54b, 0x548, 0x3, 0x2, 0x2, 0x2, 0x54b, 0x549, 0x3, 0x2, 
+    0x2, 0x2, 0x54b, 0x54a, 0x3, 0x2, 0x2, 0x2, 0x54c, 0xb9, 0x3, 0x2, 0x2, 
+    0x2, 0x54d, 0x54e, 0x9, 0x7, 0x2, 0x2, 0x54e, 0xbb, 0x3, 0x2, 0x2, 0x2, 
+    0x54f, 0x551, 0x7, 0x8, 0x2, 0x2, 0x550, 0x552, 0x7, 0x79, 0x2, 0x2, 
+    0x551, 0x550, 0x3, 0x2, 0x2, 0x2, 0x551, 0x552, 0x3, 0x2, 0x2, 0x2, 
+    0x552, 0x564, 0x3, 0x2, 0x2, 0x2, 0x553, 0x555, 0x5, 0x84, 0x43, 0x2, 
+    0x554, 0x556, 0x7, 0x79, 0x2, 0x2, 0x555, 0x554, 0x3, 0x2, 0x2, 0x2, 
+    0x555, 0x556, 0x3, 0x2, 0x2, 0x2, 0x556, 0x561, 0x3, 0x2, 0x2, 0x2, 
+    0x557, 0x559, 0x7, 0x6, 0x2, 0x2, 0x558, 0x55a, 0x7, 0x79, 0x2, 0x2, 
+    0x559, 0x558, 0x3, 0x2, 0x2, 0x2, 0x559, 0x55a, 0x3, 0x2, 0x2, 0x2, 
+    0x55a, 0x55b, 0x3, 0x2, 0x2, 0x2, 0x55b, 0x55d, 0x5, 0x84, 0x43, 0x2, 
+    0x55c, 0x55e, 0x7, 0x79, 0x2, 0x2, 0x55d, 0x55c, 0x3, 0x2, 0x2, 0x2, 
+    0x55d, 0x55e, 0x3, 0x2, 0x2, 0x2, 0x55e, 0x560, 0x3, 0x2, 0x2, 0x2, 
+    0x55f, 0x557, 0x3, 0x2, 0x2, 0x2, 0x560, 0x563, 0x3, 0x2, 0x2, 0x2, 
+    0x561, 0x55f, 0x3, 0x2, 0x2, 0x2, 0x561, 0x562, 0x3, 0x2, 0x2, 0x2, 
+    0x562, 0x565, 0x3, 0x2, 0x2, 0x2, 0x563, 0x561, 0x3, 0x2, 0x2, 0x2, 
+    0x564, 0x553, 0x3, 0x2, 0x2, 0x2, 0x564, 0x565, 0x3, 0x2, 0x2, 0x2, 
+    0x565, 0x566, 0x3, 0x2, 0x2, 0x2, 0x566, 0x567, 0x7, 0x9, 0x2, 0x2, 
+    0x567, 0xbd, 0x3, 0x2, 0x2, 0x2, 0x568, 0x56a, 0x7, 0x4, 0x2, 0x2, 0x569, 
+    0x56b, 0x7, 0x79, 0x2, 0x2, 0x56a, 0x569, 0x3, 0x2, 0x2, 0x2, 0x56a, 
+    0x56b, 0x3, 0x2, 0x2, 0x2, 0x56b, 0x56c, 0x3, 0x2, 0x2, 0x2, 0x56c, 
+    0x56e, 0x5, 0x84, 0x43, 0x2, 0x56d, 0x56f, 0x7, 0x79, 0x2, 0x2, 0x56e, 
+    0x56d, 0x3, 0x2, 0x2, 0x2, 0x56e, 0x56f, 0x3, 0x2, 0x2, 0x2, 0x56f, 
+    0x570, 0x3, 0x2, 0x2, 0x2, 0x570, 0x571, 0x7, 0x5, 0x2, 0x2, 0x571, 
+    0xbf, 0x3, 0x2, 0x2, 0x2, 0x572, 0x574, 0x5, 0xc2, 0x62, 0x2, 0x573, 
+    0x575, 0x7, 0x79, 0x2, 0x2, 0x574, 0x573, 0x3, 0x2, 0x2, 0x2, 0x574, 
+    0x575, 0x3, 0x2, 0x2, 0x2, 0x575, 0x576, 0x3, 0x2, 0x2, 0x2, 0x576, 
+    0x578, 0x7, 0x4, 0x2, 0x2, 0x577, 0x579, 0x7, 0x79, 0x2, 0x2, 0x578, 
+    0x577, 0x3, 0x2, 0x2, 0x2, 0x578, 0x579, 0x3, 0x2, 0x2, 0x2, 0x579, 
+    0x57a, 0x3, 0x2, 0x2, 0x2, 0x57a, 0x57c, 0x7, 0x4b, 0x2, 0x2, 0x57b, 
+    0x57d, 0x7, 0x79, 0x2, 0x2, 0x57c, 0x57b, 0x3, 0x2, 0x2, 0x2, 0x57c, 
+    0x57d, 0x3, 0x2, 0x2, 0x2, 0x57d, 0x57e, 0x3, 0x2, 0x2, 0x2, 0x57e, 
+    0x57f, 0x7, 0x5, 0x2, 0x2, 0x57f, 0x5a4, 0x3, 0x2, 0x2, 0x2, 0x580, 
+    0x582, 0x5, 0xc2, 0x62, 0x2, 0x581, 0x583, 0x7, 0x79, 0x2, 0x2, 0x582, 
+    0x581, 0x3, 0x2, 0x2, 0x2, 0x582, 0x583, 0x3, 0x2, 0x2, 0x2, 0x583, 
+    0x584, 0x3, 0x2, 0x2, 0x2, 0x584, 0x586, 0x7, 0x4, 0x2, 0x2, 0x585, 
+    0x587, 0x7, 0x79, 0x2, 0x2, 0x586, 0x585, 0x3, 0x2, 0x2, 0x2, 0x586, 
+    0x587, 0x3, 0x2, 0x2, 0x2, 0x587, 0x58c, 0x3, 0x2, 0x2, 0x2, 0x588, 
+    0x58a, 0x7, 0x4a, 0x2, 0x2, 0x589, 0x58b, 0x7, 0x79, 0x2, 0x2, 0x58a, 
+    0x589, 0x3, 0x2, 0x2, 0x2, 0x58a, 0x58b, 0x3, 0x2, 0x2, 0x2, 0x58b, 
+    0x58d, 0x3, 0x2, 0x2, 0x2, 0x58c, 0x588, 0x3, 0x2, 0x2, 0x2, 0x58c, 
+    0x58d, 0x3, 0x2, 0x2, 0x2, 0x58d, 0x59f, 0x3, 0x2, 0x2, 0x2, 0x58e, 
+    0x590, 0x5, 0x84, 0x43, 0x2, 0x58f, 0x591, 0x7, 0x79, 0x2, 0x2, 0x590, 
+    0x58f, 0x3, 0x2, 0x2, 0x2, 0x590, 0x591, 0x3, 0x2, 0x2, 0x2, 0x591, 
+    0x59c, 0x3, 0x2, 0x2, 0x2, 0x592, 0x594, 0x7, 0x6, 0x2, 0x2, 0x593, 
+    0x595, 0x7, 0x79, 0x2, 0x2, 0x594, 0x593, 0x3, 0x2, 0x2, 0x2, 0x594, 
+    0x595, 0x3, 0x2, 0x2, 0x2, 0x595, 0x596, 0x3, 0x2, 0x2, 0x2, 0x596, 
+    0x598, 0x5, 0x84, 0x43, 0x2, 0x597, 0x599, 0x7, 0x79, 0x2, 0x2, 0x598, 
+    0x597, 0x3, 0x2, 0x2, 0x2, 0x598, 0x599, 0x3, 0x2, 0x2, 0x2, 0x599, 
+    0x59b, 0x3, 0x2, 0x2, 0x2, 0x59a, 0x592, 0x3, 0x2, 0x2, 0x2, 0x59b, 
+    0x59e, 0x3, 0x2, 0x2, 0x2, 0x59c, 0x59a, 0x3, 0x2, 0x2, 0x2, 0x59c, 
+    0x59d, 0x3, 0x2, 0x2, 0x2, 0x59d, 0x5a0, 0x3, 0x2, 0x2, 0x2, 0x59e, 
+    0x59c, 0x3, 0x2, 0x2, 0x2, 0x59f, 0x58e, 0x3, 0x2, 0x2, 0x2, 0x59f, 
+    0x5a0, 0x3, 0x2, 0x2, 0x2, 0x5a0, 0x5a1, 0x3, 0x2, 0x2, 0x2, 0x5a1, 
+    0x5a2, 0x7, 0x5, 0x2, 0x2, 0x5a2, 0x5a4, 0x3, 0x2, 0x2, 0x2, 0x5a3, 
+    0x572, 0x3, 0x2, 0x2, 0x2, 0x5a3, 0x580, 0x3, 0x2, 0x2, 0x2, 0x5a4, 
+    0xc1, 0x3, 0x2, 0x2, 0x2, 0x5a5, 0x5a6, 0x5, 0xdc, 0x6f, 0x2, 0x5a6, 
+    0xc3, 0x3, 0x2, 0x2, 0x2, 0x5a7, 0x5a9, 0x7, 0x65, 0x2, 0x2, 0x5a8, 
+    0x5aa, 0x7, 0x79, 0x2, 0x2, 0x5a9, 0x5a8, 0x3, 0x2, 0x2, 0x2, 0x5a9, 
+    0x5aa, 0x3, 0x2, 0x2, 0x2, 0x5aa, 0x5ab, 0x3, 0x2, 0x2, 0x2, 0x5ab, 
+    0x5ad, 0x7, 0xa, 0x2, 0x2, 0x5ac, 0x5ae, 0x7, 0x79, 0x2, 0x2, 0x5ad, 
+    0x5ac, 0x3, 0x2, 0x2, 0x2, 0x5ad, 0x5ae, 0x3, 0x2, 0x2, 0x2, 0x5ae, 
+    0x5af, 0x3, 0x2, 0x2, 0x2, 0x5af, 0x5b1, 0x7, 0x43, 0x2, 0x2, 0x5b0, 
+    0x5b2, 0x7, 0x79, 0x2, 0x2, 0x5b1, 0x5b0, 0x3, 0x2, 0x2, 0x2, 0x5b1, 
+    0x5b2, 0x3, 0x2, 0x2, 0x2, 0x5b2, 0x5b3, 0x3, 0x2, 0x2, 0x2, 0x5b3, 
+    0x5b8, 0x5, 0x64, 0x33, 0x2, 0x5b4, 0x5b6, 0x7, 0x79, 0x2, 0x2, 0x5b5, 
+    0x5b4, 0x3, 0x2, 0x2, 0x2, 0x5b5, 0x5b6, 0x3, 0x2, 0x2, 0x2, 0x5b6, 
+    0x5b7, 0x3, 0x2, 0x2, 0x2, 0x5b7, 0x5b9, 0x5, 0x62, 0x32, 0x2, 0x5b8, 
+    0x5b5, 0x3, 0x2, 0x2, 0x2, 0x5b8, 0x5b9, 0x3, 0x2, 0x2, 0x2, 0x5b9, 
+    0x5bb, 0x3, 0x2, 0x2, 0x2, 0x5ba, 0x5bc, 0x7, 0x79, 0x2, 0x2, 0x5bb, 
+    0x5ba, 0x3, 0x2, 0x2, 0x2, 0x5bb, 0x5bc, 0x3, 0x2, 0x2, 0x2, 0x5bc, 
+    0x5bd, 0x3, 0x2, 0x2, 0x2, 0x5bd, 0x5be, 0x7, 0xc, 0x2, 0x2, 0x5be, 
+    0xc5, 0x3, 0x2, 0x2, 0x2, 0x5bf, 0x5c1, 0x7, 0x1c, 0x2, 0x2, 0x5c0, 
+    0x5c2, 0x7, 0x79, 0x2, 0x2, 0x5c1, 0x5c0, 0x3, 0x2, 0x2, 0x2, 0x5c1, 
+    0x5c2, 0x3, 0x2, 0x2, 0x2, 0x5c2, 0x5c3, 0x3, 0x2, 0x2, 0x2, 0x5c3, 
+    0x5c4, 0x5, 0xd4, 0x6b, 0x2, 0x5c4, 0xc7, 0x3, 0x2, 0x2, 0x2, 0x5c5, 
+    0x5ca, 0x7, 0x66, 0x2, 0x2, 0x5c6, 0x5c8, 0x7, 0x79, 0x2, 0x2, 0x5c7, 
+    0x5c6, 0x3, 0x2, 0x2, 0x2, 0x5c7, 0x5c8, 0x3, 0x2, 0x2, 0x2, 0x5c8, 
+    0x5c9, 0x3, 0x2, 0x2, 0x2, 0x5c9, 0x5cb, 0x5, 0xca, 0x66, 0x2, 0x5ca, 
+    0x5c7, 0x3, 0x2, 0x2, 0x2, 0x5cb, 0x5cc, 0x3, 0x2, 0x2, 0x2, 0x5cc, 
+    0x5ca, 0x3, 0x2, 0x2, 0x2, 0x5cc, 0x5cd, 0x3, 0x2, 0x2, 0x2, 0x5cd, 
+    0x5dc, 0x3, 0x2, 0x2, 0x2, 0x5ce, 0x5d0, 0x7, 0x66, 0x2, 0x2, 0x5cf, 
+    0x5d1, 0x7, 0x79, 0x2, 0x2, 0x5d0, 0x5cf, 0x3, 0x2, 0x2, 0x2, 0x5d0, 
+    0x5d1, 0x3, 0x2, 0x2, 0x2, 0x5d1, 0x5d2, 0x3, 0x2, 0x2, 0x2, 0x5d2, 
+    0x5d7, 0x5, 0x84, 0x43, 0x2, 0x5d3, 0x5d5, 0x7, 0x79, 0x2, 0x2, 0x5d4, 
+    0x5d3, 0x3, 0x2, 0x2, 0x2, 0x5d4, 0x5d5, 0x3, 0x2, 0x2, 0x2, 0x5d5, 
+    0x5d6, 0x3, 0x2, 0x2, 0x2, 0x5d6, 0x5d8, 0x5, 0xca, 0x66, 0x2, 0x5d7, 
+    0x5d4, 0x3, 0x2, 0x2, 0x2, 0x5d8, 0x5d9, 0x3, 0x2, 0x2, 0x2, 0x5d9, 
+    0x5d7, 0x3, 0x2, 0x2, 0x2, 0x5d9, 0x5da, 0x3, 0x2, 0x2, 0x2, 0x5da, 
+    0x5dc, 0x3, 0x2, 0x2, 0x2, 0x5db, 0x5c5, 0x3, 0x2, 0x2, 0x2, 0x5db, 
+    0x5ce, 0x3, 0x2, 0x2, 0x2, 0x5dc, 0x5e5, 0x3, 0x2, 0x2, 0x2, 0x5dd, 
+    0x5df, 0x7, 0x79, 0x2, 0x2, 0x5de, 0x5dd, 0x3, 0x2, 0x2, 0x2, 0x5de, 
+    0x5df, 0x3, 0x2, 0x2, 0x2, 0x5df, 0x5e0, 0x3, 0x2, 0x2, 0x2, 0x5e0, 
+    0x5e2, 0x7, 0x67, 0x2, 0x2, 0x5e1, 0x5e3, 0x7, 0x79, 0x2, 0x2, 0x5e2, 
+    0x5e1, 0x3, 0x2, 0x2, 0x2, 0x5e2, 0x5e3, 0x3, 0x2, 0x2, 0x2, 0x5e3, 
+    0x5e4, 0x3, 0x2, 0x2, 0x2, 0x5e4, 0x5e6, 0x5, 0x84, 0x43, 0x2, 0x5e5, 
+    0x5de, 0x3, 0x2, 0x2, 0x2, 0x5e5, 0x5e6, 0x3, 0x2, 0x2, 0x2, 0x5e6, 
+    0x5e8, 0x3, 0x2, 0x2, 0x2, 0x5e7, 0x5e9, 0x7, 0x79, 0x2, 0x2, 0x5e8, 
+    0x5e7, 0x3, 0x2, 0x2, 0x2, 0x5e8, 0x5e9, 0x3, 0x2, 0x2, 0x2, 0x5e9, 
+    0x5ea, 0x3, 0x2, 0x2, 0x2, 0x5ea, 0x5eb, 0x7, 0x68, 0x2, 0x2, 0x5eb, 
+    0xc9, 0x3, 0x2, 0x2, 0x2, 0x5ec, 0x5ee, 0x7, 0x69, 0x2, 0x2, 0x5ed, 
+    0x5ef, 0x7, 0x79, 0x2, 0x2, 0x5ee, 0x5ed, 0x3, 0x2, 0x2, 0x2, 0x5ee, 
+    0x5ef, 0x3, 0x2, 0x2, 0x2, 0x5ef, 0x5f0, 0x3, 0x2, 0x2, 0x2, 0x5f0, 
+    0x5f2, 0x5, 0x84, 0x43, 0x2, 0x5f1, 0x5f3, 0x7, 0x79, 0x2, 0x2, 0x5f2, 
+    0x5f1, 0x3, 0x2, 0x2, 0x2, 0x5f2, 0x5f3, 0x3, 0x2, 0x2, 0x2, 0x5f3, 
+    0x5f4, 0x3, 0x2, 0x2, 0x2, 0x5f4, 0x5f6, 0x7, 0x6a, 0x2, 0x2, 0x5f5, 
+    0x5f7, 0x7, 0x79, 0x2, 0x2, 0x5f6, 0x5f5, 0x3, 0x2, 0x2, 0x2, 0x5f6, 
+    0x5f7, 0x3, 0x2, 0x2, 0x2, 0x5f7, 0x5f8, 0x3, 0x2, 0x2, 0x2, 0x5f8, 
+    0x5f9, 0x5, 0x84, 0x43, 0x2, 0x5f9, 0xcb, 0x3, 0x2, 0x2, 0x2, 0x5fa, 
+    0x5fb, 0x5, 0xdc, 0x6f, 0x2, 0x5fb, 0xcd, 0x3, 0x2, 0x2, 0x2, 0x5fc, 
+    0x5ff, 0x5, 0xd8, 0x6d, 0x2, 0x5fd, 0x5ff, 0x5, 0xd6, 0x6c, 0x2, 0x5fe, 
+    0x5fc, 0x3, 0x2, 0x2, 0x2, 0x5fe, 0x5fd, 0x3, 0x2, 0x2, 0x2, 0x5ff, 
+    0xcf, 0x3, 0x2, 0x2, 0x2, 0x600, 0x603, 0x7, 0x1d, 0x2, 0x2, 0x601, 
+    0x604, 0x5, 0xdc, 0x6f, 0x2, 0x602, 0x604, 0x7, 0x6d, 0x2, 0x2, 0x603, 
+    0x601, 0x3, 0x2, 0x2, 0x2, 0x603, 0x602, 0x3, 0x2, 0x2, 0x2, 0x604, 
+    0xd1, 0x3, 0x2, 0x2, 0x2, 0x605, 0x607, 0x5, 0xb6, 0x5c, 0x2, 0x606, 
+    0x608, 0x7, 0x79, 0x2, 0x2, 0x607, 0x606, 0x3, 0x2, 0x2, 0x2, 0x607, 
+    0x608, 0x3, 0x2, 0x2, 0x2, 0x608, 0x609, 0x3, 0x2, 0x2, 0x2, 0x609, 
+    0x60a, 0x5, 0xc6, 0x64, 0x2, 0x60a, 0xd3, 0x3, 0x2, 0x2, 0x2, 0x60b, 
+    0x60c, 0x5, 0xda, 0x6e, 0x2, 0x60c, 0xd5, 0x3, 0x2, 0x2, 0x2, 0x60d, 
+    0x60e, 0x7, 0x6d, 0x2, 0x2, 0x60e, 0xd7, 0x3, 0x2, 0x2, 0x2, 0x60f, 
+    0x610, 0x7, 0x74, 0x2, 0x2, 0x610, 0xd9, 0x3, 0x2, 0x2, 0x2, 0x611, 
+    0x612, 0x5, 0xdc, 0x6f, 0x2, 0x612, 0xdb, 0x3, 0x2, 0x2, 0x2, 0x613, 
+    0x618, 0x7, 0x75, 0x2, 0x2, 0x614, 0x615, 0x7, 0x78, 0x2, 0x2, 0x615, 
+    0x618, 0x8, 0x6f, 0x1, 0x2, 0x616, 0x618, 0x7, 0x6e, 0x2, 0x2, 0x617, 
+    0x613, 0x3, 0x2, 0x2, 0x2, 0x617, 0x614, 0x3, 0x2, 0x2, 0x2, 0x617, 
+    0x616, 0x3, 0x2, 0x2, 0x2, 0x618, 0xdd, 0x3, 0x2, 0x2, 0x2, 0x619, 0x61a, 
+    0x9, 0x8, 0x2, 0x2, 0x61a, 0xdf, 0x3, 0x2, 0x2, 0x2, 0x61b, 0x61c, 0x9, 
+    0x9, 0x2, 0x2, 0x61c, 0xe1, 0x3, 0x2, 0x2, 0x2, 0x61d, 0x61e, 0x9, 0xa, 
+    0x2, 0x2, 0x61e, 0xe3, 0x3, 0x2, 0x2, 0x2, 0x110, 0xe5, 0xe8, 0xeb, 
+    0xf0, 0xf3, 0xf6, 0xf9, 0x105, 0x109, 0x10d, 0x111, 0x115, 0x119, 0x11e, 
+    0x123, 0x127, 0x12f, 0x139, 0x13d, 0x141, 0x145, 0x14a, 0x156, 0x15a, 
+    0x164, 0x168, 0x16c, 0x16e, 0x172, 0x176, 0x178, 0x18e, 0x199, 0x1af, 
+    0x1b3, 0x1b8, 0x1c3, 0x1c7, 0x1cb, 0x1d3, 0x1d9, 0x1e1, 0x1ed, 0x1f2, 
+    0x1f7, 0x1fb, 0x200, 0x206, 0x20b, 0x20e, 0x212, 0x216, 0x21a, 0x220, 
+    0x224, 0x229, 0x22e, 0x232, 0x235, 0x239, 0x23d, 0x241, 0x245, 0x249, 
+    0x24f, 0x253, 0x258, 0x25c, 0x264, 0x268, 0x26c, 0x270, 0x274, 0x277, 
+    0x27b, 0x285, 0x28b, 0x28f, 0x293, 0x298, 0x29d, 0x2a1, 0x2a7, 0x2ab, 
+    0x2af, 0x2b4, 0x2ba, 0x2bd, 0x2c3, 0x2c6, 0x2cc, 0x2d0, 0x2d4, 0x2d8, 
+    0x2dc, 0x2e1, 0x2e6, 0x2ea, 0x2ef, 0x2f2, 0x2fb, 0x304, 0x309, 0x316, 
+    0x319, 0x321, 0x325, 0x32a, 0x332, 0x338, 0x33d, 0x344, 0x348, 0x34c, 
+    0x34e, 0x352, 0x354, 0x358, 0x35a, 0x35e, 0x362, 0x364, 0x368, 0x36a, 
+    0x36e, 0x370, 0x373, 0x377, 0x37d, 0x381, 0x384, 0x387, 0x38d, 0x390, 
+    0x393, 0x397, 0x39b, 0x39f, 0x3a3, 0x3a5, 0x3a9, 0x3ab, 0x3af, 0x3b1, 
+    0x3b5, 0x3b7, 0x3bd, 0x3c1, 0x3c5, 0x3c9, 0x3cd, 0x3d1, 0x3d5, 0x3d9, 
+    0x3dd, 0x3e0, 0x3e6, 0x3ea, 0x3ee, 0x3f1, 0x3f6, 0x3fb, 0x400, 0x405, 
+    0x40b, 0x40e, 0x411, 0x414, 0x418, 0x41e, 0x422, 0x426, 0x435, 0x43f, 
+    0x449, 0x44e, 0x450, 0x456, 0x45a, 0x45e, 0x462, 0x466, 0x46e, 0x472, 
+    0x476, 0x47a, 0x480, 0x484, 0x48a, 0x48e, 0x493, 0x498, 0x49c, 0x4a1, 
+    0x4a6, 0x4aa, 0x4b0, 0x4b7, 0x4bb, 0x4c1, 0x4c8, 0x4cc, 0x4d2, 0x4d9, 
+    0x4dd, 0x4e2, 0x4e7, 0x4e9, 0x4ed, 0x4f0, 0x4f6, 0x4fa, 0x4fd, 0x500, 
+    0x507, 0x50b, 0x50f, 0x51e, 0x521, 0x526, 0x534, 0x538, 0x53b, 0x544, 
+    0x54b, 0x551, 0x555, 0x559, 0x55d, 0x561, 0x564, 0x56a, 0x56e, 0x574, 
+    0x578, 0x57c, 0x582, 0x586, 0x58a, 0x58c, 0x590, 0x594, 0x598, 0x59c, 
+    0x59f, 0x5a3, 0x5a9, 0x5ad, 0x5b1, 0x5b5, 0x5b8, 0x5bb, 0x5c1, 0x5c7, 
+    0x5cc, 0x5d0, 0x5d4, 0x5d9, 0x5db, 0x5de, 0x5e2, 0x5e5, 0x5e8, 0x5ee, 
+    0x5f2, 0x5f6, 0x5fe, 0x603, 0x607, 0x617, 
+>>>>>>> d678da15 (frontend changes for path)
   };
 
   atn::ATNDeserializer deserializer;

@@ -296,7 +296,7 @@ oC_RelationshipPattern
         ;
 
 oC_RelationshipDetail
-    : '[' SP? ( oC_Variable SP? )? ( oC_RelationshipTypes SP? )? ( oC_RangeLiteral SP? ) ? ( kU_Properties SP? ) ? ']' ;
+    : '[' SP? ( oC_Variable SP? )? ( oC_RelationshipTypes SP? )? ( oC_RangePattern SP? ) ? ( kU_Properties SP? ) ? ']' ;
 
 // The original oC_Properties definition is  oC_MapLiteral | oC_Parameter.
 // We choose to not support parameter as properties which will be the decision for a long time.
@@ -313,8 +313,14 @@ oC_NodeLabels
 oC_NodeLabel
     : ':' SP? oC_LabelName ;
 
+oC_RangePattern
+    :  '*' SP? (SHORTEST)? SP? (oC_RangeLiteral)? ;
+
 oC_RangeLiteral
-    :  '*' SP? oC_IntegerLiteral SP? '..' SP? oC_IntegerLiteral ;
+    :   ((oC_IntegerLiteral SP? '..') | (oC_IntegerLiteral SP? '..' SP? oC_IntegerLiteral)) ;
+
+SHORTEST
+    : ( 'S' | 's' ) ( 'H' | 'h' ) ( 'O' | 'o' ) ( 'R' | 'r' ) ( 'T' | 't' ) ( 'E' | 'e' ) ( 'S' | 's' ) ( 'T' | 't' ) ;
 
 oC_LabelName
     : oC_SchemaName ;

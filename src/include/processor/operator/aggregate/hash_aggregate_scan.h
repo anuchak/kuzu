@@ -42,9 +42,9 @@ public:
 private:
     std::vector<DataPos> groupByKeyVectorsPos;
     std::vector<common::DataType> groupByKeyVectorDataTypes;
-    std::vector<std::shared_ptr<common::ValueVector>> groupByKeyVectors;
+    std::vector<common::ValueVector*> groupByKeyVectors;
     std::shared_ptr<HashAggregateSharedState> sharedState;
-    std::vector<uint32_t> groupByKeyVectorsColIdxes;
+    std::vector<uint32_t> groupByKeyVectorsColIds;
 };
 
 } // namespace processor

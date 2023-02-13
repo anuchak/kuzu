@@ -7,8 +7,7 @@ namespace processor {
 
 void OrderBy::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
     for (auto [dataPos, _] : orderByDataInfo.payloadsPosAndType) {
-        auto vector = resultSet->getValueVector(dataPos);
-        vectorsToAppend.push_back(vector);
+        vectorsToAppend.push_back(resultSet->getValueVector(dataPos).get());
     }
     // TODO(Ziyi): this is implemented differently from other sink operators. Normally we append
     // local table to global at the end of the execution. But here your encoder seem to need encode
@@ -60,9 +59,8 @@ void OrderBy::initGlobalStateInternal(kuzu::processor::ExecutionContext* context
                     factorizedTableColIdx = j;
                 }
             }
-            strKeyColInfo.emplace_back(
-                StrKeyColInfo(tableSchema->getColOffset(factorizedTableColIdx),
-                    encodedKeyBlockColOffset, orderByDataInfo.isAscOrder[i]));
+            strKeyColInfo.emplace_back(tableSchema->getColOffset(factorizedTableColIdx),
+                encodedKeyBlockColOffset, orderByDataInfo.isAscOrder[i]);
         }
         encodedKeyBlockColOffset += OrderByKeyEncoder::getEncodingSize(dataType);
     }

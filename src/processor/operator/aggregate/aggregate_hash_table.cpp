@@ -70,7 +70,7 @@ bool AggregateHashTable::isAggregateValueDistinctForGroupByKeys(
 
 void AggregateHashTable::merge(AggregateHashTable& other) {
     std::shared_ptr<DataChunkState> vectorsToScanState = std::make_shared<DataChunkState>();
-    std::vector<std::shared_ptr<ValueVector>> vectorsToScan(
+    std::vector<ValueVector*> vectorsToScan(
         groupByHashKeysDataTypes.size() + groupByNonHashKeysDataTypes.size());
     std::vector<ValueVector*> groupByHashVectors(groupByHashKeysDataTypes.size());
     std::vector<ValueVector*> groupByNonHashVectors(groupByNonHashKeysDataTypes.size());
@@ -81,7 +81,7 @@ void AggregateHashTable::merge(AggregateHashTable& other) {
             std::make_shared<ValueVector>(groupByHashKeysDataTypes[i], &memoryManager);
         hashKeyVec->state = vectorsToScanState;
         hashKeyVectors[i] = hashKeyVec;
-        vectorsToScan[i] = hashKeyVec;
+        vectorsToScan[i] = hashKeyVec.get();
         groupByHashVectors[i] = hashKeyVec.get();
     }
     for (auto i = 0u; i < groupByNonHashKeysDataTypes.size(); i++) {
@@ -89,22 +89,22 @@ void AggregateHashTable::merge(AggregateHashTable& other) {
             std::make_shared<ValueVector>(groupByNonHashKeysDataTypes[i], &memoryManager);
         nonHashKeyVec->state = vectorsToScanState;
         nonHashKeyVectors[i] = nonHashKeyVec;
-        vectorsToScan[i + groupByHashKeysDataTypes.size()] = nonHashKeyVec;
+        vectorsToScan[i + groupByHashKeysDataTypes.size()] = nonHashKeyVec.get();
         groupByNonHashVectors[i] = nonHashKeyVec.get();
     }
     hashVector->state = vectorsToScanState;
     hashVector->setAllNonNull();
-    vectorsToScan.emplace_back(hashVector);
+    vectorsToScan.emplace_back(hashVector.get());
 
-    std::vector<uint32_t> colIdxesToScan(vectorsToScan.size() - 1);
-    iota(colIdxesToScan.begin(), colIdxesToScan.end(), 0);
+    std::vector<uint32_t> colIdsToScan(vectorsToScan.size() - 1);
+    iota(colIdsToScan.begin(), colIdsToScan.end(), 0);
     // Note: we store hash values at the last column of factorizedTable.
-    colIdxesToScan.push_back(factorizedTable->getTableSchema()->getNumColumns() - 1);
+    colIdsToScan.push_back(factorizedTable->getTableSchema()->getNumColumns() - 1);
     uint64_t startTupleIdx = 0;
     while (startTupleIdx < other.factorizedTable->getNumTuples()) {
         auto numTuplesToScan = std::min(
             other.factorizedTable->getNumTuples() - startTupleIdx, DEFAULT_VECTOR_CAPACITY);
-        other.factorizedTable->scan(vectorsToScan, startTupleIdx, numTuplesToScan, colIdxesToScan);
+        other.factorizedTable->scan(vectorsToScan, startTupleIdx, numTuplesToScan, colIdsToScan);
         findHashSlots(std::vector<ValueVector*>(), groupByHashVectors, groupByNonHashVectors);
         auto aggregateStateOffset = aggStateColOffsetInFT;
         for (auto& aggregateFunction : aggregateFunctions) {

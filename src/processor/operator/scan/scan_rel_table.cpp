@@ -7,7 +7,7 @@ void ScanRelTable::initLocalStateInternal(ResultSet* resultSet, ExecutionContext
     inNodeIDVector = resultSet->getValueVector(inNodeIDVectorPos);
     for (auto& dataPos : outputVectorsPos) {
         auto vector = resultSet->getValueVector(dataPos);
-        outputVectors.push_back(vector);
+        outputVectors.push_back(vector.get());
     }
 }
 

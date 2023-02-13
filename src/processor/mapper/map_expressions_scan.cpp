@@ -19,6 +19,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalExpressionsScanToPhysica
     // populate static table
     std::unique_ptr<FactorizedTableSchema> tableSchema = std::make_unique<FactorizedTableSchema>();
     std::vector<std::shared_ptr<ValueVector>> vectors;
+    std::vector<const ValueVector*> vectorPtrs;
     for (auto& expression : expressions) {
         tableSchema->appendColumn(
             std::make_unique<ColumnSchema>(false, 0 /* all expressions are in the same datachunk */,
@@ -31,7 +32,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalExpressionsScanToPhysica
     }
     sharedState->initTableIfNecessary(memoryManager, std::move(tableSchema));
     auto table = sharedState->getTable();
-    table->append(vectors);
+    table->append(vectorPtrs);
     // map factorized table scan
     std::vector<DataPos> outDataPoses;
     std::vector<uint32_t> colIndicesToScan;

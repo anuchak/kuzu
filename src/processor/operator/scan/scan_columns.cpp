@@ -7,7 +7,7 @@ void ScanColumns::initLocalStateInternal(ResultSet* resultSet, ExecutionContext*
     inputNodeIDVector = resultSet->getValueVector(inputNodeIDVectorPos);
     for (auto& dataPos : outPropertyVectorsPos) {
         auto vector = resultSet->getValueVector(dataPos);
-        outPropertyVectors.push_back(vector);
+        outPropertyVectors.push_back(vector.get());
     }
 }
 

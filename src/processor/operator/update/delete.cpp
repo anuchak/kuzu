@@ -43,7 +43,7 @@ bool DeleteRel::getNextTuplesInternal() {
         auto srcNodeVector = srcNodeVectors[i];
         auto dstNodeVector = dstNodeVectors[i];
         auto relIDVector = relIDVectors[i];
-        deleteRelInfo->table->deleteRel(srcNodeVector, dstNodeVector, relIDVector);
+        deleteRelInfo->table->deleteRel(*srcNodeVector, *dstNodeVector, *relIDVector);
         relsStatistics.updateNumRelsByValue(deleteRelInfo->table->getRelTableID(),
             -1 /* decrement numRelsPerDirectionBoundTable by 1 */);
     }

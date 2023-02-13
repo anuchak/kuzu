@@ -21,7 +21,7 @@ public:
     void probe(const std::vector<std::shared_ptr<common::ValueVector>>& keyVectors,
         uint8_t** probedTuples);
 
-    inline void lookup(std::vector<std::shared_ptr<common::ValueVector>>& vectors,
+    inline void lookup(std::vector<common::ValueVector*>& vectors,
         std::vector<uint32_t>& colIdxesToScan, uint8_t** tuplesToRead, uint64_t startPos,
         uint64_t numTuplesToRead) {
         factorizedTable->lookup(vectors, colIdxesToScan, tuplesToRead, startPos, numTuplesToRead);

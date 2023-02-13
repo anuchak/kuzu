@@ -10,7 +10,7 @@ bool ScanRelTableColumns::getNextTuplesInternal() {
             return false;
         }
         saveSelVector(inNodeIDVector->state->selVector);
-        tableData->scan(transaction, *scanState, inNodeIDVector, outputVectors);
+        tableData->scan(transaction, *scanState, *inNodeIDVector, outputVectors);
     } while (inNodeIDVector->state->selVector->selectedSize == 0);
     metrics->numOutputTuple.increase(inNodeIDVector->state->selVector->selectedSize);
     return true;

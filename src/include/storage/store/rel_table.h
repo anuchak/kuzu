@@ -88,31 +88,27 @@ public:
     inline bool isSingleMultiplicity() const { return isSingleMultiplicityInDirection; }
 
     void initializeData(catalog::RelTableSchema* tableSchema, WAL* wal);
-    void initializeColumns(
-        catalog::RelTableSchema* tableSchema, BufferManager& bufferManager, WAL* wal);
-    void initializeLists(
-        catalog::RelTableSchema* tableSchema, BufferManager& bufferManager, WAL* wal);
+    void initializeColumns(catalog::RelTableSchema* tableSchema, WAL* wal);
+    void initializeLists(catalog::RelTableSchema* tableSchema, WAL* wal);
     Column* getPropertyColumn(common::property_id_t propertyID);
     Lists* getPropertyLists(common::property_id_t propertyID);
 
     inline void scan(transaction::Transaction* transaction, RelTableScanState& scanState,
-        const std::shared_ptr<common::ValueVector>& inNodeIDVector,
-        std::vector<std::shared_ptr<common::ValueVector>>& outputVectors) {
+        const common::ValueVector& inNodeIDVector,
+        std::vector<common::ValueVector*>& outputVectors) {
         if (scanState.relTableDataType == RelTableDataType::COLUMNS) {
             scanColumns(transaction, scanState, inNodeIDVector, outputVectors);
         } else {
             scanLists(transaction, scanState, inNodeIDVector, outputVectors);
         }
     }
-    inline bool isBoundTable(common::table_id_t tableID) const { return tableID == boundTableID; }
+    inline bool isBoundTable(common::table_id_t tableID_) const { return tableID_ == boundTableID; }
 
-    void insertRel(const std::shared_ptr<common::ValueVector>& boundVector,
-        const std::shared_ptr<common::ValueVector>& nbrVector,
-        const std::vector<std::shared_ptr<common::ValueVector>>& relPropertyVectors);
-    void deleteRel(const std::shared_ptr<common::ValueVector>& boundVector);
-    void updateRel(const std::shared_ptr<common::ValueVector>& boundVector,
-        common::property_id_t propertyID,
-        const std::shared_ptr<common::ValueVector>& propertyVector);
+    void insertRel(const common::ValueVector& boundVector, const common::ValueVector& nbrVector,
+        const std::vector<common::ValueVector*>& relPropertyVectors);
+    void deleteRel(const common::ValueVector& boundVector);
+    void updateRel(const common::ValueVector& boundVector, common::property_id_t propertyID,
+        const common::ValueVector& propertyVector);
     void performOpOnListsWithUpdates(const std::function<void(Lists*)>& opOnListsWithUpdates);
     std::unique_ptr<ListsUpdateIteratorsForDirection> getListsUpdateIteratorsForDirection();
     void removeProperty(common::property_id_t propertyID);
@@ -122,11 +118,11 @@ public:
 
 private:
     void scanColumns(transaction::Transaction* transaction, RelTableScanState& scanState,
-        const std::shared_ptr<common::ValueVector>& inNodeIDVector,
-        std::vector<std::shared_ptr<common::ValueVector>>& outputVectors);
+        const common::ValueVector& inNodeIDVector,
+        std::vector<common::ValueVector*>& outputVectors);
     void scanLists(transaction::Transaction* transaction, RelTableScanState& scanState,
-        const std::shared_ptr<common::ValueVector>& inNodeIDVector,
-        std::vector<std::shared_ptr<common::ValueVector>>& outputVectors);
+        const common::ValueVector& inNodeIDVector,
+        std::vector<common::ValueVector*>& outputVectors);
 
 private:
     // TODO(Guodong): remove the distinction between AdjColumn and Column, also AdjLists and Lists.
@@ -197,16 +193,14 @@ public:
     void checkpointInMemoryIfNecessary();
     void rollbackInMemoryIfNecessary();
 
-    void insertRel(const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
-        const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
-        const std::vector<std::shared_ptr<common::ValueVector>>& relPropertyVectors);
-    void deleteRel(const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
-        const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
-        const std::shared_ptr<common::ValueVector>& relIDVector);
-    void updateRel(const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
-        const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
-        const std::shared_ptr<common::ValueVector>& relIDVector,
-        const std::shared_ptr<common::ValueVector>& propertyVector, uint32_t propertyID);
+    void insertRel(const common::ValueVector& srcNodeIDVector,
+        const common::ValueVector& dstNodeIDVector,
+        const std::vector<common::ValueVector*>& relPropertyVectors);
+    void deleteRel(const common::ValueVector& srcNodeIDVector,
+        const common::ValueVector& dstNodeIDVector, const common::ValueVector& relIDVector);
+    void updateRel(const common::ValueVector& srcNodeIDVector,
+        const common::ValueVector& dstNodeIDVector, const common::ValueVector& relIDVector,
+        const common::ValueVector& propertyVector, uint32_t propertyID);
     void initEmptyRelsForNewNode(common::nodeID_t& nodeID);
     void batchInitEmptyRelsForNewNodes(
         const catalog::RelTableSchema* relTableSchema, uint64_t numNodesInTable);

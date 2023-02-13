@@ -18,7 +18,7 @@ bool SetNodeProperty::getNextTuplesInternal() {
     for (auto i = 0u; i < infos.size(); ++i) {
         auto info = infos[i].get();
         info->evaluator->evaluate();
-        info->column->writeValues(nodeIDVectors[i], info->evaluator->resultVector);
+        info->column->writeValues(*nodeIDVectors[i], *info->evaluator->resultVector);
     }
     return true;
 }
@@ -51,8 +51,8 @@ bool SetRelProperty::getNextTuplesInternal() {
     for (auto i = 0u; i < infos.size(); ++i) {
         auto info = infos[i].get();
         info->evaluator->evaluate();
-        info->table->updateRel(srcNodeVectors[i], dstNodeVectors[i], relIDVectors[i],
-            info->evaluator->resultVector, info->propertyId);
+        info->table->updateRel(*srcNodeVectors[i], *dstNodeVectors[i], *relIDVectors[i],
+            *info->evaluator->resultVector, info->propertyId);
     }
     return true;
 }

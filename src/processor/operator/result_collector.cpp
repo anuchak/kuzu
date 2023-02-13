@@ -24,9 +24,7 @@ std::unique_ptr<FTableScanMorsel> FTableSharedState::getMorsel(uint64_t maxMorse
 
 void ResultCollector::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
     for (auto [dataPos, _] : payloadsPosAndType) {
-        auto vector =
-            resultSet->dataChunks[dataPos.dataChunkPos]->valueVectors[dataPos.valueVectorPos];
-        vectorsToCollect.push_back(vector);
+        vectorsToCollect.push_back(resultSet->getValueVector(dataPos).get());
     }
     localTable = std::make_unique<FactorizedTable>(context->memoryManager, populateTableSchema());
 }

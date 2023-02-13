@@ -20,15 +20,14 @@ void HashJoinProbe::initLocalStateInternal(ResultSet* resultSet, ExecutionContex
     }
     for (auto& dataPos : probeDataInfo.payloadsOutPos) {
         auto probePayloadVector = resultSet->getValueVector(dataPos);
-        vectorsToReadInto.push_back(probePayloadVector);
+        vectorsToReadInto.push_back(probePayloadVector.get());
     }
     // We only need to read nonKeys from the factorizedTable. Key columns are always kept as first k
     // columns in the factorizedTable, so we skip the first k columns.
     assert(probeDataInfo.keysDataPos.size() + probeDataInfo.getNumPayloads() + 1 ==
            sharedState->getHashTable()->getTableSchema()->getNumColumns());
-    columnIdxsToReadFrom.resize(probeDataInfo.getNumPayloads());
-    iota(
-        columnIdxsToReadFrom.begin(), columnIdxsToReadFrom.end(), probeDataInfo.keysDataPos.size());
+    columnIdsToReadFrom.resize(probeDataInfo.getNumPayloads());
+    iota(columnIdsToReadFrom.begin(), columnIdsToReadFrom.end(), probeDataInfo.keysDataPos.size());
 }
 
 bool HashJoinProbe::hasMoreLeft() {
@@ -122,7 +121,7 @@ uint64_t HashJoinProbe::getNextInnerJoinResult() {
         keyVectors[0]->state->selVector->selectedSize = numTuplesToRead;
         keyVectors[0]->state->selVector->resetSelectorToValuePosBuffer();
     }
-    sharedState->getHashTable()->lookup(vectorsToReadInto, columnIdxsToReadFrom,
+    sharedState->getHashTable()->lookup(vectorsToReadInto, columnIdsToReadFrom,
         probeState->matchedTuples.get(), probeState->nextMatchedTupleIdx, numTuplesToRead);
     probeState->nextMatchedTupleIdx += numTuplesToRead;
     return numTuplesToRead;

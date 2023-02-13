@@ -6,7 +6,7 @@ namespace processor {
 bool ScanRelTableLists::getNextTuplesInternal() {
     do {
         if (scanState->syncState->hasMoreAndSwitchSourceIfNecessary()) {
-            tableData->scan(transaction, *scanState, inNodeIDVector, outputVectors);
+            tableData->scan(transaction, *scanState, *inNodeIDVector, outputVectors);
             metrics->numOutputTuple.increase(outputVectors[0]->state->selVector->selectedSize);
             return true;
         }
@@ -14,7 +14,7 @@ bool ScanRelTableLists::getNextTuplesInternal() {
             return false;
         }
         scanState->syncState->resetState();
-        tableData->scan(transaction, *scanState, inNodeIDVector, outputVectors);
+        tableData->scan(transaction, *scanState, *inNodeIDVector, outputVectors);
     } while (outputVectors[0]->state->selVector->selectedSize == 0);
     metrics->numOutputTuple.increase(outputVectors[0]->state->selVector->selectedSize);
     return true;

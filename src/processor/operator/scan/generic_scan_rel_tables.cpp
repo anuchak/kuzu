@@ -13,13 +13,13 @@ void RelTableCollection::resetState() {
 }
 
 bool RelTableCollection::scan(const std::shared_ptr<ValueVector>& inVector,
-    std::vector<std::shared_ptr<ValueVector>>& outputVectors, Transaction* transaction) {
+    std::vector<ValueVector*>& outputVectors, Transaction* transaction) {
     do {
         if (tableScanStates[currentRelTableIdxToScan]->hasMoreAndSwitchSourceIfNecessary()) {
             assert(tableScanStates[currentRelTableIdxToScan]->relTableDataType ==
                    storage::RelTableDataType::LISTS);
             tables[currentRelTableIdxToScan]->scan(
-                transaction, *tableScanStates[currentRelTableIdxToScan], inVector, outputVectors);
+                transaction, *tableScanStates[currentRelTableIdxToScan], *inVector, outputVectors);
         } else {
             currentRelTableIdxToScan = nextRelTableIdxToScan;
             if (currentRelTableIdxToScan == tableScanStates.size()) {
@@ -34,7 +34,7 @@ bool RelTableCollection::scan(const std::shared_ptr<ValueVector>& inVector,
                 tableScanStates[currentRelTableIdxToScan]->syncState->resetState();
             }
             tables[currentRelTableIdxToScan]->scan(
-                transaction, *tableScanStates[currentRelTableIdxToScan], inVector, outputVectors);
+                transaction, *tableScanStates[currentRelTableIdxToScan], *inVector, outputVectors);
             nextRelTableIdxToScan++;
         }
     } while (outputVectors[0]->state->selVector->selectedSize == 0);

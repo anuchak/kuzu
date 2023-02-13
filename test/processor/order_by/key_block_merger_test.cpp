@@ -69,6 +69,7 @@ public:
             valueVector}; // only contains order_by columns
         std::vector<std::shared_ptr<ValueVector>> allVectors{
             valueVector}; // all columns including order_by and payload columns
+        std::vector<const ValueVector*> allVectorPtrs{valueVector.get()};
 
         std::unique_ptr<FactorizedTableSchema> tableSchema =
             std::make_unique<FactorizedTableSchema>();
@@ -90,7 +91,7 @@ public:
 
         auto factorizedTable =
             std::make_unique<FactorizedTable>(memoryManager.get(), std::move(tableSchema));
-        factorizedTable->append(allVectors);
+        factorizedTable->append(allVectorPtrs);
 
         std::vector<bool> isAscOrder = {isAsc};
         auto orderByKeyEncoder =
@@ -120,10 +121,10 @@ public:
         std::vector<StrKeyColInfo> strKeyColsInfo;
         if (hasPayLoadCol) {
             strKeyColsInfo.emplace_back(
-                StrKeyColInfo(8 /* colOffsetInFT */, 0 /* colOffsetInEncodedKeyBlock */, isAsc));
+                8 /* colOffsetInFT */, 0 /* colOffsetInEncodedKeyBlock */, isAsc);
         } else if constexpr (std::is_same<T, std::string>::value) {
             strKeyColsInfo.emplace_back(
-                StrKeyColInfo(0 /* colOffsetInFT */, 0 /* colOffsetInEncodedKeyBlock */, isAsc));
+                0 /* colOffsetInFT */, 0 /* colOffsetInEncodedKeyBlock */, isAsc);
         }
 
         KeyBlockMerger keyBlockMerger = KeyBlockMerger(
@@ -151,10 +152,13 @@ public:
 
     OrderByKeyEncoder prepareMultipleOrderByColsEncoder(uint16_t factorizedTableIdx,
         std::vector<std::shared_ptr<FactorizedTable>>& factorizedTables,
-        std::shared_ptr<DataChunk>& dataChunk, std::unique_ptr<FactorizedTableSchema> tableSchema) {
+        std::shared_ptr<DataChunk>& dataChunk,
+        std::unique_ptr<FactorizedTableSchema> tableSchema) const {
         std::vector<std::shared_ptr<ValueVector>> orderByVectors;
+        std::vector<const ValueVector*> orderByVectorPtrs;
         for (auto i = 0u; i < dataChunk->getNumValueVectors(); i++) {
             orderByVectors.emplace_back(dataChunk->getValueVector(i));
+            orderByVectorPtrs.push_back(dataChunk->getValueVector(i).get());
         }
 
         std::vector<bool> isAscOrder(orderByVectors.size(), true);
@@ -169,7 +173,7 @@ public:
         dataChunk->state->selVector->selectedSize = 1;
         for (auto i = 0u; i < dataChunk->state->originalSize; i++) {
             dataChunk->state->selVector->selectedPositions[0] = i;
-            factorizedTable->append(orderByVectors);
+            factorizedTable->append(orderByVectorPtrs);
             orderByKeyEncoder.encodeKeys();
             dataChunk->state->currIdx++;
         }
@@ -181,7 +185,7 @@ public:
 
     void prepareMultipleOrderByColsValueVector(std::vector<int64_t>& int64Values,
         std::vector<double>& doubleValues, std::vector<timestamp_t>& timestampValues,
-        std::shared_ptr<DataChunk>& dataChunk) {
+        std::shared_ptr<DataChunk>& dataChunk) const {
         assert(int64Values.size() == doubleValues.size());
         assert(doubleValues.size() == timestampValues.size());
         dataChunk->state->initOriginalAndSelectedSize(int64Values.size());
@@ -202,7 +206,7 @@ public:
         }
     }
 
-    void multipleOrderByColTest(bool hasStrCol) {
+    void multipleOrderByColTest(bool hasStrCol) const {
         std::vector<int64_t> int64Values1 = {INT64_MIN, -78, 23};
         std::vector<double> doubleValues1 = {3.28, -0.0001, 4.621};
         std::vector<timestamp_t> timestampValues1 = {
@@ -267,10 +271,10 @@ public:
         std::vector<StrKeyColInfo> strKeyColsInfo;
         if (hasStrCol) {
             strKeyColsInfo.emplace_back(
-                StrKeyColInfo(tableSchema->getColOffset(3 /* colIdx */) /* colOffsetInFT */,
-                    Types::getDataTypeSize(INT64) + Types::getDataTypeSize(DOUBLE) +
-                        Types::getDataTypeSize(TIMESTAMP) + 3,
-                    true /* isAscOrder */));
+                tableSchema->getColOffset(3 /* colIdx */) /* colOffsetInFT */,
+                Types::getDataTypeSize(INT64) + Types::getDataTypeSize(DOUBLE) +
+                    Types::getDataTypeSize(TIMESTAMP) + 3,
+                true /* isAscOrder */);
             expectedBlockOffsetOrder = {0, 0, 1, 1, 2, 2, 3};
             expectedFactorizedTableIdxOrder = {4, 5, 4, 5, 4, 5, 4};
         }
@@ -298,7 +302,7 @@ public:
 
     OrderByKeyEncoder prepareMultipleStrKeyColsEncoder(std::shared_ptr<DataChunk>& dataChunk,
         std::vector<std::vector<std::string>>& strValues, uint16_t factorizedTableIdx,
-        std::vector<std::shared_ptr<FactorizedTable>>& factorizedTables) {
+        std::vector<std::shared_ptr<FactorizedTable>>& factorizedTables) const {
         dataChunk->state->currIdx = 0;
         dataChunk->state->initOriginalAndSelectedSize(strValues[0].size());
         for (auto i = 0u; i < strValues.size(); i++) {
@@ -316,6 +320,9 @@ public:
         std::vector<std::shared_ptr<ValueVector>> allVectors{dataChunk->getValueVector(0),
             dataChunk->getValueVector(1), dataChunk->getValueVector(2),
             dataChunk->getValueVector(3)};
+        std::vector<const ValueVector*> allVectorPtrs{dataChunk->getValueVector(0).get(),
+            dataChunk->getValueVector(1).get(), dataChunk->getValueVector(2).get(),
+            dataChunk->getValueVector(3).get()};
 
         std::unique_ptr<FactorizedTableSchema> tableSchema =
             std::make_unique<FactorizedTableSchema>();
@@ -339,7 +346,7 @@ public:
         dataChunk->state->selVector->selectedSize = 1;
         for (auto i = 0u; i < strValues[0].size(); i++) {
             dataChunk->state->selVector->selectedPositions[0] = i;
-            factorizedTable->append(allVectors);
+            factorizedTable->append(allVectorPtrs);
             orderByKeyEncoder.encodeKeys();
             dataChunk->state->currIdx++;
         }
@@ -497,9 +504,9 @@ TEST_F(KeyBlockMergerTest, multipleStrKeyColsTest) {
         StrKeyColInfo(factorizedTables[0]->getTableSchema()->getColOffset(0 /* colIdx */),
             0 /* colOffsetInEncodedKeyBlock */, true /* isAscOrder */),
         StrKeyColInfo(factorizedTables[0]->getTableSchema()->getColOffset(1 /* colIdx */),
-            orderByKeyEncoder1.getEncodingSize(DataType(STRING)), true /* isAscOrder */),
+            OrderByKeyEncoder::getEncodingSize(DataType(STRING)), true /* isAscOrder */),
         StrKeyColInfo(factorizedTables[0]->getTableSchema()->getColOffset(3 /* colIdx */),
-            orderByKeyEncoder1.getEncodingSize(DataType(STRING)) * 2, true /* isAscOrder */)};
+            OrderByKeyEncoder::getEncodingSize(DataType(STRING)) * 2, true /* isAscOrder */)};
 
     KeyBlockMerger keyBlockMerger =
         KeyBlockMerger(factorizedTables, strKeyColsInfo, orderByKeyEncoder1.getNumBytesPerTuple());

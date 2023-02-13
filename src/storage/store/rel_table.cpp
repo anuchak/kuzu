@@ -42,14 +42,13 @@ Lists* DirectedRelTableData::getPropertyLists(property_id_t propertyID) {
 
 void DirectedRelTableData::initializeData(RelTableSchema* tableSchema, WAL* wal) {
     if (isSingleMultiplicity()) {
-        initializeColumns(tableSchema, bufferManager, wal);
+        initializeColumns(tableSchema, wal);
     } else {
-        initializeLists(tableSchema, bufferManager, wal);
+        initializeLists(tableSchema, wal);
     }
 }
 
-void DirectedRelTableData::initializeColumns(
-    RelTableSchema* tableSchema, BufferManager& bufferManager, WAL* wal) {
+void DirectedRelTableData::initializeColumns(RelTableSchema* tableSchema, WAL* wal) {
     adjColumn =
         std::make_unique<AdjColumn>(StorageUtils::getAdjColumnStructureIDAndFName(
                                         wal->getDirectory(), tableSchema->tableID, direction),
@@ -62,8 +61,7 @@ void DirectedRelTableData::initializeColumns(
     }
 }
 
-void DirectedRelTableData::initializeLists(
-    RelTableSchema* tableSchema, BufferManager& bufferManager, WAL* wal) {
+void DirectedRelTableData::initializeLists(RelTableSchema* tableSchema, WAL* wal) {
     adjLists = std::make_unique<AdjLists>(StorageUtils::getAdjListsStructureIDAndFName(
                                               wal->getDirectory(), tableSchema->tableID, direction),
         tableSchema->getNbrTableID(direction), bufferManager, wal, listsUpdatesStore);
@@ -76,10 +74,10 @@ void DirectedRelTableData::initializeLists(
 }
 
 void DirectedRelTableData::scanColumns(transaction::Transaction* transaction,
-    RelTableScanState& scanState, const std::shared_ptr<ValueVector>& inNodeIDVector,
-    std::vector<std::shared_ptr<ValueVector>>& outputVectors) {
+    RelTableScanState& scanState, const ValueVector& inNodeIDVector,
+    std::vector<ValueVector*>& outputVectors) {
     // Note: The scan operator should guarantee that the first property in the output is adj column.
-    adjColumn->read(transaction, inNodeIDVector, outputVectors[0]);
+    adjColumn->read(transaction, inNodeIDVector, *outputVectors[0]);
     NodeIDVector::discardNull(*outputVectors[0]);
     if (outputVectors[0]->state->selVector->selectedSize == 0) {
         return;
@@ -92,24 +90,24 @@ void DirectedRelTableData::scanColumns(transaction::Transaction* transaction,
             continue;
         }
         auto propertyColumn = getPropertyColumn(propertyId);
-        propertyColumn->read(transaction, inNodeIDVector, outputVectors[outputVectorId]);
+        propertyColumn->read(transaction, inNodeIDVector, *outputVectors[outputVectorId]);
     }
 }
 
 void DirectedRelTableData::scanLists(transaction::Transaction* transaction,
-    RelTableScanState& scanState, const std::shared_ptr<ValueVector>& inNodeIDVector,
-    std::vector<std::shared_ptr<ValueVector>>& outputVectors) {
+    RelTableScanState& scanState, const ValueVector& inNodeIDVector,
+    std::vector<ValueVector*>& outputVectors) {
     if (scanState.syncState->isBoundNodeOffsetInValid()) {
-        auto currentIdx = inNodeIDVector->state->selVector->selectedPositions[0];
-        if (inNodeIDVector->isNull(currentIdx)) {
+        auto currentIdx = inNodeIDVector.state->selVector->selectedPositions[0];
+        if (inNodeIDVector.isNull(currentIdx)) {
             outputVectors[0]->state->selVector->selectedSize = 0;
             return;
         }
-        auto currentNodeOffset = inNodeIDVector->readNodeOffset(currentIdx);
+        auto currentNodeOffset = inNodeIDVector.readNodeOffset(currentIdx);
         adjLists->initListReadingState(
             currentNodeOffset, *scanState.listHandles[0], transaction->getType());
     }
-    adjLists->readValues(transaction, outputVectors[0], *scanState.listHandles[0]);
+    adjLists->readValues(transaction, *outputVectors[0], *scanState.listHandles[0]);
     for (auto i = 0u; i < scanState.propertyIds.size(); i++) {
         auto propertyId = scanState.propertyIds[i];
         auto outputVectorId = i + 1;
@@ -119,51 +117,50 @@ void DirectedRelTableData::scanLists(transaction::Transaction* transaction,
         }
         auto propertyList = getPropertyLists(propertyId);
         propertyList->readValues(
-            transaction, outputVectors[outputVectorId], *scanState.listHandles[outputVectorId]);
+            transaction, *outputVectors[outputVectorId], *scanState.listHandles[outputVectorId]);
         propertyList->setDeletedRelsIfNecessary(
-            transaction, *scanState.listHandles[outputVectorId], outputVectors[outputVectorId]);
+            transaction, *scanState.listHandles[outputVectorId], *outputVectors[outputVectorId]);
     }
 }
 
-void DirectedRelTableData::insertRel(const std::shared_ptr<ValueVector>& boundVector,
-    const std::shared_ptr<ValueVector>& nbrVector,
-    const std::vector<std::shared_ptr<ValueVector>>& relPropertyVectors) {
+void DirectedRelTableData::insertRel(const ValueVector& boundVector, const ValueVector& nbrVector,
+    const std::vector<ValueVector*>& relPropertyVectors) {
     if (!isSingleMultiplicity()) {
         return;
     }
     auto nodeOffset =
-        boundVector->readNodeOffset(boundVector->state->selVector->selectedPositions[0]);
+        boundVector.readNodeOffset(boundVector.state->selVector->selectedPositions[0]);
     // TODO(Guodong): We should pass a write transaction pointer down.
     if (!adjColumn->isNull(nodeOffset, transaction::Transaction::getDummyWriteTrx().get())) {
         throw RuntimeException(
             StringUtils::string_format("Node(nodeOffset: %d, tableID: %d) in RelTable %d cannot "
                                        "have more than one neighbour in the %s direction.",
                 nodeOffset,
-                boundVector->getValue<nodeID_t>(boundVector->state->selVector->selectedPositions[0])
+                boundVector.getValue<nodeID_t>(boundVector.state->selVector->selectedPositions[0])
                     .tableID,
                 tableID, getRelDirectionAsString(direction).c_str()));
     }
     adjColumn->writeValues(boundVector, nbrVector);
     for (auto i = 0u; i < relPropertyVectors.size(); i++) {
         auto propertyColumn = getPropertyColumn(i);
-        propertyColumn->writeValues(boundVector, relPropertyVectors[i]);
+        propertyColumn->writeValues(boundVector, *relPropertyVectors[i]);
     }
 }
 
-void DirectedRelTableData::deleteRel(const std::shared_ptr<ValueVector>& boundVector) {
+void DirectedRelTableData::deleteRel(const ValueVector& boundVector) {
     if (!isSingleMultiplicity()) {
         return;
     }
     auto nodeOffset =
-        boundVector->readNodeOffset(boundVector->state->selVector->selectedPositions[0]);
+        boundVector.readNodeOffset(boundVector.state->selVector->selectedPositions[0]);
     adjColumn->setNodeOffsetToNull(nodeOffset);
     for (auto& [_, propertyColumn] : propertyColumns) {
         propertyColumn->setNodeOffsetToNull(nodeOffset);
     }
 }
 
-void DirectedRelTableData::updateRel(const std::shared_ptr<ValueVector>& boundVector,
-    property_id_t propertyID, const std::shared_ptr<ValueVector>& propertyVector) {
+void DirectedRelTableData::updateRel(
+    const ValueVector& boundVector, property_id_t propertyID, const ValueVector& propertyVector) {
     if (!isSingleMultiplicity()) {
         return;
     }
@@ -261,39 +258,34 @@ void RelTable::rollbackInMemoryIfNecessary() {
 
 // This function assumes that the order of vectors in relPropertyVectorsPerRelTable as:
 // [relProp1, relProp2, ..., relPropN] and all vectors are flat.
-void RelTable::insertRel(const std::shared_ptr<ValueVector>& srcNodeIDVector,
-    const std::shared_ptr<ValueVector>& dstNodeIDVector,
-    const std::vector<std::shared_ptr<ValueVector>>& relPropertyVectors) {
-    assert(srcNodeIDVector->state->isFlat() && dstNodeIDVector->state->isFlat());
+void RelTable::insertRel(const ValueVector& srcNodeIDVector, const ValueVector& dstNodeIDVector,
+    const std::vector<ValueVector*>& relPropertyVectors) {
+    assert(srcNodeIDVector.state->isFlat() && dstNodeIDVector.state->isFlat());
     fwdRelTableData->insertRel(srcNodeIDVector, dstNodeIDVector, relPropertyVectors);
     bwdRelTableData->insertRel(dstNodeIDVector, srcNodeIDVector, relPropertyVectors);
     listsUpdatesStore->insertRelIfNecessary(srcNodeIDVector, dstNodeIDVector, relPropertyVectors);
 }
 
-void RelTable::deleteRel(const std::shared_ptr<ValueVector>& srcNodeIDVector,
-    const std::shared_ptr<ValueVector>& dstNodeIDVector,
-    const std::shared_ptr<ValueVector>& relIDVector) {
-    assert(srcNodeIDVector->state->isFlat() && dstNodeIDVector->state->isFlat() &&
-           relIDVector->state->isFlat());
+void RelTable::deleteRel(const ValueVector& srcNodeIDVector, const ValueVector& dstNodeIDVector,
+    const ValueVector& relIDVector) {
+    assert(srcNodeIDVector.state->isFlat() && dstNodeIDVector.state->isFlat() &&
+           relIDVector.state->isFlat());
     fwdRelTableData->deleteRel(srcNodeIDVector);
     bwdRelTableData->deleteRel(dstNodeIDVector);
     listsUpdatesStore->deleteRelIfNecessary(srcNodeIDVector, dstNodeIDVector, relIDVector);
 }
 
-void RelTable::updateRel(const std::shared_ptr<ValueVector>& srcNodeIDVector,
-    const std::shared_ptr<ValueVector>& dstNodeIDVector,
-    const std::shared_ptr<ValueVector>& relIDVector,
-    const std::shared_ptr<ValueVector>& propertyVector, uint32_t propertyID) {
-    assert(srcNodeIDVector->state->isFlat() && dstNodeIDVector->state->isFlat() &&
-           relIDVector->state->isFlat() && propertyVector->state->isFlat());
-    auto srcNode = srcNodeIDVector->getValue<nodeID_t>(
-        srcNodeIDVector->state->selVector->selectedPositions[0]);
-    auto dstNode = dstNodeIDVector->getValue<nodeID_t>(
-        dstNodeIDVector->state->selVector->selectedPositions[0]);
+void RelTable::updateRel(const ValueVector& srcNodeIDVector, const ValueVector& dstNodeIDVector,
+    const ValueVector& relIDVector, const ValueVector& propertyVector, uint32_t propertyID) {
+    assert(srcNodeIDVector.state->isFlat() && dstNodeIDVector.state->isFlat() &&
+           relIDVector.state->isFlat() && propertyVector.state->isFlat());
+    auto srcNode =
+        srcNodeIDVector.getValue<nodeID_t>(srcNodeIDVector.state->selVector->selectedPositions[0]);
+    auto dstNode =
+        dstNodeIDVector.getValue<nodeID_t>(dstNodeIDVector.state->selVector->selectedPositions[0]);
     fwdRelTableData->updateRel(srcNodeIDVector, propertyID, propertyVector);
     bwdRelTableData->updateRel(dstNodeIDVector, propertyID, propertyVector);
-    auto relID =
-        relIDVector->getValue<relID_t>(relIDVector->state->selVector->selectedPositions[0]);
+    auto relID = relIDVector.getValue<relID_t>(relIDVector.state->selVector->selectedPositions[0]);
     ListsUpdateInfo listsUpdateInfo = ListsUpdateInfo{propertyVector, propertyID, relID.offset,
         fwdRelTableData->getListOffset(srcNode, relID.offset),
         bwdRelTableData->getListOffset(dstNode, relID.offset)};

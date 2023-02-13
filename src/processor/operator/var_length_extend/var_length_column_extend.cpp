@@ -70,7 +70,7 @@ bool VarLengthColumnExtend::addDFSLevelToStackIfParentExtends(
     std::shared_ptr<ValueVector>& parentValueVector, uint8_t level) {
     auto dfsLevelInfo = static_pointer_cast<ColumnExtendDFSLevelInfo>(dfsLevelInfos[level - 1]);
     dfsLevelInfo->reset();
-    ((Column*)storage)->read(transaction, parentValueVector, dfsLevelInfo->children);
+    ((Column*)storage)->read(transaction, *parentValueVector, *dfsLevelInfo->children);
     if (!dfsLevelInfo->children->isNull(
             parentValueVector->state->selVector->selectedPositions[0])) {
         dfsStack.emplace(std::move(dfsLevelInfo));

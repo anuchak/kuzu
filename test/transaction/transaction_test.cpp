@@ -1,6 +1,5 @@
 #include "common/configs.h"
 #include "graph_test/graph_test.h"
-#include "json.hpp"
 #include "storage/storage_manager.h"
 #include "transaction/transaction_manager.h"
 
@@ -60,11 +59,11 @@ public:
     }
 
     void readAndAssertAgePropertyNode(
-        uint64_t nodeOffset, Transaction* trx, int64_t expectedValue, bool isNull) {
+        int64_t nodeOffset, Transaction* trx, int64_t expectedValue, bool isNull) const {
         dataChunk->state->currIdx = nodeOffset;
         dataChunk->state->selVector->resetSelectorToValuePosBuffer();
         dataChunk->state->selVector->selectedPositions[0] = nodeOffset;
-        personAgeColumn->read(trx, nodeVector, agePropertyVectorToReadDataInto);
+        personAgeColumn->read(trx, *nodeVector, *agePropertyVectorToReadDataInto);
         if (isNull) {
             ASSERT_TRUE(agePropertyVectorToReadDataInto->isNull(dataChunk->state->currIdx));
         } else {
@@ -75,11 +74,11 @@ public:
     }
 
     void readAndAssertEyeSightPropertyNode(
-        uint64_t nodeOffset, Transaction* trx, double expectedValue, bool isNull) {
+        int64_t nodeOffset, Transaction* trx, double expectedValue, bool isNull) const {
         dataChunk->state->currIdx = nodeOffset;
         dataChunk->state->selVector->resetSelectorToValuePosBuffer();
         dataChunk->state->selVector->selectedPositions[0] = nodeOffset;
-        personEyeSightColumn->read(trx, nodeVector, eyeSightVectorToReadDataInto);
+        personEyeSightColumn->read(trx, *nodeVector, *eyeSightVectorToReadDataInto);
         if (isNull) {
             ASSERT_TRUE(eyeSightVectorToReadDataInto->isNull(dataChunk->state->currIdx));
         } else {
@@ -89,7 +88,7 @@ public:
         }
     }
 
-    void writeToAgePropertyNode(uint64_t nodeOffset, int64_t expectedValue, bool isNull) {
+    void writeToAgePropertyNode(int64_t nodeOffset, int64_t expectedValue, bool isNull) {
         dataChunk->state->currIdx = nodeOffset;
         dataChunk->state->selVector->resetSelectorToValuePosBuffer();
         dataChunk->state->selVector->selectedPositions[0] = nodeOffset;
@@ -104,10 +103,10 @@ public:
             propertyVectorToWriteDataTo->setValue(
                 dataChunk->state->currIdx, (uint64_t)expectedValue);
         }
-        personAgeColumn->writeValues(nodeVector, propertyVectorToWriteDataTo);
+        personAgeColumn->writeValues(*nodeVector, *propertyVectorToWriteDataTo);
     }
 
-    void writeToEyeSightPropertyNode(uint64_t nodeOffset, double expectedValue, bool isNull) {
+    void writeToEyeSightPropertyNode(int64_t nodeOffset, double expectedValue, bool isNull) {
         dataChunk->state->currIdx = nodeOffset;
         dataChunk->state->selVector->resetSelectorToValuePosBuffer();
         dataChunk->state->selVector->selectedPositions[0] = nodeOffset;
@@ -122,10 +121,10 @@ public:
             propertyVectorToWriteDataTo->setValue(
                 dataChunk->state->currIdx, (double_t)expectedValue);
         }
-        personEyeSightColumn->writeValues(nodeVector, propertyVectorToWriteDataTo);
+        personEyeSightColumn->writeValues(*nodeVector, *propertyVectorToWriteDataTo);
     }
 
-    void assertOriginalAgeAndEyeSightPropertiesForNodes0And1(Transaction* transaction) {
+    void assertOriginalAgeAndEyeSightPropertiesForNodes0And1(Transaction* transaction) const {
         readAndAssertAgePropertyNode(0 /* node offset */, transaction, 35, false /* is not null */);
         readAndAssertAgePropertyNode(1 /* node offset */, transaction, 30, false /* is not null */);
         readAndAssertEyeSightPropertyNode(
@@ -144,7 +143,7 @@ public:
         writeToEyeSightPropertyNode(1 /* node offset */, 3.4, true /* is null */);
     }
 
-    void assertUpdatedAgeAndEyeSightPropertiesForNodes0And1(Transaction* transaction) {
+    void assertUpdatedAgeAndEyeSightPropertiesForNodes0And1(Transaction* transaction) const {
         readAndAssertAgePropertyNode(0 /* node offset */, transaction, 70, false /* is not null */);
         readAndAssertAgePropertyNode(1 /* node offset */, transaction,
             1232532 /* this argument is ignored */, true /* is  null */);
@@ -245,7 +244,7 @@ TEST_F(TransactionTests, OpenReadOnlyTransactionTriggersTimeoutErrorForWriteTran
     try {
         commitAndCheckpointOrRollback(*database, writeTrx.get(), true /* isCommit */);
         FAIL();
-    } catch (TransactionManagerException e) {
+    } catch (TransactionManagerException& e) {
     } catch (Exception& e) { FAIL(); }
     assertOriginalAgeAndEyeSightPropertiesForNodes0And1(readTrx.get());
 }

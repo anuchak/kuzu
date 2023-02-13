@@ -39,7 +39,7 @@ WALPageIdxPosInPageAndFrame StorageStructure::createWALVersionOfPageIfNecessaryF
     }
     auto walPageIdxAndFrame = StorageStructureUtils::createWALVersionIfNecessaryAndPinPage(
         originalPageCursor.pageIdx, insertingNewPage, fileHandle, bufferManager, *wal);
-    return WALPageIdxPosInPageAndFrame(walPageIdxAndFrame, originalPageCursor.elemPosInPage);
+    return {walPageIdxAndFrame, originalPageCursor.elemPosInPage};
 }
 
 BaseColumnOrList::BaseColumnOrList(const StorageStructureIDAndFName& storageStructureIDAndFName,
@@ -50,10 +50,10 @@ BaseColumnOrList::BaseColumnOrList(const StorageStructureIDAndFName& storageStru
     numElementsPerPage = PageUtils::getNumElementsInAPage(elementSize, hasNULLBytes);
 }
 
-void BaseColumnOrList::readBySequentialCopy(Transaction* transaction,
-    const std::shared_ptr<ValueVector>& vector, PageElementCursor& cursor,
+void BaseColumnOrList::readBySequentialCopy(Transaction* transaction, ValueVector& vector,
+    PageElementCursor& cursor,
     const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper) {
-    uint64_t numValuesToRead = vector->state->originalSize;
+    uint64_t numValuesToRead = vector.state->originalSize;
     uint64_t vectorPos = 0;
     while (vectorPos != numValuesToRead) {
         uint64_t numValuesInPage = numElementsPerPage - cursor.elemPosInPage;
@@ -67,10 +67,10 @@ void BaseColumnOrList::readBySequentialCopy(Transaction* transaction,
 }
 
 void BaseColumnOrList::readInternalIDsBySequentialCopy(Transaction* transaction,
-    const std::shared_ptr<ValueVector>& vector, PageElementCursor& cursor,
+    ValueVector& vector, PageElementCursor& cursor,
     const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper,
     table_id_t commonTableID, bool hasNoNullGuarantee) {
-    uint64_t numValuesToRead = vector->state->originalSize;
+    uint64_t numValuesToRead = vector.state->originalSize;
     uint64_t vectorPos = 0;
     while (vectorPos != numValuesToRead) {
         uint64_t numValuesInPage = numElementsPerPage - cursor.elemPosInPage;
@@ -84,7 +84,7 @@ void BaseColumnOrList::readInternalIDsBySequentialCopy(Transaction* transaction,
 }
 
 void BaseColumnOrList::readInternalIDsFromAPageBySequentialCopy(Transaction* transaction,
-    const std::shared_ptr<ValueVector>& vector, uint64_t vectorStartPos, page_idx_t physicalPageIdx,
+    ValueVector& vector, uint64_t vectorStartPos, page_idx_t physicalPageIdx,
     uint16_t pagePosOfFirstElement, uint64_t numValuesToRead, table_id_t commonTableID,
     bool hasNoNullGuarantee) {
     auto [fileHandleToPin, pageIdxToPin] =
@@ -92,7 +92,7 @@ void BaseColumnOrList::readInternalIDsFromAPageBySequentialCopy(Transaction* tra
             fileHandle, physicalPageIdx, *wal, transaction->getType());
     auto frame = bufferManager.pin(*fileHandleToPin, pageIdxToPin);
     if (hasNoNullGuarantee) {
-        vector->setRangeNonNull(vectorStartPos, numValuesToRead);
+        vector.setRangeNonNull(vectorStartPos, numValuesToRead);
     } else {
         readNullBitsFromAPage(
             vector, frame, pagePosOfFirstElement, vectorStartPos, numValuesToRead);
@@ -102,17 +102,17 @@ void BaseColumnOrList::readInternalIDsFromAPageBySequentialCopy(Transaction* tra
         internalID_t internalID{0, commonTableID};
         internalID.offset = *(offset_t*)currentFrameHead;
         currentFrameHead += sizeof(offset_t);
-        vector->setValue(vectorStartPos + i, internalID);
+        vector.setValue(vectorStartPos + i, internalID);
     }
     bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
 }
 
 void BaseColumnOrList::readInternalIDsBySequentialCopyWithSelState(Transaction* transaction,
-    const std::shared_ptr<common::ValueVector>& vector, PageElementCursor& cursor,
+    common::ValueVector& vector, PageElementCursor& cursor,
     const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper,
     table_id_t commonTableID) {
-    auto selectedState = vector->state;
-    uint64_t numValuesToRead = vector->state->originalSize;
+    auto selectedState = vector.state;
+    uint64_t numValuesToRead = vector.state->originalSize;
     uint64_t selectedStatePos = 0;
     uint64_t vectorPos = 0;
     while (true) {
@@ -137,10 +137,10 @@ void BaseColumnOrList::readInternalIDsBySequentialCopyWithSelState(Transaction* 
 }
 
 void BaseColumnOrList::readBySequentialCopyWithSelState(Transaction* transaction,
-    const std::shared_ptr<ValueVector>& vector, PageElementCursor& cursor,
+    ValueVector& vector, PageElementCursor& cursor,
     const std::function<page_idx_t(page_idx_t)>& logicalToPhysicalPageMapper) {
-    auto selectedState = vector->state;
-    auto numValuesToRead = vector->state->originalSize;
+    auto selectedState = vector.state;
+    auto numValuesToRead = vector.state->originalSize;
     uint64_t selectedStatePos = 0;
     uint64_t vectorPos = 0;
     while (true) {
@@ -163,34 +163,34 @@ void BaseColumnOrList::readBySequentialCopyWithSelState(Transaction* transaction
     }
 }
 
-void BaseColumnOrList::readSingleNullBit(const std::shared_ptr<ValueVector>& valueVector,
-    const uint8_t* frame, uint64_t elementPos, uint64_t offsetInVector) const {
+void BaseColumnOrList::readSingleNullBit(ValueVector& valueVector, const uint8_t* frame,
+    uint64_t elementPos, uint64_t offsetInVector) const {
     auto inputNullEntries = (uint64_t*)getNullBufferInPage(frame);
     bool isNull = NullMask::isNull(inputNullEntries, elementPos);
-    valueVector->setNull(offsetInVector, isNull);
+    valueVector.setNull(offsetInVector, isNull);
 }
 
-void BaseColumnOrList::readAPageBySequentialCopy(Transaction* transaction,
-    const std::shared_ptr<ValueVector>& vector, uint64_t vectorStartPos, page_idx_t physicalPageIdx,
-    uint16_t pagePosOfFirstElement, uint64_t numValuesToRead) {
+void BaseColumnOrList::readAPageBySequentialCopy(Transaction* transaction, ValueVector& vector,
+    uint64_t vectorStartPos, page_idx_t physicalPageIdx, uint16_t pagePosOfFirstElement,
+    uint64_t numValuesToRead) {
     auto [fileHandleToPin, pageIdxToPin] =
         StorageStructureUtils::getFileHandleAndPhysicalPageIdxToPin(
             fileHandle, physicalPageIdx, *wal, transaction->getType());
     auto vectorBytesOffset = getElemByteOffset(vectorStartPos);
     auto frameBytesOffset = getElemByteOffset(pagePosOfFirstElement);
     auto frame = bufferManager.pin(*fileHandleToPin, pageIdxToPin);
-    memcpy(vector->getData() + vectorBytesOffset, frame + frameBytesOffset,
+    memcpy(vector.getData() + vectorBytesOffset, frame + frameBytesOffset,
         numValuesToRead * elementSize);
     readNullBitsFromAPage(vector, frame, pagePosOfFirstElement, vectorStartPos, numValuesToRead);
     bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
 }
 
-void BaseColumnOrList::readNullBitsFromAPage(const std::shared_ptr<ValueVector>& valueVector,
-    const uint8_t* frame, uint64_t posInPage, uint64_t posInVector, uint64_t numBitsToRead) const {
+void BaseColumnOrList::readNullBitsFromAPage(ValueVector& valueVector, const uint8_t* frame,
+    uint64_t posInPage, uint64_t posInVector, uint64_t numBitsToRead) const {
     auto hasNullInSrcNullMask = NullMask::copyNullMask((uint64_t*)getNullBufferInPage(frame),
-        posInPage, valueVector->getNullMaskData(), posInVector, numBitsToRead);
+        posInPage, valueVector.getNullMaskData(), posInVector, numBitsToRead);
     if (hasNullInSrcNullMask) {
-        valueVector->setMayContainNulls();
+        valueVector.setMayContainNulls();
     }
 }
 

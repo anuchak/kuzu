@@ -40,14 +40,15 @@ private:
         common::nodeID_t* rightNodeIDs, common::SelectionVector& rSelVector);
     void intersectLists(const std::vector<common::overflow_value_t>& listsToIntersect);
     void populatePayloads(
-        const std::vector<uint8_t*>& tuples, const std::vector<uint32_t>& listIdxes);
+        const std::vector<uint8_t*>& tuples, const std::vector<uint32_t>& listIds);
 
 private:
     DataPos outputDataPos;
     std::vector<IntersectDataInfo> intersectDataInfos;
-    // payloadColumnIdxesToScanFrom and payloadVectorsToScanInto are organized by each build child.
-    std::vector<std::vector<uint32_t>> payloadColumnIdxesToScanFrom;
+    // payloadColumnIdsToScanFrom and payloadVectorsToScanInto are organized by each build child.
+    std::vector<std::vector<uint32_t>> payloadColumnIdsToScanFrom;
     std::vector<std::vector<std::shared_ptr<common::ValueVector>>> payloadVectorsToScanInto;
+    std::vector<std::vector<common::ValueVector*>> payloadVectorPtrsToScanInto;
     std::shared_ptr<common::ValueVector> outKeyVector;
     std::vector<std::shared_ptr<common::ValueVector>> probeKeyVectors;
     std::vector<std::unique_ptr<common::SelectionVector>> intersectSelVectors;

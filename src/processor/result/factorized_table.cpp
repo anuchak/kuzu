@@ -97,7 +97,7 @@ FactorizedTable::FactorizedTable(
     }
 }
 
-void FactorizedTable::append(const std::vector<std::shared_ptr<ValueVector>>& vectors) {
+void FactorizedTable::append(const std::vector<const ValueVector*>& vectors) {
     auto numTuplesToAppend = computeNumTuplesToAppend(vectors);
     auto appendInfos = allocateFlatTupleBlocks(numTuplesToAppend);
     for (auto i = 0u; i < vectors.size(); i++) {
@@ -125,24 +125,22 @@ uint8_t* FactorizedTable::appendEmptyTuple() {
     return tuplePtr;
 }
 
-void FactorizedTable::scan(std::vector<std::shared_ptr<ValueVector>>& vectors,
-    ft_tuple_idx_t tupleIdx, uint64_t numTuplesToScan,
-    std::vector<ft_col_idx_t>& colIdxesToScan) const {
-    assert(tupleIdx + numTuplesToScan <= numTuples);
-    assert(vectors.size() == colIdxesToScan.size());
-    std::unique_ptr<uint8_t*[]> tuplesToRead = std::make_unique<uint8_t*[]>(numTuplesToScan);
+void FactorizedTable::scan(std::vector<ValueVector*>& vectors, ft_tuple_idx_t tupleIdx,
+    uint64_t numTuplesToScan, std::vector<ft_col_idx_t>& colIdsToScan) const {
+    assert((tupleIdx + numTuplesToScan <= numTuples) && (vectors.size() == colIdsToScan.size()));
+    std::vector<uint8_t*> tuplesToRead(numTuplesToScan);
     for (auto i = 0u; i < numTuplesToScan; i++) {
         tuplesToRead[i] = getTuple(tupleIdx + i);
     }
-    return lookup(vectors, colIdxesToScan, tuplesToRead.get(), 0 /* startPos */, numTuplesToScan);
+    return lookup(vectors, colIdsToScan, &tuplesToRead[0], 0 /* startPos */, numTuplesToScan);
 }
 
-void FactorizedTable::lookup(std::vector<std::shared_ptr<ValueVector>>& vectors,
-    std::vector<ft_col_idx_t>& colIdxesToScan, uint8_t** tuplesToRead, uint64_t startPos,
+void FactorizedTable::lookup(std::vector<ValueVector*>& vectors,
+    std::vector<ft_col_idx_t>& colIdsToScan, uint8_t** tuplesToRead, uint64_t startPos,
     uint64_t numTuplesToRead) const {
-    assert(vectors.size() == colIdxesToScan.size());
-    for (auto i = 0u; i < colIdxesToScan.size(); i++) {
-        ft_col_idx_t colIdx = colIdxesToScan[i];
+    assert(vectors.size() == colIdsToScan.size());
+    for (auto i = 0u; i < colIdsToScan.size(); i++) {
+        ft_col_idx_t colIdx = colIdsToScan[i];
         if (tableSchema->getColumn(colIdx)->isFlat()) {
             assert(!(vectors[i]->state->isFlat() && numTuplesToRead > 1));
             readFlatCol(tuplesToRead + startPos, colIdx, *vectors[i], numTuplesToRead);
@@ -155,12 +153,11 @@ void FactorizedTable::lookup(std::vector<std::shared_ptr<ValueVector>>& vectors,
     }
 }
 
-void FactorizedTable::lookup(std::vector<std::shared_ptr<ValueVector>>& vectors,
-    const SelectionVector* selVector, std::vector<ft_col_idx_t>& colIdxesToScan,
-    uint8_t* tupleToRead) const {
-    assert(vectors.size() == colIdxesToScan.size());
-    for (auto i = 0u; i < colIdxesToScan.size(); i++) {
-        ft_col_idx_t colIdx = colIdxesToScan[i];
+void FactorizedTable::lookup(std::vector<ValueVector*>& vectors, const SelectionVector* selVector,
+    std::vector<ft_col_idx_t>& colIdsToScan, uint8_t* tupleToRead) const {
+    assert(vectors.size() == colIdsToScan.size());
+    for (auto i = 0u; i < colIdsToScan.size(); i++) {
+        ft_col_idx_t colIdx = colIdsToScan[i];
         if (tableSchema->getColumn(colIdx)->isFlat()) {
             readFlatCol(&tupleToRead, colIdx, *vectors[i], 1);
         } else {
@@ -169,15 +166,15 @@ void FactorizedTable::lookup(std::vector<std::shared_ptr<ValueVector>>& vectors,
     }
 }
 
-void FactorizedTable::lookup(std::vector<std::shared_ptr<ValueVector>>& vectors,
-    std::vector<ft_col_idx_t>& colIdxesToScan, std::vector<ft_tuple_idx_t>& tupleIdxesToRead,
+void FactorizedTable::lookup(std::vector<ValueVector*>& vectors,
+    std::vector<ft_col_idx_t>& colIdsToScan, std::vector<ft_tuple_idx_t>& tupleIdsToRead,
     uint64_t startPos, uint64_t numTuplesToRead) const {
-    assert(vectors.size() == colIdxesToScan.size());
-    auto tuplesToRead = std::make_unique<uint8_t*[]>(tupleIdxesToRead.size());
+    assert(vectors.size() == colIdsToScan.size());
+    auto tuplesToRead = std::make_unique<uint8_t*[]>(tupleIdsToRead.size());
     for (auto i = 0u; i < numTuplesToRead; i++) {
-        tuplesToRead[i] = getTuple(tupleIdxesToRead[i + startPos]);
+        tuplesToRead[i] = getTuple(tupleIdsToRead[i + startPos]);
     }
-    lookup(vectors, colIdxesToScan, tuplesToRead.get(), 0 /* startPos */, numTuplesToRead);
+    lookup(vectors, colIdsToScan, tuplesToRead.get(), 0 /* startPos */, numTuplesToRead);
 }
 
 void FactorizedTable::mergeMayContainNulls(FactorizedTable& other) {
@@ -237,7 +234,7 @@ uint8_t* FactorizedTable::getTuple(ft_tuple_idx_t tupleIdx) const {
 }
 
 void FactorizedTable::updateFlatCell(
-    uint8_t* tuplePtr, ft_col_idx_t colIdx, ValueVector* valueVector, uint32_t pos) {
+    uint8_t* tuplePtr, ft_col_idx_t colIdx, const ValueVector* valueVector, uint32_t pos) {
     if (valueVector->isNull(pos)) {
         setNonOverflowColNull(tuplePtr + tableSchema->getNullMapOffset(), colIdx);
     } else {
@@ -247,13 +244,13 @@ void FactorizedTable::updateFlatCell(
 }
 
 void FactorizedTable::copySingleValueToVector(ft_tuple_idx_t tupleIdx, ft_col_idx_t colIdx,
-    std::shared_ptr<ValueVector> valueVector, uint32_t posInVector) const {
+    ValueVector& valueVector, uint32_t posInVector) const {
     auto tuple = getTuple(tupleIdx);
     auto isNullInFT = isNonOverflowColNull(tuple + tableSchema->getNullMapOffset(), colIdx);
-    valueVector->setNull(posInVector, isNullInFT);
+    valueVector.setNull(posInVector, isNullInFT);
     if (!isNullInFT) {
         ValueVectorUtils::copyNonNullDataWithSameTypeIntoPos(
-            *valueVector, posInVector, tuple + tableSchema->getColOffset(colIdx));
+            valueVector, posInVector, tuple + tableSchema->getColOffset(colIdx));
     }
 }
 
@@ -303,8 +300,8 @@ void FactorizedTable::copyToInMemList(ft_col_idx_t colIdx,
     }
 }
 
-// This function can generalized to search a value with any dataType.
-int64_t FactorizedTable::findValueInFlatColumn(ft_col_idx_t colIdx, int64_t value) const {
+// This function can be generalized to search a value with any dataType.
+int64_t FactorizedTable::findValueInFlatColumn(ft_col_idx_t colIdx, common::offset_t value) const {
     assert(tableSchema->getColumn(colIdx)->isFlat());
     if (numTuples == 0) {
         return -1;
@@ -358,7 +355,7 @@ void FactorizedTable::setOverflowColNull(
 
 // TODO(Guodong): change this function to not use dataChunkPos in ColumnSchema.
 uint64_t FactorizedTable::computeNumTuplesToAppend(
-    const std::vector<std::shared_ptr<ValueVector>>& vectorsToAppend) const {
+    const std::vector<const ValueVector*>& vectorsToAppend) const {
     auto unflatDataChunkPos = -1ul;
     auto numTuplesToAppend = 1ul;
     for (auto i = 0u; i < vectorsToAppend.size(); i++) {
@@ -657,7 +654,7 @@ void FactorizedTable::copyOverflowIfNecessary(
     uint8_t* dst, uint8_t* src, const DataType& type, DiskOverflowFile* diskOverflowFile) {
     switch (type.typeID) {
     case STRING: {
-        ku_string_t* stringToWriteFrom = (ku_string_t*)src;
+        auto stringToWriteFrom = (ku_string_t*)src;
         if (!ku_string_t::isShortString(stringToWriteFrom->len)) {
             diskOverflowFile->writeStringOverflowAndUpdateOverflowPtr(
                 *stringToWriteFrom, *(ku_string_t*)dst);

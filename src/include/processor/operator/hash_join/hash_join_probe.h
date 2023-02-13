@@ -89,8 +89,8 @@ private:
     common::JoinType joinType;
 
     ProbeDataInfo probeDataInfo;
-    std::vector<std::shared_ptr<common::ValueVector>> vectorsToReadInto;
-    std::vector<uint32_t> columnIdxsToReadFrom;
+    std::vector<common::ValueVector*> vectorsToReadInto;
+    std::vector<uint32_t> columnIdsToReadFrom;
     std::vector<std::shared_ptr<common::ValueVector>> keyVectors;
     std::shared_ptr<common::ValueVector> markVector;
     std::unique_ptr<ProbeState> probeState;

@@ -132,7 +132,7 @@ private:
     std::unique_ptr<OrderByKeyEncoder> orderByKeyEncoder;
     std::unique_ptr<RadixSort> radixSorter;
     std::vector<std::shared_ptr<common::ValueVector>> keyVectors;
-    std::vector<std::shared_ptr<common::ValueVector>> vectorsToAppend;
+    std::vector<const common::ValueVector*> vectorsToAppend;
     std::shared_ptr<SharedFactorizedTablesAndSortedKeyBlocks> sharedState;
     std::shared_ptr<FactorizedTable> localFactorizedTable;
 };

@@ -22,11 +22,10 @@ public:
               bufferManager, wal){};
 
     virtual void read(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& nodeIDVector,
-        const std::shared_ptr<common::ValueVector>& resultVector);
+        const common::ValueVector& nodeIDVector, common::ValueVector& resultVector);
 
-    void writeValues(const std::shared_ptr<common::ValueVector>& nodeIDVector,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom);
+    void writeValues(
+        const common::ValueVector& nodeIDVector, const common::ValueVector& vectorToWriteFrom);
 
     // Currently, used only in CopyCSV tests.
     virtual common::Value readValue(common::offset_t offset);
@@ -34,37 +33,32 @@ public:
     void setNodeOffsetToNull(common::offset_t nodeOffset);
 
 protected:
-    void lookup(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& nodeIDVector,
-        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos);
+    void lookup(transaction::Transaction* transaction, const common::ValueVector& nodeIDVector,
+        common::ValueVector& resultVector, uint32_t vectorPos);
 
-    virtual void lookup(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
-        PageElementCursor& cursor);
+    virtual void lookup(transaction::Transaction* transaction, common::ValueVector& resultVector,
+        uint32_t vectorPos, PageElementCursor& cursor);
     virtual inline void scan(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector, PageElementCursor& cursor) {
+        common::ValueVector& resultVector, PageElementCursor& cursor) {
         readBySequentialCopy(transaction, resultVector, cursor, identityMapper);
     }
     virtual void scanWithSelState(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector, PageElementCursor& cursor) {
+        common::ValueVector& resultVector, PageElementCursor& cursor) {
         readBySequentialCopyWithSelState(transaction, resultVector, cursor, identityMapper);
     }
     virtual void writeValueForSingleNodeIDPosition(common::offset_t nodeOffset,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom);
+        const common::ValueVector& vectorToWriteFrom, uint32_t posInVectorToWriteFrom);
     WALPageIdxPosInPageAndFrame beginUpdatingPage(common::offset_t nodeOffset,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom);
+        const common::ValueVector& vectorToWriteFrom, uint32_t posInVectorToWriteFrom);
 
 private:
     // The reason why we make this function virtual is: we can't simply do memcpy on nodeIDs if
     // the adjColumn has tableIDCompression, in this case we only store the nodeOffset in
     // persistent store of adjColumn.
     virtual inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom) {
+        const common::ValueVector& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) {
         memcpy(walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage),
-            vectorToWriteFrom->getData() + getElemByteOffset(posInVectorToWriteFrom), elementSize);
+            vectorToWriteFrom.getData() + getElemByteOffset(posInVectorToWriteFrom), elementSize);
     }
     // If necessary creates a second version (backed by the WAL) of a page that contains the fixed
     // length part of the value that will be written to.
@@ -89,10 +83,9 @@ public:
         : Column{structureIDAndFNameOfMainColumn, dataType, bufferManager, wal},
           diskOverflowFile{structureIDAndFNameOfMainColumn, bufferManager, wal} {}
 
-    inline void read(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& nodeIDVector,
-        const std::shared_ptr<common::ValueVector>& resultVector) override {
-        resultVector->resetOverflowBuffer();
+    inline void read(transaction::Transaction* transaction, const common::ValueVector& nodeIDVector,
+        common::ValueVector& resultVector) override {
+        resultVector.resetOverflowBuffer();
         Column::read(transaction, nodeIDVector, resultVector);
     }
     inline DiskOverflowFile* getDiskOverflowFile() { return &diskOverflowFile; }
@@ -114,33 +107,29 @@ public:
               structureIDAndFNameOfMainColumn, dataType, bufferManager, wal} {};
 
     void writeValueForSingleNodeIDPosition(common::offset_t nodeOffset,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom) override;
+        const common::ValueVector& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override;
 
     // Currently, used only in CopyCSV tests.
     common::Value readValue(common::offset_t offset) override;
 
 private:
-    inline void lookup(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
-        PageElementCursor& cursor) override {
+    inline void lookup(transaction::Transaction* transaction, common::ValueVector& resultVector,
+        uint32_t vectorPos, PageElementCursor& cursor) override {
         Column::lookup(transaction, resultVector, vectorPos, cursor);
-        if (!resultVector->isNull(vectorPos)) {
+        if (!resultVector.isNull(vectorPos)) {
             diskOverflowFile.scanSingleStringOverflow(
-                transaction->getType(), *resultVector, vectorPos);
+                transaction->getType(), resultVector, vectorPos);
         }
     }
-    inline void scan(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
+    inline void scan(transaction::Transaction* transaction, common::ValueVector& resultVector,
         PageElementCursor& cursor) override {
         Column::scan(transaction, resultVector, cursor);
-        diskOverflowFile.scanSequentialStringOverflow(transaction->getType(), *resultVector);
+        diskOverflowFile.scanSequentialStringOverflow(transaction->getType(), resultVector);
     }
-    void scanWithSelState(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
+    void scanWithSelState(transaction::Transaction* transaction, common::ValueVector& resultVector,
         PageElementCursor& cursor) override {
         Column::scanWithSelState(transaction, resultVector, cursor);
-        diskOverflowFile.scanSequentialStringOverflow(transaction->getType(), *resultVector);
+        diskOverflowFile.scanSequentialStringOverflow(transaction->getType(), resultVector);
     }
 };
 
@@ -153,32 +142,28 @@ public:
               structureIDAndFNameOfMainColumn, dataType, bufferManager, wal} {};
 
     void writeValueForSingleNodeIDPosition(common::offset_t nodeOffset,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom) override;
+        const common::ValueVector& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override;
 
     common::Value readValue(common::offset_t offset) override;
 
 private:
-    inline void lookup(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
-        PageElementCursor& cursor) override {
+    inline void lookup(transaction::Transaction* transaction, common::ValueVector& resultVector,
+        uint32_t vectorPos, PageElementCursor& cursor) override {
         Column::lookup(transaction, resultVector, vectorPos, cursor);
-        if (!resultVector->isNull(vectorPos)) {
+        if (!resultVector.isNull(vectorPos)) {
             diskOverflowFile.scanSingleListOverflow(
-                transaction->getType(), *resultVector, vectorPos);
+                transaction->getType(), resultVector, vectorPos);
         }
     }
-    inline void scan(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
+    inline void scan(transaction::Transaction* transaction, common::ValueVector& resultVector,
         PageElementCursor& cursor) override {
         Column::scan(transaction, resultVector, cursor);
-        diskOverflowFile.readListsToVector(transaction->getType(), *resultVector);
+        diskOverflowFile.readListsToVector(transaction->getType(), resultVector);
     }
     inline void scanWithSelState(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
-        PageElementCursor& cursor) override {
+        common::ValueVector& resultVector, PageElementCursor& cursor) override {
         Column::scanWithSelState(transaction, resultVector, cursor);
-        diskOverflowFile.readListsToVector(transaction->getType(), *resultVector);
+        diskOverflowFile.readListsToVector(transaction->getType(), resultVector);
     }
 };
 
@@ -198,29 +183,25 @@ public:
     }
 
 private:
-    inline void lookup(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
-        PageElementCursor& cursor) override {
+    inline void lookup(transaction::Transaction* transaction, common::ValueVector& resultVector,
+        uint32_t vectorPos, PageElementCursor& cursor) override {
         readInternalIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos,
             cursor.pageIdx, cursor.elemPosInPage, 1 /* numValuesToCopy */, commonTableID,
             false /* hasNoNullGuarantee */);
     }
-    inline void scan(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
+    inline void scan(transaction::Transaction* transaction, common::ValueVector& resultVector,
         PageElementCursor& cursor) override {
         readInternalIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
             commonTableID, false /* hasNoNullGuarantee */);
     }
     inline void scanWithSelState(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
-        PageElementCursor& cursor) override {
+        common::ValueVector& resultVector, PageElementCursor& cursor) override {
         readInternalIDsBySequentialCopyWithSelState(
             transaction, resultVector, cursor, identityMapper, commonTableID);
     }
     inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom) override {
-        auto relID = vectorToWriteFrom->getValue<common::relID_t>(posInVectorToWriteFrom);
+        const common::ValueVector& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override {
+        auto relID = vectorToWriteFrom.getValue<common::relID_t>(posInVectorToWriteFrom);
         memcpy(walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage), &relID.offset,
             sizeof(relID.offset));
     }
@@ -239,30 +220,26 @@ public:
           nbrTableID{nbrTableID} {};
 
 private:
-    inline void lookup(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector, uint32_t vectorPos,
-        PageElementCursor& cursor) override {
+    inline void lookup(transaction::Transaction* transaction, common::ValueVector& resultVector,
+        uint32_t vectorPos, PageElementCursor& cursor) override {
         readInternalIDsFromAPageBySequentialCopy(transaction, resultVector, vectorPos,
             cursor.pageIdx, cursor.elemPosInPage, 1 /* numValuesToCopy */, nbrTableID,
             false /* hasNoNullGuarantee */);
     }
-    inline void scan(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
+    inline void scan(transaction::Transaction* transaction, common::ValueVector& resultVector,
         PageElementCursor& cursor) override {
         readInternalIDsBySequentialCopy(transaction, resultVector, cursor, identityMapper,
             nbrTableID, false /* hasNoNullGuarantee */);
     }
     inline void scanWithSelState(transaction::Transaction* transaction,
-        const std::shared_ptr<common::ValueVector>& resultVector,
-        PageElementCursor& cursor) override {
+        common::ValueVector& resultVector, PageElementCursor& cursor) override {
         readInternalIDsBySequentialCopyWithSelState(
             transaction, resultVector, cursor, identityMapper, nbrTableID);
     }
     inline void writeToPage(WALPageIdxPosInPageAndFrame& walPageInfo,
-        const std::shared_ptr<common::ValueVector>& vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom) override {
+        const common::ValueVector& vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override {
         *(walPageInfo.frame + mapElementPosToByteOffset(walPageInfo.posInPage)) =
-            vectorToWriteFrom->getValue<common::nodeID_t>(posInVectorToWriteFrom).offset;
+            vectorToWriteFrom.getValue<common::nodeID_t>(posInVectorToWriteFrom).offset;
     }
 
 private:

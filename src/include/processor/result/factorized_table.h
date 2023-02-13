@@ -177,7 +177,7 @@ public:
     FactorizedTable(
         storage::MemoryManager* memoryManager, std::unique_ptr<FactorizedTableSchema> tableSchema);
 
-    void append(const std::vector<std::shared_ptr<common::ValueVector>>& vectors);
+    void append(const std::vector<const common::ValueVector*>& vectors);
 
     //! This function appends an empty tuple to the factorizedTable and returns a pointer to that
     //! tuple.
@@ -185,25 +185,23 @@ public:
 
     // This function scans numTuplesToScan of rows to vectors starting at tupleIdx. Callers are
     // responsible for making sure all the parameters are valid.
-    inline void scan(std::vector<std::shared_ptr<common::ValueVector>>& vectors,
-        ft_tuple_idx_t tupleIdx, uint64_t numTuplesToScan) const {
-        std::vector<uint32_t> colIdxes(tableSchema->getNumColumns());
-        iota(colIdxes.begin(), colIdxes.end(), 0);
-        scan(vectors, tupleIdx, numTuplesToScan, colIdxes);
+    inline void scan(std::vector<common::ValueVector*>& vectors, ft_tuple_idx_t tupleIdx,
+        uint64_t numTuplesToScan) const {
+        std::vector<uint32_t> colIds(tableSchema->getNumColumns());
+        iota(colIds.begin(), colIds.end(), 0);
+        scan(vectors, tupleIdx, numTuplesToScan, colIds);
     }
     inline bool isEmpty() const { return getNumTuples() == 0; }
-    void scan(std::vector<std::shared_ptr<common::ValueVector>>& vectors, ft_tuple_idx_t tupleIdx,
+    void scan(std::vector<common::ValueVector*>& vectors, ft_tuple_idx_t tupleIdx,
         uint64_t numTuplesToScan, std::vector<uint32_t>& colIdxToScan) const;
-    // TODO(Guodong): Unify these two interfaces along with `readUnflatCol`.
-    void lookup(std::vector<std::shared_ptr<common::ValueVector>>& vectors,
-        std::vector<uint32_t>& colIdxesToScan, uint8_t** tuplesToRead, uint64_t startPos,
-        uint64_t numTuplesToRead) const;
-    void lookup(std::vector<std::shared_ptr<common::ValueVector>>& vectors,
-        const common::SelectionVector* selVector, std::vector<uint32_t>& colIdxesToScan,
+    void lookup(std::vector<common::ValueVector*>& vectors, std::vector<uint32_t>& colIdsToScan,
+        uint8_t** tuplesToRead, uint64_t startPos, uint64_t numTuplesToRead) const;
+    void lookup(std::vector<common::ValueVector*>& vectors,
+        const common::SelectionVector* selVector, std::vector<uint32_t>& colIdsToScan,
         uint8_t* tupleToRead) const;
-    void lookup(std::vector<std::shared_ptr<common::ValueVector>>& vectors,
-        std::vector<uint32_t>& colIdxesToScan, std::vector<ft_tuple_idx_t>& tupleIdxesToRead,
-        uint64_t startPos, uint64_t numTuplesToRead) const;
+    void lookup(std::vector<common::ValueVector*>& vectors, std::vector<uint32_t>& colIdsToScan,
+        std::vector<ft_tuple_idx_t>& tupleIdsToRead, uint64_t startPos,
+        uint64_t numTuplesToRead) const;
 
     // When we merge two factorizedTables, we need to update the hasNoNullGuarantee based on
     // other factorizedTable.
@@ -215,8 +213,8 @@ public:
     }
 
     bool hasUnflatCol() const;
-    inline bool hasUnflatCol(std::vector<ft_col_idx_t>& colIdxes) const {
-        return any_of(colIdxes.begin(), colIdxes.end(),
+    inline bool hasUnflatCol(std::vector<ft_col_idx_t>& colIds) const {
+        return any_of(colIds.begin(), colIds.end(),
             [this](ft_col_idx_t colIdx) { return !tableSchema->getColumn(colIdx)->isFlat(); });
     }
 
@@ -237,8 +235,8 @@ public:
 
     uint8_t* getTuple(ft_tuple_idx_t tupleIdx) const;
 
-    void updateFlatCell(
-        uint8_t* tuplePtr, ft_col_idx_t colIdx, common::ValueVector* valueVector, uint32_t pos);
+    void updateFlatCell(uint8_t* tuplePtr, ft_col_idx_t colIdx,
+        const common::ValueVector* valueVector, uint32_t pos);
     inline void updateFlatCellNoNull(uint8_t* ftTuplePtr, ft_col_idx_t colIdx, void* dataBuf) {
         memcpy(ftTuplePtr + tableSchema->getColOffset(colIdx), dataBuf,
             tableSchema->getColumn(colIdx)->getNumBytes());
@@ -251,7 +249,7 @@ public:
     }
 
     void copySingleValueToVector(ft_tuple_idx_t tupleIdx, ft_col_idx_t colIdx,
-        std::shared_ptr<common::ValueVector> valueVector, uint32_t posInVector) const;
+        common::ValueVector& valueVector, uint32_t posInVector) const;
     bool isOverflowColNull(
         const uint8_t* nullBuffer, ft_tuple_idx_t tupleIdx, ft_col_idx_t colIdx) const;
     bool isNonOverflowColNull(const uint8_t* nullBuffer, ft_col_idx_t colIdx) const;
@@ -262,7 +260,7 @@ public:
         uint8_t* data, common::NullMask* nullMask, uint64_t startElemPosInList,
         storage::DiskOverflowFile* overflowFileOfInMemList, const common::DataType& type) const;
     void clear();
-    int64_t findValueInFlatColumn(ft_col_idx_t colIdx, int64_t value) const;
+    int64_t findValueInFlatColumn(ft_col_idx_t colIdx, common::offset_t value) const;
 
 private:
     static bool isNull(const uint8_t* nullMapBuffer, ft_col_idx_t idx);
@@ -270,7 +268,7 @@ private:
     void setOverflowColNull(uint8_t* nullBuffer, ft_col_idx_t colIdx, ft_tuple_idx_t tupleIdx);
 
     uint64_t computeNumTuplesToAppend(
-        const std::vector<std::shared_ptr<common::ValueVector>>& vectorsToAppend) const;
+        const std::vector<const common::ValueVector*>& vectorsToAppend) const;
 
     inline uint8_t* getCell(
         ft_block_idx_t blockIdx, ft_block_offset_t blockOffset, ft_col_offset_t colOffset) const {

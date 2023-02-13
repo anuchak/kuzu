@@ -12,16 +12,19 @@ void Intersect::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* c
     outKeyVector = resultSet->getValueVector(outputDataPos);
     for (auto& dataInfo : intersectDataInfos) {
         probeKeyVectors.push_back(resultSet->getValueVector(dataInfo.keyDataPos));
-        std::vector<uint32_t> columnIdxesToScanFrom;
+        std::vector<uint32_t> columnIdsToScanFrom;
         std::vector<std::shared_ptr<ValueVector>> vectorsToReadInto;
+        std::vector<ValueVector*> vectorPtrsToReadInto;
         for (auto i = 0u; i < dataInfo.payloadsDataPos.size(); i++) {
             auto vector = resultSet->getValueVector(dataInfo.payloadsDataPos[i]);
             // Always skip the first two columns in the fTable: build key and intersect key.
-            columnIdxesToScanFrom.push_back(i + 2);
+            columnIdsToScanFrom.push_back(i + 2);
             vectorsToReadInto.push_back(vector);
+            vectorPtrsToReadInto.push_back(vector.get());
         }
-        payloadColumnIdxesToScanFrom.push_back(columnIdxesToScanFrom);
+        payloadColumnIdsToScanFrom.push_back(columnIdsToScanFrom);
         payloadVectorsToScanInto.push_back(std::move(vectorsToReadInto));
+        payloadVectorPtrsToScanInto.push_back(std::move(vectorPtrsToReadInto));
     }
     for (auto& sharedHT : sharedHTs) {
         intersectSelVectors.push_back(std::make_unique<SelectionVector>(DEFAULT_VECTOR_CAPACITY));
@@ -151,12 +154,12 @@ void Intersect::intersectLists(const std::vector<overflow_value_t>& listsToInter
 }
 
 void Intersect::populatePayloads(
-    const std::vector<uint8_t*>& tuples, const std::vector<uint32_t>& listIdxes) {
-    for (auto i = 0u; i < listIdxes.size(); i++) {
-        auto listIdx = listIdxes[i];
+    const std::vector<uint8_t*>& tuples, const std::vector<uint32_t>& listIds) {
+    for (auto i = 0u; i < listIds.size(); i++) {
+        auto listIdx = listIds[i];
         sharedHTs[i]->getHashTable()->getFactorizedTable()->lookup(
-            payloadVectorsToScanInto[listIdx], intersectSelVectors[i].get(),
-            payloadColumnIdxesToScanFrom[listIdx], tuples[listIdx]);
+            payloadVectorPtrsToScanInto[listIdx], intersectSelVectors[i].get(),
+            payloadColumnIdsToScanFrom[listIdx], tuples[listIdx]);
     }
 }
 
@@ -167,10 +170,10 @@ bool Intersect::getNextTuplesInternal() {
         }
         auto tuples = probeHTs(getProbeKeys());
         auto listsToIntersect = fetchListsToIntersectFromTuples(tuples, isIntersectListAFlatValue);
-        auto listIdxes = swapSmallestListToFront(listsToIntersect);
+        auto listIds = swapSmallestListToFront(listsToIntersect);
         intersectLists(listsToIntersect);
         if (outKeyVector->state->selVector->selectedSize != 0) {
-            populatePayloads(tuples, listIdxes);
+            populatePayloads(tuples, listIds);
         }
     } while (outKeyVector->state->selVector->selectedSize == 0);
     return true;

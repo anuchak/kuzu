@@ -24,15 +24,14 @@ void NodeTable::initializeData(NodeTableSchema* nodeTableSchema) {
         nodeTableSchema->getPrimaryKey().dataType, bufferManager, wal);
 }
 
-void NodeTable::scan(transaction::Transaction* transaction,
-    const std::shared_ptr<ValueVector>& inputIDVector, const std::vector<uint32_t>& columnIds,
-    std::vector<std::shared_ptr<ValueVector>> outputVectors) {
+void NodeTable::scan(transaction::Transaction* transaction, const common::ValueVector& IDVector,
+    const std::vector<uint32_t>& columnIds, std::vector<common::ValueVector*> outputVectors) {
     assert(columnIds.size() == outputVectors.size());
     for (auto i = 0u; i < columnIds.size(); i++) {
         if (columnIds[i] == UINT32_MAX) {
             outputVectors[i]->setAllNull();
         } else {
-            propertyColumns.at(columnIds[i])->read(transaction, inputIDVector, outputVectors[i]);
+            propertyColumns.at(columnIds[i])->read(transaction, IDVector, *outputVectors[i]);
         }
     }
 }

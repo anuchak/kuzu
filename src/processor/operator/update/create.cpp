@@ -40,7 +40,7 @@ void CreateRel::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* c
         createRelVectors->dstNodeIDVector = resultSet->getValueVector(createRelInfo->dstNodePos);
         for (auto& evaluator : createRelInfo->evaluators) {
             evaluator->init(*resultSet, context->memoryManager);
-            createRelVectors->propertyVectors.push_back(evaluator->resultVector);
+            createRelVectors->propertyVectors.push_back(evaluator->resultVector.get());
         }
         createRelVectorsPerRel.push_back(std::move(createRelVectors));
     }
@@ -67,8 +67,8 @@ bool CreateRel::getNextTuplesInternal() {
                 createRelInfo->evaluators[j]->evaluate();
             }
         }
-        createRelInfo->table->insertRel(createRelVectors->srcNodeIDVector,
-            createRelVectors->dstNodeIDVector, createRelVectors->propertyVectors);
+        createRelInfo->table->insertRel(*createRelVectors->srcNodeIDVector,
+            *createRelVectors->dstNodeIDVector, createRelVectors->propertyVectors);
         relsStatistics.updateNumRelsByValue(createRelInfo->table->getRelTableID(),
             1 /* increment numRelsPerDirectionBoundTable by 1 */);
     }

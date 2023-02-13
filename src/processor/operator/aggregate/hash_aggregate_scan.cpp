@@ -9,10 +9,10 @@ void HashAggregateScan::initLocalStateInternal(ResultSet* resultSet, ExecutionCo
     BaseAggregateScan::initLocalStateInternal(resultSet, context);
     for (auto& dataPos : groupByKeyVectorsPos) {
         auto valueVector = resultSet->getValueVector(dataPos);
-        groupByKeyVectors.push_back(valueVector);
+        groupByKeyVectors.push_back(valueVector.get());
     }
-    groupByKeyVectorsColIdxes.resize(groupByKeyVectors.size());
-    iota(groupByKeyVectorsColIdxes.begin(), groupByKeyVectorsColIdxes.end(), 0);
+    groupByKeyVectorsColIds.resize(groupByKeyVectors.size());
+    iota(groupByKeyVectorsColIds.begin(), groupByKeyVectorsColIds.end(), 0);
 }
 
 bool HashAggregateScan::getNextTuplesInternal() {
@@ -22,7 +22,7 @@ bool HashAggregateScan::getNextTuplesInternal() {
     }
     auto numRowsToScan = endOffset - startOffset;
     sharedState->getFactorizedTable()->scan(
-        groupByKeyVectors, startOffset, numRowsToScan, groupByKeyVectorsColIdxes);
+        groupByKeyVectors, startOffset, numRowsToScan, groupByKeyVectorsColIds);
     for (auto pos = 0u; pos < numRowsToScan; ++pos) {
         auto entry = sharedState->getRow(startOffset + pos);
         auto offset = sharedState->getFactorizedTable()->getTableSchema()->getColOffset(

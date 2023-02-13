@@ -52,7 +52,7 @@ public:
         }
     }
 
-    void sortAllKeyBlocks(OrderByKeyEncoder& orderByKeyEncoder, RadixSort& radixSort) {
+    static void sortAllKeyBlocks(OrderByKeyEncoder& orderByKeyEncoder, RadixSort& radixSort) {
         for (auto& keyBlock : orderByKeyEncoder.getKeyBlocks()) {
             radixSort.sortSingleKeyBlock(*keyBlock);
         }
@@ -79,6 +79,7 @@ public:
             valueVector}; // only contains order_by columns
         std::vector<std::shared_ptr<ValueVector>> allVectors{
             valueVector}; // all columns including order_by and payload columns
+        std::vector<const ValueVector*> allVectorPtrs{valueVector.get()};
         std::vector<bool> isAscOrder{isAsc};
 
         std::unique_ptr<FactorizedTableSchema> tableSchema =
@@ -97,21 +98,20 @@ public:
             // To test whether the orderByCol -> ftIdx works properly, we put the
             // payload column at index 0, and the orderByCol at index 1.
             allVectors.insert(allVectors.begin(), payloadValueVector);
+            allVectorPtrs.insert(allVectorPtrs.begin(), payloadValueVector.get());
             tableSchema->appendColumn(std::make_unique<ColumnSchema>(
                 false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(dataTypeID)));
-            strKeyColsInfo.emplace_back(
-                StrKeyColInfo(tableSchema->getColOffset(1) /* colOffsetInFT */,
-                    0 /* colOffsetInEncodedKeyBlock */, isAsc));
+            strKeyColsInfo.emplace_back(tableSchema->getColOffset(1) /* colOffsetInFT */,
+                0 /* colOffsetInEncodedKeyBlock */, isAsc);
         } else if constexpr (std::is_same<T, std::string>::value) {
             // If this is a string column and has no payload column, then the
             // factorizedTable offset is just 0.
-            strKeyColsInfo.emplace_back(
-                StrKeyColInfo(tableSchema->getColOffset(0) /* colOffsetInFT */,
-                    0 /* colOffsetInEncodedKeyBlock */, isAsc));
+            strKeyColsInfo.emplace_back(tableSchema->getColOffset(0) /* colOffsetInFT */,
+                0 /* colOffsetInEncodedKeyBlock */, isAsc);
         }
 
         FactorizedTable factorizedTable(memoryManager.get(), std::move(tableSchema));
-        factorizedTable.append(allVectors);
+        factorizedTable.append(allVectorPtrs);
 
         auto orderByKeyEncoder =
             OrderByKeyEncoder(orderByVectors, isAscOrder, memoryManager.get(), factorizedTableIdx,
@@ -130,6 +130,7 @@ public:
         std::vector<uint64_t>& expectedBlockOffsetOrder,
         std::vector<std::vector<std::string>>& stringValues) {
         std::vector<std::shared_ptr<ValueVector>> orderByVectors;
+        std::vector<const ValueVector*> orderByVectorPtrs;
         auto mockDataChunk = std::make_shared<DataChunk>(stringValues.size());
         mockDataChunk->state->currIdx = 0;
         std::unique_ptr<FactorizedTableSchema> tableSchema =
@@ -139,15 +140,16 @@ public:
             auto stringValueVector = std::make_shared<ValueVector>(STRING, memoryManager.get());
             tableSchema->appendColumn(std::make_unique<ColumnSchema>(
                 false /* isUnflat */, 0 /* dataChunkPos */, sizeof(ku_string_t)));
-            strKeyColsInfo.push_back(StrKeyColInfo(tableSchema->getColOffset(strKeyColsInfo.size()),
+            strKeyColsInfo.emplace_back(tableSchema->getColOffset(strKeyColsInfo.size()),
                 strKeyColsInfo.size() *
                     OrderByKeyEncoder::getEncodingSize(stringValueVector->dataType),
-                isAscOrder[i]));
+                isAscOrder[i]);
             mockDataChunk->insert(i, stringValueVector);
             for (auto j = 0u; j < stringValues[i].size(); j++) {
                 stringValueVector->setValue(j, stringValues[i][j]);
             }
             orderByVectors.emplace_back(stringValueVector);
+            orderByVectorPtrs.push_back(stringValueVector.get());
         }
 
         FactorizedTable factorizedTable(memoryManager.get(), std::move(tableSchema));
@@ -159,7 +161,7 @@ public:
         mockDataChunk->state->selVector->selectedSize = 1;
         for (auto i = 0u; i < expectedBlockOffsetOrder.size(); i++) {
             mockDataChunk->state->selVector->selectedPositions[0] = i;
-            factorizedTable.append(orderByVectors);
+            factorizedTable.append(orderByVectorPtrs);
             orderByKeyEncoder.encodeKeys();
             mockDataChunk->state->currIdx++;
         }
@@ -348,6 +350,9 @@ TEST_F(RadixSortTest, multipleOrderByColNoTieTest) {
     std::vector<std::shared_ptr<ValueVector>> orderByVectors{intFlatValueVector,
         doubleFlatValueVector, stringFlatValueVector, timestampFlatValueVector,
         dateFlatValueVector};
+    std::vector<const ValueVector*> orderByVectorPtrs{intFlatValueVector.get(),
+        doubleFlatValueVector.get(), stringFlatValueVector.get(), timestampFlatValueVector.get(),
+        dateFlatValueVector.get()};
     intFlatValueVector->setValue(0, (int64_t)41);
     intFlatValueVector->setValue(1, (int64_t)-132);
     intFlatValueVector->setValue(2, (int64_t)41);
@@ -404,7 +409,7 @@ TEST_F(RadixSortTest, multipleOrderByColNoTieTest) {
     for (auto i = 0u; i < 5; i++) {
         mockDataChunk->state->selVector->selectedPositions[0] = i;
         orderByKeyEncoder.encodeKeys();
-        factorizedTable.append(orderByVectors);
+        factorizedTable.append(orderByVectorPtrs);
         mockDataChunk->state->currIdx++;
     }
     mockDataChunk->state->selVector->resetSelectorToUnselected();

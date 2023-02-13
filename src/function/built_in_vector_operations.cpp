@@ -6,9 +6,9 @@
 #include "function/date/vector_date_operations.h"
 #include "function/interval/vector_interval_operations.h"
 #include "function/list/vector_list_operations.h"
+#include "function/path/vector_path_operations.h"
 #include "function/string/vector_string_operations.h"
 #include "function/timestamp/vector_timestamp_operations.h"
-#include "function/path/vector_path_operations.h"
 
 using namespace kuzu::common;
 
@@ -338,7 +338,6 @@ void BuiltInVectorOperations::registerInternalIDOperation() {
 }
 
 void BuiltInVectorOperations::registerPathOperation() {
-    vectorOperations.insert({PATH_CREATION_FUNC_NAME, PathCreationVectorOperation::getDefinitions()});
     vectorOperations.insert({PATH_LENGTH_FUNC_NAME, PathLengthVectorOperation::getDefinitions()});
 }
 

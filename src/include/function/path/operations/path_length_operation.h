@@ -4,9 +4,7 @@ namespace operation {
 
 struct PathLength {
 
-    static inline void operation(common::ku_path_t& input, int64_t& result) {
-        result = input.getPath().size();
-    }
+    static inline void operation(common::ku_list_t& input, int64_t& result) { result = input.size; }
 };
 } // namespace operation
 } // namespace function

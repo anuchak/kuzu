@@ -17,14 +17,15 @@ namespace processor {
 
 class ShortestPathAdjList : public BaseShortestPath {
 public:
-    ShortestPathAdjList(const DataPos& srcDataPos, const DataPos& destDataPos, storage::AdjLists* adjList,
-        storage::Lists* relPropertyLists, uint64_t lowerBound, uint64_t upperBound,
-        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
+    ShortestPathAdjList(const DataPos& srcDataPos, const DataPos& destDataPos,
+        storage::AdjLists* adjList, storage::Lists* relPropertyLists, uint64_t lowerBound,
+        uint64_t upperBound, std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        const std::string& paramsString)
         : BaseShortestPath{PhysicalOperatorType::SHORTEST_PATH_ADJ_LIST, srcDataPos, destDataPos,
               lowerBound, upperBound, move(child), id, paramsString},
-          listSyncState{std::make_shared<storage::ListSyncState>()}, listHandle{std::make_shared<storage::ListHandle>(
-                                                           *listSyncState)},
-          lists{adjList}, relPropertyLists{std::move(relPropertyLists)} {}
+          listSyncState{std::make_shared<storage::ListSyncState>()},
+          listHandle{std::make_shared<storage::ListHandle>(*listSyncState)}, lists{adjList},
+          relPropertyLists{std::move(relPropertyLists)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 

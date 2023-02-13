@@ -60,7 +60,6 @@ KUZU_API enum DataTypeID : uint8_t {
     // variable size types
     STRING = 50,
     LIST = 52,
-    PHYSICAL_PATH = 53,
 };
 
 class DataType {

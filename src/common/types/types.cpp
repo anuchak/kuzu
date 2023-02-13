@@ -152,8 +152,6 @@ std::string Types::dataTypeToString(DataTypeID dataTypeID) {
         return "STRING";
     case LIST:
         return "LIST";
-    case PHYSICAL_PATH:
-        return "PHYSICAL_PATH";
     default:
         assert(false);
     }
@@ -199,8 +197,6 @@ uint32_t Types::getDataTypeSize(DataTypeID dataTypeID) {
         return sizeof(ku_string_t);
     case LIST:
         return sizeof(ku_list_t);
-    case PHYSICAL_PATH:
-        return sizeof(ku_path_t);
     default:
         throw Exception(
             "Cannot infer the size of dataTypeID: " + dataTypeToString(dataTypeID) + ".");

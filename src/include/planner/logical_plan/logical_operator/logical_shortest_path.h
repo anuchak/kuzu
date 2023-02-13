@@ -12,9 +12,9 @@ namespace planner {
 class LogicalShortestPath : public LogicalOperator {
 
 public:
-    LogicalShortestPath(std::shared_ptr<NodeExpression> sourceNode, std::shared_ptr<NodeExpression> destNode,
-        std::shared_ptr<RelExpression> rel, std::shared_ptr<Expression> relProperty,
-        std::shared_ptr<LogicalOperator> child)
+    LogicalShortestPath(std::shared_ptr<NodeExpression> sourceNode,
+        std::shared_ptr<NodeExpression> destNode, std::shared_ptr<RelExpression> rel,
+        std::shared_ptr<Expression> relProperty, std::shared_ptr<LogicalOperator> child)
         : LogicalOperator{LogicalOperatorType::SHORTEST_PATH, std::move(child)},
           sourceNode{std::move(sourceNode)}, destNode{std::move(destNode)}, rel{std::move(rel)},
           relProperty{move(relProperty)} {}

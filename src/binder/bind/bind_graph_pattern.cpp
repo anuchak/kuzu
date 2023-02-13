@@ -3,7 +3,6 @@
 #include "binder/binder.h"
 #include "binder/expression/function_expression.h"
 #include "binder/expression/literal_expression.h"
-#include "function/path/operations/path_creation_operation.h"
 
 using namespace kuzu::common;
 using namespace kuzu::parser;
@@ -44,25 +43,63 @@ std::unique_ptr<QueryGraph> Binder::bindPatternElement(
         leftNode = rightNode;
     }
     if (!patternElement.getPathVariable().empty()) {
-        expression_vector pathChildExpressions;
-        for (int i = 0; i < queryGraph->getNumQueryNodes(); i++) {
-            pathChildExpressions.push_back(queryGraph->getQueryNode(i)->getInternalIDProperty());
-        }
-        for (int i = 0; i < queryGraph->getNumQueryRels(); i++) {
-            pathChildExpressions.push_back(queryGraph->getQueryRel(i)->getInternalIDProperty());
-        }
-        auto childDataType = std::make_unique<DataType>(pathChildExpressions[0]->getDataType());
-        auto dataType = DataType(LIST, std::move(childDataType));
-        auto function = catalog.getBuiltInScalarFunctions()->matchFunction(
-            PATH_CREATION_FUNC_NAME, std::vector<DataType>{std::move(dataType)});
-        auto execFunc = function->execFunc;
-        auto pathVariableExpression = make_shared<ScalarFunctionExpression>(FUNCTION,
-            DataType(STRING), std::move(pathChildExpressions), execFunc, nullptr,
-            patternElement.getPathVariable());
-        variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
-        queryGraph->setPathExpression(pathVariableExpression);
+        validatePathExpression(patternElement, queryGraph.get());
     }
     return queryGraph;
+}
+
+void Binder::validatePathExpression(
+    const parser::PatternElement& patternElement, QueryGraph* queryGraph) {
+    validateNodeInPathExpression(patternElement);
+    validateRelInPathExpression(patternElement);
+    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
+        auto patternElementChain = patternElement.getPatternElementChain(i);
+        if (!patternElementChain->getRelPattern()->getIsShortestPath()) {
+            throw BinderException("Binding query pattern to path variable is only supported for "
+                                  "Shortest Path queries. ");
+        }
+    }
+    expression_vector pathChildExpressions;
+    for (int i = 0; i < queryGraph->getNumQueryNodes(); i++) {
+        pathChildExpressions.push_back(queryGraph->getQueryNode(i)->getInternalIDProperty());
+    }
+    auto childDataType = std::make_unique<DataType>(INTERNAL_ID);
+    auto pathVariableExpression =
+        std::make_shared<Expression>(VARIABLE, DataType(common::LIST, std::move(childDataType)),
+            pathChildExpressions, patternElement.getPathVariable());
+    variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
+    queryGraph->setPathExpression(pathVariableExpression);
+}
+
+void Binder::validateNodeInPathExpression(const parser::PatternElement& patternElement) {
+    if (patternElement.getNumPatternElementChains() == 0) {
+        throw BinderException("Binding path to a single node is not supported. ");
+    }
+    if (patternElement.getFirstNodePattern()->getTableNames().size() != 1) {
+        throw BinderException(
+            "Multi Label node pattern is not supported for Shortest Path query expressions. ");
+    }
+    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
+        auto patternElementChain = patternElement.getPatternElementChain(i);
+        if (patternElementChain->getNodePattern()->getTableNames().size() != 1) {
+            throw BinderException(
+                "Multi Label node pattern is not supported for Shortest Path query expressions. ");
+        }
+    }
+}
+
+void Binder::validateRelInPathExpression(const parser::PatternElement& patternElement) {
+    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
+        auto patternElementChain = patternElement.getPatternElementChain(i);
+        if (patternElementChain->getRelPattern()->getTableNames().size() != 1) {
+            throw BinderException(
+                "Multi Label rel pattern is not supported for Shortest Path query expressions. ");
+        }
+        if (!patternElementChain->getRelPattern()->getVariableName().empty()) {
+            throw BinderException(
+                "Rel variable for Shortest path expression queries are not allowed. ");
+        }
+    }
 }
 
 // E.g. MATCH (:person)-[:studyAt]->(:person) ...

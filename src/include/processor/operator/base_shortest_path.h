@@ -2,9 +2,9 @@
 
 #include "queue"
 
+#include "common/types/internal_id_t.h"
 #include "processor/operator/physical_operator.h"
 #include "storage/storage_structure/lists/lists.h"
-#include "common/types/internal_id_t.h"
 
 namespace kuzu {
 namespace processor {

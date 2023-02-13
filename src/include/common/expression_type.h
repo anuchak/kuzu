@@ -165,7 +165,6 @@ const std::string ID_FUNC_NAME = "ID";
 const std::string LABEL_FUNC_NAME = "LABEL";
 
 // Path functions.
-const std::string PATH_CREATION_FUNC_NAME = "PATH_CREATION";
 const std::string PATH_LENGTH_FUNC_NAME = "PATH_LENGTH";
 
 enum ExpressionType : uint8_t {

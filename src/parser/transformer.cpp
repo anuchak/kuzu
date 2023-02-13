@@ -234,7 +234,7 @@ std::vector<std::unique_ptr<PatternElement>> Transformer::transformPattern(
 std::unique_ptr<PatternElement> Transformer::transformPatternPart(
     CypherParser::OC_PatternPartContext& ctx) {
     auto patternElement = transformAnonymousPatternPart(*ctx.oC_AnonymousPatternPart());
-    if(ctx.oC_Variable()) {
+    if (ctx.oC_Variable()) {
         patternElement->setPathVariable(transformVariable(*ctx.oC_Variable()));
     }
     return patternElement;
@@ -290,16 +290,32 @@ std::unique_ptr<RelPattern> Transformer::transformRelationshipPattern(
                         std::vector<std::string>{};
     std::string lowerBound = "1";
     std::string upperBound = "1";
-    if (relDetail->oC_RangeLiteral()) {
-        lowerBound = relDetail->oC_RangeLiteral()->oC_IntegerLiteral()[0]->getText();
-        upperBound = relDetail->oC_RangeLiteral()->oC_IntegerLiteral()[1]->getText();
+    bool isShortestPath = false;
+    if (relDetail->oC_RangePattern()) {
+        if (relDetail->oC_RangePattern()->oC_RangeLiteral()) {
+            if (relDetail->oC_RangePattern()->oC_RangeLiteral()->oC_IntegerLiteral()[0]) {
+                lowerBound = relDetail->oC_RangePattern()
+                                 ->oC_RangeLiteral()
+                                 ->oC_IntegerLiteral()[0]
+                                 ->getText();
+            }
+            if (relDetail->oC_RangePattern()->oC_RangeLiteral()->oC_IntegerLiteral()[1]) {
+                upperBound = relDetail->oC_RangePattern()
+                                 ->oC_RangeLiteral()
+                                 ->oC_IntegerLiteral()[1]
+                                 ->getText();
+            }
+        }
+        if (relDetail->oC_RangePattern()->SHORTEST()) {
+            isShortestPath = true;
+        }
     }
     auto arrowHead = ctx.oC_LeftArrowHead() ? ArrowDirection::LEFT : ArrowDirection::RIGHT;
     auto properties = relDetail->kU_Properties() ?
                           transformProperties(*relDetail->kU_Properties()) :
                           std::vector<std::pair<std::string, std::unique_ptr<ParsedExpression>>>{};
-    return std::make_unique<RelPattern>(
-        variable, relTypes, lowerBound, upperBound, arrowHead, std::move(properties));
+    return std::make_unique<RelPattern>(variable, relTypes, lowerBound, upperBound, isShortestPath,
+        arrowHead, std::move(properties));
 }
 
 std::vector<std::pair<std::string, std::unique_ptr<ParsedExpression>>>

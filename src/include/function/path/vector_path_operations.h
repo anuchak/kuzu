@@ -2,22 +2,21 @@
 
 #include "function/vector_operations.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace function {
 
 struct VectorPathOperations : public VectorOperations {
     template<typename OPERAND_TYPE, typename RESULT_TYPE, typename FUNC>
-    static void UnaryExecFunction(const std::shared_ptr<common::ValueVector>& params,
+    static void UnaryExecFunction(const std::vector<std::shared_ptr<common::ValueVector>>& params,
         common::ValueVector& result) {
-        UnaryOperationExecutor::execute<OPERAND_TYPE, RESULT_TYPE, FUNC>(*params, result);
+        assert(params.size() == 1);
+        UnaryOperationExecutor::execute<OPERAND_TYPE, RESULT_TYPE, FUNC>(*params[0], result);
     }
 };
 
 struct PathLengthVectorOperation : public VectorPathOperations {
-    static std::vector<std::unique_ptr<VectorOperationDefinition>> getDefinitions();
-};
-
-struct PathCreationVectorOperation : public VectorPathOperations {
     static std::vector<std::unique_ptr<VectorOperationDefinition>> getDefinitions();
 };
 

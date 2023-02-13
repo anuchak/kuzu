@@ -174,7 +174,6 @@ const std::string OFFSET_FUNC_NAME = "OFFSET";
 const std::string PATH_LENGTH_FUNC_NAME = "PATH_LENGTH";
 
 // Path functions.
-const std::string PATH_CREATION_FUNC_NAME = "PATH_CREATION";
 const std::string PATH_LENGTH_FUNC_NAME = "PATH_LENGTH";
 
 enum ExpressionType : uint8_t {

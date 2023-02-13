@@ -13,8 +13,5 @@ void common::ku_path_t::setPathInternalID(internalID_t internalID) {
     path.push_back(internalID);
 }
 
-}
-}
-
-
-
+} // namespace common
+} // namespace kuzu

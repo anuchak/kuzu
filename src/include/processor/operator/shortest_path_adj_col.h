@@ -15,9 +15,9 @@ namespace processor {
 
 class ShortestPathAdjCol : public BaseShortestPath {
 public:
-    ShortestPathAdjCol(const DataPos& srcDataPos, const DataPos& destDataPos, storage::Column* columns,
-        uint64_t lowerBound, uint64_t upperBound, std::unique_ptr<PhysicalOperator> child, uint32_t id,
-        const std::string& paramsString)
+    ShortestPathAdjCol(const DataPos& srcDataPos, const DataPos& destDataPos,
+        storage::Column* columns, uint64_t lowerBound, uint64_t upperBound,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : BaseShortestPath{PhysicalOperatorType::SHORTEST_PATH_ADJ_LIST, srcDataPos, destDataPos,
               lowerBound, upperBound, move(child), id, paramsString},
           col{columns} {}

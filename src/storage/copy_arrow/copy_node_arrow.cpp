@@ -78,7 +78,7 @@ template<typename T>
 arrow::Status CopyNodeArrow::populateColumns() {
     logger->info("Populating properties");
     auto pkIndex =
-        make_unique<HashIndexBuilder<T>>(StorageUtils::getNodeIndexFName(this->outputDirectory,
+        std::make_unique<HashIndexBuilder<T>>(StorageUtils::getNodeIndexFName(this->outputDirectory,
                                              nodeTableSchema->tableID, DBFileType::WAL_VERSION),
             nodeTableSchema->getPrimaryKey().dataType);
     pkIndex->bulkReserve(numRows);

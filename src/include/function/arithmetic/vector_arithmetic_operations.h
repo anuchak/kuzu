@@ -11,7 +11,7 @@ public:
     template<typename FUNC, bool INT_RESULT = false, bool DOUBLE_RESULT = false>
     static std::unique_ptr<VectorOperationDefinition> getUnaryDefinition(
         std::string name, common::DataTypeID operandTypeID, common::DataTypeID resultTypeID) {
-        return make_unique<VectorOperationDefinition>(std::move(name),
+        return std::make_unique<VectorOperationDefinition>(std::move(name),
             std::vector<common::DataTypeID>{operandTypeID}, resultTypeID,
             getUnaryExecFunc<FUNC, INT_RESULT, DOUBLE_RESULT>(operandTypeID));
     }
@@ -20,7 +20,7 @@ public:
     static inline std::unique_ptr<VectorOperationDefinition> getBinaryDefinition(std::string name,
         common::DataTypeID leftTypeID, common::DataTypeID rightTypeID,
         common::DataTypeID resultTypeID) {
-        return make_unique<VectorOperationDefinition>(std::move(name),
+        return std::make_unique<VectorOperationDefinition>(std::move(name),
             std::vector<common::DataTypeID>{leftTypeID, rightTypeID}, resultTypeID,
             getBinaryExecFunc<FUNC, DOUBLE_RESULT>(leftTypeID, rightTypeID));
     }

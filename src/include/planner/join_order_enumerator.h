@@ -48,7 +48,7 @@ public:
         appendCrossProduct(probePlan, buildPlan);
     }
 
-private:
+    // private:
     std::vector<std::unique_ptr<LogicalPlan>> planCrossProduct(
         std::vector<std::unique_ptr<LogicalPlan>> leftPlans,
         std::vector<std::unique_ptr<LogicalPlan>> rightPlans);

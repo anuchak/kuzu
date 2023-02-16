@@ -119,6 +119,9 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::SCAN_REL_TABLE_LISTS: {
         return "SCAN_REL_TABLE_LISTS";
     }
+    case PhysicalOperatorType::RECURSIVE_SCAN_SEMI_JOIN: {
+        return "SCAN_SEMI_JOIN";
+    }
     case PhysicalOperatorType::SEMI_MASKER: {
         return "SEMI_MASKER";
     }
@@ -133,6 +136,9 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     }
     case PhysicalOperatorType::SKIP: {
         return "SKIP";
+    }
+    case PhysicalOperatorType::SRC_DEST_COLLECTOR: {
+        return "SRC_DEST_COLLECTOR";
     }
     case PhysicalOperatorType::ORDER_BY: {
         return "ORDER_BY";

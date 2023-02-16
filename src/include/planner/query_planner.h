@@ -24,7 +24,9 @@ public:
 
     std::vector<std::unique_ptr<LogicalPlan>> getAllPlans(const BoundStatement& boundStatement);
 
-    // std::unique_ptr<LogicalPlan> getShortestPathPlan(const BoundStatement& boundStatement);
+    bool checkIfShortestPathQuery(const BoundStatement& boundStatement);
+
+    std::unique_ptr<LogicalPlan> getShortestPathPlan(const BoundStatement& boundStatement);
 
     inline std::unique_ptr<LogicalPlan> getBestPlan(const BoundStatement& boundStatement) {
         return getBestPlan(getAllPlans(boundStatement));

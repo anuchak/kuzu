@@ -125,9 +125,9 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     case LogicalOperatorType::DROP_TABLE: {
         physicalOperator = mapLogicalDropTableToPhysical(logicalOperator.get());
     } break;
-    /*case LogicalOperatorType::SHORTEST_PATH: {
+    case LogicalOperatorType::SHORTEST_PATH: {
         physicalOperator = mapLogicalShortestPathToPhysical(logicalOperator.get());
-    }*/
+    }
     case LogicalOperatorType::RENAME_TABLE: {
         physicalOperator = mapLogicalRenameTableToPhysical(logicalOperator.get());
     } break;
@@ -146,7 +146,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     return physicalOperator;
 }
 
-/*std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalShortestPathToPhysical(
+std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalShortestPathToPhysical(
     LogicalOperator* logicalOperator) {
     auto* logicalShortestPath = (LogicalShortestPath*)logicalOperator;
     auto prevOperator = mapLogicalOperatorToPhysical(logicalOperator->getChild(0));
@@ -160,26 +160,22 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     auto destDataPos = DataPos(
         logicalShortestPath->getSchema()->getExpressionPos(*destNode->getInternalIDProperty()));
     auto& relStore = storageManager.getRelsStore();
-    if (relStore.hasAdjColumn(direction, sourceNode->getSingleTableID(), rel->getSingleTableID())) {
-        storage::Column* column = relStore.getAdjColumn(
-            direction, sourceNode->getSingleTableID(), rel->getSingleTableID());
+    /*if (relStore.hasAdjColumn(direction, sourceNode->getSingleTableID(), rel->getSingleTableID()))
+    { storage::Column* column = relStore.getAdjColumn( direction, sourceNode->getSingleTableID());
         return make_unique<ShortestPathAdjCol>(srcDataPos, destDataPos, column,
             rel->getLowerBound(), rel->getUpperBound(), move(prevOperator), getOperatorID(),
             logicalShortestPath->getExpressionsForPrinting());
     } else {
         assert(relStore.hasAdjList(
-            direction, sourceNode->getSingleTableID(), rel->getSingleTableID()));
-        auto relProperties =
-            (PropertyExpression*)logicalShortestPath->getRelPropertyExpression().get();
-        auto relIDLists = relStore.getRelPropertyLists(direction, sourceNode->getSingleTableID(),
-            rel->getSingleTableID(), relProperties->getPropertyID(rel->getSingleTableID()));
-        storage::AdjLists* adjLists = relStore.getAdjLists(
-            direction, sourceNode->getSingleTableID(), rel->getSingleTableID());
-        return make_unique<ShortestPathAdjList>(srcDataPos, destDataPos, adjLists, relIDLists,
-            rel->getLowerBound(), rel->getUpperBound(), move(prevOperator), getOperatorID(),
-            logicalShortestPath->getExpressionsForPrinting());
-    }
-}*/
+            direction, sourceNode->getSingleTableID(), rel->getSingleTableID()));*/
+    auto relProperties = (PropertyExpression*)logicalShortestPath->getRelPropertyExpression().get();
+    auto relIDLists = relStore.getRelPropertyLists(
+        direction, sourceNode->getSingleTableID(), rel->getSingleTableID());
+    storage::AdjLists* adjLists = relStore.getAdjLists(direction, sourceNode->getSingleTableID());
+    return make_unique<ShortestPathAdjList>(srcDataPos, destDataPos, adjLists, relIDLists,
+        rel->getLowerBound(), rel->getUpperBound(), move(prevOperator), getOperatorID(),
+        logicalShortestPath->getExpressionsForPrinting());
+}
 
 std::unique_ptr<ResultCollector> PlanMapper::appendResultCollector(
     const binder::expression_vector& expressionsToCollect, const Schema& schema,

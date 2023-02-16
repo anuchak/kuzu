@@ -23,7 +23,11 @@ std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::getAllPlans(
     std::vector<std::unique_ptr<LogicalPlan>> resultPlans;
     auto& regularQuery = (BoundRegularQuery&)boundStatement;
     if (regularQuery.getNumSingleQueries() == 1) {
-        resultPlans = planSingleQuery(*regularQuery.getSingleQuery(0));
+        if (checkIfShortestPathQuery(boundStatement)) {
+            resultPlans.push_back(getShortestPathPlan(boundStatement));
+        } else {
+            resultPlans = planSingleQuery(*regularQuery.getSingleQuery(0));
+        }
     } else {
         std::vector<std::vector<std::unique_ptr<LogicalPlan>>> childrenLogicalPlans(
             regularQuery.getNumSingleQueries());
@@ -49,7 +53,24 @@ std::unique_ptr<LogicalPlan> QueryPlanner::getBestPlan(
     return bestPlan;
 }
 
-/*unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(const BoundStatement& boundStatement) {
+bool QueryPlanner::checkIfShortestPathQuery(const BoundStatement& boundStatement) {
+    auto& boundRegularQuery = (BoundRegularQuery&)boundStatement;
+    auto singleQuery = boundRegularQuery.getSingleQuery(0);
+    auto queryPart = singleQuery->getQueryPart(0);
+    for (int i = 0; i < queryPart->getNumReadingClause(); i++) {
+        auto boundMatchClause = (BoundMatchClause*)queryPart->getReadingClause(i);
+        auto queryGraphCollection = boundMatchClause->getQueryGraphCollection();
+        for (int j = 0; j < queryGraphCollection->getNumQueryGraphs(); j++) {
+            if (queryGraphCollection->getQueryGraph(j)->hasPathExpression()) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+std::unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(
+    const BoundStatement& boundStatement) {
     auto& boundRegularQuery = (BoundRegularQuery&)boundStatement;
     auto singleQuery = boundRegularQuery.getSingleQuery(0);
     propertiesToScan.clear();
@@ -57,30 +78,48 @@ std::unique_ptr<LogicalPlan> QueryPlanner::getBestPlan(
         assert(expression->expressionType == PROPERTY);
         propertiesToScan.push_back(expression);
     }
-    auto nquery = singleQuery->getQueryPart(0);
-    auto matchClause = (BoundMatchClause*)nquery->getReadingClause(0);
-    expression_vector wherePredicate = matchClause->getWhereExpression()->splitOnAND();
-    assert(wherePredicate.size() == 2);
-    expression_vector srcPredicate;
-    srcPredicate.push_back(wherePredicate[0]);
-    expression_vector destPredicate;
-    destPredicate.push_back(wherePredicate[1]);
+    auto queryPart = singleQuery->getQueryPart(0);
+    auto matchClause = (BoundMatchClause*)queryPart->getReadingClause(0);
+    assert(matchClause->getQueryGraphCollection()->getNumQueryGraphs() == 1);
     auto queryGraph = matchClause->getQueryGraphCollection()->getQueryGraph(0);
+    assert(queryGraph->getNumQueryNodes() == 2 && queryGraph->getNumQueryRels() == 1);
     auto sourceNode = queryGraph->getQueryNode(0);
     auto destNode = queryGraph->getQueryNode(1);
     auto rel = queryGraph->getQueryRel(0);
+    auto sourceDepVars = sourceNode->getDependentVariableNames();
+    auto destDepVars = destNode->getDependentVariableNames();
+    expression_vector srcPredicate, destPredicate;
+    if (matchClause->hasWhereExpression()) {
+        expression_vector wherePredicate = matchClause->getWhereExpression()->splitOnAND();
+        for (auto& i : wherePredicate) {
+            auto dependentVariableNames = i->getDependentVariableNames();
+            for (auto& var : dependentVariableNames) {
+                if (sourceDepVars.contains(var)) {
+                    srcPredicate.push_back(i);
+                } else {
+                    destPredicate.push_back(i);
+                }
+            }
+        }
+    }
     auto dataType = std::make_unique<DataType>(DataTypeID::REL);
     auto relTableToProperty = std::unordered_map<table_id_t, property_id_t>();
     relTableToProperty[rel->getSingleTableID()] = 0;
-    std::shared_ptr<Expression> relPropertyExpr =
-        std::make_shared<PropertyExpression>(*dataType, "_id", relTableToProperty, rel);
+    Expression expression =
+        Expression(rel->expressionType, rel->dataType, rel->getChildren(), rel->getUniqueName());
+    std::shared_ptr<Expression> relPropertyExpr = std::make_shared<PropertyExpression>(
+        *dataType, "_id", std::move(expression), relTableToProperty, false);
     auto leftPlan = std::make_unique<LogicalPlan>();
     joinOrderEnumerator.appendScanNode(sourceNode, *leftPlan);
-    joinOrderEnumerator.planFiltersForNode(srcPredicate, sourceNode, *leftPlan);
+    if (!srcPredicate.empty()) {
+        joinOrderEnumerator.planFiltersForNode(srcPredicate, sourceNode, *leftPlan);
+    }
     joinOrderEnumerator.planPropertyScansForNode(sourceNode, *leftPlan);
-    auto rightPlan = make_unique<LogicalPlan>();
+    auto rightPlan = std::make_unique<LogicalPlan>();
     joinOrderEnumerator.appendScanNode(destNode, *rightPlan);
-    joinOrderEnumerator.planFiltersForNode(destPredicate, destNode, *rightPlan);
+    if (!destPredicate.empty()) {
+        joinOrderEnumerator.planFiltersForNode(destPredicate, destNode, *rightPlan);
+    }
     joinOrderEnumerator.planPropertyScansForNode(destNode, *rightPlan);
     JoinOrderEnumerator::appendCrossProduct(*leftPlan, *rightPlan);
     appendFlattenIfNecessary(sourceNode->getInternalIDProperty(), *leftPlan);
@@ -90,7 +129,7 @@ std::unique_ptr<LogicalPlan> QueryPlanner::getBestPlan(
     leftPlan->setLastOperator(logicalShortestPath);
     logicalShortestPath->computeSchema();
     return leftPlan;
-}*/
+}
 
 // Note: we cannot append ResultCollector for plans enumerated for single query before there could
 // be a UNION on top which requires further flatten. So we delay ResultCollector appending to

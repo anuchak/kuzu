@@ -39,7 +39,7 @@ void RecursiveScanSemiJoin::initLocalStateInternal(
 bool RecursiveScanSemiJoin::getNextTuplesInternal() {
     auto singleSrcSPState =
         simpleRecursiveJoinGlobalState->grabSrcDestMorsel(threadID, maxNodeOffset, maxMorselSize);
-    auto srcDestSPMorsel = singleSrcSPState->getSrcDestSPMorsel();
+    auto& srcDestSPMorsel = singleSrcSPState->getSrcDestSPMorsel();
     if (srcDestSPMorsel->numTuples == 0) {
         return false;
     }

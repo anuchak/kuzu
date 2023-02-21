@@ -63,7 +63,7 @@ public:
         srcDestSPMorsel = std::move(morsel);
     }
 
-    std::shared_ptr<FTableScanMorsel> getSrcDestSPMorsel() { return srcDestSPMorsel; }
+    std::unique_ptr<FTableScanMorsel>& getSrcDestSPMorsel() { return srcDestSPMorsel; }
 
     std::vector<std::unique_ptr<BFSLevel>>& getBFSLevels() { return bfsLevels; }
 
@@ -73,7 +73,7 @@ private:
     std::thread::id threadID;
     common::offset_t maxNodeOffset;
     std::unique_ptr<Mask> nodeMask;
-    std::shared_ptr<FTableScanMorsel> srcDestSPMorsel;
+    std::unique_ptr<FTableScanMorsel> srcDestSPMorsel;
     std::vector<std::unique_ptr<BFSLevel>> bfsLevels;
     std::unordered_set<common::offset_t> bfsVisitedNodes;
 };

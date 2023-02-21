@@ -66,7 +66,6 @@ void SimpleRecursiveJoin::addToNextFrontier(common::offset_t parentNodeOffset,
         if (visitedNodes.contains(nodeOffset)) {
             continue;
         }
-        auto relOffset = relIDVector->getValue<int64_t>(offsetIdx);
         bfsLevel->currLevelNodeOffsets.push_back(nodeOffset);
         bfsLevel->parentNodeOffsets.push_back(parentNodeOffset);
         visitedNodes.insert(nodeOffset);

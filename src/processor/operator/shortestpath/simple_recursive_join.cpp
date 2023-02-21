@@ -30,6 +30,9 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
                 }
             }
         }
+        /// This operator will be extending from the ith Level to the {i+1}th Level here for ALL
+        /// nodes present in the last BFSLevel. This will be changed in subsequent implementations
+        /// where we will have a BFSLevelMorsel allotted to a specific thread that it will extend.
         auto singleSrcSPState = simpleRecursiveJoinGlobalState->getSingleSrcSPState(threadID);
         auto& bfsLevels = singleSrcSPState->getBFSLevels();
         auto& lastBFSLevel = bfsLevels[bfsLevels.size() - 1];

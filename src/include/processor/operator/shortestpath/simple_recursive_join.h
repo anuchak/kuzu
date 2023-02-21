@@ -10,28 +10,45 @@ namespace processor {
 class SimpleRecursiveJoin : public PhysicalOperator {
 
 public:
-    SimpleRecursiveJoin(uint32_t id, const std::string& paramsString,
-        std::shared_ptr<SimpleRecursiveJoinSharedState> simpleRecursiveJoinSharedState,
-        const DataPos& srcNodesDataPos, const DataPos& destNodeDataPos)
+    SimpleRecursiveJoin(uint32_t id, const std::string& paramsString, storage::AdjLists* adjList,
+        storage::Lists* relPropertyLists,
+        std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinSharedState,
+        const DataPos& destNodeDataPos)
         : PhysicalOperator(PhysicalOperatorType::RECURSIVE_SCAN_SEMI_JOIN, id, paramsString),
-          simpleRecursiveJoinSharedState{std::move(simpleRecursiveJoinSharedState)},
-          srcNodesDataPos{srcNodesDataPos}, destNodeDataPos{destNodeDataPos} {}
+          adjLists{adjList}, relPropertyLists{relPropertyLists},
+          simpleRecursiveJoinGlobalState{std::move(simpleRecursiveJoinSharedState)},
+          destNodeDataPos{destNodeDataPos} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
     bool getNextTuplesInternal() override;
 
+    void extendNode(common::offset_t parentNodeOffset, std::unique_ptr<BFSLevel>& bfsLevel,
+        SingleSrcSPState** singleSrcSPState);
+
+    void addToNextFrontier(common::offset_t parentNodeOffset, std::unique_ptr<BFSLevel>& bfsLevel,
+        SingleSrcSPState** singleSrcSPState);
+
+    bool getNextBatchOfChildNodes();
+
     inline std::unique_ptr<PhysicalOperator> clone() override {
-        return std::make_unique<SimpleRecursiveJoin>(
-            id, paramsString, simpleRecursiveJoinSharedState, srcNodesDataPos, destNodeDataPos);
+        return std::make_unique<SimpleRecursiveJoin>(id, paramsString, adjLists, relPropertyLists,
+            simpleRecursiveJoinGlobalState, destNodeDataPos);
     }
 
 private:
-    DataPos srcNodesDataPos;
+    std::thread::id threadID;
     DataPos destNodeDataPos;
-    std::shared_ptr<common::ValueVector> srcValVector;
+    std::shared_ptr<common::ValueVector> adjNodeIDVector;
+    std::shared_ptr<common::ValueVector> relIDVector;
+    std::shared_ptr<storage::ListSyncState> listSyncState;
+    std::shared_ptr<storage::ListHandle> listHandle;
+    storage::AdjLists* adjLists;
+    storage::Lists* relPropertyLists;
+    std::shared_ptr<storage::ListHandle> listHandles;
     std::shared_ptr<common::ValueVector> destValVector;
-    std::shared_ptr<SimpleRecursiveJoinSharedState> simpleRecursiveJoinSharedState;
+    std::unordered_set<common::offset_t> destNodeOffsets;
+    std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
 };
 
 } // namespace processor

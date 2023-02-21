@@ -13,6 +13,16 @@ using namespace kuzu::processor;
 namespace kuzu {
 namespace processor {
 
+/***
+ * Current Implementation:
+ *
+ * Only 1 thread is working on extending a `BFSLevel` to the next level.
+ * And only 1 thread -> 1 src SP computation so this ensures 1 thread -> 1 `BFSLevel` at a time.
+ *
+ * In next iterations we will have multiple threads helping to extend the same `BFSLevel` for which
+ * we will implement a `BFSLevelThreadLocalState` for each thread extending a level and a final
+ * `mergeToLevel` function to merge all the nodes to the same global `BFSLevel`
+ */
 struct BFSLevel {
 public:
     BFSLevel() : bfsLevelLock{std::mutex()},
@@ -49,7 +59,7 @@ public:
 
     inline void resetMask() { nodeMask->resetMask(maxNodeOffset + 1); }
 
-    void setBFSMorsel(std::unique_ptr<FTableScanMorsel> morsel) {
+    void setSrcDestSPMorsel(std::unique_ptr<FTableScanMorsel> morsel) {
         srcDestSPMorsel = std::move(morsel);
     }
 

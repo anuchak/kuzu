@@ -7,16 +7,20 @@ namespace processor {
 
 SingleSrcSPState* SimpleRecursiveJoinGlobalState::grabSrcDestMorsel(
     std::thread::id threadID, common::offset_t maxNodeOffset, uint64_t maxMorselSize) {
+    /// We are iterating over the single source SP global tracker to check if a threadID
+    /// has been allotted a SP computation or not. If yes, we return the singleSrcSPState.
+    /// Currently we have [1 thread -> 1 singleSrcSPState] enforced here.
     std::unique_lock<std::shared_mutex> lck(mutex);
     for (auto& singleSrcSPState : singleSrcSPTracker) {
         if (singleSrcSPState->getThreadID() == threadID) {
             return singleSrcSPState.get();
         }
     }
+    /// In case 1 thread is not allotted a singleSrcSPState yet, we use the fTable sharedState
+    /// reference to allot a SrcDestSPMorsel to the thread. After this gets done, that thread is
+    /// bound to that single SrcDestSPMorsel and will extend until it finishes.
     auto singleSrcSPState = std::make_unique<SingleSrcSPState>(threadID, maxNodeOffset);
-
-    /// This will scan the factorized table to fetch 1 src and a set of dest nodes
-    singleSrcSPState->setBFSMorsel(fTableOfSrcDest->getMorsel(maxMorselSize));
+    singleSrcSPState->setSrcDestSPMorsel(fTableOfSrcDest->getMorsel(maxMorselSize));
 
     singleSrcSPTracker.push_back(std::move(singleSrcSPState));
     return singleSrcSPTracker[singleSrcSPTracker.size() - 1].get();

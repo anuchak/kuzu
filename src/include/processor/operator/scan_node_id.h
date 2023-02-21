@@ -25,6 +25,12 @@ public:
             data[pos] = maskValue;
         }
     }
+
+    // This function is being used for BFS level extension to new level when reading rel table
+    // adjacency list. The new nodes in ith level frontier need to be masked to indicate which
+    // node offsets' adjacency list needs to be read.
+    inline void resetMask(uint64_t size) { std::fill(data.get(), data.get() + size, 0); }
+
     inline bool isMasked(uint64_t pos) { return data[pos] == maskedFlag; }
 
 private:

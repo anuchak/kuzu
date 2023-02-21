@@ -4,8 +4,8 @@
 #include <utility>
 
 #include "processor/operator/physical_operator.h"
+#include "processor/operator/result_collector.h"
 #include "processor/operator/scan_node_id.h"
-#include "processor/operator/shortestpath/src_dest_collector.h"
 #include "processor/result/factorized_table.h"
 
 using namespace kuzu::processor;
@@ -13,93 +13,90 @@ using namespace kuzu::processor;
 namespace kuzu {
 namespace processor {
 
-struct SemiJoinFilter {
+struct BFSLevel {
 public:
-    SemiJoinFilter(common::offset_t maxNodeOffset, uint8_t maskedFlag)
-        : nodeMask{std::make_unique<Mask>(maxNodeOffset + 1, maskedFlag)} {}
+    BFSLevel() : bfsLevelLock{std::mutex()},
+          levelMinNodeOffset{UINT64_MAX},
+          levelMaxNodeOffset{0},
+          currLevelNodeOffsets{std::vector<common::offset_t>()},
+    parentNodeOffsets{std::vector<common::offset_t>()} {}
+
+public:
+    // TODO: This bfs level lock is not being used now because only 1 thread extends 1 level.
+    std::mutex bfsLevelLock;
+    common::offset_t levelMinNodeOffset;
+    common::offset_t levelMaxNodeOffset;
+    std::vector<common::offset_t> currLevelNodeOffsets;
+    std::vector<common::offset_t> parentNodeOffsets;
+};
+
+struct SingleSrcSPState {
+public:
+    explicit SingleSrcSPState(std::thread::id threadID, common::offset_t maxNodeOffset)
+        : threadID{threadID}, maxNodeOffset{maxNodeOffset}, nodeMask{std::make_unique<Mask>(
+                                                                maxNodeOffset + 1,
+                                                                1 /* Masked Flag */)},
+          bfsLevels{std::vector<std::unique_ptr<BFSLevel>>()},
+          bfsVisitedNodes{std::unordered_set<common::offset_t>()} {};
+
+    inline std::thread::id getThreadID() { return threadID; }
 
     inline void setMask(uint64_t nodeOffset, uint8_t maskerIdx) {
-        nodeMask->setMask(nodeOffset, maskerIdx, maskerIdx + 1);
+        nodeMask->setMask(nodeOffset, maskerIdx, maskerIdx);
     }
 
     inline bool isMasked(uint64_t pos) { return nodeMask->isMasked(pos); }
 
-    inline void resetMask() {
-        // TODO: the Mask struct does not expose the val directly to reset
-        // This is needed while extending from BFS {i} to BFS {i+1}
+    inline void resetMask() { nodeMask->resetMask(maxNodeOffset + 1); }
+
+    void setBFSMorsel(std::unique_ptr<FTableScanMorsel> morsel) {
+        srcDestSPMorsel = std::move(morsel);
     }
 
+    std::shared_ptr<FTableScanMorsel> getSrcDestSPMorsel() { return srcDestSPMorsel; }
+
+    std::vector<std::unique_ptr<BFSLevel>>& getBFSLevels() { return bfsLevels; }
+
+    std::unordered_set<common::offset_t> getVisitedNodes() { return bfsVisitedNodes; }
+
 private:
+    std::thread::id threadID;
+    common::offset_t maxNodeOffset;
     std::unique_ptr<Mask> nodeMask;
+    std::shared_ptr<FTableScanMorsel> srcDestSPMorsel;
+    std::vector<std::unique_ptr<BFSLevel>> bfsLevels;
+    std::unordered_set<common::offset_t> bfsVisitedNodes;
 };
 
-struct BFSLevelNodeState {
-    uint64_t parentNodeID;
-    uint64_t relParentID;
-
-    BFSLevelNodeState(uint64_t parentNodeID, uint64_t relParentID)
-        : parentNodeID{parentNodeID}, relParentID{relParentID} {}
-};
-
-struct BFSLevel {
+struct SimpleRecursiveJoinGlobalState {
 public:
-    BFSLevel()
-        : bfsLevelNodes{std::map<uint64_t, BFSLevelNodeState>()}, bfsLevelLock{std::mutex()} {}
+    SimpleRecursiveJoinGlobalState()
+        : mutex{std::shared_mutex()}, singleSrcSPTracker{
+                                          std::vector<std::unique_ptr<SingleSrcSPState>>()} {};
 
-    bool levelContainsNode(uint64_t nodeID) {
-        return bfsLevelNodes.contains(nodeID);
+    SingleSrcSPState* getSingleSrcSPState(std::thread::id threadID) {
+        std::unique_lock<std::shared_mutex> lck{mutex};
+        for (auto& singleSrcSP : singleSrcSPTracker) {
+            if (singleSrcSP->getThreadID() == threadID) {
+                return singleSrcSP.get();
+            }
+        }
+        assert(false);
     }
 
-public:
-    std::mutex bfsLevelLock;
-
-private:
-    std::map<uint64_t, BFSLevelNodeState> bfsLevelNodes;
-};
-
-struct LocalSharedState {
-public:
-    LocalSharedState(common::offset_t maxNodeOffset, uint8_t maskedFlag)
-        : semiJoinFilter{std::make_shared<SemiJoinFilter>(maxNodeOffset, maskedFlag)},
-          bfsLevels{std::vector<BFSLevel>()} {};
-
-    std::shared_ptr<SemiJoinFilter> getSemiJoinFilter() { return semiJoinFilter; }
-
-    void setBFSMorsel(std::unique_ptr<BFSScanMorsel> morsel) { bfsScanMorsel = std::move(morsel); }
-
-    std::shared_ptr<BFSScanMorsel> getBFSScanMorsel() { return bfsScanMorsel; }
-
-    std::vector<BFSLevel>& getBFSLevels() {
-        return bfsLevels;
+    void setBFSFTableSharedState(std::shared_ptr<FTableSharedState> sharedState) {
+        fTableOfSrcDest = std::move(sharedState);
     }
 
-private:
-    std::shared_ptr<SemiJoinFilter> semiJoinFilter;
-    std::shared_ptr<BFSScanMorsel> bfsScanMorsel;
-    std::vector<BFSLevel> bfsLevels;
-};
+    std::shared_ptr<FTableSharedState> getFTableOfSrcDest() { return fTableOfSrcDest; }
 
-struct SimpleRecursiveJoinSharedState {
-public:
-    SimpleRecursiveJoinSharedState()
-        : localStateTracker{std::map<std::thread::id, std::shared_ptr<LocalSharedState>>()} {};
-
-    std::map<std::thread::id, std::shared_ptr<LocalSharedState>> getLocalStateTracker() {
-        return localStateTracker;
-    }
-
-    void setBFSFTableSharedState(std::shared_ptr<BFSFTableSharedState> sharedState) {
-        bfsfTableSharedState = std::move(sharedState);
-    }
-
-    std::shared_ptr<BFSFTableSharedState> getBFSFTableSharedState() { return bfsfTableSharedState; }
-
-    std::shared_ptr<BFSScanMorsel> grabMorsel(
+    SingleSrcSPState* grabSrcDestMorsel(
         std::thread::id threadID, common::offset_t maxNodeOffset, uint64_t maxMorselSize);
 
 private:
-    std::map<std::thread::id, std::shared_ptr<LocalSharedState>> localStateTracker;
-    std::shared_ptr<BFSFTableSharedState> bfsfTableSharedState;
+    std::shared_mutex mutex;
+    std::vector<std::unique_ptr<SingleSrcSPState>> singleSrcSPTracker;
+    std::shared_ptr<FTableSharedState> fTableOfSrcDest;
 };
 
 class RecursiveScanSemiJoin : public PhysicalOperator {
@@ -109,7 +106,7 @@ public:
         common::offset_t maxNodeOffset, uint32_t id, const std::string& paramsString)
         : PhysicalOperator(PhysicalOperatorType::RECURSIVE_SCAN_SEMI_JOIN, id, paramsString),
           maxNodeOffset{maxNodeOffset},
-          simpleRecursiveJoinSharedState(std::make_shared<SimpleRecursiveJoinSharedState>()) {}
+          simpleRecursiveJoinGlobalState(std::make_shared<SimpleRecursiveJoinGlobalState>()) {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
@@ -118,22 +115,12 @@ public:
     bool getNextTuplesInternal() override;
 
     // TODO: gets set in logical to physical plan mapping
-    inline void setSharedState(std::shared_ptr<BFSFTableSharedState> state) {
-        simpleRecursiveJoinSharedState->setBFSFTableSharedState(std::move(state));
+    inline void setSharedState(std::shared_ptr<FTableSharedState> state) {
+        simpleRecursiveJoinGlobalState->setBFSFTableSharedState(std::move(state));
     }
 
     inline void setMaxMorselSize() {
-        maxMorselSize =
-            simpleRecursiveJoinSharedState->getBFSFTableSharedState()->getMaxMorselSize();
-    }
-
-    inline std::shared_ptr<BFSScanMorsel> grabMorsel() {
-        return simpleRecursiveJoinSharedState->grabMorsel(
-            std::this_thread::get_id(), maxNodeOffset, maxMorselSize);
-    }
-
-    inline std::shared_ptr<SimpleRecursiveJoinSharedState> getSimpleRecursiveJoinSharedState() {
-        return simpleRecursiveJoinSharedState;
+        maxMorselSize = simpleRecursiveJoinGlobalState->getFTableOfSrcDest()->getMaxMorselSize();
     }
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
@@ -141,12 +128,13 @@ public:
     }
 
 private:
+    std::thread::id threadID;
     uint64_t maxMorselSize;
     common::offset_t maxNodeOffset;
     std::vector<DataPos> outVecPositions;
     std::vector<uint32_t> colIndicesToScan;
     std::vector<std::shared_ptr<common::ValueVector>> vectorsToScan;
-    std::shared_ptr<SimpleRecursiveJoinSharedState> simpleRecursiveJoinSharedState;
+    std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
 };
 } // namespace processor
 } // namespace kuzu

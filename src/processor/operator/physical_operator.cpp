@@ -131,9 +131,6 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::SKIP: {
         return "SKIP";
     }
-    case PhysicalOperatorType::SRC_DEST_COLLECTOR: {
-        return "SRC_DEST_COLLECTOR";
-    }
     case PhysicalOperatorType::ORDER_BY: {
         return "ORDER_BY";
     }

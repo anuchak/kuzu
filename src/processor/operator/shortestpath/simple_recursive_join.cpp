@@ -6,14 +6,8 @@ namespace processor {
 void SimpleRecursiveJoin::initLocalStateInternal(
     kuzu::processor::ResultSet* resultSet, kuzu::processor::ExecutionContext* context) {
     threadID = std::this_thread::get_id();
-    destValVector = resultSet->dataChunks[destNodeDataPos.dataChunkPos]
-                        ->valueVectors[destNodeDataPos.valueVectorPos];
-    adjNodeIDVector =
-        std::make_shared<common::ValueVector>(common::INTERNAL_ID, context->memoryManager);
-    adjNodeIDVector->state = std::make_shared<common::DataChunkState>();
-    relIDVector = std::make_shared<common::ValueVector>(common::INT64, context->memoryManager);
-    relIDVector->state = adjNodeIDVector->state;
-    listHandles = std::make_shared<storage::ListHandle>(*listSyncState);
+    destValVector = resultSet->getValueVector(destNodeDataPos);
+    bfsOutputValueVector = resultSet->getValueVector(bfsOutputVectorDataPos);
 }
 
 bool SimpleRecursiveJoin::getNextTuplesInternal() {
@@ -30,62 +24,36 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
                 }
             }
         }
-        /// This operator will be extending from the ith Level to the {i+1}th Level here for ALL
-        /// nodes present in the last BFSLevel. This will be changed in subsequent implementations
-        /// where we will have a BFSLevelMorsel allotted to a specific thread that it will extend.
         auto singleSrcSPState = simpleRecursiveJoinGlobalState->getSingleSrcSPState(threadID);
+        singleSrcSPState->resetMask();
         auto& bfsLevels = singleSrcSPState->getBFSLevels();
+        /// This is the last bfs level into which we will add the newly read nodes from scan_rel_table
         auto& lastBFSLevel = bfsLevels[bfsLevels.size() - 1];
-        std::unique_lock<std::mutex> lck{lastBFSLevel->bfsLevelLock};
-        auto newBFSLevel = std::make_unique<BFSLevel>();
-        for (int i = 0; i <= (lastBFSLevel->levelMaxNodeOffset - lastBFSLevel->levelMinNodeOffset);
-             i++) {
-            if (singleSrcSPState->isMasked(i + lastBFSLevel->levelMinNodeOffset)) {
-                extendNode(i + lastBFSLevel->levelMinNodeOffset, newBFSLevel, &singleSrcSPState);
+        auto visitedNodesMap = singleSrcSPState->getVisitedNodes();
+        std::unordered_map<common::offset_t, common::sel_t> nextLevelOffsets =
+            std::unordered_map<common::offset_t, common::sel_t>();
+        common::offset_t levelBFSMinOffset = UINT64_MAX, levelBFSMaxOffset = 0;
+        for (int i = 0; i < bfsOutputValueVector->state->selVector->selectedSize; i++) {
+            auto selPos = bfsOutputValueVector->state->selVector->selectedPositions[i];
+            auto nodeOffset = bfsOutputValueVector->readNodeOffset(selPos);
+            if (visitedNodesMap.contains(nodeOffset)) {
+                continue;
+            }
+            if (destNodeOffsets.contains(nodeOffset)) {
+                // TODO: A destination node has been reached, write to output vector
+            }
+            visitedNodesMap.insert(nodeOffset);
+            singleSrcSPState->setMask(nodeOffset);
+            nextLevelOffsets[nodeOffset] = selPos;
+            levelBFSMinOffset = std::min(levelBFSMinOffset, nodeOffset);
+            levelBFSMaxOffset = std::max(levelBFSMaxOffset, nodeOffset);
+        }
+        for (auto i = levelBFSMinOffset; i <= levelBFSMaxOffset; i++) {
+            if (singleSrcSPState->isMasked(i)) {
+                lastBFSLevel->nodeIDSelectedPos.push_back(nextLevelOffsets[i]);
             }
         }
-        singleSrcSPState->getBFSLevels().push_back(std::move(newBFSLevel));
     }
-}
-
-void SimpleRecursiveJoin::extendNode(common::offset_t parentNodeOffset,
-    std::unique_ptr<BFSLevel>& bfsLevel, SingleSrcSPState** singleSrcSPState) {
-    adjLists->initListReadingState(parentNodeOffset, *listHandle, transaction->getType());
-    adjLists->readValues(transaction, adjNodeIDVector, *listHandle);
-    relPropertyLists->readValues(transaction, relIDVector, *listHandles);
-    addToNextFrontier(parentNodeOffset, bfsLevel, singleSrcSPState);
-    while (getNextBatchOfChildNodes()) {
-        relPropertyLists->readValues(transaction, relIDVector, *listHandles);
-        addToNextFrontier(parentNodeOffset, bfsLevel, singleSrcSPState);
-    }
-}
-
-void SimpleRecursiveJoin::addToNextFrontier(common::offset_t parentNodeOffset,
-    std::unique_ptr<BFSLevel>& bfsLevel, SingleSrcSPState** singleSrcSPState) {
-    auto visitedNodes = (*singleSrcSPState)->getVisitedNodes();
-    for (auto pos = 0u; pos < adjNodeIDVector->state->selVector->selectedSize; pos++) {
-        auto offsetIdx = adjNodeIDVector->state->selVector->selectedPositions[pos];
-        auto nodeOffset = adjNodeIDVector->readNodeOffset(offsetIdx);
-        if (visitedNodes.contains(nodeOffset)) {
-            continue;
-        }
-        bfsLevel->currLevelNodeOffsets.push_back(nodeOffset);
-        bfsLevel->parentNodeOffsets.push_back(parentNodeOffset);
-        visitedNodes.insert(nodeOffset);
-
-        /// This means we have hit a destination node while extending, so we hit output mode here
-        if (destNodeOffsets.contains(nodeOffset)) {
-            // TODO: Copy the path length to the output vector
-        }
-    }
-}
-
-bool SimpleRecursiveJoin::getNextBatchOfChildNodes() {
-    if (listHandle->hasMoreAndSwitchSourceIfNecessary()) {
-        adjLists->readValues(transaction, adjNodeIDVector, *listHandle);
-        return true;
-    }
-    return false;
 }
 
 } // namespace processor

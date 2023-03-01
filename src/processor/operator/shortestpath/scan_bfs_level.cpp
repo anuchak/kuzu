@@ -10,7 +10,7 @@ namespace kuzu {
 namespace processor {
 
 SingleSrcSPState* SimpleRecursiveJoinGlobalState::grabSrcDestMorsel(
-    std::thread::id threadID, common::offset_t maxNodeOffset, uint64_t maxMorselSize) {
+    std::thread::id threadID, common::offset_t maxNodeOffset) {
     /// We are iterating over the single source SP global tracker to check if a threadID
     /// has been allotted a SP computation or not. If yes, we return the singleSrcSPState.
     /// Currently we have [1 thread -> 1 singleSrcSPState] enforced here.
@@ -22,7 +22,7 @@ SingleSrcSPState* SimpleRecursiveJoinGlobalState::grabSrcDestMorsel(
     /// reference to allot a SrcDestSPMorsel to the thread. After this gets done, that thread is
     /// bound to that single SrcDestSPMorsel and will extend until it finishes.
     auto singleSrcSPState = std::make_unique<SingleSrcSPState>(maxNodeOffset);
-    singleSrcSPState->setSrcDestSPMorsel(fTableOfSrcDest->getMorsel(maxMorselSize));
+    singleSrcSPState->srcDstSPMorsel = std::move(fTableOfSrcDest->getMorsel(1 /* morsel size */));
     return (singleSrcSPTracker[threadID] = std::move(singleSrcSPState)).get();
 }
 
@@ -33,61 +33,80 @@ void ScanBFSLevel::initLocalStateInternal(
         auto valueVector = resultSet->getValueVector(dataPos);
         vectorsToScan.push_back(valueVector);
     }
-    maxMorselSize = simpleRecursiveJoinGlobalState->getFTableOfSrcDest()->getMaxMorselSize();
-    bfsInputValueVector = resultSet->getValueVector(bfsInputVectorDataPos);
+    nodesToExtendValueVector = resultSet->getValueVector(bfsInputVectorDataPos);
 }
 
-// Copy 2048 OR all nodes in last level to the BFS Input ValueVector.
+// Copy 2048 OR all nodes in current level to the nodesToExtend ValueVector.
 // Then, ScalRelTableList will extend them.
-uint16_t ScanBFSLevel::copyNodeIDsToVector(BFSLevel& lastBFSLevel) {
-    auto size = std::max(
-        DEFAULT_VECTOR_CAPACITY, lastBFSLevel.bfsLevelNodes.size() - lastBFSLevel.bfsLevelScanStartIdx);
-    int idx;
-    for (idx = lastBFSLevel.bfsLevelScanStartIdx; idx < (size + lastBFSLevel.bfsLevelScanStartIdx); idx++) {
-        auto nodeID = lastBFSLevel.bfsLevelNodes[idx];
-        bfsInputValueVector->setValue<nodeID_t>(idx, nodeID);
+uint32_t ScanBFSLevel::copyNodeIDsToVector(BFSLevel& currBFSLevel) {
+    auto size = std::max(DEFAULT_VECTOR_CAPACITY,
+        currBFSLevel.bfsLevelNodes.size() - currBFSLevel.bfsLevelScanStartIdx);
+    uint32_t idx;
+    for (idx = currBFSLevel.bfsLevelScanStartIdx; idx < (size + currBFSLevel.bfsLevelScanStartIdx);
+         idx++) {
+        auto nodeID = currBFSLevel.bfsLevelNodes[idx];
+        nodesToExtendValueVector->setValue<nodeID_t>(idx, nodeID);
     }
-    lastBFSLevel.bfsLevelScanStartIdx += size;
-    bfsInputValueVector->state->initOriginalAndSelectedSize(size);
+    currBFSLevel.bfsLevelScanStartIdx += size;
+    nodesToExtendValueVector->state->initOriginalAndSelectedSize(size);
     return size;
 }
 
 bool ScanBFSLevel::getNextTuplesInternal() {
     auto singleSrcSPState =
-        simpleRecursiveJoinGlobalState->grabSrcDestMorsel(threadID, maxNodeOffset, maxMorselSize);
-    auto& srcDestSPMorsel = singleSrcSPState->getSrcDestSPMorsel();
-    if (srcDestSPMorsel->numTuples == 0) {
+        simpleRecursiveJoinGlobalState->grabSrcDestMorsel(threadID, maxNodeOffset);
+    auto& srcDstSPMorsel = singleSrcSPState->srcDstSPMorsel;
+    if (srcDstSPMorsel->numTuples == 0) {
         return false;
     }
-    if (singleSrcSPState->getBFSLevels().empty()) {
-        srcDestSPMorsel->table->scan(vectorsToScan, srcDestSPMorsel->startTupleIdx,
-            srcDestSPMorsel->numTuples, colIndicesToScan);
-        auto firstBFSLevel = std::make_unique<BFSLevel>();
+    auto& currBFSLevel = singleSrcSPState->currBFSLevel;
+    auto& nextBFSLevel = singleSrcSPState->nextBFSLevel;
+    if (currBFSLevel->bfsLevelNodes.empty()) {
+        srcDstSPMorsel->table->scan(vectorsToScan, srcDstSPMorsel->startTupleIdx,
+            srcDstSPMorsel->numTuples, colIndicesToScan);
         auto srcNodeID = ((nodeID_t*)(vectorsToScan[0]->getData()))[0];
-        firstBFSLevel->bfsLevelNodes.push_back(srcNodeID);
-        firstBFSLevel->bfsLevelScanStartIdx++; // we added 1 node (src) to the bfsLevel
-        bfsInputValueVector->setValue<nodeID_t>(0 /* pos */, srcNodeID);
-        bfsInputValueVector->state->initOriginalAndSelectedSize(1 /* size */);
-        singleSrcSPState->getBFSLevels().push_back(std::move(firstBFSLevel));
+        currBFSLevel->bfsLevelNodes[srcNodeID.offset] = srcNodeID;
+        currBFSLevel->bfsLevelScanStartIdx++; // we added 1 node (src) to the bfsLevel
+        nodesToExtendValueVector->setValue<nodeID_t>(0 /* pos */, srcNodeID);
+        nodesToExtendValueVector->state->initOriginalAndSelectedSize(1 /* size */);
 
-        // We just initialize the 2nd level and push it, SimpleRecursiveJoin will add nodes to this.
-        auto secondBFSLevel = std::make_unique<BFSLevel>();
-        secondBFSLevel->bfsLevelScanStartIdx = 0;
-        singleSrcSPState->getBFSLevels().push_back(std::move(secondBFSLevel));
+        // SimpleRecursiveJoin will add nodes to the next level.
+        nextBFSLevel->bfsLevelHeight = currBFSLevel->bfsLevelHeight + 1;
     } else {
-        auto& bfsLevels = singleSrcSPState->getBFSLevels();
-        auto& lastBFSLevel = bfsLevels[bfsLevels.size() - 1];
-
-        // If we have extended all nodes in last level OR this is the first time we are extending it.
-        if (!lastBFSLevel->bfsLevelScanStartIdx ||
-            lastBFSLevel->bfsLevelScanStartIdx == lastBFSLevel->bfsLevelNodes.size()) {
-            auto newBFSLevel = std::make_unique<BFSLevel>();
-            bfsLevels.push_back(std::move(newBFSLevel));
-            lastBFSLevel->bfsLevelScanStartIdx = 0u;
+        // If we have extended all nodes in current level, we make the next level as the current
+        // level. This indicates that now we are ready to extend a new batch of nodes.
+        if (currBFSLevel->bfsLevelScanStartIdx == currBFSLevel->bfsLevelNodes.size()) {
+            currBFSLevel = std::move(nextBFSLevel);
+            rearrangeCurrBFSLevelNodes(singleSrcSPState);
+            nextBFSLevel = std::make_unique<BFSLevel>();
+            nextBFSLevel->bfsLevelHeight = currBFSLevel->bfsLevelHeight + 1;
         }
-        copyNodeIDsToVector(*lastBFSLevel);
+        copyNodeIDsToVector(*currBFSLevel);
     }
     return true;
+}
+
+/*
+ * This function places the nodeIDs in next BFSLevel to be extended in order according
+ * to the mask generated. We wait to reset the mask here and NOT in the SimpleRecursiveJoin because
+ * we first place all them in the `BFSLevel` struct.
+ *
+ * Because we can extend only 2048 nodes at a time & also only 2048 elements are read from the
+ * adjacency list at a time we can't know at the top level when the current frontier extension
+ * has been completed. Hence, we need to do it here.
+ */
+void ScanBFSLevel::rearrangeCurrBFSLevelNodes(SingleSrcSPState* singleSrcSPState) const {
+    auto& currBFSLevel = singleSrcSPState->currBFSLevel;
+    auto orderedNodeIDVector = std::vector<nodeID_t>();
+    auto nodeMask = singleSrcSPState->nodeMask;
+    for (common::offset_t nodeOffset = 0u; nodeOffset <= maxNodeOffset; nodeOffset++) {
+        if (nodeMask[nodeOffset]) {
+            orderedNodeIDVector.push_back(currBFSLevel->getBFSLevelNodeID(nodeOffset));
+        }
+    }
+    currBFSLevel->bfsLevelNodes = orderedNodeIDVector;
+    // Reset mask finally here when all nodeIDs have been read after extension.
+    std::fill(nodeMask.begin(), nodeMask.end(), false);
 }
 
 } // namespace processor

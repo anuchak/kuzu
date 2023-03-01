@@ -24,10 +24,11 @@ namespace processor {
  */
 struct BFSLevel {
 public:
-    BFSLevel() : nodeIDSelectedPos{std::vector<common::sel_t>()} {}
+    BFSLevel() : bfsLevelNodes{std::vector<common::nodeID_t>()}, bfsLevelScanStartIdx{0u} {}
 
 public:
-    std::vector<common::sel_t> nodeIDSelectedPos;
+    std::vector<common::nodeID_t> bfsLevelNodes;
+    uint16_t bfsLevelScanStartIdx;
 };
 
 struct SingleSrcSPState {
@@ -90,16 +91,17 @@ private:
 class ScanBFSLevel : public PhysicalOperator {
 
 public:
-    ScanBFSLevel(common::offset_t maxNodeOffset, const DataPos& bfsInputVectorDataPos,
-        const DataPos& bfsOutputVectorDataPos, uint32_t id, const std::string& paramsString)
+    ScanBFSLevel(common::offset_t maxNodeOffset, const DataPos& bfsInputVectorDataPos, uint32_t id,
+        const std::string& paramsString)
         : PhysicalOperator(PhysicalOperatorType::SCAN_BFS_LEVEL, id, paramsString),
           maxNodeOffset{maxNodeOffset}, bfsInputVectorDataPos{bfsInputVectorDataPos},
-          bfsOutputVectorDataPos{bfsOutputVectorDataPos},
           simpleRecursiveJoinGlobalState(std::make_shared<SimpleRecursiveJoinGlobalState>()) {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
     bool isSource() const override { return true; }
+
+    uint16_t copyNodeIDsToVector(BFSLevel& lastBFSLevel);
 
     bool getNextTuplesInternal() override;
 
@@ -110,7 +112,7 @@ public:
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<ScanBFSLevel>(
-            maxNodeOffset, bfsInputVectorDataPos, bfsOutputVectorDataPos, id, paramsString);
+            maxNodeOffset, bfsInputVectorDataPos, id, paramsString);
     }
 
 private:
@@ -118,9 +120,7 @@ private:
     uint64_t maxMorselSize;
     common::offset_t maxNodeOffset;
     DataPos bfsInputVectorDataPos;
-    DataPos bfsOutputVectorDataPos;
     std::shared_ptr<common::ValueVector> bfsInputValueVector;
-    std::shared_ptr<common::ValueVector> bfsOutputValueVector;
     std::vector<DataPos> outVecPositions;
     std::vector<uint32_t> colIndicesToScan;
     std::vector<std::shared_ptr<common::ValueVector>> vectorsToScan;

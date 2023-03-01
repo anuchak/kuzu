@@ -10,7 +10,7 @@ namespace processor {
 void SimpleRecursiveJoin::initLocalStateInternal(
     kuzu::processor::ResultSet* resultSet, kuzu::processor::ExecutionContext* context) {
     threadID = std::this_thread::get_id();
-    destValVector = resultSet->getValueVector(destNodeDataPos);
+    dstValVector = resultSet->getValueVector(dstNodeDataPos);
     inputNodeIDVector = resultSet->getValueVector(inputNodeIDDataPos);
 }
 
@@ -33,11 +33,11 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
             return false;
         }
         // fetch all the destination node offsets into a vector at once
-        if (destNodeOffsets.empty()) {
-            for (int i = 0; i < destValVector->state->selVector->selectedSize; i++) {
-                auto destIdx = destValVector->state->selVector->selectedPositions[i];
-                if (!destValVector->isNull(destIdx)) {
-                    destNodeOffsets.insert(destValVector->readNodeOffset(destIdx));
+        if (dstNodeOffsets.empty()) {
+            for (int i = 0; i < dstValVector->state->selVector->selectedSize; i++) {
+                auto destIdx = dstValVector->state->selVector->selectedPositions[i];
+                if (!dstValVector->isNull(destIdx)) {
+                    dstNodeOffsets.insert(dstValVector->readNodeOffset(destIdx));
                 }
             }
         }
@@ -51,7 +51,7 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
             if (visitedNodesMap.contains(nodeID.offset)) {
                 continue;
             }
-            if (destNodeOffsets.contains(nodeID.offset)) {
+            if (dstNodeOffsets.contains(nodeID.offset)) {
                 // TODO: A destination node has been reached, write to output vector
             }
             visitedNodesMap.insert(nodeID.offset);

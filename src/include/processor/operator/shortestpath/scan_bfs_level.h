@@ -68,12 +68,12 @@ public:
         return singleSrcSPTracker[threadID].get();
     }
 
-    SingleSrcSPState* grabSrcDestMorsel(std::thread::id threadID, common::offset_t maxNodeOffset);
+    SingleSrcSPState* grabSrcDstMorsel(std::thread::id threadID, common::offset_t maxNodeOffset);
 
 public:
     std::shared_mutex mutex;
     std::unordered_map<std::thread::id, std::unique_ptr<SingleSrcSPState>> singleSrcSPTracker;
-    std::shared_ptr<FTableSharedState> fTableOfSrcDest;
+    std::shared_ptr<FTableSharedState> fTableOfSrcDst;
 };
 
 class ScanBFSLevel : public PhysicalOperator {

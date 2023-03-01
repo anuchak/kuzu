@@ -9,7 +9,7 @@ using namespace kuzu::common;
 namespace kuzu {
 namespace processor {
 
-SingleSrcSPState* SimpleRecursiveJoinGlobalState::grabSrcDestMorsel(
+SingleSrcSPState* SimpleRecursiveJoinGlobalState::grabSrcDstMorsel(
     std::thread::id threadID, common::offset_t maxNodeOffset) {
     /// We are iterating over the single source SP global tracker to check if a threadID
     /// has been allotted a SP computation or not. If yes, we return the singleSrcSPState.
@@ -19,10 +19,10 @@ SingleSrcSPState* SimpleRecursiveJoinGlobalState::grabSrcDestMorsel(
         return singleSrcSPTracker[threadID].get();
     }
     /// In case 1 thread is not allotted a singleSrcSPState yet, we use the fTable sharedState
-    /// reference to allot a SrcDestSPMorsel to the thread. After this gets done, that thread is
-    /// bound to that single SrcDestSPMorsel and will extend until it finishes.
+    /// reference to allot a SrcDstSPMorsel to the thread. After this gets done, that thread is
+    /// bound to that single SrcDstSPMorsel and will extend until it finishes.
     auto singleSrcSPState = std::make_unique<SingleSrcSPState>(maxNodeOffset);
-    singleSrcSPState->srcDstSPMorsel = std::move(fTableOfSrcDest->getMorsel(1 /* morsel size */));
+    singleSrcSPState->srcDstSPMorsel = std::move(fTableOfSrcDst->getMorsel(1 /* morsel size */));
     return (singleSrcSPTracker[threadID] = std::move(singleSrcSPState)).get();
 }
 
@@ -54,7 +54,7 @@ uint32_t ScanBFSLevel::copyNodeIDsToVector(BFSLevel& currBFSLevel) {
 
 bool ScanBFSLevel::getNextTuplesInternal() {
     auto singleSrcSPState =
-        simpleRecursiveJoinGlobalState->grabSrcDestMorsel(threadID, maxNodeOffset);
+        simpleRecursiveJoinGlobalState->grabSrcDstMorsel(threadID, maxNodeOffset);
     auto& srcDstSPMorsel = singleSrcSPState->srcDstSPMorsel;
     if (srcDstSPMorsel->numTuples == 0) {
         return false;

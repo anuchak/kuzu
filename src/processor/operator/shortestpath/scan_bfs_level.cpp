@@ -89,7 +89,7 @@ bool ScanBFSLevel::getNextTuplesInternal() {
 /*
  * This function places the nodeIDs in next BFSLevel to be extended in order according
  * to the mask generated. We wait to reset the mask here and NOT in the SimpleRecursiveJoin because
- * we first place all them in the `BFSLevel` struct.
+ * we first place all of them in the `BFSLevel` struct.
  *
  * Because we can extend only 2048 nodes at a time & also only 2048 elements are read from the
  * adjacency list at a time we can't know at the top level when the current frontier extension

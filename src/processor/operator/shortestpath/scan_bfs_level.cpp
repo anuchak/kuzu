@@ -1,5 +1,6 @@
 #include "processor/operator/shortestpath/scan_bfs_level.h"
 
+#include "common/configs.h"
 #include "common/vector/value_vector_utils.h"
 #include "processor/operator/result_collector.h"
 
@@ -34,7 +35,21 @@ void ScanBFSLevel::initLocalStateInternal(
     }
     maxMorselSize = simpleRecursiveJoinGlobalState->getFTableOfSrcDest()->getMaxMorselSize();
     bfsInputValueVector = resultSet->getValueVector(bfsInputVectorDataPos);
-    bfsOutputValueVector = resultSet->getValueVector(bfsOutputVectorDataPos);
+}
+
+// Copy 2048 OR all nodes in last level to the BFS Input ValueVector.
+// Then, ScalRelTableList will extend them.
+uint16_t ScanBFSLevel::copyNodeIDsToVector(BFSLevel& lastBFSLevel) {
+    auto size = std::max(
+        DEFAULT_VECTOR_CAPACITY, lastBFSLevel.bfsLevelNodes.size() - lastBFSLevel.bfsLevelScanStartIdx);
+    int idx;
+    for (idx = lastBFSLevel.bfsLevelScanStartIdx; idx < (size + lastBFSLevel.bfsLevelScanStartIdx); idx++) {
+        auto nodeID = lastBFSLevel.bfsLevelNodes[idx];
+        bfsInputValueVector->setValue<nodeID_t>(idx, nodeID);
+    }
+    lastBFSLevel.bfsLevelScanStartIdx += size;
+    bfsInputValueVector->state->initOriginalAndSelectedSize(size);
+    return size;
 }
 
 bool ScanBFSLevel::getNextTuplesInternal() {
@@ -47,26 +62,30 @@ bool ScanBFSLevel::getNextTuplesInternal() {
     if (singleSrcSPState->getBFSLevels().empty()) {
         srcDestSPMorsel->table->scan(vectorsToScan, srcDestSPMorsel->startTupleIdx,
             srcDestSPMorsel->numTuples, colIndicesToScan);
-        auto selPos = vectorsToScan[0]->state->selVector->selectedPositions[0];
-        auto nodeInternalID = ((internalID_t*)(vectorsToScan[0]->getData()))[selPos];
-        bfsInputValueVector->setValue<internalID_t>(0 /* position */, nodeInternalID);
+        auto firstBFSLevel = std::make_unique<BFSLevel>();
+        auto srcNodeID = ((nodeID_t*)(vectorsToScan[0]->getData()))[0];
+        firstBFSLevel->bfsLevelNodes.push_back(srcNodeID);
+        firstBFSLevel->bfsLevelScanStartIdx++; // we added 1 node (src) to the bfsLevel
+        bfsInputValueVector->setValue<nodeID_t>(0 /* pos */, srcNodeID);
         bfsInputValueVector->state->initOriginalAndSelectedSize(1 /* size */);
-        auto bfsLevel = std::make_unique<BFSLevel>();
-        bfsLevel->nodeIDSelectedPos.push_back(selPos);
-        singleSrcSPState->getBFSLevels().push_back(std::move(bfsLevel));
+        singleSrcSPState->getBFSLevels().push_back(std::move(firstBFSLevel));
+
+        // We just initialize the 2nd level and push it, SimpleRecursiveJoin will add nodes to this.
+        auto secondBFSLevel = std::make_unique<BFSLevel>();
+        secondBFSLevel->bfsLevelScanStartIdx = 0;
+        singleSrcSPState->getBFSLevels().push_back(std::move(secondBFSLevel));
     } else {
         auto& bfsLevels = singleSrcSPState->getBFSLevels();
-        auto& lastBFSLevelNodeIDPos = bfsLevels[bfsLevels.size() - 1]->nodeIDSelectedPos;
-        int indexPos;
-        for (indexPos = 0; indexPos < lastBFSLevelNodeIDPos.size(); indexPos++) {
-            auto selPos = lastBFSLevelNodeIDPos[indexPos];
-            auto nodeInternalID =
-                ((common::internalID_t*)(bfsOutputValueVector->getData()))[selPos];
-            bfsInputValueVector->setValue<common::internalID_t>(indexPos, nodeInternalID);
+        auto& lastBFSLevel = bfsLevels[bfsLevels.size() - 1];
+
+        // If we have extended all nodes in last level OR this is the first time we are extending it.
+        if (!lastBFSLevel->bfsLevelScanStartIdx ||
+            lastBFSLevel->bfsLevelScanStartIdx == lastBFSLevel->bfsLevelNodes.size()) {
+            auto newBFSLevel = std::make_unique<BFSLevel>();
+            bfsLevels.push_back(std::move(newBFSLevel));
+            lastBFSLevel->bfsLevelScanStartIdx = 0u;
         }
-        bfsInputValueVector->state->selVector->resetSelectorToUnselectedWithSize(indexPos);
-        auto newBFSLevel = std::make_unique<BFSLevel>();
-        bfsLevels.push_back(std::move(newBFSLevel));
+        copyNodeIDsToVector(*lastBFSLevel);
     }
     return true;
 }

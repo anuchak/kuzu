@@ -54,7 +54,7 @@ public:
 struct SSSPMorsel {
 public:
     explicit SSSPMorsel(common::offset_t maxNodeOffset)
-        : numDstNodesNotReached{0u}, curLevelNodeMask{std::vector<bool>(maxNodeOffset + 1, false)},
+        : numDstNodesNotReached{0u}, nextLevelNodeMask{std::vector<bool>(maxNodeOffset + 1, false)},
           dstNodeDistances{std::make_unique<std::unordered_map<common::offset_t, uint32_t>>()},
           curBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
           bfsVisitedNodes{
@@ -67,7 +67,7 @@ public:
 public:
     uint32_t numDstNodesNotReached;
     std::shared_mutex mutex;
-    std::vector<bool> curLevelNodeMask;
+    std::vector<bool> nextLevelNodeMask;
     std::unique_ptr<std::unordered_map<common::offset_t, uint32_t>> dstNodeDistances;
     std::unique_ptr<FTableScanMorsel> srcDstFTableMorsel;
     std::unique_ptr<BFSLevel> curBFSLevel;

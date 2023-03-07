@@ -154,15 +154,15 @@ void ScanBFSLevel::initializeNextBFSLevel(BFSLevelMorsel& bfsLevelMorsel) {
 void ScanBFSLevel::rearrangeCurBFSLevelNodes() const {
     auto& curBFSLevel = ssspMorsel->curBFSLevel;
     auto orderedNodeIDVector = std::vector<nodeID_t>();
-    auto& curLevelNodeMask = ssspMorsel->curLevelNodeMask;
+    auto& nextLevelNodeMask = ssspMorsel->nextLevelNodeMask;
     for (common::offset_t nodeOffset = 0u; nodeOffset <= maxNodeOffset; nodeOffset++) {
-        if (curLevelNodeMask[nodeOffset]) {
+        if (nextLevelNodeMask[nodeOffset]) {
             orderedNodeIDVector.push_back(curBFSLevel->getBFSLevelNodeID(nodeOffset));
         }
     }
     curBFSLevel->bfsLevelNodes = orderedNodeIDVector;
     // Reset mask finally here when all nodeIDs have been read after extension.
-    std::fill(curLevelNodeMask.begin(), curLevelNodeMask.end(), false);
+    std::fill(nextLevelNodeMask.begin(), nextLevelNodeMask.end(), false);
 }
 
 void ScanBFSLevel::copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel) {

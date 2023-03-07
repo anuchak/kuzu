@@ -18,10 +18,10 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
         if (!children[0]->getNextTuple()) {
             return false;
         }
-        auto singleSrcSPMorsel = simpleRecursiveJoinGlobalState->getSingleSrcSPMorsel(threadID);
-        auto& nextBFSLevel = singleSrcSPMorsel->nextBFSLevel;
-        auto& visitedNodes = *singleSrcSPMorsel->bfsVisitedNodes;
-        auto nodeMask = singleSrcSPMorsel->nodeMask;
+        auto ssspMorsel = simpleRecursiveJoinGlobalState->getSSSPMorsel(threadID);
+        auto& nextBFSLevel = ssspMorsel->nextBFSLevel;
+        auto& visitedNodes = *ssspMorsel->bfsVisitedNodes;
+        auto nodeMask = ssspMorsel->nodeMask;
         for (int i = 0; i < inputNodeIDVector->state->selVector->selectedSize; i++) {
             auto selectedPos = inputNodeIDVector->state->selVector->selectedPositions[i];
             auto nodeID = ((nodeID_t*)(inputNodeIDVector->getData()))[selectedPos];
@@ -31,7 +31,7 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
             }
             if (visitedNodes[nodeID.offset] == NOT_VISITED_DST) {
                 visitedNodes[nodeID.offset] = VISITED_DST;
-                singleSrcSPMorsel->dstNodeDistances->operator[](nodeID.offset) =
+                ssspMorsel->dstNodeDistances->operator[](nodeID.offset) =
                     nextBFSLevel->bfsLevelNumber;
             } else {
                 visitedNodes[nodeID.offset] = VISITED;

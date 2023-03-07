@@ -22,8 +22,7 @@ SSSPMorsel* SimpleRecursiveJoinGlobalState::grabSrcDstMorsel(
     /// reference to allot a SrcDstSPMorsel to the thread. After this gets done, that thread is
     /// bound to that single SrcDstSPMorsel and will extend until it finishes.
     auto ssspMorsel = std::make_unique<SSSPMorsel>(maxNodeOffset);
-    ssspMorsel->srcDstFTableMorsel =
-        std::move(fTableOfSrcDst->getMorsel(1 /* morsel size */));
+    ssspMorsel->srcDstFTableMorsel = std::move(fTableOfSrcDst->getMorsel(1 /* morsel size */));
     return (ssspMorselTracker[threadID] = std::move(ssspMorsel)).get();
 }
 
@@ -70,7 +69,7 @@ bool ScanBFSLevel::getNextTuplesInternal() {
         }
     }
     // If numDstNodesNotReached is 0, it indicates we have visited ALL our destination nodes.
-    if(ssspMorsel->numDstNodesNotReached == 0) {
+    if (ssspMorsel->numDstNodesNotReached == 0) {
         writeDistToOutputVector();
         return false;
     }
@@ -104,6 +103,7 @@ void ScanBFSLevel::initializeNewSSSPMorsel() {
         srcDstFTableMorsel->numTuples, ftColIndicesOfSrcAndDstNodeIDs);
     ssspMorsel->setDstNodeOffsets(srcDstNodeIDVectors[1]);
     auto srcNodeID = ((nodeID_t*)(srcDstNodeIDVectors[0]->getData()))[0];
+    ssspMorsel->dstTableID = ((nodeID_t*)(srcDstNodeIDVectors[1]->getData()))[0].tableID;
     curBFSLevel->bfsLevelNodes[srcNodeID.offset] = srcNodeID;
     curBFSLevel->bfsLevelScanStartIdx++; // we added 1 node (src) to the bfsLevel
     nodesToExtend->setValue<nodeID_t>(0 /* pos */, srcNodeID);
@@ -153,14 +153,13 @@ void ScanBFSLevel::initializeNextBFSLevel(BFSLevelMorsel& bfsLevelMorsel) {
  */
 void ScanBFSLevel::rearrangeCurBFSLevelNodes() const {
     auto& curBFSLevel = ssspMorsel->curBFSLevel;
-    auto orderedNodeIDVector = std::vector<nodeID_t>();
+    curBFSLevel->bfsLevelNodes = std::vector<common::nodeID_t>();
     auto& nextLevelNodeMask = ssspMorsel->nextLevelNodeMask;
     for (common::offset_t nodeOffset = 0u; nodeOffset <= maxNodeOffset; nodeOffset++) {
         if (nextLevelNodeMask[nodeOffset]) {
-            orderedNodeIDVector.push_back(curBFSLevel->getBFSLevelNodeID(nodeOffset));
+            curBFSLevel->bfsLevelNodes.emplace_back(nodeID_t(nodeOffset, ssspMorsel->dstTableID));
         }
     }
-    curBFSLevel->bfsLevelNodes = orderedNodeIDVector;
     // Reset mask finally here when all nodeIDs have been read after extension.
     std::fill(nextLevelNodeMask.begin(), nextLevelNodeMask.end(), false);
 }

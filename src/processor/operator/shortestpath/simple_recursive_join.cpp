@@ -21,7 +21,7 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
         auto ssspMorsel = simpleRecursiveJoinGlobalState->getSSSPMorsel(threadID);
         auto& nextBFSLevel = ssspMorsel->nextBFSLevel;
         auto& visitedNodes = *ssspMorsel->bfsVisitedNodes;
-        auto nodeMask = ssspMorsel->nodeMask;
+        auto& curLevelNodeMask = ssspMorsel->curLevelNodeMask;
         for (int i = 0; i < inputNodeIDVector->state->selVector->selectedSize; i++) {
             auto selectedPos = inputNodeIDVector->state->selVector->selectedPositions[i];
             auto nodeID = ((nodeID_t*)(inputNodeIDVector->getData()))[selectedPos];
@@ -31,13 +31,14 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
             }
             if (visitedNodes[nodeID.offset] == NOT_VISITED_DST) {
                 visitedNodes[nodeID.offset] = VISITED_DST;
+                ssspMorsel->numDstNodesNotReached--;
                 ssspMorsel->dstNodeDistances->operator[](nodeID.offset) =
                     nextBFSLevel->bfsLevelNumber;
             } else {
                 visitedNodes[nodeID.offset] = VISITED;
             }
             // set position in mask to true to indicate node offset exists in bfsLevel.
-            nodeMask[nodeID.offset] = true;
+            curLevelNodeMask[nodeID.offset] = true;
             nextBFSLevel->bfsLevelNodes[nodeID.offset] = nodeID;
         }
     }

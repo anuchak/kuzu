@@ -40,12 +40,13 @@ BFSLevelMorsel SSSPMorsel::grabBFSLevelMorsel() {
     return bfsLevelMorsel;
 }
 
-void SSSPMorsel::setDstNodeOffsets(std::shared_ptr<common::ValueVector>& valueVector) const {
+void SSSPMorsel::setDstNodeOffsets(std::shared_ptr<common::ValueVector>& valueVector) {
     for (int i = 0; i < valueVector->state->selVector->selectedSize; i++) {
         auto destIdx = valueVector->state->selVector->selectedPositions[i];
         if (!valueVector->isNull(destIdx)) {
             bfsVisitedNodes->operator[](valueVector->readNodeOffset(destIdx)) = NOT_VISITED_DST;
             dstNodeDistances->operator[](valueVector->readNodeOffset(destIdx)) = 0u;
+            numDstNodesNotReached++;
         }
     }
 }
@@ -67,6 +68,11 @@ bool ScanBFSLevel::getNextTuplesInternal() {
         if (srcDstSPMorsel->numTuples == 0) {
             return false;
         }
+    }
+    // If numDstNodesNotReached is 0, it indicates we have visited ALL our destination nodes.
+    if(ssspMorsel->numDstNodesNotReached == 0) {
+        writeDistToOutputVector();
+        return false;
     }
     auto& curBFSLevel = ssspMorsel->curBFSLevel;
     // First BFS level extension, we have to scan the FTable for src and dst nodes.
@@ -148,15 +154,15 @@ void ScanBFSLevel::initializeNextBFSLevel(BFSLevelMorsel& bfsLevelMorsel) {
 void ScanBFSLevel::rearrangeCurBFSLevelNodes() const {
     auto& curBFSLevel = ssspMorsel->curBFSLevel;
     auto orderedNodeIDVector = std::vector<nodeID_t>();
-    auto nodeMask = ssspMorsel->nodeMask;
+    auto& curLevelNodeMask = ssspMorsel->curLevelNodeMask;
     for (common::offset_t nodeOffset = 0u; nodeOffset <= maxNodeOffset; nodeOffset++) {
-        if (nodeMask[nodeOffset]) {
+        if (curLevelNodeMask[nodeOffset]) {
             orderedNodeIDVector.push_back(curBFSLevel->getBFSLevelNodeID(nodeOffset));
         }
     }
     curBFSLevel->bfsLevelNodes = orderedNodeIDVector;
     // Reset mask finally here when all nodeIDs have been read after extension.
-    std::fill(nodeMask.begin(), nodeMask.end(), false);
+    std::fill(curLevelNodeMask.begin(), curLevelNodeMask.end(), false);
 }
 
 void ScanBFSLevel::copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel) {

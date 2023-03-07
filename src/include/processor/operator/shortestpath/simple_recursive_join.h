@@ -12,10 +12,10 @@ class SimpleRecursiveJoin : public PhysicalOperator {
 public:
     SimpleRecursiveJoin(uint32_t id, const std::string& paramsString,
         std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinSharedState,
-        const DataPos& dstNodeDataPos, const DataPos& nodeIDVectorDataPos)
+        const DataPos& nodeIDVectorDataPos)
         : PhysicalOperator(PhysicalOperatorType::SCAN_BFS_LEVEL, id, paramsString),
           simpleRecursiveJoinGlobalState{std::move(simpleRecursiveJoinSharedState)},
-          dstNodeDataPos{dstNodeDataPos}, inputNodeIDDataPos{nodeIDVectorDataPos} {}
+          inputNodeIDDataPos{nodeIDVectorDataPos} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
@@ -23,16 +23,13 @@ public:
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<SimpleRecursiveJoin>(
-            id, paramsString, simpleRecursiveJoinGlobalState, dstNodeDataPos, inputNodeIDDataPos);
+            id, paramsString, simpleRecursiveJoinGlobalState, inputNodeIDDataPos);
     }
 
 private:
     std::thread::id threadID;
-    DataPos dstNodeDataPos;
     DataPos inputNodeIDDataPos;
     std::shared_ptr<common::ValueVector> inputNodeIDVector;
-    std::shared_ptr<common::ValueVector> dstValVector;
-    std::unordered_set<common::offset_t> dstNodeOffsets;
     std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
 };
 

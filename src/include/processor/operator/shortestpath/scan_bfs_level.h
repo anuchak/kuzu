@@ -13,6 +13,8 @@ using namespace kuzu::processor;
 namespace kuzu {
 namespace processor {
 
+enum VisitedState { NOT_VISITED, NOT_VISITED_DST, VISITED, VISITED_DST };
+
 /***
  * Current Implementation:
  *
@@ -56,9 +58,10 @@ struct SingleSrcSPMorsel {
 public:
     explicit SingleSrcSPMorsel(common::offset_t maxNodeOffset)
         : mutex{std::shared_mutex()}, nodeMask{std::vector<bool>(maxNodeOffset + 1, false)},
-          dstNodeDistances{std::make_unique<std::unordered_map<common::offset_t, uint32_t>>()},
+          dstNodeDistances{std::make_unique<std::vector<uint32_t>>(maxNodeOffset + 1, 0u)},
           currBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
-          bfsVisitedNodes{std::make_unique<std::vector<bool>>(maxNodeOffset + 1, false)} {}
+          bfsVisitedNodes{
+              std::make_unique<std::vector<VisitedState>>(maxNodeOffset + 1, NOT_VISITED)} {}
 
     BFSLevelMorsel grabBFSLevelMorsel();
 
@@ -67,11 +70,11 @@ public:
 public:
     std::shared_mutex mutex;
     std::vector<bool> nodeMask;
-    std::unique_ptr<std::unordered_map<common::offset_t, uint32_t>> dstNodeDistances;
+    std::unique_ptr<std::vector<uint32_t>> dstNodeDistances;
     std::unique_ptr<FTableScanMorsel> srcDstFTableMorsel;
     std::unique_ptr<BFSLevel> currBFSLevel;
     std::unique_ptr<BFSLevel> nextBFSLevel;
-    std::unique_ptr<std::vector<bool>> bfsVisitedNodes;
+    std::unique_ptr<std::vector<VisitedState>> bfsVisitedNodes;
 };
 
 struct SimpleRecursiveJoinGlobalState {

@@ -27,14 +27,6 @@ public:
         : bfsLevelNodes{std::vector<common::nodeID_t>()}, bfsLevelScanStartIdx{0u}, bfsLevelNumber{
                                                                                         0u} {}
 
-    common::nodeID_t getBFSLevelNodeID(common::offset_t nodeOffset) {
-        for (auto& nodeID : bfsLevelNodes) {
-            if (nodeID.offset == nodeOffset) {
-                return nodeID;
-            }
-        }
-    }
-
 public:
     std::vector<common::nodeID_t> bfsLevelNodes;
     uint32_t bfsLevelScanStartIdx;
@@ -54,7 +46,8 @@ public:
 struct SSSPMorsel {
 public:
     explicit SSSPMorsel(common::offset_t maxNodeOffset)
-        : numDstNodesNotReached{0u}, nextLevelNodeMask{std::vector<bool>(maxNodeOffset + 1, false)},
+        : numDstNodesNotReached{0u}, dstTableID{0u}, nextLevelNodeMask{std::vector<bool>(
+                                                         maxNodeOffset + 1, false)},
           dstNodeDistances{std::make_unique<std::unordered_map<common::offset_t, uint32_t>>()},
           curBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
           bfsVisitedNodes{
@@ -66,6 +59,7 @@ public:
 
 public:
     uint32_t numDstNodesNotReached;
+    common::table_id_t dstTableID;
     std::shared_mutex mutex;
     std::vector<bool> nextLevelNodeMask;
     std::unique_ptr<std::unordered_map<common::offset_t, uint32_t>> dstNodeDistances;

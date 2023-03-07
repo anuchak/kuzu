@@ -25,15 +25,17 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
         for (int i = 0; i < inputNodeIDVector->state->selVector->selectedSize; i++) {
             auto selectedPos = inputNodeIDVector->state->selVector->selectedPositions[i];
             auto nodeID = ((nodeID_t*)(inputNodeIDVector->getData()))[selectedPos];
-            if (visitedNodes[nodeID.offset]) {
+            if (visitedNodes[nodeID.offset] == VISITED ||
+                visitedNodes[nodeID.offset] == VISITED_DST) {
                 continue;
             }
-            if (singleSrcSPMorsel->dstNodeDistances->contains(nodeID.offset)) {
+            if (visitedNodes[nodeID.offset] == NOT_VISITED_DST) {
+                visitedNodes[nodeID.offset] = VISITED_DST;
                 singleSrcSPMorsel->dstNodeDistances->operator[](nodeID.offset) =
                     nextBFSLevel->bfsLevelNumber;
+            } else {
+                visitedNodes[nodeID.offset] = VISITED;
             }
-            // set position in visited nodes vector to true to indicate a node has been visited.
-            visitedNodes[nodeID.offset] = true;
             // set position in mask to true to indicate node offset exists in bfsLevel.
             nodeMask[nodeID.offset] = true;
             nextBFSLevel->bfsLevelNodes[nodeID.offset] = nodeID;

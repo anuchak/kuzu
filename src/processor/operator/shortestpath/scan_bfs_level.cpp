@@ -44,6 +44,7 @@ void SingleSrcSPMorsel::setDstNodeOffsets(std::shared_ptr<common::ValueVector>& 
     for (int i = 0; i < valueVector->state->selVector->selectedSize; i++) {
         auto destIdx = valueVector->state->selVector->selectedPositions[i];
         if (!valueVector->isNull(destIdx)) {
+            bfsVisitedNodes->operator[](valueVector->readNodeOffset(destIdx)) = NOT_VISITED_DST;
             dstNodeDistances->operator[](valueVector->readNodeOffset(destIdx)) = 0u;
         }
     }
@@ -111,11 +112,11 @@ void ScanBFSLevel::initializeNewSSSPMorsel() {
 // Write (only) reached destination distances to output value vector
 void ScanBFSLevel::writeDistToOutputVector() {
     uint32_t size = 0u;
-    for (auto& dstNodeDistPair : *singleSrcSPMorsel->dstNodeDistances) {
-        auto& dstNodeOffset = dstNodeDistPair.first;
-        auto& dstNodeBFSDistance = dstNodeDistPair.second;
-        if (singleSrcSPMorsel->bfsVisitedNodes->operator[](dstNodeOffset)) {
-            outputValueVector->setValue<int64_t>(size++, dstNodeBFSDistance);
+    auto& visitedNodes = *singleSrcSPMorsel->bfsVisitedNodes;
+    for(int nodeOffset = 0; nodeOffset < visitedNodes.size(); nodeOffset++) {
+        if(visitedNodes[nodeOffset] == VISITED_DST) {
+            auto distValue = singleSrcSPMorsel->dstNodeDistances->operator[](nodeOffset);
+            outputValueVector->setValue<int64_t>(size++, distValue);
         }
     }
     outputValueVector->state->initOriginalAndSelectedSize(size);

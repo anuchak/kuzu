@@ -109,7 +109,7 @@ public:
         : PhysicalOperator(PhysicalOperatorType::SCAN_BFS_LEVEL, id, paramsString),
           maxNodeOffset{maxNodeOffset}, nodesToExtendDataPos{nodesToExtendDataPos},
           inputValVectorPos{std::move(inputValVectorPos)}, outputValVectorPos{outputValVectorPos},
-          colIndicesToScan{std::move(colIndicesToScan)},
+          colIndicesToScan{std::move(colIndicesToScan)}, singleSrcSPMorsel{nullptr},
           simpleRecursiveJoinGlobalState(std::make_shared<SimpleRecursiveJoinGlobalState>()) {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;

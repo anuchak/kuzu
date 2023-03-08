@@ -9,33 +9,65 @@ using namespace kuzu::common;
 namespace kuzu {
 namespace processor {
 
-SSSPMorsel* SimpleRecursiveJoinGlobalState::grabSrcDstMorsel(
-    std::thread::id threadID, common::offset_t maxNodeOffset) {
-    /// We are iterating over the single source SP global tracker to check if a threadID
-    /// has been allotted a SP computation or not. If yes, we return the ssspMorsel.
-    /// Currently we have [1 thread -> 1 ssspMorsel] enforced here.
-    std::unique_lock<std::shared_mutex> lck(mutex);
+SSSPMorsel* SimpleRecursiveJoinGlobalState::getSSSPMorsel(std::thread::id threadID) {
+    std::unique_lock<std::shared_mutex> lck{mutex};
     if (ssspMorselTracker.contains(threadID)) {
         return ssspMorselTracker[threadID].get();
     }
-    /// In case 1 thread is not allotted a ssspMorsel yet, we use the fTable sharedState
-    /// reference to allot a SrcDstSPMorsel to the thread. After this gets done, that thread is
-    /// bound to that single SrcDstSPMorsel and will extend until it finishes.
+    return nullptr;
+}
+
+/*
+ * This function grabs and initialises a new SSSPMorsel, it completes the following operations:
+ *
+ * 1) Scanning the FTable to load the source and destination nodeIDs into the ValueVectors.
+ * 2) Setting the destination node offset positions.
+ * 3) Initialises bfsLevelNodes of curBFSLevel, adds the source nodeID.
+ *
+ */
+SSSPMorsel* SimpleRecursiveJoinGlobalState::grabAndInitializeSSSPMorsel(std::thread::id threadID,
+    common::offset_t maxNodeOffset,
+    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors,
+    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs) {
+    SSSPMorsel* ssspMorsel = grabSSSPMorsel(threadID, maxNodeOffset);
+    auto& srcDstFTableMorsel = ssspMorsel->srcDstFTableMorsel;
+    // If numTuples is 0, it means no more morsels left to allot, we exit.
+    if (srcDstFTableMorsel->numTuples == 0) {
+        return ssspMorsel;
+    }
+    auto& curBFSLevel = ssspMorsel->curBFSLevel;
+    auto& nextBFSLevel = ssspMorsel->nextBFSLevel;
+    srcDstFTableMorsel->table->scan(srcDstNodeIDVectors, srcDstFTableMorsel->startTupleIdx,
+        srcDstFTableMorsel->numTuples, ftColIndicesOfSrcAndDstNodeIDs);
+    ssspMorsel->setDstNodeOffsets(srcDstNodeIDVectors[1]);
+    auto srcNodeID = ((nodeID_t*)(srcDstNodeIDVectors[0]->getData()))[0];
+    ssspMorsel->dstTableID = ((nodeID_t*)(srcDstNodeIDVectors[1]->getData()))[0].tableID;
+    curBFSLevel->bfsLevelNodes.push_back(srcNodeID);
+    nextBFSLevel->bfsLevelNumber = curBFSLevel->bfsLevelNumber + 1;
+    return ssspMorsel;
+}
+
+/*
+ * This function creates a new SSSPMorsel and grabs a new srcDstFTableMorsel from fTableOfSrcDst.
+ */
+SSSPMorsel* SimpleRecursiveJoinGlobalState::grabSSSPMorsel(
+    std::thread::id threadID, common::offset_t maxNodeOffset) {
+    std::unique_lock<std::shared_mutex> lck{mutex};
     auto ssspMorsel = std::make_unique<SSSPMorsel>(maxNodeOffset);
+    // If there are no morsels left, numTuples will be 0 for the srcDstFTableMorsel.
     ssspMorsel->srcDstFTableMorsel = std::move(fTableOfSrcDst->getMorsel(1 /* morsel size */));
     return (ssspMorselTracker[threadID] = std::move(ssspMorsel)).get();
 }
 
 BFSLevelMorsel SSSPMorsel::grabBFSLevelMorsel() {
     std::unique_lock<std::shared_mutex> lck(mutex);
-    if (curBFSLevel->bfsLevelScanStartIdx == curBFSLevel->bfsLevelNodes.size()) {
-        return {curBFSLevel->bfsLevelScanStartIdx, 0 /* bfsLevelMorsel size */};
+    if (bfsMorselNextStartIdx == curBFSLevel->bfsLevelNodes.size()) {
+        return {bfsMorselNextStartIdx, 0 /* bfsLevelMorsel size */};
     }
-    auto bfsLevelMorselSize = std::max(DEFAULT_VECTOR_CAPACITY,
-        curBFSLevel->bfsLevelNodes.size() - curBFSLevel->bfsLevelScanStartIdx);
-    BFSLevelMorsel bfsLevelMorsel =
-        BFSLevelMorsel(curBFSLevel->bfsLevelScanStartIdx, bfsLevelMorselSize);
-    curBFSLevel->bfsLevelScanStartIdx += bfsLevelMorselSize;
+    auto bfsLevelMorselSize = std::max(
+        DEFAULT_VECTOR_CAPACITY, curBFSLevel->bfsLevelNodes.size() - bfsMorselNextStartIdx);
+    BFSLevelMorsel bfsLevelMorsel = BFSLevelMorsel(bfsMorselNextStartIdx, bfsLevelMorselSize);
+    bfsMorselNextStartIdx += bfsLevelMorselSize;
     return bfsLevelMorsel;
 }
 
@@ -56,27 +88,23 @@ void ScanBFSLevel::initLocalStateInternal(
     for (auto& dataPos : srcDstNodeIDVectorsDataPos) {
         srcDstNodeIDVectors.push_back(resultSet->getValueVector(dataPos));
     }
-    dstBFSLevel = resultSet->getValueVector(dstBFSLevelVectorDataPos);
+    dstDistances = resultSet->getValueVector(dstDistanceVectorDataPos);
     nodesToExtend = resultSet->getValueVector(nodesToExtendDataPos);
 }
 
 bool ScanBFSLevel::getNextTuplesInternal() {
-    if (!ssspMorsel) {
-        ssspMorsel = simpleRecursiveJoinGlobalState->grabSrcDstMorsel(threadID, maxNodeOffset);
-        auto& srcDstSPMorsel = ssspMorsel->srcDstFTableMorsel;
-        if (srcDstSPMorsel->numTuples == 0) {
+    if (!ssspMorsel || ssspMorsel->isSSSPMorselComplete) {
+        ssspMorsel = simpleRecursiveJoinGlobalState->grabAndInitializeSSSPMorsel(
+            threadID, maxNodeOffset, srcDstNodeIDVectors, ftColIndicesOfSrcAndDstNodeIDs);
+        auto& srcDstFTableMorsel = ssspMorsel->srcDstFTableMorsel;
+        if (srcDstFTableMorsel->numTuples == 0) {
             return false;
         }
     }
     // If numDstNodesNotReached is 0, it indicates we have visited ALL our destination nodes.
     if (ssspMorsel->numDstNodesNotReached == 0) {
         writeDistToOutputVector();
-        return false;
-    }
-    auto& curBFSLevel = ssspMorsel->curBFSLevel;
-    // First BFS level extension, we have to scan the FTable for src and dst nodes.
-    if (curBFSLevel->bfsLevelNodes.empty()) {
-        initializeNewSSSPMorsel();
+        ssspMorsel->isSSSPMorselComplete = true;
         return true;
     }
     auto bfsLevelMorsel = ssspMorsel->grabBFSLevelMorsel();
@@ -84,33 +112,11 @@ bool ScanBFSLevel::getNextTuplesInternal() {
     // Meaning we have no more bfsLevel extensions to do, we output the dstDistances to val vector.
     if (bfsLevelMorsel.bfsLevelMorselSize == 0 && ssspMorsel->nextBFSLevel->bfsLevelNodes.empty()) {
         writeDistToOutputVector();
-        return false;
+        ssspMorsel->isSSSPMorselComplete = true;
+        return true;
     }
     initializeNextBFSLevel(bfsLevelMorsel);
     return true;
-}
-
-/*
- * This function is for the 1st time a SSSPMorsel has been allotted to the thread.
- * We have to scan the factorized table (containing the src & dest nodes).
- * We initialize curLevel, nextBFSLevel and copy the src into the nodesToExtendValueVector.
- */
-void ScanBFSLevel::initializeNewSSSPMorsel() {
-    auto& srcDstFTableMorsel = ssspMorsel->srcDstFTableMorsel;
-    auto& curBFSLevel = ssspMorsel->curBFSLevel;
-    auto& nextBFSLevel = ssspMorsel->nextBFSLevel;
-    srcDstFTableMorsel->table->scan(srcDstNodeIDVectors, srcDstFTableMorsel->startTupleIdx,
-        srcDstFTableMorsel->numTuples, ftColIndicesOfSrcAndDstNodeIDs);
-    ssspMorsel->setDstNodeOffsets(srcDstNodeIDVectors[1]);
-    auto srcNodeID = ((nodeID_t*)(srcDstNodeIDVectors[0]->getData()))[0];
-    ssspMorsel->dstTableID = ((nodeID_t*)(srcDstNodeIDVectors[1]->getData()))[0].tableID;
-    curBFSLevel->bfsLevelNodes[srcNodeID.offset] = srcNodeID;
-    curBFSLevel->bfsLevelScanStartIdx++; // we added 1 node (src) to the bfsLevel
-    nodesToExtend->setValue<nodeID_t>(0 /* pos */, srcNodeID);
-    nodesToExtend->state->initOriginalAndSelectedSize(1 /* size */);
-
-    // SimpleRecursiveJoin will add nodes to the next level.
-    nextBFSLevel->bfsLevelNumber = curBFSLevel->bfsLevelNumber + 1;
 }
 
 // Write (only) reached destination distances to output value vector
@@ -120,10 +126,10 @@ void ScanBFSLevel::writeDistToOutputVector() {
     for (int nodeOffset = 0; nodeOffset < visitedNodes.size(); nodeOffset++) {
         if (visitedNodes[nodeOffset] == VISITED_DST) {
             auto distValue = ssspMorsel->dstNodeDistances->operator[](nodeOffset);
-            dstBFSLevel->setValue<int64_t>(size++, distValue);
+            dstDistances->setValue<int64_t>(size++, distValue);
         }
     }
-    dstBFSLevel->state->initOriginalAndSelectedSize(size);
+    dstDistances->state->initOriginalAndSelectedSize(size);
 }
 
 // Either set nextLevel to curLevel to extend the next set of nodes.
@@ -145,11 +151,10 @@ void ScanBFSLevel::initializeNextBFSLevel(BFSLevelMorsel& bfsLevelMorsel) {
 /*
  * This function places the nodeIDs in next BFSLevel to be extended in order according
  * to the mask generated. We wait to reset the mask here and NOT in the SimpleRecursiveJoin because
- * we first place all of them in the `BFSLevel` struct.
- *
+ * we first place all of them in the BFSLevel struct.
  * Because we can extend only 2048 nodes at a time & also only 2048 elements are read from the
  * adjacency list at a time we can't know at the top level when the current frontier extension
- * has been completed. Hence, we need to do it here.
+ * has been completed.
  */
 void ScanBFSLevel::rearrangeCurBFSLevelNodes() const {
     auto& curBFSLevel = ssspMorsel->curBFSLevel;

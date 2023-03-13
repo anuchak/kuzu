@@ -12,13 +12,12 @@ namespace processor {
 BFSLevelMorsel SSSPMorsel::grabBFSLevelMorsel() {
     std::unique_lock<std::shared_mutex> lck(mutex);
     if (bfsMorselNextStartIdx == curBFSLevel->bfsLevelNodes.size()) {
-        return {bfsMorselNextStartIdx, 0 /* bfsLevelMorsel size */};
+        return BFSLevelMorsel(bfsMorselNextStartIdx, 0 /* bfsLevelMorsel size */);
     }
     auto bfsLevelMorselSize = std::min(
         DEFAULT_VECTOR_CAPACITY, curBFSLevel->bfsLevelNodes.size() - bfsMorselNextStartIdx);
-    BFSLevelMorsel bfsLevelMorsel = BFSLevelMorsel(bfsMorselNextStartIdx, bfsLevelMorselSize);
     bfsMorselNextStartIdx += bfsLevelMorselSize;
-    return bfsLevelMorsel;
+    return BFSLevelMorsel(bfsMorselNextStartIdx - bfsLevelMorselSize, bfsLevelMorselSize);
 }
 
 // This function is required to track which node offsets are destination nodes, they are tracked

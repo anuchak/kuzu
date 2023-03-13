@@ -18,7 +18,7 @@ std::unique_ptr<FTableScanMorsel> UnionAllScanSharedState::getMorsel(uint64_t ma
     }
     auto morsel = fTableSharedStates[fTableToScanIdx]->getMorsel(maxMorselSize);
     // Fetch next table if current table has nothing to scan.
-    while (morsel->numTuples == 0) {
+    while (morsel->isEmpty()) {
         fTableToScanIdx++;
         if (fTableToScanIdx == fTableSharedStates.size()) { // No more to scan.
             return std::make_unique<FTableScanMorsel>(nullptr, 0, 0);

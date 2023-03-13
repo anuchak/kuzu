@@ -133,7 +133,7 @@ bool ScanBFSLevel::getNextTuplesInternal() {
         ssspMorsel->isSSSPMorselComplete = true;
         return false;
     } // Swap the current level with the next level, these next level nodes will be extended.
-    else if (bfsLevelMorsel.size == 0) {
+    else if (bfsLevelMorsel.isEmpty()) {
         ssspMorsel->bfsMorselNextStartIdx = 0u;
         auto& curBFSLevel = ssspMorsel->curBFSLevel;
         auto& nextBFSLevel = ssspMorsel->nextBFSLevel;

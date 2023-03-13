@@ -73,7 +73,7 @@ SSSPMorsel* SimpleRecursiveJoinGlobalState::grabAndInitializeSSSPMorsel(std::thr
     }
     auto& curBFSLevel = ssspMorsel->curBFSLevel;
     auto& nextBFSLevel = ssspMorsel->nextBFSLevel;
-    // Reset the unflat destination
+    // Reset the unflat destination value vector size and selected positions to default (2048).
     srcDstNodeIDVectors[1]->state->selVector->resetSelectorToUnselected();
     srcDstFTableMorsel->table->scan(srcDstNodeIDVectors, srcDstFTableMorsel->startTupleIdx,
         srcDstFTableMorsel->numTuples, ftColIndicesOfSrcAndDstNodeIDs);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "processor/operator/physical_operator.h"
 #include "processor/result/factorized_table.h"
 #include "scan_bfs_level.h"
@@ -7,14 +9,23 @@
 namespace kuzu {
 namespace processor {
 
+/*
+ * The SimpleRecursiveJoin class reads from the inputNodeIDVector which holds the nodes written by
+ * ScanRelTableList after extending nodes in a BFSLevel. SimpleRecursiveJoin + ScanBFSLevel returns
+ * BFS level distances for a single src + multiple destinations at a time. Different threads will be
+ * assigned sets of single src + multiple dest computations. If there is no path from a single src
+ * to another destination then that
+ */
 class SimpleRecursiveJoin : public PhysicalOperator {
 
 public:
-    SimpleRecursiveJoin(uint32_t id, const std::string& paramsString,
-        std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinSharedState,
-        const DataPos& nodeIDVectorDataPos)
-        : PhysicalOperator(PhysicalOperatorType::SCAN_BFS_LEVEL, id, paramsString),
-          simpleRecursiveJoinGlobalState{std::move(simpleRecursiveJoinSharedState)},
+    SimpleRecursiveJoin(
+        std::shared_ptr<SimpleRecursiveJoinGlobalState>& simpleRecursiveJoinSharedState,
+        const DataPos& nodeIDVectorDataPos, std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        const std::string& paramsString)
+        : PhysicalOperator(
+              PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id, paramsString),
+          simpleRecursiveJoinGlobalState{simpleRecursiveJoinSharedState},
           inputNodeIDDataPos{nodeIDVectorDataPos} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
@@ -22,8 +33,8 @@ public:
     bool getNextTuplesInternal() override;
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
-        return std::make_unique<SimpleRecursiveJoin>(
-            id, paramsString, simpleRecursiveJoinGlobalState, inputNodeIDDataPos);
+        return std::make_unique<SimpleRecursiveJoin>(simpleRecursiveJoinGlobalState,
+            inputNodeIDDataPos, children[0]->clone(), id, paramsString);
     }
 
 private:

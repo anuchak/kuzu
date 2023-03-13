@@ -13,7 +13,7 @@ void BaseTableScan::initLocalStateInternal(ResultSet* resultSet, ExecutionContex
 
 bool BaseTableScan::getNextTuplesInternal(ExecutionContext* context) {
     auto morsel = getMorsel();
-    if (morsel->numTuples == 0) {
+    if (morsel->isEmpty()) {
         return false;
     }
     morsel->table->scan(vectorsToScan, morsel->startTupleIdx, morsel->numTuples, colIndicesToScan);

@@ -33,14 +33,14 @@ public:
 
 struct BFSLevelMorsel {
 public:
-    BFSLevelMorsel(uint32_t startIdx, uint32_t bfsLevelMorselSize)
-        : startIdx{startIdx}, bfsLevelMorselSize{bfsLevelMorselSize} {}
+    BFSLevelMorsel(uint32_t startIdx, uint32_t size)
+        : startIdx{startIdx}, size{size} {}
 
-    inline bool isEmpty() const { return bfsLevelMorselSize == 0u; }
+    inline bool isEmpty() const { return size == 0u; }
 
 public:
     uint32_t startIdx;
-    uint32_t bfsLevelMorselSize;
+    uint32_t size;
 };
 
 struct SSSPMorsel {

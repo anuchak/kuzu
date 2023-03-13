@@ -134,7 +134,7 @@ bool ScanBFSLevel::getNextTuplesInternal() {
         ssspMorsel->isSSSPMorselComplete = true;
         return false;
     } // Swap the current level with the next level, these next level nodes will be extended.
-    else if (bfsLevelMorsel.bfsLevelMorselSize == 0) {
+    else if (bfsLevelMorsel.size == 0) {
         ssspMorsel->bfsMorselNextStartIdx = 0u;
         auto& curBFSLevel = ssspMorsel->curBFSLevel;
         auto& nextBFSLevel = ssspMorsel->nextBFSLevel;
@@ -201,12 +201,12 @@ void ScanBFSLevel::rearrangeCurBFSLevelNodes() const {
 }
 
 void ScanBFSLevel::copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel) {
-    auto finalScanIdx = bfsLevelMorsel.startIdx + bfsLevelMorsel.bfsLevelMorselSize;
+    auto finalScanIdx = bfsLevelMorsel.startIdx + bfsLevelMorsel.size;
     for (auto idx = bfsLevelMorsel.startIdx; idx < finalScanIdx; idx++) {
         auto nodeID = curBFSLevel.bfsLevelNodes[idx];
         nodesToExtend->setValue<nodeID_t>(idx, nodeID);
     }
-    nodesToExtend->state->initOriginalAndSelectedSize(bfsLevelMorsel.bfsLevelMorselSize);
+    nodesToExtend->state->initOriginalAndSelectedSize(bfsLevelMorsel.size);
 }
 
 } // namespace processor

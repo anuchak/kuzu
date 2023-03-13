@@ -1,0 +1,40 @@
+-NAME SingleSourceAllDestinationsQuery1
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' RETURN a.fName, b.fName, p.length
+---- 4
+Alice|Alice|0
+Alice|Bob|1
+Alice|Carol|1
+Alice|Dan|1
+
+-NAME SingleSourceSingleDestinationQuery1
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' AND b.fName = 'Bob' RETURN a.fName, b.fName, p.length
+---- 1
+Alice|Bob|1
+
+-NAME SingleSourceAllDestinationsQuery2
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Elizabeth' RETURN a.fName, b.fName, p.length
+---- 4
+Elizabeth|Elizabeth|0
+Elizabeth|Farooq|1
+Elizabeth|Greg|1
+Elizabeth|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|2
+
+-NAME SingleSourceUnreachableDestination
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' AND b.fName = 'Elizabeth' RETURN a.fName, b.fName, p.length
+---- 0
+
+-NAME AllSourcesSingleDestinationQuery
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE b.fName = 'Alice' RETURN a.fName, b.fName, p.length
+----- 4
+Alice|Alice|0
+Bob|Alice|1
+Carol|Alice|1
+Dan|Alice|1
+
+-NAME MultipleSrcMultipleDstQuery
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.isStudent = true AND b.isWorker = true RETURN a.fName, b.fName, p.length
+----- 4
+Alice|Carol|1
+Alice|Dan|1
+Bob|Carol|1
+Bob|Dan|1

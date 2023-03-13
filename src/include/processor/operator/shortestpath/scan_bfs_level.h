@@ -18,25 +18,28 @@ enum VisitedState { NOT_VISITED, NOT_VISITED_DST, VISITED, VISITED_DST };
 /*
  * Current Implementation:
  * Only 1 thread is assigned to each SSSP computation. This ensures that at any point in time 1
- * thread works on 1 BFSLevel. In later iterations, we will  have multiple threads working together
- * to extend the same BFSLevel.
+ * thread works on 1 BFSLevel.
  */
 struct BFSLevel {
 public:
-    BFSLevel() : bfsLevelNodes{std::vector<common::nodeID_t>()}, bfsLevelNumber{0u} {}
+    BFSLevel() : bfsLevelNodes{std::vector<common::nodeID_t>()}, levelNumber{0u} {}
+
+    inline bool isEmpty() const { return bfsLevelNodes.empty(); }
 
 public:
     std::vector<common::nodeID_t> bfsLevelNodes;
-    uint32_t bfsLevelNumber;
+    uint32_t levelNumber;
 };
 
 struct BFSLevelMorsel {
 public:
-    BFSLevelMorsel(uint32_t bfsLevelScanStartIdx, uint32_t bfsLevelMorselSize)
-        : bfsLevelScanStartIdx{bfsLevelScanStartIdx}, bfsLevelMorselSize{bfsLevelMorselSize} {}
+    BFSLevelMorsel(uint32_t startIdx, uint32_t bfsLevelMorselSize)
+        : startIdx{startIdx}, bfsLevelMorselSize{bfsLevelMorselSize} {}
+
+    inline bool isEmpty() const { return bfsLevelMorselSize == 0u; }
 
 public:
-    uint32_t bfsLevelScanStartIdx;
+    uint32_t startIdx;
     uint32_t bfsLevelMorselSize;
 };
 
@@ -51,35 +54,40 @@ public:
 
     BFSLevelMorsel grabBFSLevelMorsel();
 
-    void setDstNodeOffsets(std::shared_ptr<common::ValueVector>& valueVector);
+    void markDstNodeOffsets(
+        common::offset_t srcNodeOffset, std::shared_ptr<common::ValueVector>& dstNodeIDValueVector);
 
 public:
+    std::shared_mutex mutex;
     bool isSSSPMorselComplete;
     uint32_t numDstNodesNotReached;
     uint32_t bfsMorselNextStartIdx;
     common::table_id_t dstTableID;
-    std::shared_mutex mutex;
     std::vector<bool> nextLevelNodeMask;
     std::unique_ptr<std::unordered_map<common::offset_t, uint32_t>> dstNodeDistances;
     std::unique_ptr<FTableScanMorsel> srcDstFTableMorsel;
     std::unique_ptr<BFSLevel> curBFSLevel;
     std::unique_ptr<BFSLevel> nextBFSLevel;
+    // Each element is of size 1 byte (unsigned char) and we store members of VisitedState enum
     std::unique_ptr<std::vector<uint8_t>> bfsVisitedNodes;
 };
 
 struct SimpleRecursiveJoinGlobalState {
 public:
-    SimpleRecursiveJoinGlobalState()
-        : ssspMorselTracker{std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>>()} {};
+    explicit SimpleRecursiveJoinGlobalState(std::shared_ptr<FTableSharedState> fTableOfSrcDst)
+        : ssspMorselTracker{std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>>()},
+          fTableOfSrcDst{std::move(fTableOfSrcDst)} {};
 
-    SSSPMorsel* getSSSPMorsel(std::thread::id threadID);
+    SSSPMorsel* getAssignedSSSPMorsel(std::thread::id threadID);
 
     SSSPMorsel* grabAndInitializeSSSPMorsel(std::thread::id threadID,
         common::offset_t maxNodeOffset,
         std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs);
+        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs,
+        std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors,
+        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties);
 
-    SSSPMorsel* grabSSSPMorsel(std::thread::id threadID, common::offset_t maxNodeOffset);
+    SSSPMorsel* getSSSPMorsel(std::thread::id threadID, common::offset_t maxNodeOffset);
 
 public:
     std::shared_mutex mutex;
@@ -91,16 +99,23 @@ class ScanBFSLevel : public PhysicalOperator {
 
 public:
     ScanBFSLevel(common::offset_t maxNodeOffset, const DataPos& nodesToExtendDataPos,
-        std::vector<DataPos> srcDstNodeIDVectorsDataPos, const DataPos& dstDistanceVectorDataPos,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs, uint32_t id,
-        const std::string& paramsString)
-        : PhysicalOperator(PhysicalOperatorType::SCAN_BFS_LEVEL, id, paramsString),
+        std::vector<DataPos> srcDstNodeIDVectorsDataPos,
+        std::vector<DataPos> srcDstNodePropertiesVectorsDataPos,
+        const DataPos& dstDistanceVectorDataPos,
+        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs,
+        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties,
+        std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
+        : PhysicalOperator(
+              PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id, paramsString),
           maxNodeOffset{maxNodeOffset}, nodesToExtendDataPos{nodesToExtendDataPos},
           srcDstNodeIDVectorsDataPos{std::move(srcDstNodeIDVectorsDataPos)},
+          srcDstNodePropertiesVectorsDataPos{std::move(srcDstNodePropertiesVectorsDataPos)},
           dstDistanceVectorDataPos{dstDistanceVectorDataPos},
           ftColIndicesOfSrcAndDstNodeIDs{std::move(ftColIndicesOfSrcAndDstNodeIDs)},
-          ssspMorsel{nullptr},
-          simpleRecursiveJoinGlobalState(std::make_shared<SimpleRecursiveJoinGlobalState>()) {}
+          ftColIndicesOfSrcAndDstNodeProperties{std::move(ftColIndicesOfSrcAndDstNodeProperties)},
+          ssspMorsel{nullptr}, simpleRecursiveJoinGlobalState{
+                                   std::move(simpleRecursiveJoinGlobalState)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
@@ -110,35 +125,40 @@ public:
 
     void writeDistToOutputVector();
 
-    void initializeNextBFSLevel(BFSLevelMorsel& bfsLevelMorsel);
-
     void rearrangeCurBFSLevelNodes() const;
 
     void copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel);
 
+    std::shared_ptr<SimpleRecursiveJoinGlobalState>& getSimpleRecursiveJoinGlobalState() {
+        return simpleRecursiveJoinGlobalState;
+    }
+
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
-            srcDstNodeIDVectorsDataPos, dstDistanceVectorDataPos, ftColIndicesOfSrcAndDstNodeIDs,
-            id, paramsString);
+            srcDstNodeIDVectorsDataPos, srcDstNodePropertiesVectorsDataPos,
+            dstDistanceVectorDataPos, ftColIndicesOfSrcAndDstNodeIDs,
+            ftColIndicesOfSrcAndDstNodeProperties, simpleRecursiveJoinGlobalState,
+            children[0]->clone(), id, paramsString);
     }
 
 private:
     std::thread::id threadID;
     common::offset_t maxNodeOffset;
-
     // The ValueVector into which ScanBFSLevel will write the nodes to be extended.
     DataPos nodesToExtendDataPos;
     std::shared_ptr<common::ValueVector> nodesToExtend;
-
     // The ValueVectors into which the src, dst nodeIDs will be written.
     std::vector<DataPos> srcDstNodeIDVectorsDataPos;
     std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors;
-
+    // The ValueVectors into which the src, dst node properties will be written.
+    std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
+    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors;
     // The ValueVector into which ScanBFSLevel will write the dst bfsLevelNumber.
     DataPos dstDistanceVectorDataPos;
     std::shared_ptr<common::ValueVector> dstDistances;
-
+    // The FTable column indices for the src, dest nodeIDs and node properties to scan.
     std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs;
+    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties;
     SSSPMorsel* ssspMorsel;
     std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
 };

@@ -29,13 +29,17 @@ void LogicalSimpleRecursiveJoin::computeSchema() {
     schema = children[0]->getSchema()->copy();
     schema->clearExpressionsInScope();
     auto expressionsInScope = inSchema->getExpressionsInScope();
+    bool relHasInternalIDProperty = relExpression->hasInternalIDProperty();
     for (auto& expression : expressionsInScope) {
+        if (relHasInternalIDProperty &&
+            expression->getUniqueName() ==
+                relExpression->getInternalIDProperty()->getUniqueName()) {
+            continue;
+        }
         if (expression->getUniqueName() !=
                 nodesToExtendNbrExpr->getInternalIDProperty()->getUniqueName() &&
             expression->getUniqueName() !=
-                nodesAfterExtendNbrExpr->getInternalIDProperty()->getUniqueName() &&
-            expression->getUniqueName() !=
-                relExpression->getInternalIDProperty()->getUniqueName()) {
+                nodesAfterExtendNbrExpr->getInternalIDProperty()->getUniqueName()) {
             auto groupPos = inSchema->getGroupPos(expression->getUniqueName());
             schema->insertToScope(expression, groupPos);
         }

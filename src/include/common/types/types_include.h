@@ -6,6 +6,5 @@
 #include "interval_t.h"
 #include "ku_list.h"
 #include "ku_string.h"
-#include "path_t.h"
 #include "timestamp_t.h"
 #include "types.h"

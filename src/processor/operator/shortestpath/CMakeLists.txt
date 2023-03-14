@@ -1,6 +1,6 @@
 add_library(kuzu_processor_operator_shortestpath
         OBJECT
-        scan_semi_join.cpp
+        scan_bfs_level.cpp
         simple_recursive_join.cpp)
 
 set(ALL_OBJECT_FILES

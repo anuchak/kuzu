@@ -203,7 +203,7 @@ void ScanBFSLevel::copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bf
     auto finalScanIdx = bfsLevelMorsel.startIdx + bfsLevelMorsel.size;
     for (auto idx = bfsLevelMorsel.startIdx; idx < finalScanIdx; idx++) {
         auto nodeID = curBFSLevel.bfsLevelNodes[idx];
-        nodesToExtend->setValue<nodeID_t>(idx, nodeID);
+        nodesToExtend->setValue<nodeID_t>(idx - bfsLevelMorsel.startIdx, nodeID);
     }
     nodesToExtend->state->initOriginalAndSelectedSize(bfsLevelMorsel.size);
 }

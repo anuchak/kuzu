@@ -102,6 +102,10 @@ private:
         planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapLogicalShortestPathToPhysical(
         planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapLogicalScanBFSLevelToPhysical(
+        planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapLogicalSimpleRecursiveJoinToPhysical(
+        planner::LogicalOperator* logicalOperator);
     std::unique_ptr<ResultCollector> appendResultCollector(
         const binder::expression_vector& expressionsToCollect, const planner::Schema& schema,
         std::unique_ptr<PhysicalOperator> prevOperator);

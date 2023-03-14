@@ -20,12 +20,16 @@ std::shared_ptr<Expression> ExpressionBinder::bindPropertyExpression(
             propertyName + " is reserved for system usage. External access is not allowed.");
     }
     auto child = bindExpression(*parsedExpression.getChild(0));
-    validateExpectedDataType(*child, std::unordered_set<DataTypeID>{NODE, REL});
+    validateExpectedDataType(*child, std::unordered_set<DataTypeID>{NODE, REL, PATH});
     if (NODE == child->dataType.typeID) {
         return bindNodePropertyExpression(*child, propertyName);
-    } else {
-        assert(REL == child->dataType.typeID);
+    } else if (REL == child->dataType.typeID) {
         return bindRelPropertyExpression(*child, propertyName);
+    } else {
+        // TODO: Convert this part into bindPathPropertyExpression() function
+        assert(PATH == child->dataType.typeID);
+        child->dataType = DataType(INT64);
+        return child;
     }
 }
 

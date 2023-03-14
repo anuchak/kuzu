@@ -59,14 +59,8 @@ void Binder::validatePathExpression(
                                   "Shortest Path queries. ");
         }
     }
-    expression_vector pathChildExpressions;
-    for (int i = 0; i < queryGraph->getNumQueryNodes(); i++) {
-        pathChildExpressions.push_back(queryGraph->getQueryNode(i)->getInternalIDProperty());
-    }
-    auto childDataType = std::make_unique<DataType>(INTERNAL_ID);
-    auto pathVariableExpression =
-        std::make_shared<Expression>(VARIABLE, DataType(common::LIST, std::move(childDataType)),
-            pathChildExpressions, patternElement.getPathVariable());
+    auto pathVariableExpression = std::make_shared<Expression>(
+        VARIABLE, DataType(common::PATH), patternElement.getPathVariable());
     variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
     queryGraph->setPathExpression(pathVariableExpression);
 }

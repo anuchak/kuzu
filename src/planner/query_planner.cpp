@@ -7,8 +7,11 @@
 #include "planner/logical_plan/logical_operator/logical_extend.h"
 #include "planner/logical_plan/logical_operator/logical_filter.h"
 #include "planner/logical_plan/logical_operator/logical_flatten.h"
+#include "planner/logical_plan/logical_operator/logical_projection.h"
+#include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
 #include "planner/logical_plan/logical_operator/logical_scan_node_property.h"
 #include "planner/logical_plan/logical_operator/logical_shortest_path.h"
+#include "planner/logical_plan/logical_operator/logical_simple_recursive_join.h"
 #include "planner/logical_plan/logical_operator/logical_union.h"
 #include "planner/logical_plan/logical_operator/logical_unwind.h"
 #include "planner/logical_plan/logical_operator/sink_util.h"
@@ -24,7 +27,7 @@ std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::getAllPlans(
     auto& regularQuery = (BoundRegularQuery&)boundStatement;
     if (regularQuery.getNumSingleQueries() == 1) {
         if (checkIfShortestPathQuery(boundStatement)) {
-            resultPlans.push_back(getShortestPathPlan(boundStatement));
+            resultPlans = getShortestPathPlan(boundStatement);
         } else {
             resultPlans = planSingleQuery(*regularQuery.getSingleQuery(0));
         }
@@ -69,7 +72,7 @@ bool QueryPlanner::checkIfShortestPathQuery(const BoundStatement& boundStatement
     return false;
 }
 
-std::unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(
+std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::getShortestPathPlan(
     const BoundStatement& boundStatement) {
     auto& boundRegularQuery = (BoundRegularQuery&)boundStatement;
     auto singleQuery = boundRegularQuery.getSingleQuery(0);
@@ -82,6 +85,7 @@ std::unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(
     auto matchClause = (BoundMatchClause*)queryPart->getReadingClause(0);
     assert(matchClause->getQueryGraphCollection()->getNumQueryGraphs() == 1);
     auto queryGraph = matchClause->getQueryGraphCollection()->getQueryGraph(0);
+    std::shared_ptr<Expression> pathExpression = queryGraph->getPathExpression();
     assert(queryGraph->getNumQueryNodes() == 2 && queryGraph->getNumQueryRels() == 1);
     auto sourceNode = queryGraph->getQueryNode(0);
     auto destNode = queryGraph->getQueryNode(1);
@@ -102,13 +106,6 @@ std::unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(
             }
         }
     }
-    auto dataType = std::make_unique<DataType>(DataTypeID::REL);
-    auto relTableToProperty = std::unordered_map<table_id_t, property_id_t>();
-    relTableToProperty[rel->getSingleTableID()] = 0;
-    Expression expression =
-        Expression(rel->expressionType, rel->dataType, rel->getChildren(), rel->getUniqueName());
-    std::shared_ptr<Expression> relPropertyExpr = std::make_shared<PropertyExpression>(
-        *dataType, "_id", std::move(expression), relTableToProperty, false);
     auto leftPlan = std::make_unique<LogicalPlan>();
     joinOrderEnumerator.appendScanNode(sourceNode, *leftPlan);
     if (!srcPredicate.empty()) {
@@ -123,12 +120,72 @@ std::unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(
     joinOrderEnumerator.planPropertyScansForNode(destNode, *rightPlan);
     JoinOrderEnumerator::appendCrossProduct(*leftPlan, *rightPlan);
     appendFlattenIfNecessary(sourceNode->getInternalIDProperty(), *leftPlan);
-    appendFlattenIfNecessary(destNode->getInternalIDProperty(), *leftPlan);
-    auto logicalShortestPath = make_shared<LogicalShortestPath>(
-        sourceNode, destNode, rel, relPropertyExpr, leftPlan->getLastOperator());
-    leftPlan->setLastOperator(logicalShortestPath);
-    logicalShortestPath->computeSchema();
-    return leftPlan;
+
+    auto nodesToExtendBoundExpr =
+        std::make_shared<NodeExpression>("uniqueName3", sourceNode->getTableIDs());
+    auto propertyIDPerTable = std::unordered_map<table_id_t, property_id_t>();
+    for (auto tableID : sourceNode->getTableIDs()) {
+        propertyIDPerTable.insert({tableID, INVALID_PROPERTY_ID});
+    }
+    auto srcInternalIDExpr = std::make_unique<PropertyExpression>(DataType(INTERNAL_ID),
+        "_id_uniqueName3", *sourceNode, std::move(propertyIDPerTable), false /* isPrimaryKey */);
+    nodesToExtendBoundExpr->setInternalIDProperty(std::move(srcInternalIDExpr));
+
+    auto nodesAfterExtendNbrExpr =
+        std::make_shared<NodeExpression>("uniqueName4", destNode->getTableIDs());
+    propertyIDPerTable = std::unordered_map<table_id_t, property_id_t>();
+    for (auto tableID : destNode->getTableIDs()) {
+        propertyIDPerTable.insert({tableID, INVALID_PROPERTY_ID});
+    }
+    auto destInternalIDExpr = std::make_unique<PropertyExpression>(DataType(INTERNAL_ID),
+        "_id_uniqueName4", *destNode, std::move(propertyIDPerTable), false /* isPrimaryKey */);
+    nodesAfterExtendNbrExpr->setInternalIDProperty(std::move(destInternalIDExpr));
+
+    common::DataType pathLengthDataType = common::DataType(common::DataTypeID::INT64);
+    std::shared_ptr<Expression> pathLengthExpr =
+        std::make_shared<Expression>(pathExpression->expressionType, pathLengthDataType,
+            pathExpression->getChildren(), pathExpression->getUniqueName());
+
+    auto logicalScanBFSLevel =
+        std::make_shared<LogicalScanBFSLevel>(sourceNode, destNode, nodesToExtendBoundExpr,
+            nodesAfterExtendNbrExpr, pathLengthExpr, leftPlan->getLastOperator());
+    leftPlan->setLastOperator(logicalScanBFSLevel);
+    expression_vector srcDstNodePropertiesToScan;
+    logicalScanBFSLevel->computeSchema();
+    QueryPlanner::appendFlattenIfNecessary(
+        nodesToExtendBoundExpr->getInternalIDProperty(), *leftPlan);
+
+    bool needToExtendToNewGroup =
+        joinOrderEnumerator.needExtendToNewGroup(*rel, *nodesToExtendBoundExpr, RelDirection::FWD);
+    auto logicalExtend = std::make_shared<LogicalExtend>(nodesToExtendBoundExpr,
+        nodesAfterExtendNbrExpr, rel, RelDirection::FWD, getPropertiesForRel(*rel),
+        needToExtendToNewGroup, leftPlan->getLastOperator());
+    leftPlan->setLastOperator(logicalExtend);
+    logicalExtend->computeSchema();
+
+    auto logicalSimpleRecursiveJoin = std::make_shared<LogicalSimpleRecursiveJoin>(
+        nodesToExtendBoundExpr, nodesAfterExtendNbrExpr, rel, leftPlan->getLastOperator());
+    leftPlan->setLastOperator(logicalSimpleRecursiveJoin);
+    logicalSimpleRecursiveJoin->computeSchema();
+
+    std::vector<std::unique_ptr<LogicalPlan>> plans;
+    plans.push_back(std::move(leftPlan));
+    projectionPlanner.planProjectionBody(*queryPart->getProjectionBody(), plans);
+    for (auto& plan : plans) {
+        auto logicalProjection = (LogicalProjection*)plan->getLastOperator().get();
+        for (auto& expression : logicalProjection->getExpressionsToProject()) {
+            if (expression->getUniqueName() != pathLengthExpr->getUniqueName()) {
+                srcDstNodePropertiesToScan.push_back(expression);
+            }
+        }
+    }
+    logicalScanBFSLevel->setSrcDstNodePropertiesToScan(srcDstNodePropertiesToScan);
+    if (queryPart->hasProjectionBodyPredicate()) {
+        for (auto& plan : plans) {
+            appendFilter(queryPart->getProjectionBodyPredicate(), *plan);
+        }
+    }
+    return plans;
 }
 
 // Note: we cannot append ResultCollector for plans enumerated for single query before there could
@@ -220,19 +277,6 @@ void QueryPlanner::planMatchClause(
             }
         }
     }
-    /*for (auto i = 0u; i < queryGraphCollection->getNumQueryGraphs(); i++) {
-        if (queryGraphCollection->getQueryGraph(i)->hasPathExpression()) {
-            for (auto& plan : plans) {
-                auto& pathExpression = queryGraphCollection->getQueryGraph(i)->getPathExpression();
-                auto dependentGroupPos = plan->getSchema()->getDependentGroupsPos(pathExpression);
-                if (!dependentGroupPos.empty()) {
-                    appendFlattens(dependentGroupPos, *plan);
-                }
-                auto groupPos = plan->getSchema()->createGroup();
-                plan->getSchema()->insertToGroupAndScope(pathExpression, groupPos);
-            }
-        }
-    }*/
 }
 
 void QueryPlanner::planUnwindClause(

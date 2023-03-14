@@ -1,5 +1,5 @@
 -NAME SingleSourceAllDestinationsQuery1
--QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' RETURN a.fName, b.fName, p.length
+-QUERY MATCH p = (a:Person)-[:knows* SHORTEST]->(b:Person) WHERE a.ID = 933 AND b.ID = 1129 RETURN p.length, b.firstName;
 ---- 4
 Alice|Alice|0
 Alice|Bob|1

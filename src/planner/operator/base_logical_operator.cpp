@@ -121,6 +121,12 @@ std::string LogicalOperatorUtils::logicalOperatorTypeToString(LogicalOperatorTyp
     case LogicalOperatorType::SHORTEST_PATH: {
         return "SHORTEST_PATH";
     }
+    case LogicalOperatorType::SCAN_BFS_LEVEL: {
+        return "SCAN_BFS_LEVEL";
+    }
+    case LogicalOperatorType::SIMPLE_RECURSIVE_JOIN: {
+        return "SIMPLE_RECURSIVE_JOIN";
+    }
     default:
         throw common::NotImplementedException("LogicalOperatorTypeToString()");
     }

@@ -26,6 +26,8 @@ add_library(kuzu_planner_operator
         logical_scan_node_property.cpp
         logical_set.cpp
         logical_skip.cpp
+        logical_scan_bfs_level.cpp
+        logical_simple_recursive_join.cpp
         logical_union.cpp
         logical_unwind.cpp
         schema.cpp

@@ -1,7 +1,6 @@
 -NAME SingleSourceAllDestinationsQuery1
--QUERY MATCH p = (a:Person)-[:knows* SHORTEST]->(b:Person) WHERE a.ID = 933 AND b.ID = 1129 RETURN p.length, b.firstName;
----- 4
-Alice|Alice|0
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' RETURN a.fName, b.fName, p.length
+---- 3
 Alice|Bob|1
 Alice|Carol|1
 Alice|Dan|1
@@ -13,11 +12,9 @@ Alice|Bob|1
 
 -NAME SingleSourceAllDestinationsQuery2
 -QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Elizabeth' RETURN a.fName, b.fName, p.length
----- 4
-Elizabeth|Elizabeth|0
+---- 2
 Elizabeth|Farooq|1
 Elizabeth|Greg|1
-Elizabeth|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|2
 
 -NAME SingleSourceUnreachableDestination
 -QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' AND b.fName = 'Elizabeth' RETURN a.fName, b.fName, p.length
@@ -25,8 +22,7 @@ Elizabeth|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|2
 
 -NAME AllSourcesSingleDestinationQuery
 -QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE b.fName = 'Alice' RETURN a.fName, b.fName, p.length
------ 4
-Alice|Alice|0
+----- 3
 Bob|Alice|1
 Carol|Alice|1
 Dan|Alice|1

@@ -4,13 +4,9 @@
 
 #include "planner/logical_plan/logical_operator/logical_cross_product.h"
 #include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
-#include "planner/logical_plan/logical_operator/logical_shortest_path.h"
 #include "planner/logical_plan/logical_operator/logical_simple_recursive_join.h"
 #include "processor/mapper/expression_mapper.h"
-#include "processor/operator/cross_product.h"
 #include "processor/operator/result_collector.h"
-#include "processor/operator/shortest_path_adj_col.h"
-#include "processor/operator/shortest_path_adj_list.h"
 #include "processor/operator/shortestpath/scan_bfs_level.h"
 #include "processor/operator/shortestpath/simple_recursive_join.h"
 
@@ -131,9 +127,6 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     case LogicalOperatorType::DROP_TABLE: {
         physicalOperator = mapLogicalDropTableToPhysical(logicalOperator.get());
     } break;
-    case LogicalOperatorType::SHORTEST_PATH: {
-        physicalOperator = mapLogicalShortestPathToPhysical(logicalOperator.get());
-    }
     case LogicalOperatorType::RENAME_TABLE: {
         physicalOperator = mapLogicalRenameTableToPhysical(logicalOperator.get());
     } break;
@@ -177,14 +170,12 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
         *logicalScanBFSLevel->getTmpSourceNodeExpression()->getInternalIDProperty()));
     srcDstNodeIDVectorsDataPos.emplace_back(outSchema->getExpressionPos(
         *logicalScanBFSLevel->getTmpDestNodeExpression()->getInternalIDProperty()));
-
     std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
     std::unordered_set<std::string> tempNodePropertiesVector = std::unordered_set<std::string>();
     for (auto& expression : logicalScanBFSLevel->getSrcDstNodePropertiesToScan()) {
         srcDstNodePropertiesVectorsDataPos.emplace_back(outSchema->getExpressionPos(*expression));
         tempNodePropertiesVector.insert(expression->getUniqueName());
     }
-
     DataPos dstDistanceVectorDataPos =
         DataPos(outSchema->getExpressionPos(*logicalScanBFSLevel->getPathExpression()));
     std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs = std::vector<uint32_t>();
@@ -208,6 +199,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
     auto scanBFSLevel = std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
         srcDstNodeIDVectorsDataPos, srcDstNodePropertiesVectorsDataPos, dstDistanceVectorDataPos,
         ftColIndicesOfSrcAndDstNodeIDs, ftColIndicesOfSrcAndDstNodeProperties,
+        logicalScanBFSLevel->getLowerBound(), logicalScanBFSLevel->getUpperBound(),
         simpleRecursiveJoinSharedState, std::move(resultCollector), getOperatorID(),
         logicalScanBFSLevel->getExpressionsForPrinting());
     return std::move(scanBFSLevel);
@@ -225,36 +217,6 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalSimpleRecursiveJoinToPhy
         std::make_unique<SimpleRecursiveJoin>(scanBFSLevel->getSimpleRecursiveJoinGlobalState(),
             nodeIDVectorDataPos, std::move(prevOperator), getOperatorID(),
             logicalSimpleRecursiveJoin->getExpressionsForPrinting()));
-}
-
-std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalShortestPathToPhysical(
-    LogicalOperator* logicalOperator) {
-    auto* logicalShortestPath = (LogicalShortestPath*)logicalOperator;
-    auto prevOperator = mapLogicalOperatorToPhysical(logicalOperator->getChild(0));
-    auto sourceNode = logicalShortestPath->getSrcNodeExpression();
-    auto destNode = logicalShortestPath->getDestNodeExpression();
-    auto rel = logicalShortestPath->getRelExpression();
-    // assume this here for now
-    auto direction = REL_DIRECTIONS[0];
-    auto srcDataPos = DataPos(
-        logicalShortestPath->getSchema()->getExpressionPos(*sourceNode->getInternalIDProperty()));
-    auto destDataPos = DataPos(
-        logicalShortestPath->getSchema()->getExpressionPos(*destNode->getInternalIDProperty()));
-    auto& relStore = storageManager.getRelsStore();
-    /*if (relStore.hasAdjColumn(direction, sourceNode->getSingleTableID(),
-    rel->getSingleTableID())) { storage::Column* column = relStore.getAdjColumn( direction,
-    sourceNode->getSingleTableID()); return make_unique<ShortestPathAdjCol>(srcDataPos,
-    destDataPos, column, rel->getLowerBound(), rel->getUpperBound(), move(prevOperator),
-    getOperatorID(), logicalShortestPath->getExpressionsForPrinting()); } else {
-        assert(relStore.hasAdjList(
-            direction, sourceNode->getSingleTableID(), rel->getSingleTableID()));*/
-    auto relProperties = (PropertyExpression*)logicalShortestPath->getRelPropertyExpression().get();
-    auto relIDLists = relStore.getRelPropertyLists(
-        direction, sourceNode->getSingleTableID(), rel->getSingleTableID());
-    storage::AdjLists* adjLists = relStore.getAdjLists(direction, sourceNode->getSingleTableID());
-    return make_unique<ShortestPathAdjList>(srcDataPos, destDataPos, adjLists, relIDLists,
-        rel->getLowerBound(), rel->getUpperBound(), move(prevOperator), getOperatorID(),
-        logicalShortestPath->getExpressionsForPrinting());
 }
 
 std::unique_ptr<ResultCollector> PlanMapper::appendResultCollector(

@@ -15,7 +15,6 @@ void LogicalScanBFSLevel::computeSchema() {
     auto nodesToExtendGroup = schema->createGroup();
     schema->insertToGroupAndScope(
         nodesToExtendBoundExpr->getInternalIDProperty(), nodesToExtendGroup);
-    // schema->flattenGroup(nodesToExtendGroup);
 }
 } // namespace planner
 } // namespace kuzu

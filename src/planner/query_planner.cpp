@@ -146,19 +146,22 @@ std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::getShortestPathPlan(
         std::make_shared<Expression>(pathExpression->expressionType, pathLengthDataType,
             pathExpression->getChildren(), pathExpression->getUniqueName());
 
-    auto logicalScanBFSLevel =
-        std::make_shared<LogicalScanBFSLevel>(sourceNode, destNode, nodesToExtendBoundExpr,
-            nodesAfterExtendNbrExpr, pathLengthExpr, leftPlan->getLastOperator());
+    auto logicalScanBFSLevel = std::make_shared<LogicalScanBFSLevel>(rel->getLowerBound(),
+        rel->getUpperBound(), sourceNode, destNode, nodesToExtendBoundExpr, nodesAfterExtendNbrExpr,
+        pathLengthExpr, leftPlan->getLastOperator());
     leftPlan->setLastOperator(logicalScanBFSLevel);
     expression_vector srcDstNodePropertiesToScan;
     logicalScanBFSLevel->computeSchema();
     QueryPlanner::appendFlattenIfNecessary(
         nodesToExtendBoundExpr->getInternalIDProperty(), *leftPlan);
 
+    // We can't pass variable length rel expression, since that gets mapped to varLengthExtend
+    auto relExpr = std::make_shared<RelExpression>(
+        rel->getUniqueName(), rel->getTableIDs(), rel->getSrcNode(), rel->getDstNode(), 1, 1);
     bool needToExtendToNewGroup =
         joinOrderEnumerator.needExtendToNewGroup(*rel, *nodesToExtendBoundExpr, RelDirection::FWD);
     auto logicalExtend = std::make_shared<LogicalExtend>(nodesToExtendBoundExpr,
-        nodesAfterExtendNbrExpr, rel, RelDirection::FWD, getPropertiesForRel(*rel),
+        nodesAfterExtendNbrExpr, std::move(relExpr), RelDirection::FWD, getPropertiesForRel(*rel),
         needToExtendToNewGroup, leftPlan->getLastOperator());
     leftPlan->setLastOperator(logicalExtend);
     logicalExtend->computeSchema();

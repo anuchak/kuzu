@@ -24,7 +24,7 @@ public:
         const DataPos& nodeIDVectorDataPos, std::unique_ptr<PhysicalOperator> child, uint32_t id,
         const std::string& paramsString)
         : PhysicalOperator(
-              PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id, paramsString),
+              PhysicalOperatorType::SIMPLE_RECURSIVE_JOIN, std::move(child), id, paramsString),
           simpleRecursiveJoinGlobalState{simpleRecursiveJoinSharedState},
           inputNodeIDDataPos{nodeIDVectorDataPos} {}
 

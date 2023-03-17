@@ -17,12 +17,14 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
     while (true) {
         if (!children[0]->getNextTuple()) {
             auto ssspMorsel = simpleRecursiveJoinGlobalState->getAssignedSSSPMorsel(threadID);
-            return ssspMorsel->isSSSPMorselComplete;
+            if (!ssspMorsel) {
+                return false;
+            } else {
+                return true;
+            }
         }
         auto ssspMorsel = simpleRecursiveJoinGlobalState->getAssignedSSSPMorsel(threadID);
-        auto& nextBFSLevel = ssspMorsel->nextBFSLevel;
-        auto& visitedNodes = *ssspMorsel->bfsVisitedNodes;
-        auto& nextLevelNodeMask = ssspMorsel->nextLevelNodeMask;
+        auto& visitedNodes = ssspMorsel->bfsVisitedNodes;
         for (int i = 0; i < inputNodeIDVector->state->selVector->selectedSize; i++) {
             auto selectedPos = inputNodeIDVector->state->selVector->selectedPositions[i];
             auto nodeID = ((nodeID_t*)(inputNodeIDVector->getData()))[selectedPos];
@@ -33,13 +35,11 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
             if (visitedNodes[nodeID.offset] == NOT_VISITED_DST) {
                 visitedNodes[nodeID.offset] = VISITED_DST;
                 ssspMorsel->numDstNodesNotReached--;
-                ssspMorsel->dstNodeDistances->operator[](nodeID.offset) = nextBFSLevel->levelNumber;
+                ssspMorsel->dstNodeDistances[nodeID.offset] = ssspMorsel->nextBFSLevel->levelNumber;
             } else {
                 visitedNodes[nodeID.offset] = VISITED;
             }
-            // set position in mask to true to indicate node offset exists in bfsLevel.
-            nextLevelNodeMask[nodeID.offset] = true;
-            nextBFSLevel->bfsLevelNodes.emplace_back(nodeID);
+            ssspMorsel->nextBFSLevel->bfsLevelNodes.emplace_back(nodeID);
         }
     }
 }

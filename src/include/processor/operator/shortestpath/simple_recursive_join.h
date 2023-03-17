@@ -11,10 +11,12 @@ namespace processor {
 
 /*
  * The SimpleRecursiveJoin class reads from the inputNodeIDVector which holds the nodes written by
- * ScanRelTableList after extending nodes in a BFSLevel. SimpleRecursiveJoin + ScanBFSLevel returns
- * BFS level distances for a single src + multiple destinations at a time. Different threads will be
- * assigned sets of single src + multiple dest computations. If there is no path from a single src
- * to another destination then that
+ * ScanRelTableList after extending nodes in a BFSLevel. ScanBFSLevel -> ScanRelTableLists ->
+ * SimpleRecursiveJoin returns BFS level distances for a single src + multiple dst's at a
+ * time. Different threads will be assigned sets of single src + multiple dst computations. If
+ * there is no path from a single src to another dst then that dst is unreachable and not part of
+ * the final output. If no dst is reachable from a src then that src is also discarded from the
+ * final output i.e no distance is reported for it since no dst is reachable.
  */
 class SimpleRecursiveJoin : public PhysicalOperator {
 

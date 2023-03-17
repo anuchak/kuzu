@@ -5,6 +5,7 @@ add_subdirectory(hash_join)
 add_subdirectory(intersect)
 add_subdirectory(order_by)
 add_subdirectory(scan)
+add_subdirectory(shortestpath)
 add_subdirectory(table_scan)
 add_subdirectory(update)
 add_subdirectory(var_length_extend)
@@ -23,6 +24,9 @@ add_library(kuzu_processor_operator
         result_collector.cpp
         scan_node_id.cpp
         semi_masker.cpp
+        shortest_path_adj_list.cpp
+        shortest_path_adj_col.cpp
+        base_shortest_path.cpp
         skip.cpp
         unwind.cpp)
 

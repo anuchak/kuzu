@@ -1,5 +1,5 @@
 
-// Generated from Cypher.g4 by ANTLR 4.9
+// Generated from /home/a8chakra/Repos/shortestpath_kuzu_copy/kuzu/src/antlr4/Cypher.g4 by ANTLR 4.9
 
 #pragma once
 
@@ -25,15 +25,15 @@ public:
     UNION = 63, ALL = 64, OPTIONAL = 65, MATCH = 66, UNWIND = 67, CREATE = 68, 
     SET = 69, DELETE = 70, WITH = 71, RETURN = 72, DISTINCT = 73, STAR = 74, 
     AS = 75, ORDER = 76, BY = 77, L_SKIP = 78, LIMIT = 79, ASCENDING = 80, 
-    ASC = 81, DESCENDING = 82, DESC = 83, WHERE = 84, OR = 85, XOR = 86, 
-    AND = 87, NOT = 88, INVALID_NOT_EQUAL = 89, MINUS = 90, FACTORIAL = 91, 
-    STARTS = 92, ENDS = 93, CONTAINS = 94, IS = 95, NULL_ = 96, TRUE = 97, 
-    FALSE = 98, EXISTS = 99, CASE = 100, ELSE = 101, END = 102, WHEN = 103, 
-    THEN = 104, StringLiteral = 105, EscapedChar = 106, DecimalInteger = 107, 
-    HexLetter = 108, HexDigit = 109, Digit = 110, NonZeroDigit = 111, NonZeroOctDigit = 112, 
-    ZeroDigit = 113, RegularDecimalReal = 114, UnescapedSymbolicName = 115, 
-    IdentifierStart = 116, IdentifierPart = 117, EscapedSymbolicName = 118, 
-    SP = 119, WHITESPACE = 120, Comment = 121, Unknown = 122
+    ASC = 81, DESCENDING = 82, DESC = 83, WHERE = 84, SHORTEST = 85, OR = 86, 
+    XOR = 87, AND = 88, NOT = 89, INVALID_NOT_EQUAL = 90, MINUS = 91, FACTORIAL = 92, 
+    STARTS = 93, ENDS = 94, CONTAINS = 95, IS = 96, NULL_ = 97, TRUE = 98, 
+    FALSE = 99, EXISTS = 100, CASE = 101, ELSE = 102, END = 103, WHEN = 104, 
+    THEN = 105, StringLiteral = 106, EscapedChar = 107, DecimalInteger = 108, 
+    HexLetter = 109, HexDigit = 110, Digit = 111, NonZeroDigit = 112, NonZeroOctDigit = 113, 
+    ZeroDigit = 114, RegularDecimalReal = 115, UnescapedSymbolicName = 116, 
+    IdentifierStart = 117, IdentifierPart = 118, EscapedSymbolicName = 119, 
+    SP = 120, WHITESPACE = 121, Comment = 122, Unknown = 123
   };
 
   explicit CypherLexer(antlr4::CharStream *input);

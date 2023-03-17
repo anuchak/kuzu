@@ -131,6 +131,13 @@ private:
     std::unique_ptr<QueryGraph> bindPatternElement(
         const parser::PatternElement& patternElement, PropertyKeyValCollection& collection);
 
+    void validatePathExpression(
+        const parser::PatternElement& patternElement, QueryGraph* queryGraph);
+
+    static void validateNodeInPathExpression(const parser::PatternElement& patternElement);
+
+    static void validateRelInPathExpression(const parser::PatternElement& patternElement);
+
     void bindQueryRel(const parser::RelPattern& relPattern,
         const std::shared_ptr<NodeExpression>& leftNode,
         const std::shared_ptr<NodeExpression>& rightNode, QueryGraph& queryGraph,

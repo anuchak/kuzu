@@ -11,6 +11,8 @@ struct FTableScanMorsel {
     FTableScanMorsel(FactorizedTable* table, uint64_t startTupleIdx, uint64_t numTuples)
         : table{table}, startTupleIdx{startTupleIdx}, numTuples{numTuples} {}
 
+    inline bool isEmpty() const { return (numTuples == 0u); }
+
     FactorizedTable* table;
     uint64_t startTupleIdx;
     uint64_t numTuples;

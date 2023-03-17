@@ -1,0 +1,55 @@
+-NAME SingleSourceAllDestinationsQuery1
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST 1..30]->(b:person) WHERE a.fName = 'Alice' RETURN a.fName, b.fName, p.length
+---- 7
+Alice|Bob|1
+Alice|Carol|1
+Alice|Dan|1
+Alice|Elizabeth|2
+Alice|Farooq|3
+Alice|Greg|3
+Alice|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|3
+
+-NAME SingleSourceSingleDestinationQuery1
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST 1..30]->(b:person) WHERE a.fName = 'Alice' AND b.fName = 'Bob' RETURN a.fName, b.fName, p.length
+---- 1
+Alice|Bob|1
+
+-NAME SingleSourceAllDestinationsQuery2
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST 1..2]->(b:person) WHERE a.fName = 'Elizabeth' RETURN a.fName, b.fName, p.length
+---- 5
+Elizabeth|Alice|2
+Elizabeth|Dan|2
+Elizabeth|Farooq|1
+Elizabeth|Greg|1
+Elizabeth|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|1
+
+-NAME SingleSourceUnreachableDestination
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' AND b.fName = 'Elizabeth' RETURN a.fName, b.fName, p.length
+---- 0
+
+-NAME AllSourcesSingleDestinationQuery
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST 1..30]->(b:person) WHERE b.fName = 'Alice' RETURN a.fName, b.fName, p.length
+----- 6
+Bob|Alice|1
+Carol|Alice|1
+Dan|Alice|1
+Elizabeth|Alice|2
+Farooq|Alice|2
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|Alice|1
+
+-NAME MultipleSrcMultipleDstQuery
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST 1..10]->(b:person) WHERE a.isStudent = true AND b.isWorker = true RETURN a.fName, b.fName, p.length
+----- 12
+Alice|Carol|1
+Alice|Dan|1
+Alice|Elizabeth|2
+Alice|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|3
+Bob|Carol|1
+Bob|Dan|1
+Bob|Elizabeth|1
+Bob|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|2
+Farooq|Carol|3
+Farooq|Dan|2
+Farooq|Elizabeth|1
+Farooq|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|1
+

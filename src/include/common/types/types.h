@@ -43,6 +43,7 @@ KUZU_API enum DataTypeID : uint8_t {
     ANY = 0,
     NODE = 10,
     REL = 11,
+    PATH = 12,
 
     // physical types
 

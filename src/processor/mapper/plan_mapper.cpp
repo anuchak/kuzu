@@ -2,8 +2,13 @@
 
 #include <set>
 
+#include "planner/logical_plan/logical_operator/logical_cross_product.h"
+#include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
+#include "planner/logical_plan/logical_operator/logical_simple_recursive_join.h"
 #include "processor/mapper/expression_mapper.h"
 #include "processor/operator/result_collector.h"
+#include "processor/operator/shortestpath/scan_bfs_level.h"
+#include "processor/operator/shortestpath/simple_recursive_join.h"
 
 using namespace kuzu::common;
 using namespace kuzu::planner;
@@ -134,11 +139,85 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     case LogicalOperatorType::RENAME_PROPERTY: {
         physicalOperator = mapLogicalRenamePropertyToPhysical(logicalOperator.get());
     } break;
+    case LogicalOperatorType::SCAN_BFS_LEVEL: {
+        physicalOperator = mapLogicalScanBFSLevelToPhysical(logicalOperator.get());
+    } break;
+    case LogicalOperatorType::SIMPLE_RECURSIVE_JOIN: {
+        physicalOperator = mapLogicalSimpleRecursiveJoinToPhysical(logicalOperator.get());
+    } break;
     default:
         throw common::NotImplementedException("PlanMapper::mapLogicalOperatorToPhysical()");
     }
     logicalOpToPhysicalOpMap.insert({logicalOperator.get(), physicalOperator.get()});
     return physicalOperator;
+}
+
+std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
+    planner::LogicalOperator* logicalOperator) {
+    auto* logicalScanBFSLevel = (LogicalScanBFSLevel*)logicalOperator;
+    auto outSchema = logicalScanBFSLevel->getSchema();
+    auto subPlanSchema = logicalScanBFSLevel->getChild(0)->getSchema();
+    auto prevOperator = mapLogicalOperatorToPhysical(logicalOperator->getChild(0));
+    auto resultCollector = appendResultCollector(
+        subPlanSchema->getExpressionsInScope(), *subPlanSchema, std::move(prevOperator));
+    auto maxNodeOffsetsPerTable =
+        storageManager.getNodesStore().getNodesStatisticsAndDeletedIDs().getMaxNodeOffsetPerTable();
+    auto maxNodeOffset = maxNodeOffsetsPerTable.at(
+        logicalScanBFSLevel->getTmpDestNodeExpression()->getSingleTableID());
+    DataPos nodesToExtendDataPos = DataPos(outSchema->getExpressionPos(
+        *logicalScanBFSLevel->getNodesToExtendBoundExpr()->getInternalIDProperty()));
+    std::vector<DataPos> srcDstNodeIDVectorsDataPos = std::vector<DataPos>();
+    srcDstNodeIDVectorsDataPos.emplace_back(outSchema->getExpressionPos(
+        *logicalScanBFSLevel->getTmpSourceNodeExpression()->getInternalIDProperty()));
+    srcDstNodeIDVectorsDataPos.emplace_back(outSchema->getExpressionPos(
+        *logicalScanBFSLevel->getTmpDestNodeExpression()->getInternalIDProperty()));
+    std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
+    std::unordered_set<std::string> tempNodePropertiesVector = std::unordered_set<std::string>();
+    for (auto& expression : logicalScanBFSLevel->getSrcDstNodePropertiesToScan()) {
+        srcDstNodePropertiesVectorsDataPos.emplace_back(outSchema->getExpressionPos(*expression));
+        tempNodePropertiesVector.insert(expression->getUniqueName());
+    }
+    DataPos dstDistanceVectorDataPos =
+        DataPos(outSchema->getExpressionPos(*logicalScanBFSLevel->getPathExpression()));
+    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs = std::vector<uint32_t>();
+    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties = std::vector<uint32_t>();
+    auto internalIDExprSrc =
+        logicalScanBFSLevel->getTmpSourceNodeExpression()->getInternalIDProperty()->getUniqueName();
+    auto internalIDExprDest =
+        logicalScanBFSLevel->getTmpDestNodeExpression()->getInternalIDProperty()->getUniqueName();
+    for (int i = 0; i < subPlanSchema->getExpressionsInScope().size(); i++) {
+        auto expression = subPlanSchema->getExpressionsInScope()[i];
+        if (expression->getUniqueName() == internalIDExprSrc ||
+            expression->getUniqueName() == internalIDExprDest) {
+            ftColIndicesOfSrcAndDstNodeIDs.push_back(i);
+        } else if (tempNodePropertiesVector.contains(expression->getUniqueName())) {
+            ftColIndicesOfSrcAndDstNodeProperties.push_back(i);
+        }
+    }
+    auto sharedState = resultCollector->getSharedState();
+    auto simpleRecursiveJoinSharedState =
+        std::make_shared<SimpleRecursiveJoinGlobalState>(sharedState);
+    auto scanBFSLevel = std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
+        srcDstNodeIDVectorsDataPos, srcDstNodePropertiesVectorsDataPos, dstDistanceVectorDataPos,
+        ftColIndicesOfSrcAndDstNodeIDs, ftColIndicesOfSrcAndDstNodeProperties,
+        logicalScanBFSLevel->getLowerBound(), logicalScanBFSLevel->getUpperBound(),
+        simpleRecursiveJoinSharedState, std::move(resultCollector), getOperatorID(),
+        logicalScanBFSLevel->getExpressionsForPrinting());
+    return std::move(scanBFSLevel);
+}
+
+std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalSimpleRecursiveJoinToPhysical(
+    planner::LogicalOperator* logicalOperator) {
+    auto* logicalSimpleRecursiveJoin = (LogicalSimpleRecursiveJoin*)logicalOperator;
+    auto prevOperator = mapLogicalOperatorToPhysical(logicalOperator->getChild(0));
+    auto* scanBFSLevel = (ScanBFSLevel*)prevOperator->getChild(0)->getChild(0);
+    auto inSchema = logicalSimpleRecursiveJoin->getChild(0)->getSchema();
+    auto nodeIDVectorDataPos = DataPos(inSchema->getExpressionPos(
+        *logicalSimpleRecursiveJoin->getNodesAfterExtendExpression()->getInternalIDProperty()));
+    return std::move(
+        std::make_unique<SimpleRecursiveJoin>(scanBFSLevel->getSimpleRecursiveJoinGlobalState(),
+            nodeIDVectorDataPos, std::move(prevOperator), getOperatorID(),
+            logicalSimpleRecursiveJoin->getExpressionsForPrinting()));
 }
 
 std::unique_ptr<ResultCollector> PlanMapper::appendResultCollector(

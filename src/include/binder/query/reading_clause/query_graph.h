@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <unordered_map>
+#include <utility>
 
 #include "binder/expression/rel_expression.h"
 
@@ -131,9 +132,22 @@ public:
 
     void merge(const QueryGraph& other);
 
-    inline std::unique_ptr<QueryGraph> copy() const { return std::make_unique<QueryGraph>(*this); }
+    bool hasPathExpression() { return pathExpression != nullptr; }
+
+    std::shared_ptr<Expression>& getPathExpression() { return pathExpression; }
+
+    void setPathExpression(std::shared_ptr<Expression> pathExpression_) {
+        this->pathExpression = std::move(pathExpression_);
+    }
+
+    inline std::unique_ptr<QueryGraph> copy() const {
+        auto queryGraph = std::make_unique<QueryGraph>(*this);
+        queryGraph->setPathExpression(pathExpression);
+        return queryGraph;
+    }
 
 private:
+    std::shared_ptr<Expression> pathExpression;
     std::unordered_map<std::string, uint32_t> queryNodeNameToPosMap;
     std::unordered_map<std::string, uint32_t> queryRelNameToPosMap;
     std::vector<std::shared_ptr<NodeExpression>> queryNodes;

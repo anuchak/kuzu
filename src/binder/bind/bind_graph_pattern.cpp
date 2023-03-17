@@ -73,7 +73,7 @@ void Binder::validatePathExpression(
         auto patternElementChain = patternElement.getPatternElementChain(i);
         if (!patternElementChain->getRelPattern()->getIsShortestPath()) {
             throw BinderException("Binding query pattern to path variable is only supported for "
-                                  "Shortest Path queries. ");
+                                  "Shortest Path queries.");
         }
     }
     auto pathVariableExpression = std::make_shared<Expression>(
@@ -84,17 +84,17 @@ void Binder::validatePathExpression(
 
 void Binder::validateNodeInPathExpression(const parser::PatternElement& patternElement) {
     if (patternElement.getNumPatternElementChains() == 0) {
-        throw BinderException("Binding path to a single node is not supported. ");
+        throw BinderException("Binding path to a single node is not supported.");
     }
     if (patternElement.getFirstNodePattern()->getTableNames().size() != 1) {
         throw BinderException(
-            "Multi Label node pattern is not supported for Shortest Path query expressions. ");
+            "Multi Label node pattern is not supported for Shortest Path query expressions.");
     }
     for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
         auto patternElementChain = patternElement.getPatternElementChain(i);
         if (patternElementChain->getNodePattern()->getTableNames().size() != 1) {
             throw BinderException(
-                "Multi Label node pattern is not supported for Shortest Path query expressions. ");
+                "Multi Label node pattern is not supported for Shortest Path query expressions.");
         }
     }
 }
@@ -104,11 +104,11 @@ void Binder::validateRelInPathExpression(const parser::PatternElement& patternEl
         auto patternElementChain = patternElement.getPatternElementChain(i);
         if (patternElementChain->getRelPattern()->getTableNames().size() != 1) {
             throw BinderException(
-                "Multi Label rel pattern is not supported for Shortest Path query expressions. ");
+                "Multi Label rel pattern is not supported for Shortest Path query expressions.");
         }
         if (!patternElementChain->getRelPattern()->getVariableName().empty()) {
             throw BinderException(
-                "Rel variable for Shortest path expression queries are not allowed. ");
+                "Rel variable for Shortest path expression queries are not allowed.");
         }
     }
 }

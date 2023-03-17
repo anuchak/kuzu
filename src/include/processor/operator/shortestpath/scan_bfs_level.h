@@ -1,9 +1,5 @@
 #pragma once
 
-#include <bitset>
-#include <map>
-#include <utility>
-
 #include "processor/operator/physical_operator.h"
 #include "processor/operator/result_collector.h"
 #include "processor/result/factorized_table.h"
@@ -34,7 +30,7 @@ public:
 /*
  * Operator function to sort bfsLevelNodes nodeID's in ascending order.
  */
-struct NodeComparatorFunction {
+struct NodeIDComparatorFunction {
     inline bool operator()(const common::nodeID_t& nodeID1, const common::nodeID_t& nodeID2) {
         return nodeID1.offset < nodeID2.offset;
     }
@@ -55,12 +51,11 @@ struct SSSPMorsel {
 public:
     explicit SSSPMorsel(common::offset_t maxNodeOffset)
         : isSSSPMorselComplete{false}, numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u},
-          dstTableID{0u}, nextLevelNodeMask{std::vector<bool>(maxNodeOffset + 1, false)},
-          dstNodeDistances{std::make_unique<std::unordered_map<common::offset_t, uint32_t>>()},
+          dstTableID{0u}, dstNodeDistances{std::unordered_map<common::offset_t, uint32_t>()},
           curBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
-          bfsVisitedNodes{std::make_unique<std::vector<uint8_t>>(maxNodeOffset + 1, NOT_VISITED)} {}
+          bfsVisitedNodes{std::vector<uint8_t>(maxNodeOffset + 1, NOT_VISITED)} {}
 
-    BFSLevelMorsel grabBFSLevelMorsel();
+    BFSLevelMorsel getBFSLevelMorsel();
 
     void markDstNodeOffsets(
         common::offset_t srcNodeOffset, std::shared_ptr<common::ValueVector>& dstNodeIDValueVector);
@@ -75,36 +70,34 @@ public:
     uint32_t numDstNodesNotReached;
     uint32_t bfsMorselNextStartIdx;
     common::table_id_t dstTableID;
-    std::vector<bool> nextLevelNodeMask;
-    std::unique_ptr<std::unordered_map<common::offset_t, uint32_t>> dstNodeDistances;
+    std::unordered_map<common::offset_t, uint32_t> dstNodeDistances;
     std::unique_ptr<BFSLevel> curBFSLevel;
     std::unique_ptr<BFSLevel> nextBFSLevel;
-    // Each element is of size 1 byte (unsigned char) and we store members of VisitedState enum
-    std::unique_ptr<std::vector<uint8_t>> bfsVisitedNodes;
+    // Each element is of size 1 byte (unsigned char) and enum VisitedState states are stored.
+    // We have 4 states currently, and it gets cast to uint8_t in the vector.
+    std::vector<uint8_t> bfsVisitedNodes;
 };
 
 struct SimpleRecursiveJoinGlobalState {
 public:
-    explicit SimpleRecursiveJoinGlobalState(std::shared_ptr<FTableSharedState> fTableOfSrcDst)
-        : ssspMorselTracker{std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>>()},
-          fTableOfSrcDst{std::move(fTableOfSrcDst)} {};
+    explicit SimpleRecursiveJoinGlobalState(std::shared_ptr<FTableSharedState> inputFTable)
+        : ssspMorselPerThread{std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>>()},
+          inputFTable{std::move(inputFTable)} {};
 
     SSSPMorsel* getAssignedSSSPMorsel(std::thread::id threadID);
 
-    SSSPMorsel* grabAndInitializeSSSPMorsel(std::thread::id threadID,
-        common::offset_t maxNodeOffset,
+    void removePrevAssignedSSSPMorsel(std::thread::id threadID);
+
+    SSSPMorsel* getSSSPMorsel(std::thread::id threadID, common::offset_t maxNodeOffset,
         std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors,
         std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs,
         std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors,
         std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties);
 
-    std::pair<SSSPMorsel*, std::unique_ptr<FTableScanMorsel>> getSSSPMorsel(
-        std::thread::id threadID, common::offset_t maxNodeOffset);
-
-public:
+private:
     std::shared_mutex mutex;
-    std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>> ssspMorselTracker;
-    std::shared_ptr<FTableSharedState> fTableOfSrcDst;
+    std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>> ssspMorselPerThread;
+    std::shared_ptr<FTableSharedState> inputFTable;
 };
 
 class ScanBFSLevel : public PhysicalOperator {
@@ -162,9 +155,13 @@ private:
     std::vector<DataPos> srcDstNodeIDVectorsDataPos;
     std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors;
     // The ValueVectors into which the src, dst node properties will be written.
+    // TODO: This can be optimized by directly copying from the input FTable to the output FTable,
+    // instead of copying into these value vectors and then copying them to the output FTable.
     std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
     std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors;
     // The ValueVector into which ScanBFSLevel will write the dst bfsLevelNumber.
+    // TODO: Same as the above TODO, we should write the distances directly to the output FTable,
+    // instead of this vector (because we can write only 2048 at a time).
     DataPos dstDistanceVectorDataPos;
     std::shared_ptr<common::ValueVector> dstDistances;
     // The FTable column indices for the src, dest nodeIDs and node properties to scan.

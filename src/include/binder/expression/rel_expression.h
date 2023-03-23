@@ -20,6 +20,8 @@ public:
 
     inline std::string getVariableName() { return variableName; }
 
+    inline std::string getVariableName() { return variableName; }
+
     inline bool isBoundByMultiLabeledNode() const {
         return srcNode->isMultiLabeled() || dstNode->isMultiLabeled();
     }

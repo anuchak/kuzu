@@ -58,7 +58,7 @@ public:
     BFSLevelMorsel getBFSLevelMorsel();
 
     void markDstNodeOffsets(
-        common::offset_t srcNodeOffset, std::shared_ptr<common::ValueVector>& dstNodeIDValueVector);
+        common::offset_t srcNodeOffset, common::ValueVector* dstNodeIDValueVector);
 
     inline bool isEmpty() const {
         return curBFSLevel->bfsLevelNodes.empty() && nextBFSLevel->bfsLevelNodes.empty();
@@ -89,10 +89,10 @@ public:
     void removePrevAssignedSSSPMorsel(std::thread::id threadID);
 
     SSSPMorsel* getSSSPMorsel(std::thread::id threadID, common::offset_t maxNodeOffset,
-        std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs,
-        std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties);
+        std::vector<common::ValueVector*> srcDstNodeIDVectors,
+        std::vector<uint32_t>& ftColIndicesOfSrcAndDstNodeIDs,
+        std::vector<common::ValueVector*>& srcDstNodePropertiesVectors,
+        std::vector<uint32_t>& ftColIndicesOfSrcAndDstNodeProperties);
 
 private:
     std::shared_mutex mutex;
@@ -153,12 +153,12 @@ private:
     std::shared_ptr<common::ValueVector> nodesToExtend;
     // The ValueVectors into which the src, dst nodeIDs will be written.
     std::vector<DataPos> srcDstNodeIDVectorsDataPos;
-    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors;
+    std::vector<common::ValueVector*> srcDstNodeIDVectors;
     // The ValueVectors into which the src, dst node properties will be written.
     // TODO: This can be optimized by directly copying from the input FTable to the output FTable,
     // instead of copying into these value vectors and then copying them to the output FTable.
     std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
-    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors;
+    std::vector<common::ValueVector*> srcDstNodePropertiesVectors;
     // The ValueVector into which ScanBFSLevel will write the dst bfsLevelNumber.
     // TODO: Same as the above TODO, we should write the distances directly to the output FTable,
     // instead of this vector (because we can write only 2048 at a time).

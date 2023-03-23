@@ -15,17 +15,18 @@ class LogicalSimpleRecursiveJoin : public LogicalOperator {
 public:
     LogicalSimpleRecursiveJoin(std::shared_ptr<NodeExpression> nodesToExtendNbrExpr,
         std::shared_ptr<binder::NodeExpression> nodesAfterExtendNbrExpr,
-        std::shared_ptr<RelExpression> relExpression, std::shared_ptr<LogicalOperator> child)
+        RelExpression* relExpression, std::shared_ptr<LogicalOperator> child)
         : nodesToExtendNbrExpr{std::move(nodesToExtendNbrExpr)},
-          nodesAfterExtendNbrExpr{std::move(nodesAfterExtendNbrExpr)}, relExpression{std::move(
-                                                                           relExpression)},
+          nodesAfterExtendNbrExpr{std::move(nodesAfterExtendNbrExpr)}, relExpression{relExpression},
           LogicalOperator(LogicalOperatorType::SIMPLE_RECURSIVE_JOIN, std::move(child)) {}
 
     std::shared_ptr<NodeExpression> getNodesAfterExtendExpression() {
         return nodesAfterExtendNbrExpr;
     }
 
-    void computeSchema() override;
+    void computeFactorizedSchema() override;
+
+    void computeFlatSchema() override;
 
     std::string getExpressionsForPrinting() const override { return ""; }
 
@@ -37,7 +38,7 @@ public:
 private:
     std::shared_ptr<NodeExpression> nodesToExtendNbrExpr;
     std::shared_ptr<NodeExpression> nodesAfterExtendNbrExpr;
-    std::shared_ptr<RelExpression> relExpression;
+    RelExpression* relExpression;
 };
 } // namespace planner
 } // namespace kuzu

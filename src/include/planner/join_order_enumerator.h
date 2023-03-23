@@ -49,6 +49,9 @@ public:
     }
 
     // private:
+    std::vector<std::unique_ptr<LogicalPlan>> planShortestPath(
+        QueryGraph* queryGraph, binder::expression_vector& predicates);
+
     std::vector<std::unique_ptr<LogicalPlan>> planCrossProduct(
         std::vector<std::unique_ptr<LogicalPlan>> leftPlans,
         std::vector<std::unique_ptr<LogicalPlan>> rightPlans);

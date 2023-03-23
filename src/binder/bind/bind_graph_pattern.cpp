@@ -59,8 +59,13 @@ void Binder::validatePathExpression(
                                   "Shortest Path queries.");
         }
     }
-    auto pathVariableExpression = std::make_shared<Expression>(VARIABLE, DataType(common::PATH),
-        std::vector<Expression>(), patternElement.getPathVariable());
+    if (patternElement.getNumPatternElementChains() > 1) {
+        throw BinderException("Shortest path query pattern not valid (more than source, "
+                              "destination nodes not allowed).");
+    }
+    auto pathVariableExpression =
+        std::make_shared<PathExpression>(DataTypeID::PATH, patternElement.getPathVariable(),
+            queryGraph->getQueryNode(0), queryGraph->getQueryRel(0), queryGraph->getQueryNode(1));
     variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
     queryGraph->setPathExpression(pathVariableExpression);
 }

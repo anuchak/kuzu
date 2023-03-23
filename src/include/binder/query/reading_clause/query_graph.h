@@ -132,9 +132,9 @@ public:
 
     void merge(const QueryGraph& other);
 
-    bool hasPathExpression() { return pathExpression != nullptr; }
+    inline bool hasPathExpression() const { return pathExpression != nullptr; }
 
-    std::shared_ptr<Expression>& getPathExpression() { return pathExpression; }
+    inline std::shared_ptr<Expression> getPathExpression() const { return pathExpression; }
 
     void setPathExpression(std::shared_ptr<Expression> pathExpression_) {
         this->pathExpression = std::move(pathExpression_);

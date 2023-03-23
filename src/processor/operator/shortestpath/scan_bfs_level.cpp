@@ -1,6 +1,5 @@
 #include "processor/operator/shortestpath/scan_bfs_level.h"
 
-#include "common/configs.h"
 #include "common/vector/value_vector_utils.h"
 #include "processor/operator/result_collector.h"
 
@@ -23,7 +22,7 @@ BFSLevelMorsel SSSPMorsel::getBFSLevelMorsel() {
 // This function is required to track which node offsets are destination nodes, they are tracked
 // by a different state NOT_VISITED_DST and set as VISITED_DST if they are visited later.
 void SSSPMorsel::markDstNodeOffsets(
-    common::offset_t srcNodeOffset, std::shared_ptr<common::ValueVector>& dstNodeIDValueVector) {
+    common::offset_t srcNodeOffset, common::ValueVector* dstNodeIDValueVector) {
     for (int i = 0; i < dstNodeIDValueVector->state->selVector->selectedSize; i++) {
         auto destIdx = dstNodeIDValueVector->state->selVector->selectedPositions[i];
         if (!dstNodeIDValueVector->isNull(destIdx)) {
@@ -65,11 +64,10 @@ void SimpleRecursiveJoinGlobalState::removePrevAssignedSSSPMorsel(std::thread::i
  * 3) Initialises bfsLevelNodes of curBFSLevel, adds the source nodeID.
  */
 SSSPMorsel* SimpleRecursiveJoinGlobalState::getSSSPMorsel(std::thread::id threadID,
-    common::offset_t maxNodeOffset,
-    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors,
-    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs,
-    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors,
-    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties) {
+    common::offset_t maxNodeOffset, std::vector<common::ValueVector*> srcDstNodeIDVectors,
+    std::vector<uint32_t>& ftColIndicesOfSrcAndDstNodeIDs,
+    std::vector<common::ValueVector*>& srcDstNodePropertiesVectors,
+    std::vector<uint32_t>& ftColIndicesOfSrcAndDstNodeProperties) {
     auto ssspMorsel = std::make_unique<SSSPMorsel>(maxNodeOffset);
     // If there are no morsels left, numTuples will be 0 for the srcDstFTableMorsel.
     std::unique_ptr<FTableScanMorsel> inputFTableMorsel =
@@ -98,10 +96,10 @@ void ScanBFSLevel::initLocalStateInternal(
     kuzu::processor::ResultSet* resultSet, kuzu::processor::ExecutionContext* context) {
     threadID = std::this_thread::get_id();
     for (auto& dataPos : srcDstNodeIDVectorsDataPos) {
-        srcDstNodeIDVectors.push_back(resultSet->getValueVector(dataPos));
+        srcDstNodeIDVectors.push_back(resultSet->getValueVector(dataPos).get());
     }
     for (auto& dataPos : srcDstNodePropertiesVectorsDataPos) {
-        srcDstNodePropertiesVectors.push_back(resultSet->getValueVector(dataPos));
+        srcDstNodePropertiesVectors.push_back(resultSet->getValueVector(dataPos).get());
     }
     dstDistances = resultSet->getValueVector(dstDistanceVectorDataPos);
     nodesToExtend = resultSet->getValueVector(nodesToExtendDataPos);

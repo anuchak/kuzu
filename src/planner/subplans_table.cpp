@@ -5,6 +5,10 @@
 namespace kuzu {
 namespace planner {
 
+typedef std::unordered_map<SubqueryGraph, std::vector<std::unique_ptr<LogicalPlan>>,
+    SubqueryGraphHasher>
+    SubqueryGraphPlansMap;
+
 void SubPlansTable::resize(uint32_t newSize) {
     auto prevSize = subPlans.size();
     subPlans.resize(newSize);
@@ -22,6 +26,10 @@ std::vector<std::unique_ptr<LogicalPlan>>& SubPlansTable::getSubgraphPlans(
     auto subqueryGraphPlansMap = subPlans[subqueryGraph.getTotalNumVariables()].get();
     KU_ASSERT(subqueryGraphPlansMap->contains(subqueryGraph));
     return subqueryGraphPlansMap->at(subqueryGraph);
+}
+
+SubqueryGraphPlansMap* SubPlansTable::getSubGraphPlansAtLevel(uint32_t level) {
+    return subPlans[level].get();
 }
 
 std::vector<SubqueryGraph> SubPlansTable::getSubqueryGraphs(uint32_t level) {

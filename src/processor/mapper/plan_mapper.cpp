@@ -168,7 +168,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
         *logicalScanBFSLevel->getNodesToExtendBoundExpr()->getInternalIDProperty()));
     std::vector<DataPos> srcDstNodeIDVectorsDataPos = std::vector<DataPos>();
     srcDstNodeIDVectorsDataPos.emplace_back(outSchema->getExpressionPos(
-        *logicalScanBFSLevel->getTmpSourceNodeExpression()->getInternalIDProperty()));
+        *logicalScanBFSLevel->getSourceNodeExpression()->getInternalIDProperty()));
     srcDstNodeIDVectorsDataPos.emplace_back(outSchema->getExpressionPos(
         *logicalScanBFSLevel->getTmpDestNodeExpression()->getInternalIDProperty()));
     std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
@@ -182,7 +182,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
     std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs = std::vector<uint32_t>();
     std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties = std::vector<uint32_t>();
     auto internalIDExprSrc =
-        logicalScanBFSLevel->getTmpSourceNodeExpression()->getInternalIDProperty()->getUniqueName();
+        logicalScanBFSLevel->getSourceNodeExpression()->getInternalIDProperty()->getUniqueName();
     auto internalIDExprDest =
         logicalScanBFSLevel->getTmpDestNodeExpression()->getInternalIDProperty()->getUniqueName();
     for (int i = 0; i < subPlanSchema->getExpressionsInScope().size(); i++) {

@@ -22,6 +22,8 @@ constexpr uint64_t DEFAULT_CHECKPOINT_WAIT_TIMEOUT_FOR_TRANSACTIONS_TO_LEAVE_IN_
 const std::string INTERNAL_ID_SUFFIX = "_id";
 const std::string INTERNAL_LENGTH_SUFFIX = "_length";
 
+const std::string PATH_TYPE_LENGTH_PROPERTY = "length";
+
 enum PageSizeClass : uint8_t {
     PAGE_4KB = 0,
     PAGE_256KB = 1,

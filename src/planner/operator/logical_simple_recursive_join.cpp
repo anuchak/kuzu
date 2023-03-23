@@ -24,7 +24,7 @@ namespace planner {
  * these expressions can be put back in the output schema of LogicalSimpleRecursion.
  *
  */
-void LogicalSimpleRecursiveJoin::computeSchema() {
+void LogicalSimpleRecursiveJoin::computeFactorizedSchema() {
     auto inSchema = children[0]->getSchema();
     schema = children[0]->getSchema()->copy();
     schema->clearExpressionsInScope();
@@ -44,6 +44,10 @@ void LogicalSimpleRecursiveJoin::computeSchema() {
             schema->insertToScope(expression, groupPos);
         }
     }
+}
+
+void LogicalSimpleRecursiveJoin::computeFlatSchema() {
+    computeFactorizedSchema();
 }
 
 } // namespace planner

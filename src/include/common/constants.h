@@ -29,6 +29,8 @@ enum PageSizeClass : uint8_t {
     PAGE_256KB = 1,
 };
 
+const std::string PATH_TYPE_LENGTH_PROPERTY = "length";
+
 // Currently the system supports files with 2 different pages size, which we refer to as
 // PAGE_4KB_SIZE and PAGE_256KB_SIZE. PAGE_4KB_SIZE is the default size of the page which is the
 // unit of read/write to the database files, such as to store columns or lists. For now, this value

@@ -1,5 +1,7 @@
 #include "expression.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace binder {
 
@@ -29,8 +31,10 @@ public:
     std::string toString() const override { return variableName; }
 
     std::unique_ptr<Expression> copy() const override {
-        return std::make_unique<PathExpression>(
+        auto pathExpression = std::make_unique<PathExpression>(
             dataType.getTypeID(), uniqueName, srcExpression, relExpression, destExpression);
+        pathExpression->setPathLengthExpression(pathLengthExpression);
+        return std::move(pathExpression);
     }
 
 private:

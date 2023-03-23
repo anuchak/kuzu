@@ -1,5 +1,7 @@
 #include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
 
+#include "binder/binder.h"
+
 using namespace kuzu::common;
 
 namespace kuzu {
@@ -18,9 +20,11 @@ void LogicalScanBFSLevel::computeFactorizedSchema() {
     for (auto tableID : sourceNodeExpression->getTableIDs()) {
         propertyIDPerTable.insert({tableID, common::INVALID_PROPERTY_ID});
     }
-    auto srcInternalIDExpr =
-        std::make_unique<PropertyExpression>(common::DataType(common::INTERNAL_ID),
-            "_id_uniqueName3", *sourceNodeExpression, std::move(propertyIDPerTable), false);
+    auto uniqueInternalPropertyName =
+        "_" + sourceNodeExpression->getInternalIDProperty()->getUniqueName() + "_";
+    auto srcInternalIDExpr = std::make_unique<PropertyExpression>(
+        common::DataType(common::INTERNAL_ID), uniqueInternalPropertyName, *sourceNodeExpression,
+        std::move(propertyIDPerTable), false);
     nodesToExtendBoundExpr_->setInternalIDProperty(std::move(srcInternalIDExpr));
     setNodesToExtendBoundExpr(nodesToExtendBoundExpr_);
     auto nodesToExtendGroup = schema->createGroup();
@@ -53,8 +57,10 @@ std::shared_ptr<NodeExpression> LogicalScanBFSLevel::getNodesAfterExtendNbrExpr(
     for (auto tableID : destNodeExpression->getTableIDs()) {
         propertyIDPerTable.insert({tableID, INVALID_PROPERTY_ID});
     }
+    auto uniqueInternalPropertyName =
+        "_" + destNodeExpression->getInternalIDProperty()->getUniqueName() + "_";
     auto destInternalIDExpr = std::make_unique<PropertyExpression>(DataType(INTERNAL_ID),
-        "_id_uniqueName4", *destNodeExpression, std::move(propertyIDPerTable), false);
+        uniqueInternalPropertyName, *destNodeExpression, std::move(propertyIDPerTable), false);
     nodesAfterExtendNbrExpr_->setInternalIDProperty(std::move(destInternalIDExpr));
     return (nodesAfterExtendNbrExpr = nodesAfterExtendNbrExpr_);
 }

@@ -21,6 +21,8 @@ constexpr uint64_t DEFAULT_CHECKPOINT_WAIT_TIMEOUT_FOR_TRANSACTIONS_TO_LEAVE_IN_
 
 const std::string INTERNAL_ID_SUFFIX = "_id";
 
+const std::string PATH_TYPE_LENGTH_PROPERTY = "length";
+
 // Currently the system supports files with 2 different pages size, which we refer to as
 // DEFAULT_PAGE_SIZE and LARGE_PAGE_SIZE. Default size of the page which is the unit of read/write
 // to the database files, such as to store columns or lists. For now, this value cannot be changed.

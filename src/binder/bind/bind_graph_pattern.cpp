@@ -66,6 +66,11 @@ void Binder::validatePathExpression(
     auto pathVariableExpression =
         std::make_shared<PathExpression>(DataTypeID::PATH, patternElement.getPathVariable(),
             queryGraph->getQueryNode(0), queryGraph->getQueryRel(0), queryGraph->getQueryNode(1));
+    auto dataType = DataType(common::INT64);
+    std::unordered_map<common::table_id_t, common::property_id_t> propertyIDPerTable;
+    auto pathLengthPropertyExpression = std::make_shared<PropertyExpression>(
+        dataType, PATH_TYPE_LENGTH_PROPERTY, *pathVariableExpression, propertyIDPerTable, false);
+    pathVariableExpression->setPathLengthExpression(pathLengthPropertyExpression);
     variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
     queryGraph->setPathExpression(pathVariableExpression);
 }

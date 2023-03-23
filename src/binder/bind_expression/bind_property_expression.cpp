@@ -26,7 +26,6 @@ std::shared_ptr<Expression> ExpressionBinder::bindPropertyExpression(
     } else if (REL == child->dataType.typeID) {
         return bindRelPropertyExpression(*child, propertyName);
     } else {
-        // TODO: Convert this part into bindPathPropertyExpression() function
         assert(PATH == child->dataType.typeID);
         auto& pathExpression = (PathExpression&)*child;
         return bindPathPropertyExpression(pathExpression, propertyName);
@@ -78,12 +77,10 @@ std::shared_ptr<Expression> ExpressionBinder::bindRelPropertyExpression(
 
 std::shared_ptr<Expression> ExpressionBinder::bindPathPropertyExpression(
     kuzu::binder::PathExpression& expression, const std::string& propertyName) {
-    auto dataType = DataType(common::INT64);
-    std::unordered_map<common::table_id_t, common::property_id_t> propertyIDPerTable;
-    auto pathLengthPropertyExpression = std::make_shared<PropertyExpression>(
-        dataType, propertyName, expression, propertyIDPerTable, false);
-    expression.setPathLengthExpression(pathLengthPropertyExpression);
-    return pathLengthPropertyExpression;
+    if (propertyName != common::PATH_TYPE_LENGTH_PROPERTY) {
+        throw BinderException("Property other than length not supported for PATH type.");
+    }
+    return expression.getPathLengthExpression();
 }
 
 std::unique_ptr<Expression> ExpressionBinder::createPropertyExpression(

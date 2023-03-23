@@ -29,7 +29,7 @@ public:
 
     inline NodeExpression* getSourceNodeExpression() { return sourceNodeExpression; }
 
-    inline NodeExpression* getTmpDestNodeExpression() { return destNodeExpression; }
+    inline NodeExpression* getDestNodeExpression() { return destNodeExpression; }
 
     inline void setNodesToExtendBoundExpr(
         std::shared_ptr<NodeExpression>& nodesToExtendBoundExpr_) {

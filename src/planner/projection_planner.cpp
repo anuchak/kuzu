@@ -1,6 +1,7 @@
 #include "planner/projection_planner.h"
 
 #include "binder/expression/function_expression.h"
+#include "binder/expression/path_expression.h"
 #include "planner/logical_plan/logical_operator/flatten_resolver.h"
 #include "planner/logical_plan/logical_operator/logical_aggregate.h"
 #include "planner/logical_plan/logical_operator/logical_limit.h"
@@ -192,6 +193,9 @@ expression_vector ProjectionPlanner::rewriteExpressionsToProject(
             for (auto& property : rewriteVariableAsAllPropertiesInScope(*expression, schema)) {
                 result.push_back(property);
             }
+        } else if (expression->dataType.typeID == PATH) {
+            auto pathExpression = (PathExpression*)expression.get();
+            result.push_back(pathExpression->getPathLengthExpression());
         } else {
             result.push_back(expression);
         }

@@ -46,24 +46,5 @@ void LogicalScanBFSLevel::computeFlatSchema() {
     }
 }
 
-std::shared_ptr<NodeExpression> LogicalScanBFSLevel::getNodesAfterExtendNbrExpr() {
-    if (nodesAfterExtendNbrExpr) {
-        return nodesAfterExtendNbrExpr;
-    }
-    auto nodesAfterExtendNbrExpr_ =
-        std::make_shared<NodeExpression>(destNodeExpression->getUniqueName() + "_",
-            destNodeExpression->getVariableName() + "_", destNodeExpression->getTableIDs());
-    auto propertyIDPerTable = std::unordered_map<table_id_t, property_id_t>();
-    for (auto tableID : destNodeExpression->getTableIDs()) {
-        propertyIDPerTable.insert({tableID, INVALID_PROPERTY_ID});
-    }
-    auto uniqueInternalPropertyName =
-        "_" + destNodeExpression->getInternalIDProperty()->getUniqueName() + "_";
-    auto destInternalIDExpr = std::make_unique<PropertyExpression>(DataType(INTERNAL_ID),
-        uniqueInternalPropertyName, *destNodeExpression, std::move(propertyIDPerTable), false);
-    nodesAfterExtendNbrExpr_->setInternalIDProperty(std::move(destInternalIDExpr));
-    return (nodesAfterExtendNbrExpr = nodesAfterExtendNbrExpr_);
-}
-
 } // namespace planner
 } // namespace kuzu

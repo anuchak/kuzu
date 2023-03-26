@@ -20,40 +20,45 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
         maxNodeOffsetsPerTable.at(logicalScanBFSLevel->getDestNodeExpression()->getSingleTableID());
     DataPos nodesToExtendDataPos = DataPos(outSchema->getExpressionPos(
         *logicalScanBFSLevel->getNodesToExtendBoundExpr()->getInternalIDProperty()));
-    std::vector<DataPos> srcDstNodeIDVectorsDataPos = std::vector<DataPos>();
-    srcDstNodeIDVectorsDataPos.emplace_back(outSchema->getExpressionPos(
+    // We need to maintain position of src, dst nodeID at first to identify them separately.
+    std::vector<DataPos> srcDstVectorsDataPos = std::vector<DataPos>();
+    srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(
         *logicalScanBFSLevel->getSourceNodeExpression()->getInternalIDProperty()));
-    srcDstNodeIDVectorsDataPos.emplace_back(outSchema->getExpressionPos(
+    srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(
         *logicalScanBFSLevel->getDestNodeExpression()->getInternalIDProperty()));
-    std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
-    std::unordered_set<std::string> tempNodePropertiesVector = std::unordered_set<std::string>();
     for (auto& expression : logicalScanBFSLevel->getSrcDstNodePropertiesToScan()) {
-        srcDstNodePropertiesVectorsDataPos.emplace_back(outSchema->getExpressionPos(*expression));
-        tempNodePropertiesVector.insert(expression->getUniqueName());
+        srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(*expression));
     }
     DataPos dstDistanceVectorDataPos =
         DataPos(outSchema->getExpressionPos(*logicalScanBFSLevel->getPathExpression()));
-    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs = std::vector<uint32_t>();
-    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties = std::vector<uint32_t>();
-    auto internalIDExprSrc =
+    std::vector<uint32_t> ftColIndicesToScan = std::vector<uint32_t>();
+    auto srcInternalIDName =
         logicalScanBFSLevel->getSourceNodeExpression()->getInternalIDProperty()->getUniqueName();
-    auto internalIDExprDest =
+    auto dstInternalIDName =
         logicalScanBFSLevel->getDestNodeExpression()->getInternalIDProperty()->getUniqueName();
+    auto expressionsInScope = subPlanSchema->getExpressionsInScope();
+    // Same goes for here, we need to maintain src, dst nodeID separately at first to scan.
+    for (int i = 0; i < expressionsInScope.size(); i++) {
+        if (expressionsInScope[i]->getUniqueName() == srcInternalIDName) {
+            ftColIndicesToScan.push_back(i);
+        } else if (expressionsInScope[i]->getUniqueName() == dstInternalIDName) {
+            ftColIndicesToScan.push_back(i);
+            break;
+        }
+    }
     for (int i = 0; i < subPlanSchema->getExpressionsInScope().size(); i++) {
         auto expression = subPlanSchema->getExpressionsInScope()[i];
-        if (expression->getUniqueName() == internalIDExprSrc ||
-            expression->getUniqueName() == internalIDExprDest) {
-            ftColIndicesOfSrcAndDstNodeIDs.push_back(i);
-        } else if (tempNodePropertiesVector.contains(expression->getUniqueName())) {
-            ftColIndicesOfSrcAndDstNodeProperties.push_back(i);
+        if (expression->getUniqueName() == srcInternalIDName ||
+            expression->getUniqueName() == dstInternalIDName) {
+            continue;
         }
+        ftColIndicesToScan.push_back(i);
     }
     auto sharedState = resultCollector->getSharedState();
     auto simpleRecursiveJoinSharedState =
         std::make_shared<SimpleRecursiveJoinGlobalState>(sharedState);
     auto scanBFSLevel = std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
-        srcDstNodeIDVectorsDataPos, srcDstNodePropertiesVectorsDataPos, dstDistanceVectorDataPos,
-        ftColIndicesOfSrcAndDstNodeIDs, ftColIndicesOfSrcAndDstNodeProperties,
+        srcDstVectorsDataPos, dstDistanceVectorDataPos, ftColIndicesToScan,
         logicalScanBFSLevel->getLowerBound(), logicalScanBFSLevel->getUpperBound(),
         simpleRecursiveJoinSharedState, std::move(resultCollector), getOperatorID(),
         logicalScanBFSLevel->getExpressionsForPrinting());

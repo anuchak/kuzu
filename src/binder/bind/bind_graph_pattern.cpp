@@ -80,9 +80,15 @@ void Binder::validatePathExpression(
         throw BinderException("Shortest path query pattern not valid (more than source, "
                               "destination nodes not allowed).");
     }
-    auto pathVariableExpression =
-        std::make_shared<PathExpression>(DataTypeID::PATH, patternElement.getPathVariable(),
-            queryGraph->getQueryNode(0), queryGraph->getQueryRel(0), queryGraph->getQueryNode(1));
+    std::vector<std::shared_ptr<NodeExpression>> nodeExpressions =
+        std::vector<std::shared_ptr<NodeExpression>>();
+    nodeExpressions.push_back(queryGraph->getQueryNode(0));
+    nodeExpressions.push_back(queryGraph->getQueryNode(1));
+    std::vector<std::shared_ptr<RelExpression>> relExpressions =
+        std::vector<std::shared_ptr<RelExpression>>();
+    relExpressions.push_back(queryGraph->getQueryRel(0));
+    auto pathVariableExpression = std::make_shared<PathExpression>(
+        DataTypeID::PATH, patternElement.getPathVariable(), nodeExpressions, relExpressions);
     auto dataType = DataType(common::INT64);
     std::unordered_map<common::table_id_t, common::property_id_t> propertyIDPerTable;
     auto pathLengthPropertyExpression = std::make_shared<PropertyExpression>(

@@ -1,6 +1,9 @@
 #include "expression.h"
+#include "node_expression.h"
+#include "rel_expression.h"
 
 using namespace kuzu::common;
+using namespace kuzu::binder;
 
 namespace kuzu {
 namespace binder {
@@ -8,19 +11,20 @@ namespace binder {
 class PathExpression : public Expression {
 public:
     PathExpression(common::DataTypeID dataTypeID, const std::string& uniqueName,
-        std::shared_ptr<Expression> srcExpression, std::shared_ptr<Expression> relExpression,
-        std::shared_ptr<Expression> destExpression)
+        std::vector<std::shared_ptr<NodeExpression>> nodeExpressions,
+        std::vector<std::shared_ptr<RelExpression>> relExpressions)
         : Expression{common::VARIABLE, dataTypeID, uniqueName}, variableName{uniqueName},
-          srcExpression{std::move(srcExpression)}, relExpression{std::move(relExpression)},
-          destExpression{std::move(destExpression)} {}
+          nodeExpressions{std::move(nodeExpressions)}, relExpressions{std::move(relExpressions)} {}
 
     const std::string& getVariableName() const { return variableName; }
 
-    const std::shared_ptr<Expression>& getSrcExpression() const { return srcExpression; }
+    const std::shared_ptr<NodeExpression>& getSrcExpression() const { return nodeExpressions[0]; }
 
-    const std::shared_ptr<Expression>& getRelExpression() const { return relExpression; }
+    const std::shared_ptr<RelExpression>& getRelExpression() const { return relExpressions[0]; }
 
-    const std::shared_ptr<Expression>& getDestExpression() const { return destExpression; }
+    const std::shared_ptr<NodeExpression>& getDestExpression() const {
+        return nodeExpressions[nodeExpressions.size() - 1];
+    }
 
     std::shared_ptr<Expression> getPathLengthExpression() const { return pathLengthExpression; }
 
@@ -32,16 +36,15 @@ public:
 
     std::unique_ptr<Expression> copy() const override {
         auto pathExpression = std::make_unique<PathExpression>(
-            dataType.getTypeID(), uniqueName, srcExpression, relExpression, destExpression);
+            dataType.getTypeID(), uniqueName, nodeExpressions, relExpressions);
         pathExpression->setPathLengthExpression(pathLengthExpression);
         return std::move(pathExpression);
     }
 
 private:
     std::string variableName;
-    std::shared_ptr<Expression> srcExpression;
-    std::shared_ptr<Expression> relExpression;
-    std::shared_ptr<Expression> destExpression;
+    std::vector<std::shared_ptr<NodeExpression>> nodeExpressions;
+    std::vector<std::shared_ptr<RelExpression>> relExpressions;
     std::shared_ptr<Expression> pathLengthExpression;
 };
 } // namespace binder

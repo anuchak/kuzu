@@ -4,6 +4,7 @@
 
 #include "base_logical_operator.h"
 #include "binder/expression/node_expression.h"
+#include "binder/expression/rel_expression.h"
 
 using namespace kuzu::planner;
 
@@ -16,7 +17,8 @@ class LogicalScanBFSLevel : public LogicalOperator {
 
 public:
     LogicalScanBFSLevel(uint8_t lowerBound, uint8_t upperBound,
-        NodeExpression* sourceNodeExpression, NodeExpression* destNodeExpression,
+        std::shared_ptr<NodeExpression>& sourceNodeExpression,
+        std::shared_ptr<NodeExpression>& destNodeExpression,
         std::shared_ptr<Expression> pathExpression, std::shared_ptr<LogicalOperator> child)
         : LogicalOperator(LogicalOperatorType::SCAN_BFS_LEVEL, std::move(child)),
           lowerBound{lowerBound}, upperBound{upperBound},
@@ -27,9 +29,11 @@ public:
 
     inline uint8_t getUpperBound() const { return upperBound; }
 
-    inline NodeExpression* getSourceNodeExpression() { return sourceNodeExpression; }
+    inline std::shared_ptr<NodeExpression> getSourceNodeExpression() {
+        return sourceNodeExpression;
+    }
 
-    inline NodeExpression* getDestNodeExpression() { return destNodeExpression; }
+    inline std::shared_ptr<NodeExpression> getDestNodeExpression() { return destNodeExpression; }
 
     inline void setNodesToExtendBoundExpr(
         std::shared_ptr<NodeExpression>& nodesToExtendBoundExpr_) {
@@ -39,13 +43,6 @@ public:
     inline std::shared_ptr<NodeExpression> getNodesToExtendBoundExpr() {
         return nodesToExtendBoundExpr;
     }
-
-    inline void setNodesAfterExtendNbrExpr(
-        std::shared_ptr<NodeExpression>& nodesAfterExtendNbrExpr_) {
-        nodesAfterExtendNbrExpr = nodesAfterExtendNbrExpr_;
-    }
-
-    std::shared_ptr<NodeExpression> getNodesAfterExtendNbrExpr();
 
     inline std::shared_ptr<Expression> getPathExpression() { return pathExpression; }
 
@@ -66,17 +63,15 @@ public:
             sourceNodeExpression, destNodeExpression, pathExpression, children[0]->copy());
         logicalScanBFSLevel->setSrcDstNodePropertiesToScan(srcDstNodePropertiesToScan);
         logicalScanBFSLevel->setNodesToExtendBoundExpr(nodesToExtendBoundExpr);
-        logicalScanBFSLevel->setNodesAfterExtendNbrExpr(nodesAfterExtendNbrExpr);
         return std::move(logicalScanBFSLevel);
     }
 
 private:
     uint8_t lowerBound;
     uint8_t upperBound;
-    NodeExpression* sourceNodeExpression;
-    NodeExpression* destNodeExpression;
+    std::shared_ptr<NodeExpression> sourceNodeExpression;
+    std::shared_ptr<NodeExpression> destNodeExpression;
     std::shared_ptr<NodeExpression> nodesToExtendBoundExpr;
-    std::shared_ptr<NodeExpression> nodesAfterExtendNbrExpr;
     std::shared_ptr<Expression> pathExpression;
     expression_vector srcDstNodePropertiesToScan;
 };

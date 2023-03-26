@@ -3,12 +3,8 @@
 #include <set>
 
 #include "planner/logical_plan/logical_operator/logical_cross_product.h"
-#include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
-#include "planner/logical_plan/logical_operator/logical_simple_recursive_join.h"
 #include "processor/mapper/expression_mapper.h"
 #include "processor/operator/result_collector.h"
-#include "processor/operator/shortestpath/scan_bfs_level.h"
-#include "processor/operator/shortestpath/simple_recursive_join.h"
 
 using namespace kuzu::common;
 using namespace kuzu::planner;

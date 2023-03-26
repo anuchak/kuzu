@@ -1,5 +1,5 @@
 -NAME SingleSourceAllDestinationsQuery1
--QUERY MATCH p = (a:person)-[:knows* SHORTEST 1..30]->(b:person) WHERE a.fName = 'Alice' RETURN *
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST 1..30]->(b:person) WHERE a.fName = 'Alice' RETURN a.fName, b.fName, p.length
 ---- 7
 Alice|Bob|1
 Alice|Carol|1

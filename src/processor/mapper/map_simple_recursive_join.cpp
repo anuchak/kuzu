@@ -16,7 +16,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalSimpleRecursiveJoinToPhy
     auto* scanBFSLevel = (ScanBFSLevel*)prevOperator->getChild(0)->getChild(0);
     auto inSchema = logicalPrevOperator->getSchema();
     auto nodeIDVectorDataPos = DataPos(inSchema->getExpressionPos(
-        *logicalSimpleRecursiveJoin->getNodesAfterExtendExpression()->getInternalIDProperty()));
+        *logicalSimpleRecursiveJoin->getNbrNodeExpression()->getInternalIDProperty()));
     return std::move(
         std::make_unique<SimpleRecursiveJoin>(scanBFSLevel->getSimpleRecursiveJoinGlobalState(),
             nodeIDVectorDataPos, std::move(prevOperator), getOperatorID(),

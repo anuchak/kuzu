@@ -13,16 +13,14 @@ namespace planner {
 class LogicalSimpleRecursiveJoin : public LogicalOperator {
 
 public:
-    LogicalSimpleRecursiveJoin(std::shared_ptr<NodeExpression> nodesToExtendNbrExpr,
-        std::shared_ptr<binder::NodeExpression> nodesAfterExtendNbrExpr,
-        RelExpression* relExpression, std::shared_ptr<LogicalOperator> child)
-        : nodesToExtendNbrExpr{std::move(nodesToExtendNbrExpr)},
-          nodesAfterExtendNbrExpr{std::move(nodesAfterExtendNbrExpr)}, relExpression{relExpression},
+    LogicalSimpleRecursiveJoin(std::shared_ptr<NodeExpression> boundNode,
+        std::shared_ptr<binder::NodeExpression> nbrNode,
+        std::shared_ptr<RelExpression> relExpression, std::shared_ptr<LogicalOperator> child)
+        : boundNode{std::move(boundNode)}, nbrNode{std::move(nbrNode)}, relExpression{std::move(
+                                                                            relExpression)},
           LogicalOperator(LogicalOperatorType::SIMPLE_RECURSIVE_JOIN, std::move(child)) {}
 
-    std::shared_ptr<NodeExpression> getNodesAfterExtendExpression() {
-        return nodesAfterExtendNbrExpr;
-    }
+    std::shared_ptr<NodeExpression> getNbrNodeExpression() { return nbrNode; }
 
     void computeFactorizedSchema() override;
 
@@ -32,13 +30,13 @@ public:
 
     std::unique_ptr<LogicalOperator> copy() override {
         return make_unique<LogicalSimpleRecursiveJoin>(
-            nodesToExtendNbrExpr, nodesAfterExtendNbrExpr, relExpression, children[0]->copy());
+            boundNode, nbrNode, relExpression, children[0]->copy());
     }
 
 private:
-    std::shared_ptr<NodeExpression> nodesToExtendNbrExpr;
-    std::shared_ptr<NodeExpression> nodesAfterExtendNbrExpr;
-    RelExpression* relExpression;
+    std::shared_ptr<NodeExpression> boundNode;
+    std::shared_ptr<NodeExpression> nbrNode;
+    std::shared_ptr<RelExpression> relExpression;
 };
 } // namespace planner
 } // namespace kuzu

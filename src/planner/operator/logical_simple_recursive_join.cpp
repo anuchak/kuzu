@@ -36,10 +36,8 @@ void LogicalSimpleRecursiveJoin::computeFactorizedSchema() {
                 relExpression->getInternalIDProperty()->getUniqueName()) {
             continue;
         }
-        if (expression->getUniqueName() !=
-                nodesToExtendNbrExpr->getInternalIDProperty()->getUniqueName() &&
-            expression->getUniqueName() !=
-                nodesAfterExtendNbrExpr->getInternalIDProperty()->getUniqueName()) {
+        if (expression->getUniqueName() != boundNode->getInternalIDProperty()->getUniqueName() &&
+            expression->getUniqueName() != nbrNode->getInternalIDProperty()->getUniqueName()) {
             auto groupPos = inSchema->getGroupPos(expression->getUniqueName());
             schema->insertToScope(expression, groupPos);
         }

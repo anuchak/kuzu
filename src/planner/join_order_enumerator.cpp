@@ -69,9 +69,9 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
         planNodeScan(nodePos);
     }
     auto pathExpression = (PathExpression*)queryGraph->getPathExpression().get();
-    auto srcExpression = (NodeExpression*)pathExpression->getSrcExpression().get();
-    auto relExpression = (RelExpression*)pathExpression->getRelExpression().get();
-    auto dstExpression = (NodeExpression*)pathExpression->getDestExpression().get();
+    auto srcExpression = pathExpression->getSrcExpression();
+    auto relExpression = pathExpression->getRelExpression();
+    auto dstExpression = pathExpression->getDestExpression();
     auto queryGraphToNodePlans = context->subPlansTable->getSubGraphPlansAtLevel(1);
     std::unique_ptr<LogicalPlan> leftPlan, rightPlan;
     for (auto& queryGraphToNodePlan : *queryGraphToNodePlans) {
@@ -105,15 +105,25 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
         relExpression->getVariableName(), relExpression->getTableIDs(), relExpression->getSrcNode(),
         relExpression->getDstNode(), 1, 1);
     expression_vector properties;
-    auto logicalExtend =
-        std::make_shared<LogicalExtend>(logicalScanBFSLevel->getNodesToExtendBoundExpr(),
-            logicalScanBFSLevel->getNodesAfterExtendNbrExpr(), std::move(relExpr),
-            RelDirection::FWD, properties, true, leftPlan->getLastOperator());
+    auto nodesAfterExtendNbrExpr_ =
+        std::make_shared<NodeExpression>(dstExpression->getUniqueName() + "_",
+            dstExpression->getVariableName() + "_", dstExpression->getTableIDs());
+    auto propertyIDPerTable = std::unordered_map<table_id_t, property_id_t>();
+    for (auto tableID : dstExpression->getTableIDs()) {
+        propertyIDPerTable.insert({tableID, INVALID_PROPERTY_ID});
+    }
+    auto uniqueInternalPropertyName =
+        "_" + dstExpression->getInternalIDProperty()->getUniqueName() + "_";
+    auto destInternalIDExpr = std::make_unique<PropertyExpression>(DataType(INTERNAL_ID),
+        uniqueInternalPropertyName, *dstExpression, std::move(propertyIDPerTable), false);
+    nodesAfterExtendNbrExpr_->setInternalIDProperty(std::move(destInternalIDExpr));
+    auto logicalExtend = std::make_shared<LogicalExtend>(
+        logicalScanBFSLevel->getNodesToExtendBoundExpr(), nodesAfterExtendNbrExpr_,
+        std::move(relExpr), RelDirection::FWD, properties, true, leftPlan->getLastOperator());
     leftPlan->setLastOperator(logicalExtend);
     logicalExtend->computeFactorizedSchema();
     auto logicalSimpleRecursiveJoin = std::make_shared<LogicalSimpleRecursiveJoin>(
-        logicalScanBFSLevel->getNodesToExtendBoundExpr(),
-        logicalScanBFSLevel->getNodesAfterExtendNbrExpr(), relExpression,
+        logicalScanBFSLevel->getNodesToExtendBoundExpr(), nodesAfterExtendNbrExpr_, relExpression,
         leftPlan->getLastOperator());
     leftPlan->setLastOperator(logicalSimpleRecursiveJoin);
     logicalSimpleRecursiveJoin->computeFactorizedSchema();
@@ -128,8 +138,9 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
         }
     }
     logicalScanBFSLevel->setSrcDstNodePropertiesToScan(srcDstNodePropertiesToScan);
-    context->addPlan(context->getFullyMatchedSubqueryGraph(), std::move(leftPlan));
-    return std::move(context->getPlans(context->getFullyMatchedSubqueryGraph()));
+    std::vector<std::unique_ptr<LogicalPlan>> plans;
+    plans.push_back(std::move(leftPlan));
+    return plans;
 }
 
 std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planCrossProduct(

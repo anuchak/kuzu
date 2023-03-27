@@ -28,8 +28,6 @@ public:
 
     std::vector<std::unique_ptr<LogicalPlan>>& getSubgraphPlans(const SubqueryGraph& subqueryGraph);
 
-    SubqueryGraphPlansMap* getSubGraphPlansAtLevel(uint32_t level);
-
     std::vector<SubqueryGraph> getSubqueryGraphs(uint32_t level);
 
     void addPlan(const SubqueryGraph& subqueryGraph, std::unique_ptr<LogicalPlan> plan);

@@ -28,10 +28,6 @@ std::vector<std::unique_ptr<LogicalPlan>>& SubPlansTable::getSubgraphPlans(
     return subqueryGraphPlansMap->at(subqueryGraph);
 }
 
-SubqueryGraphPlansMap* SubPlansTable::getSubGraphPlansAtLevel(uint32_t level) {
-    return subPlans[level].get();
-}
-
 std::vector<SubqueryGraph> SubPlansTable::getSubqueryGraphs(uint32_t level) {
     std::vector<SubqueryGraph> result;
     for (auto& [subGraph, plans] : *subPlans[level]) {

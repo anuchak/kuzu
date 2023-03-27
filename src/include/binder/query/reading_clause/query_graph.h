@@ -87,6 +87,10 @@ public:
     inline bool containsQueryNode(const std::string& queryNodeName) const {
         return queryNodeNameToPosMap.contains(queryNodeName);
     }
+    inline void insertQueryNodeNameToPosMap(
+        std::shared_ptr<NodeExpression>& queryNode, uint32_t pos) {
+        queryNodeNameToPosMap.insert({queryNode->getUniqueName(), pos});
+    }
     inline std::vector<std::shared_ptr<NodeExpression>> getQueryNodes() const { return queryNodes; }
     inline std::shared_ptr<NodeExpression> getQueryNode(const std::string& queryNodeName) const {
         return queryNodes[getQueryNodePos(queryNodeName)];
@@ -113,6 +117,10 @@ public:
     inline uint32_t getNumQueryRels() const { return queryRels.size(); }
     inline bool containsQueryRel(const std::string& queryRelName) const {
         return queryRelNameToPosMap.contains(queryRelName);
+    }
+
+    inline void insertQueryRelNameToPosMap(std::shared_ptr<RelExpression>& queryRel, uint32_t pos) {
+        queryRelNameToPosMap.insert({queryRel->getUniqueName(), pos});
     }
     inline std::vector<std::shared_ptr<RelExpression>> getQueryRels() const { return queryRels; }
     inline std::shared_ptr<RelExpression> getQueryRel(const std::string& queryRelName) const {

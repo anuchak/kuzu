@@ -25,6 +25,8 @@ public:
         patternElementChains.push_back(std::move(patternElementChain));
     }
 
+    inline bool hasPathVariable() const { return !pathVariable.empty(); }
+
     inline std::string getPathVariable() const { return pathVariable; }
 
     void setPathVariable(std::string variable) {

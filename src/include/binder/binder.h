@@ -134,20 +134,19 @@ private:
     std::unique_ptr<QueryGraph> bindPatternElement(
         const parser::PatternElement& patternElement, PropertyKeyValCollection& collection);
 
-    void validatePathExpression(
-        const parser::PatternElement& patternElement, QueryGraph* queryGraph);
+    void bindPathExpression(const parser::PatternElement& patternElement, QueryGraph* queryGraph,
+        PropertyKeyValCollection& collection);
 
     static void validateNodeInPathExpression(const parser::PatternElement& patternElement);
 
     static void validateRelInPathExpression(const parser::PatternElement& patternElement);
 
-    void bindQueryRel(const parser::RelPattern& relPattern,
+    std::shared_ptr<RelExpression> bindQueryRel(const parser::RelPattern& relPattern,
         const std::shared_ptr<NodeExpression>& leftNode,
-        const std::shared_ptr<NodeExpression>& rightNode, QueryGraph& queryGraph,
-        PropertyKeyValCollection& collection);
+        const std::shared_ptr<NodeExpression>& rightNode, PropertyKeyValCollection& collection);
     std::pair<uint64_t, uint64_t> bindVariableLengthRelBound(const parser::RelPattern& relPattern);
-    std::shared_ptr<NodeExpression> bindQueryNode(const parser::NodePattern& nodePattern,
-        QueryGraph& queryGraph, PropertyKeyValCollection& collection);
+    std::shared_ptr<NodeExpression> bindQueryNode(
+        const parser::NodePattern& nodePattern, PropertyKeyValCollection& collection);
     std::shared_ptr<NodeExpression> createQueryNode(const parser::NodePattern& nodePattern);
     inline std::vector<common::table_id_t> bindNodeTableIDs(
         const std::vector<std::string>& tableNames) {

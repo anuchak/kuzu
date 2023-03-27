@@ -66,29 +66,31 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::enumerate(
 
 std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
     QueryGraph* queryGraph, binder::expression_vector& predicates) {
-    context->init(queryGraph, predicates);
-    for (auto nodePos = 0u; nodePos < queryGraph->getNumQueryNodes(); ++nodePos) {
-        planNodeScan(nodePos);
-    }
     auto pathExpression = (PathExpression*)queryGraph->getPathExpression().get();
     auto srcExpression = pathExpression->getSrcExpression();
     auto relExpression = pathExpression->getRelExpression();
     auto dstExpression = pathExpression->getDestExpression();
-    auto queryGraphToNodePlans = context->subPlansTable->getSubGraphPlansAtLevel(1);
-    std::unique_ptr<LogicalPlan> leftPlan, rightPlan;
-    for (auto& queryGraphToNodePlan : *queryGraphToNodePlans) {
-        auto subGraphQuery = queryGraphToNodePlan.first;
-        if (subGraphQuery.queryGraph.hasPathExpression()) {
-            subGraphQuery.queryGraph.getPathExpression();
-            auto& plans = queryGraphToNodePlan.second;
-            // Logical Plan for source node scan else, destination node scan
-            if (subGraphQuery.queryNodesSelector[0]) {
-                leftPlan = plans[0]->shallowCopy();
+    std::unique_ptr<LogicalPlan> leftPlan = std::make_unique<LogicalPlan>();
+    std::unique_ptr<LogicalPlan> rightPlan = std::make_unique<LogicalPlan>();
+    appendScanNodeID(srcExpression, *leftPlan);
+    appendScanNodeID(dstExpression, *rightPlan);
+    auto srcDependentVariables = srcExpression->getDependentVariableNames();
+    auto dstDependentVariables = dstExpression->getDependentVariableNames();
+    expression_vector srcPredicates, dstPredicates;
+    for (auto& predicate : predicates) {
+        auto dependentVariables = predicate->getDependentVariableNames();
+        for (auto& dependentVariable : dependentVariables) {
+            if (srcDependentVariables.contains(dependentVariable)) {
+                srcPredicates.push_back(predicate);
             } else {
-                rightPlan = plans[0]->shallowCopy();
+                dstPredicates.push_back(predicate);
             }
         }
     }
+    queryPlanner->appendFilters(srcPredicates, *leftPlan);
+    queryPlanner->appendScanNodePropIfNecessary(queryPlanner->getPropertiesForNode(*srcExpression), srcExpression, *leftPlan);
+    queryPlanner->appendFilters(dstPredicates, *rightPlan);
+    queryPlanner->appendScanNodePropIfNecessary(queryPlanner->getPropertiesForNode(*dstExpression), dstExpression, *rightPlan);
     appendCrossProduct(*leftPlan, *rightPlan);
     queryPlanner->appendFlattenIfNecessary(
         leftPlan->getSchema()->getGroupPos(srcExpression->getInternalIDProperty()->getUniqueName()),

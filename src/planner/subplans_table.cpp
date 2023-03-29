@@ -5,6 +5,10 @@
 namespace kuzu {
 namespace planner {
 
+typedef std::unordered_map<SubqueryGraph, std::vector<std::unique_ptr<LogicalPlan>>,
+    SubqueryGraphHasher>
+    SubqueryGraphPlansMap;
+
 void SubPlansTable::resize(uint32_t newSize) {
     auto prevSize = subPlans.size();
     subPlans.resize(newSize);

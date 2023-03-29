@@ -26,10 +26,9 @@ std::shared_ptr<Expression> ExpressionBinder::bindPropertyExpression(
     } else if (REL == child->dataType.typeID) {
         return bindRelPropertyExpression(*child, propertyName);
     } else {
-        // TODO: Convert this part into bindPathPropertyExpression() function
         assert(PATH == child->dataType.typeID);
-        child->dataType = DataType(INT64);
-        return child;
+        auto& pathExpression = (PathExpression&)*child;
+        return bindPathPropertyExpression(pathExpression, propertyName);
     }
 }
 
@@ -74,6 +73,14 @@ std::shared_ptr<Expression> ExpressionBinder::bindRelPropertyExpression(
             "Cannot find property " + propertyName + " for " + expression.toString() + ".");
     }
     return rel.getPropertyExpression(propertyName);
+}
+
+std::shared_ptr<Expression> ExpressionBinder::bindPathPropertyExpression(
+    kuzu::binder::PathExpression& expression, const std::string& propertyName) {
+    if (propertyName != common::PATH_TYPE_LENGTH_PROPERTY) {
+        throw BinderException("Property other than length not supported for PATH type.");
+    }
+    return expression.getPathLengthExpression();
 }
 
 std::unique_ptr<Expression> ExpressionBinder::createPropertyExpression(

@@ -34,6 +34,10 @@ std::unique_ptr<BoundReturnClause> Binder::bindReturnClause(const ReturnClause& 
         auto dataType = expression->getDataType();
         if (dataType.typeID == common::NODE || dataType.typeID == common::REL) {
             statementResult->addColumn(expression, rewriteNodeOrRelExpression(*expression));
+        } else if (dataType.typeID == common::PATH) {
+            auto pathExpression = (PathExpression*)expression.get();
+            statementResult->addColumn(
+                expression, expression_vector{pathExpression->getPathLengthExpression()});
         } else {
             statementResult->addColumn(expression, expression_vector{expression});
         }

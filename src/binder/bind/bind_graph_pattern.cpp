@@ -33,23 +33,25 @@ Binder::bindGraphPattern(const std::vector<std::unique_ptr<PatternElement>>& gra
 std::unique_ptr<QueryGraph> Binder::bindPatternElement(
     const PatternElement& patternElement, PropertyKeyValCollection& collection) {
     auto queryGraph = std::make_unique<QueryGraph>();
-    auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), *queryGraph, collection);
+    if (patternElement.hasPathVariable()) {
+        bindPathExpression(patternElement, queryGraph.get(), collection);
+        return queryGraph;
+    }
+    auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
+    queryGraph->addQueryNode(leftNode);
     for (auto i = 0u; i < patternElement.getNumPatternElementChains(); ++i) {
         auto patternElementChain = patternElement.getPatternElementChain(i);
-        auto rightNode =
-            bindQueryNode(*patternElementChain->getNodePattern(), *queryGraph, collection);
-        bindQueryRel(
-            *patternElementChain->getRelPattern(), leftNode, rightNode, *queryGraph, collection);
+        auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
+        queryGraph->addQueryNode(rightNode);
+        queryGraph->addQueryRel(
+            bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));
         leftNode = rightNode;
-    }
-    if (!patternElement.getPathVariable().empty()) {
-        validatePathExpression(patternElement, queryGraph.get());
     }
     return queryGraph;
 }
 
-void Binder::validatePathExpression(
-    const parser::PatternElement& patternElement, QueryGraph* queryGraph) {
+void Binder::bindPathExpression(const parser::PatternElement& patternElement,
+    QueryGraph* queryGraph, PropertyKeyValCollection& collection) {
     validateNodeInPathExpression(patternElement);
     validateRelInPathExpression(patternElement);
     for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
@@ -59,8 +61,33 @@ void Binder::validatePathExpression(
                                   "Shortest Path queries.");
         }
     }
-    auto pathVariableExpression = std::make_shared<Expression>(VARIABLE, DataType(common::PATH),
-        std::vector<Expression>(), patternElement.getPathVariable());
+    if (patternElement.getNumPatternElementChains() > 1) {
+        throw BinderException("Shortest path query pattern not valid (more than source, "
+                              "destination nodes not allowed).");
+    }
+    std::vector<std::shared_ptr<NodeExpression>> nodeExpressions =
+        std::vector<std::shared_ptr<NodeExpression>>();
+    std::vector<std::shared_ptr<RelExpression>> relExpressions =
+        std::vector<std::shared_ptr<RelExpression>>();
+    auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
+    queryGraph->insertQueryNodeNameToPosMap(leftNode, 0);
+    nodeExpressions.push_back(leftNode);
+    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
+        auto patternElementChain = patternElement.getPatternElementChain(i);
+        auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
+        queryGraph->insertQueryNodeNameToPosMap(rightNode, i + 1);
+        nodeExpressions.push_back(rightNode);
+        relExpressions.push_back(
+            bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));
+        queryGraph->insertQueryRelNameToPosMap(relExpressions[i], i);
+    }
+    auto pathVariableExpression = std::make_shared<PathExpression>(
+        DataTypeID::PATH, patternElement.getPathVariable(), nodeExpressions, relExpressions);
+    auto dataType = DataType(common::INT64);
+    std::unordered_map<common::table_id_t, common::property_id_t> propertyIDPerTable;
+    auto pathLengthPropertyExpression = std::make_shared<PropertyExpression>(
+        dataType, PATH_TYPE_LENGTH_PROPERTY, *pathVariableExpression, propertyIDPerTable, false);
+    pathVariableExpression->setPathLengthExpression(pathLengthPropertyExpression);
     variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
     queryGraph->setPathExpression(pathVariableExpression);
 }
@@ -156,10 +183,9 @@ getNodePropertyNameAndPropertiesPairs(const std::vector<NodeTableSchema*>& nodeT
     return getPropertyNameAndSchemasPairs(propertyNames, propertyNamesToSchemas);
 }
 
-void Binder::bindQueryRel(const RelPattern& relPattern,
+std::shared_ptr<RelExpression> Binder::bindQueryRel(const RelPattern& relPattern,
     const std::shared_ptr<NodeExpression>& leftNode,
-    const std::shared_ptr<NodeExpression>& rightNode, QueryGraph& queryGraph,
-    PropertyKeyValCollection& collection) {
+    const std::shared_ptr<NodeExpression>& rightNode, PropertyKeyValCollection& collection) {
     auto parsedName = relPattern.getVariableName();
     if (variablesInScope.contains(parsedName)) {
         auto prevVariable = variablesInScope.at(parsedName);
@@ -210,7 +236,7 @@ void Binder::bindQueryRel(const RelPattern& relPattern,
         boundRhs = ExpressionBinder::implicitCastIfNecessary(boundRhs, boundLhs->dataType);
         collection.addPropertyKeyValPair(*queryRel, std::make_pair(boundLhs, boundRhs));
     }
-    queryGraph.addQueryRel(queryRel);
+    return queryRel;
 }
 
 std::pair<uint64_t, uint64_t> Binder::bindVariableLengthRelBound(
@@ -230,7 +256,7 @@ std::pair<uint64_t, uint64_t> Binder::bindVariableLengthRelBound(
 }
 
 std::shared_ptr<NodeExpression> Binder::bindQueryNode(
-    const NodePattern& nodePattern, QueryGraph& queryGraph, PropertyKeyValCollection& collection) {
+    const NodePattern& nodePattern, PropertyKeyValCollection& collection) {
     auto parsedName = nodePattern.getVariableName();
     std::shared_ptr<NodeExpression> queryNode;
     if (variablesInScope.contains(parsedName)) { // bind to node in scope
@@ -253,7 +279,6 @@ std::shared_ptr<NodeExpression> Binder::bindQueryNode(
         boundRhs = ExpressionBinder::implicitCastIfNecessary(boundRhs, boundLhs->dataType);
         collection.addPropertyKeyValPair(*queryNode, std::make_pair(boundLhs, boundRhs));
     }
-    queryGraph.addQueryNode(queryNode);
     return queryNode;
 }
 

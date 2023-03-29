@@ -58,7 +58,7 @@ public:
     BFSLevelMorsel getBFSLevelMorsel();
 
     void markDstNodeOffsets(
-        common::offset_t srcNodeOffset, std::shared_ptr<common::ValueVector>& dstNodeIDValueVector);
+        common::offset_t srcNodeOffset, common::ValueVector* dstNodeIDValueVector);
 
     inline bool isEmpty() const {
         return curBFSLevel->bfsLevelNodes.empty() && nextBFSLevel->bfsLevelNodes.empty();
@@ -89,10 +89,8 @@ public:
     void removePrevAssignedSSSPMorsel(std::thread::id threadID);
 
     SSSPMorsel* getSSSPMorsel(std::thread::id threadID, common::offset_t maxNodeOffset,
-        std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs,
-        std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties);
+        std::vector<common::ValueVector*> srcDstValueVectors,
+        std::vector<uint32_t>& ftColIndicesToScan);
 
 private:
     std::shared_mutex mutex;
@@ -104,22 +102,16 @@ class ScanBFSLevel : public PhysicalOperator {
 
 public:
     ScanBFSLevel(common::offset_t maxNodeOffset, const DataPos& nodesToExtendDataPos,
-        std::vector<DataPos> srcDstNodeIDVectorsDataPos,
-        std::vector<DataPos> srcDstNodePropertiesVectorsDataPos,
-        const DataPos& dstDistanceVectorDataPos,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs,
-        std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties, uint8_t bfsLowerBound,
-        uint8_t bfsUpperBound,
+        std::vector<DataPos> srcDstVectorsDataPos, const DataPos& dstDistanceVectorDataPos,
+        std::vector<uint32_t> ftColIndicesToScan, uint8_t bfsLowerBound, uint8_t bfsUpperBound,
         std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState,
         std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : PhysicalOperator(
               PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id, paramsString),
           maxNodeOffset{maxNodeOffset}, nodesToExtendDataPos{nodesToExtendDataPos},
-          srcDstNodeIDVectorsDataPos{std::move(srcDstNodeIDVectorsDataPos)},
-          srcDstNodePropertiesVectorsDataPos{std::move(srcDstNodePropertiesVectorsDataPos)},
-          dstDistanceVectorDataPos{dstDistanceVectorDataPos},
-          ftColIndicesOfSrcAndDstNodeIDs{std::move(ftColIndicesOfSrcAndDstNodeIDs)},
-          ftColIndicesOfSrcAndDstNodeProperties{std::move(ftColIndicesOfSrcAndDstNodeProperties)},
+          srcDstVectorsDataPos{std::move(srcDstVectorsDataPos)},
+          dstDistanceVectorDataPos{dstDistanceVectorDataPos}, ftColIndicesToScan{std::move(
+                                                                  ftColIndicesToScan)},
           bfsLowerBound{bfsLowerBound}, bfsUpperBound{bfsUpperBound}, ssspMorsel{nullptr},
           simpleRecursiveJoinGlobalState{std::move(simpleRecursiveJoinGlobalState)} {}
 
@@ -139,10 +131,8 @@ public:
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
-            srcDstNodeIDVectorsDataPos, srcDstNodePropertiesVectorsDataPos,
-            dstDistanceVectorDataPos, ftColIndicesOfSrcAndDstNodeIDs,
-            ftColIndicesOfSrcAndDstNodeProperties, bfsLowerBound, bfsUpperBound,
-            simpleRecursiveJoinGlobalState, children[0]->clone(), id, paramsString);
+            srcDstVectorsDataPos, dstDistanceVectorDataPos, ftColIndicesToScan, bfsLowerBound,
+            bfsUpperBound, simpleRecursiveJoinGlobalState, children[0]->clone(), id, paramsString);
     }
 
 private:
@@ -151,22 +141,18 @@ private:
     // The ValueVector into which ScanBFSLevel will write the nodes to be extended.
     DataPos nodesToExtendDataPos;
     std::shared_ptr<common::ValueVector> nodesToExtend;
-    // The ValueVectors into which the src, dst nodeIDs will be written.
-    std::vector<DataPos> srcDstNodeIDVectorsDataPos;
-    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDVectors;
-    // The ValueVectors into which the src, dst node properties will be written.
+    // The ValueVectors into which the src, dst ID & properties will be written.
     // TODO: This can be optimized by directly copying from the input FTable to the output FTable,
     // instead of copying into these value vectors and then copying them to the output FTable.
-    std::vector<DataPos> srcDstNodePropertiesVectorsDataPos;
-    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodePropertiesVectors;
+    std::vector<DataPos> srcDstVectorsDataPos;
+    std::vector<common::ValueVector*> srcDstValueVectors;
     // The ValueVector into which ScanBFSLevel will write the dst bfsLevelNumber.
     // TODO: Same as the above TODO, we should write the distances directly to the output FTable,
     // instead of this vector (because we can write only 2048 at a time).
     DataPos dstDistanceVectorDataPos;
     std::shared_ptr<common::ValueVector> dstDistances;
     // The FTable column indices for the src, dest nodeIDs and node properties to scan.
-    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeIDs;
-    std::vector<uint32_t> ftColIndicesOfSrcAndDstNodeProperties;
+    std::vector<uint32_t> ftColIndicesToScan;
     uint8_t bfsLowerBound;
     uint8_t bfsUpperBound;
     SSSPMorsel* ssspMorsel;

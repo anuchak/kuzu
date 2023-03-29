@@ -1,13 +1,15 @@
 #include "planner/join_order_enumerator.h"
 
+#include "binder/expression/path_expression.h"
 #include "planner/logical_plan/logical_operator/logical_cross_product.h"
 #include "planner/logical_plan/logical_operator/logical_extend.h"
 #include "planner/logical_plan/logical_operator/logical_ftable_scan.h"
 #include "planner/logical_plan/logical_operator/logical_hash_join.h"
 #include "planner/logical_plan/logical_operator/logical_intersect.h"
+#include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
 #include "planner/logical_plan/logical_operator/logical_scan_node.h"
+#include "planner/logical_plan/logical_operator/logical_simple_recursive_join.h"
 #include "planner/logical_plan/logical_plan_util.h"
-#include "planner/projection_planner.h"
 #include "planner/query_planner.h"
 
 using namespace kuzu::common;
@@ -38,8 +40,13 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::enumerate(
     // enumerate plans for each query graph
     std::vector<std::vector<std::unique_ptr<LogicalPlan>>> plansPerQueryGraph;
     for (auto i = 0u; i < queryGraphCollection.getNumQueryGraphs(); ++i) {
-        plansPerQueryGraph.push_back(
-            enumerate(queryGraphCollection.getQueryGraph(i), predicatesToPushDownPerGraph[i]));
+        if (queryGraphCollection.getQueryGraph(i)->hasPathExpression()) {
+            plansPerQueryGraph.push_back(planShortestPath(
+                queryGraphCollection.getQueryGraph(i), predicatesToPushDownPerGraph[i]));
+        } else {
+            plansPerQueryGraph.push_back(
+                enumerate(queryGraphCollection.getQueryGraph(i), predicatesToPushDownPerGraph[i]));
+        }
     }
     // take cross products
     auto result = std::move(plansPerQueryGraph[0]);
@@ -53,6 +60,89 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::enumerate(
         }
     }
     return result;
+}
+
+std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
+    QueryGraph* queryGraph, binder::expression_vector& predicates) {
+    auto pathExpression = (PathExpression*)queryGraph->getPathExpression().get();
+    auto srcExpression = pathExpression->getSrcExpression();
+    auto relExpression = pathExpression->getRelExpression();
+    auto dstExpression = pathExpression->getDestExpression();
+    std::unique_ptr<LogicalPlan> leftPlan = std::make_unique<LogicalPlan>();
+    std::unique_ptr<LogicalPlan> rightPlan = std::make_unique<LogicalPlan>();
+    appendScanNode(srcExpression, *leftPlan);
+    appendScanNode(dstExpression, *rightPlan);
+    auto srcDependentVariables = srcExpression->getDependentVariableNames();
+    auto dstDependentVariables = dstExpression->getDependentVariableNames();
+    expression_vector srcPredicates, dstPredicates;
+    for (auto& predicate : predicates) {
+        auto dependentVariables = predicate->getDependentVariableNames();
+        for (auto& dependentVariable : dependentVariables) {
+            if (srcDependentVariables.contains(dependentVariable)) {
+                srcPredicates.push_back(predicate);
+            } else {
+                dstPredicates.push_back(predicate);
+            }
+        }
+    }
+    planFiltersForNode(srcPredicates, srcExpression, *leftPlan);
+    planPropertyScansForNode(srcExpression, *leftPlan);
+    planFiltersForNode(dstPredicates, dstExpression, *rightPlan);
+    planPropertyScansForNode(dstExpression, *rightPlan);
+    appendCrossProduct(*leftPlan, *rightPlan);
+    QueryPlanner::appendFlattenIfNecessary(
+        leftPlan->getSchema()->getGroupPos(srcExpression->getInternalIDProperty()->getUniqueName()),
+        *leftPlan);
+    auto logicalScanBFSLevel = std::make_shared<LogicalScanBFSLevel>(relExpression->getLowerBound(),
+        relExpression->getUpperBound(), srcExpression, dstExpression,
+        pathExpression->getPathLengthExpression(), leftPlan->getLastOperator());
+    leftPlan->setLastOperator(logicalScanBFSLevel);
+    logicalScanBFSLevel->computeFactorizedSchema();
+    QueryPlanner::appendFlattenIfNecessary(
+        leftPlan->getSchema()->getGroupPos(
+            *logicalScanBFSLevel->getNodesToExtendBoundExpr()->getInternalIDProperty()),
+        *leftPlan);
+    // We can't pass variable length rel expression, since that gets mapped to varLengthExtend.
+    auto relExpr = std::make_shared<RelExpression>(relExpression->getUniqueName(),
+        relExpression->getVariableName(), relExpression->getTableIDs(), relExpression->getSrcNode(),
+        relExpression->getDstNode(), 1, 1);
+    expression_vector properties;
+    auto nodesAfterExtendNbrExpr_ =
+        std::make_shared<NodeExpression>(dstExpression->getUniqueName() + "_",
+            dstExpression->getVariableName() + "_", dstExpression->getTableIDs());
+    auto propertyIDPerTable = std::unordered_map<table_id_t, property_id_t>();
+    for (auto tableID : dstExpression->getTableIDs()) {
+        propertyIDPerTable.insert({tableID, INVALID_PROPERTY_ID});
+    }
+    auto uniqueInternalPropertyName =
+        "_" + dstExpression->getInternalIDProperty()->getUniqueName() + "_";
+    auto destInternalIDExpr = std::make_unique<PropertyExpression>(DataType(INTERNAL_ID),
+        uniqueInternalPropertyName, *dstExpression, std::move(propertyIDPerTable), false);
+    nodesAfterExtendNbrExpr_->setInternalIDProperty(std::move(destInternalIDExpr));
+    auto logicalExtend = std::make_shared<LogicalExtend>(
+        logicalScanBFSLevel->getNodesToExtendBoundExpr(), nodesAfterExtendNbrExpr_,
+        std::move(relExpr), RelDirection::FWD, properties, true, leftPlan->getLastOperator());
+    leftPlan->setLastOperator(logicalExtend);
+    logicalExtend->computeFactorizedSchema();
+    auto logicalSimpleRecursiveJoin = std::make_shared<LogicalSimpleRecursiveJoin>(
+        logicalScanBFSLevel->getNodesToExtendBoundExpr(), nodesAfterExtendNbrExpr_, relExpression,
+        leftPlan->getLastOperator());
+    leftPlan->setLastOperator(logicalSimpleRecursiveJoin);
+    logicalSimpleRecursiveJoin->computeFactorizedSchema();
+    expression_vector srcDstNodePropertiesToScan;
+    for (auto& expression : logicalSimpleRecursiveJoin->getSchema()->getExpressionsInScope()) {
+        if (expression->expressionType == common::PROPERTY) {
+            auto propertyExpression = (PropertyExpression*)expression.get();
+            if (!propertyExpression->isInternalID() &&
+                propertyExpression->getVariableName() != pathExpression->getUniqueName()) {
+                srcDstNodePropertiesToScan.push_back(expression);
+            }
+        }
+    }
+    logicalScanBFSLevel->setSrcDstNodePropertiesToScan(srcDstNodePropertiesToScan);
+    std::vector<std::unique_ptr<LogicalPlan>> plans;
+    plans.push_back(std::move(leftPlan));
+    return plans;
 }
 
 std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planCrossProduct(

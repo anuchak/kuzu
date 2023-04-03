@@ -29,8 +29,6 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
     for (auto& expression : logicalScanBFSLevel->getSrcDstNodePropertiesToScan()) {
         srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(*expression));
     }
-    DataPos dstDistanceVectorDataPos =
-        DataPos(outSchema->getExpressionPos(*logicalScanBFSLevel->getPathExpression()));
     std::vector<uint32_t> ftColIndicesToScan = std::vector<uint32_t>();
     auto srcInternalIDName =
         logicalScanBFSLevel->getSourceNodeExpression()->getInternalIDProperty()->getUniqueName();
@@ -58,8 +56,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
     auto simpleRecursiveJoinSharedState =
         std::make_shared<SimpleRecursiveJoinGlobalState>(sharedState);
     auto scanBFSLevel = std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
-        srcDstVectorsDataPos, dstDistanceVectorDataPos, ftColIndicesToScan,
-        logicalScanBFSLevel->getLowerBound(), logicalScanBFSLevel->getUpperBound(),
+        srcDstVectorsDataPos, ftColIndicesToScan, logicalScanBFSLevel->getUpperBound(),
         simpleRecursiveJoinSharedState, std::move(resultCollector), getOperatorID(),
         logicalScanBFSLevel->getExpressionsForPrinting());
     return std::move(scanBFSLevel);

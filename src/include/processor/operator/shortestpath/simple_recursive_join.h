@@ -21,28 +21,41 @@ namespace processor {
 class SimpleRecursiveJoin : public PhysicalOperator {
 
 public:
-    SimpleRecursiveJoin(
+    SimpleRecursiveJoin(uint8_t bfsLowerBound, uint8_t bfsUpperBound,
         std::shared_ptr<SimpleRecursiveJoinGlobalState>& simpleRecursiveJoinSharedState,
-        const DataPos& nodeIDVectorDataPos, std::unique_ptr<PhysicalOperator> child, uint32_t id,
-        const std::string& paramsString)
+        const DataPos& nodeIDVectorDataPos, std::vector<DataPos> srcDstNodeIDDataPos,
+        const DataPos& dstDistanceVectorDataPos, std::unique_ptr<PhysicalOperator> child,
+        uint32_t id, const std::string& paramsString)
         : PhysicalOperator(
               PhysicalOperatorType::SIMPLE_RECURSIVE_JOIN, std::move(child), id, paramsString),
+          bfsLowerBound{bfsLowerBound}, bfsUpperBound{bfsUpperBound},
+          inputNodeIDDataPos{nodeIDVectorDataPos},
           simpleRecursiveJoinGlobalState{simpleRecursiveJoinSharedState},
-          inputNodeIDDataPos{nodeIDVectorDataPos} {}
+          srcDstNodeIDDataPos{std::move(srcDstNodeIDDataPos)}, dstDistanceVectorDataPos{
+                                                                   dstDistanceVectorDataPos} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
     bool getNextTuplesInternal() override;
 
+    bool writeDistToOutputVector(SSSPMorsel* ssspMorsel);
+
     inline std::unique_ptr<PhysicalOperator> clone() override {
-        return std::make_unique<SimpleRecursiveJoin>(simpleRecursiveJoinGlobalState,
-            inputNodeIDDataPos, children[0]->clone(), id, paramsString);
+        return std::make_unique<SimpleRecursiveJoin>(bfsLowerBound, bfsUpperBound,
+            simpleRecursiveJoinGlobalState, inputNodeIDDataPos, srcDstNodeIDDataPos,
+            dstDistanceVectorDataPos, children[0]->clone(), id, paramsString);
     }
 
 private:
+    uint8_t bfsLowerBound;
+    uint8_t bfsUpperBound;
     std::thread::id threadID;
     DataPos inputNodeIDDataPos;
     std::shared_ptr<common::ValueVector> inputNodeIDVector;
+    std::vector<DataPos> srcDstNodeIDDataPos;
+    std::vector<std::shared_ptr<common::ValueVector>> srcDstNodeIDValueVectors;
+    DataPos dstDistanceVectorDataPos;
+    std::shared_ptr<common::ValueVector> dstDistances;
     std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
 };
 

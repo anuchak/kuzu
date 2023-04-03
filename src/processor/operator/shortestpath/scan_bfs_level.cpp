@@ -26,15 +26,15 @@ void SSSPMorsel::markDstNodeOffsets(
     for (int i = 0; i < dstNodeIDValueVector->state->selVector->selectedSize; i++) {
         auto destIdx = dstNodeIDValueVector->state->selVector->selectedPositions[i];
         if (!dstNodeIDValueVector->isNull(destIdx)) {
-            auto destNodeOffset = dstNodeIDValueVector->readNodeOffset(destIdx);
+            auto dstNodeOffset = dstNodeIDValueVector->readNodeOffset(destIdx);
             // This is an edge case we need to consider, if the source is a part of the destination
             // nodes, then we should not count it separately as a destination. Set it as visited
             // right here and place distance as 0;
-            if (destNodeOffset == srcNodeOffset) {
+            if (dstNodeOffset == srcNodeOffset) {
                 bfsVisitedNodes[srcNodeOffset] = VISITED_DST;
                 dstNodeDistances[srcNodeOffset] = 0;
             } else {
-                bfsVisitedNodes[destNodeOffset] = NOT_VISITED_DST;
+                bfsVisitedNodes[dstNodeOffset] = NOT_VISITED_DST;
                 numDstNodesNotReached++;
             }
         }
@@ -94,81 +94,35 @@ void ScanBFSLevel::initLocalStateInternal(
     for (auto& dataPos : srcDstVectorsDataPos) {
         srcDstValueVectors.push_back(resultSet->getValueVector(dataPos).get());
     }
-    dstDistances = resultSet->getValueVector(dstDistanceVectorDataPos);
     nodesToExtend = resultSet->getValueVector(nodesToExtendDataPos);
 }
 
 bool ScanBFSLevel::getNextTuplesInternal() {
-    if (!ssspMorsel || ssspMorsel->isSSSPMorselComplete) {
+    if (!ssspMorsel || ssspMorsel->isComplete(bfsUpperBound)) {
         ssspMorsel = simpleRecursiveJoinGlobalState->getSSSPMorsel(
             threadID, maxNodeOffset, srcDstValueVectors, ftColIndicesToScan);
         if (!ssspMorsel) {
             return false;
         }
     }
-    // If numDstNodesNotReached is 0, it indicates we have visited ALL our destination nodes.
-    if (ssspMorsel->numDstNodesNotReached == 0) {
-        writeDistToOutputVector();
-        ssspMorsel->isSSSPMorselComplete = true;
-        return false;
-    }
     auto bfsLevelMorsel = ssspMorsel->getBFSLevelMorsel();
-    // If there are no more nodes to extend in curBFSLevel, there are two cases:
-    // - the nextBFSLevel is empty, meaning all have been visited, termination condition.
-    // - the curBFSLevel level is (upperBound-1), meaning we have reached upper limit of BFS.
-    // If BOTH these conditions are false, just swap curBFSLevel with nextBFSLevel to extend next
-    // level of BFS nodeID's.
+    // If there are no more nodes to extend in curBFSLevel, just swap curBFSLevel with nextBFSLevel
+    // to extend next level of BFS nodeID's.
     if (bfsLevelMorsel.isEmpty()) {
-        if (ssspMorsel->nextBFSLevel->isEmpty() ||
-            ssspMorsel->curBFSLevel->levelNumber == bfsUpperBound - 1) {
-            writeDistToOutputVector();
-            ssspMorsel->isSSSPMorselComplete = true;
+        ssspMorsel->bfsMorselNextStartIdx = 0u;
+        ssspMorsel->curBFSLevel = std::move(ssspMorsel->nextBFSLevel);
+        // Sort node offsets of BFS level in ascending order for sequential scan of adjList.
+        std::sort(ssspMorsel->curBFSLevel->bfsLevelNodes.begin(),
+            ssspMorsel->curBFSLevel->bfsLevelNodes.end(), NodeIDComparatorFunction());
+        ssspMorsel->nextBFSLevel = std::make_unique<BFSLevel>();
+        ssspMorsel->nextBFSLevel->levelNumber = ssspMorsel->curBFSLevel->levelNumber + 1;
+        bfsLevelMorsel = ssspMorsel->getBFSLevelMorsel();
+        if (bfsLevelMorsel.isEmpty()) {
             return false;
-        } else {
-            ssspMorsel->bfsMorselNextStartIdx = 0u;
-            ssspMorsel->curBFSLevel = std::move(ssspMorsel->nextBFSLevel);
-            // Sort node offsets of BFS level in ascending order for sequential scan of adjList.
-            std::sort(ssspMorsel->curBFSLevel->bfsLevelNodes.begin(),
-                ssspMorsel->curBFSLevel->bfsLevelNodes.end(), NodeIDComparatorFunction());
-            ssspMorsel->nextBFSLevel = std::make_unique<BFSLevel>();
-            ssspMorsel->nextBFSLevel->levelNumber = ssspMorsel->curBFSLevel->levelNumber + 1;
-            bfsLevelMorsel = ssspMorsel->getBFSLevelMorsel();
         }
     }
     copyNodeIDsToVector(*ssspMorsel->curBFSLevel, bfsLevelMorsel);
     return true;
-}
-
-// Write (only) reached destination distances to output value vector.
-void ScanBFSLevel::writeDistToOutputVector() {
-    auto dstValVector = srcDstValueVectors[1];
-    auto srcValVector = srcDstValueVectors[0];
-    std::vector<uint16_t> newSelPositions = std::vector<uint16_t>();
-    for (int i = 0; i < dstValVector->state->selVector->selectedSize; i++) {
-        auto destIdx = dstValVector->state->selVector->selectedPositions[i];
-        if (!dstValVector->isNull(destIdx)) {
-            auto nodeOffset = dstValVector->readNodeOffset(destIdx);
-            auto visitedState = ssspMorsel->bfsVisitedNodes[nodeOffset];
-            auto distValue = ssspMorsel->dstNodeDistances[nodeOffset];
-            if (visitedState == VISITED_DST && distValue >= bfsLowerBound) {
-                newSelPositions.push_back(destIdx);
-                dstDistances->setValue<int64_t>(destIdx, distValue);
-            }
-        }
-    }
-    // In case NO destination was reached in an SSSPMorsel, then the source should also not be
-    // printed in the final output. This is the same semantics as Neo4j, where an empty result is
-    // returned when no dest is reached. That's why we set both srcValVector and the dstValVector
-    // sharedState's selectedSize to be 0.
-    if (newSelPositions.empty()) {
-        dstValVector->state->selVector->selectedSize = 0u;
-        srcValVector->state->selVector->selectedSize = 0u;
-        return;
-    }
-    dstValVector->state->selVector->resetSelectorToValuePosBufferWithSize(newSelPositions.size());
-    for (int i = 0; i < newSelPositions.size(); i++) {
-        dstValVector->state->selVector->selectedPositions[i] = newSelPositions[i];
-    }
 }
 
 void ScanBFSLevel::copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel) {

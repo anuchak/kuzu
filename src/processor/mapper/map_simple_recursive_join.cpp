@@ -14,13 +14,21 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalSimpleRecursiveJoinToPhy
     auto logicalPrevOperator = logicalOperator->getChild(0);
     auto prevOperator = mapLogicalOperatorToPhysical(logicalPrevOperator);
     auto* scanBFSLevel = (ScanBFSLevel*)prevOperator->getChild(0)->getChild(0);
-    auto inSchema = logicalPrevOperator->getSchema();
-    auto nodeIDVectorDataPos = DataPos(inSchema->getExpressionPos(
+    auto outSchema = logicalPrevOperator->getSchema();
+    auto nodeIDVectorDataPos = DataPos(outSchema->getExpressionPos(
         *logicalSimpleRecursiveJoin->getNbrNodeExpression()->getInternalIDProperty()));
-    return std::move(
-        std::make_unique<SimpleRecursiveJoin>(scanBFSLevel->getSimpleRecursiveJoinGlobalState(),
-            nodeIDVectorDataPos, std::move(prevOperator), getOperatorID(),
-            logicalSimpleRecursiveJoin->getExpressionsForPrinting()));
+    auto dstDistanceVectorDataPos =
+        DataPos(outSchema->getExpressionPos(*logicalSimpleRecursiveJoin->getPathExpression()));
+    std::vector<DataPos> srcDstVectorsDataPos = std::vector<DataPos>();
+    srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(
+        *logicalSimpleRecursiveJoin->getSourceNodeExpression()->getInternalIDProperty()));
+    srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(
+        *logicalSimpleRecursiveJoin->getDstNodeExpression()->getInternalIDProperty()));
+    return std::move(std::make_unique<SimpleRecursiveJoin>(
+        logicalSimpleRecursiveJoin->getLowerBound(), logicalSimpleRecursiveJoin->getUpperBound(),
+        scanBFSLevel->getSimpleRecursiveJoinGlobalState(), nodeIDVectorDataPos,
+        srcDstVectorsDataPos, dstDistanceVectorDataPos, std::move(prevOperator), getOperatorID(),
+        logicalSimpleRecursiveJoin->getExpressionsForPrinting()));
 }
 } // namespace processor
 } // namespace kuzu

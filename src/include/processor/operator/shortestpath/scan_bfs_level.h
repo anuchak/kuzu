@@ -50,8 +50,8 @@ public:
 struct SSSPMorsel {
 public:
     explicit SSSPMorsel(common::offset_t maxNodeOffset)
-        : isSSSPMorselComplete{false}, numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u},
-          dstTableID{0u}, dstNodeDistances{std::unordered_map<common::offset_t, uint32_t>()},
+        : numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u}, dstTableID{0u},
+          dstNodeDistances{std::unordered_map<common::offset_t, uint32_t>()},
           curBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
           bfsVisitedNodes{std::vector<uint8_t>(maxNodeOffset + 1, NOT_VISITED)} {}
 
@@ -60,13 +60,16 @@ public:
     void markDstNodeOffsets(
         common::offset_t srcNodeOffset, common::ValueVector* dstNodeIDValueVector);
 
-    inline bool isEmpty() const {
-        return curBFSLevel->bfsLevelNodes.empty() && nextBFSLevel->bfsLevelNodes.empty();
+    inline bool isComplete(uint8_t bfsUpperBound) const {
+        if (numDstNodesNotReached == 0 || bfsUpperBound == curBFSLevel->levelNumber ||
+            curBFSLevel->bfsLevelNodes.empty()) {
+            return true;
+        }
+        return false;
     }
 
 public:
     std::shared_mutex mutex;
-    bool isSSSPMorselComplete;
     uint32_t numDstNodesNotReached;
     uint32_t bfsMorselNextStartIdx;
     common::table_id_t dstTableID;
@@ -102,26 +105,23 @@ class ScanBFSLevel : public PhysicalOperator {
 
 public:
     ScanBFSLevel(common::offset_t maxNodeOffset, const DataPos& nodesToExtendDataPos,
-        std::vector<DataPos> srcDstVectorsDataPos, const DataPos& dstDistanceVectorDataPos,
-        std::vector<uint32_t> ftColIndicesToScan, uint8_t bfsLowerBound, uint8_t bfsUpperBound,
+        std::vector<DataPos> srcDstVectorsDataPos, std::vector<uint32_t> ftColIndicesToScan,
+        uint8_t bfsUpperBound,
         std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState,
         std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : PhysicalOperator(
               PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id, paramsString),
           maxNodeOffset{maxNodeOffset}, nodesToExtendDataPos{nodesToExtendDataPos},
           srcDstVectorsDataPos{std::move(srcDstVectorsDataPos)},
-          dstDistanceVectorDataPos{dstDistanceVectorDataPos}, ftColIndicesToScan{std::move(
-                                                                  ftColIndicesToScan)},
-          bfsLowerBound{bfsLowerBound}, bfsUpperBound{bfsUpperBound}, ssspMorsel{nullptr},
-          simpleRecursiveJoinGlobalState{std::move(simpleRecursiveJoinGlobalState)} {}
+          ftColIndicesToScan{std::move(ftColIndicesToScan)}, bfsUpperBound{bfsUpperBound},
+          ssspMorsel{nullptr}, simpleRecursiveJoinGlobalState{
+                                   std::move(simpleRecursiveJoinGlobalState)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
     bool isSource() const override { return true; }
 
     bool getNextTuplesInternal() override;
-
-    void writeDistToOutputVector();
 
     void copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel);
 
@@ -131,8 +131,8 @@ public:
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
-            srcDstVectorsDataPos, dstDistanceVectorDataPos, ftColIndicesToScan, bfsLowerBound,
-            bfsUpperBound, simpleRecursiveJoinGlobalState, children[0]->clone(), id, paramsString);
+            srcDstVectorsDataPos, ftColIndicesToScan, bfsUpperBound, simpleRecursiveJoinGlobalState,
+            children[0]->clone(), id, paramsString);
     }
 
 private:
@@ -146,14 +146,8 @@ private:
     // instead of copying into these value vectors and then copying them to the output FTable.
     std::vector<DataPos> srcDstVectorsDataPos;
     std::vector<common::ValueVector*> srcDstValueVectors;
-    // The ValueVector into which ScanBFSLevel will write the dst bfsLevelNumber.
-    // TODO: Same as the above TODO, we should write the distances directly to the output FTable,
-    // instead of this vector (because we can write only 2048 at a time).
-    DataPos dstDistanceVectorDataPos;
-    std::shared_ptr<common::ValueVector> dstDistances;
     // The FTable column indices for the src, dest nodeIDs and node properties to scan.
     std::vector<uint32_t> ftColIndicesToScan;
-    uint8_t bfsLowerBound;
     uint8_t bfsUpperBound;
     SSSPMorsel* ssspMorsel;
     std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;

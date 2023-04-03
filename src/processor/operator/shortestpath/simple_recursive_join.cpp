@@ -31,6 +31,9 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
             }
         }
         auto ssspMorsel = simpleRecursiveJoinGlobalState->getAssignedSSSPMorsel(threadID);
+        if (ssspMorsel->isComplete(bfsUpperBound)) {
+            continue;
+        }
         auto& visitedNodes = ssspMorsel->bfsVisitedNodes;
         for (int i = 0; i < inputNodeIDVector->state->selVector->selectedSize; i++) {
             auto selectedPos = inputNodeIDVector->state->selVector->selectedPositions[i];

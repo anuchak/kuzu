@@ -117,7 +117,7 @@ bool ScanBFSLevel::getNextTuplesInternal() {
         ssspMorsel->nextBFSLevel = std::make_unique<BFSLevel>();
         ssspMorsel->nextBFSLevel->levelNumber = ssspMorsel->curBFSLevel->levelNumber + 1;
         bfsLevelMorsel = ssspMorsel->getBFSLevelMorsel();
-        if (bfsLevelMorsel.isEmpty()) {
+        if (ssspMorsel->isComplete(bfsUpperBound) || bfsLevelMorsel.isEmpty()) {
             return false;
         }
     }

@@ -52,6 +52,10 @@ public:
 
     inline expression_vector getSrcDstNodePropertiesToScan() { return srcDstNodePropertiesToScan; }
 
+    inline f_group_pos getGroupPosToFlatten() {
+        return schema->getGroupPos(sourceNodeExpression->getInternalIDProperty()->getUniqueName());
+    }
+
     void computeFactorizedSchema() override;
 
     void computeFlatSchema() override;

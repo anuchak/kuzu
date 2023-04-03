@@ -13,6 +13,9 @@ void LogicalOperatorVisitor::visitOperatorSwitch(planner::LogicalOperator* op) {
     case LogicalOperatorType::SCAN_NODE: {
         visitScanNode(op);
     } break;
+    case LogicalOperatorType::SCAN_BFS_LEVEL: {
+        visitScanBFSLevel(op);
+    } break;
     case LogicalOperatorType::EXTEND: {
         visitExtend(op);
     } break;

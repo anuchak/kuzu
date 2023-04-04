@@ -98,7 +98,7 @@ void ScanBFSLevel::initLocalStateInternal(
 }
 
 bool ScanBFSLevel::getNextTuplesInternal() {
-    if (!ssspMorsel || ssspMorsel->isComplete(bfsUpperBound)) {
+    if (!ssspMorsel || ssspMorsel->isComplete(upperBound)) {
         ssspMorsel = simpleRecursiveJoinGlobalState->getSSSPMorsel(
             threadID, maxNodeOffset, srcDstValueVectors, ftColIndicesToScan);
         if (!ssspMorsel) {
@@ -117,7 +117,7 @@ bool ScanBFSLevel::getNextTuplesInternal() {
         ssspMorsel->nextBFSLevel = std::make_unique<BFSLevel>();
         ssspMorsel->nextBFSLevel->levelNumber = ssspMorsel->curBFSLevel->levelNumber + 1;
         bfsLevelMorsel = ssspMorsel->getBFSLevelMorsel();
-        if (ssspMorsel->isComplete(bfsUpperBound) || bfsLevelMorsel.isEmpty()) {
+        if (ssspMorsel->isComplete(upperBound) || bfsLevelMorsel.isEmpty()) {
             return false;
         }
     }

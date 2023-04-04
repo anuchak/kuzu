@@ -60,8 +60,8 @@ public:
     void markDstNodeOffsets(
         common::offset_t srcNodeOffset, common::ValueVector* dstNodeIDValueVector);
 
-    inline bool isComplete(uint8_t bfsUpperBound) const {
-        if (numDstNodesNotReached == 0 || bfsUpperBound == curBFSLevel->levelNumber ||
+    inline bool isComplete(uint8_t upperBound) const {
+        if (numDstNodesNotReached == 0 || upperBound == curBFSLevel->levelNumber ||
             curBFSLevel->bfsLevelNodes.empty()) {
             return true;
         }
@@ -106,16 +106,16 @@ class ScanBFSLevel : public PhysicalOperator {
 public:
     ScanBFSLevel(common::offset_t maxNodeOffset, const DataPos& nodesToExtendDataPos,
         std::vector<DataPos> srcDstVectorsDataPos, std::vector<uint32_t> ftColIndicesToScan,
-        uint8_t bfsUpperBound,
+        uint8_t upperBound,
         std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState,
         std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : PhysicalOperator(
               PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id, paramsString),
           maxNodeOffset{maxNodeOffset}, nodesToExtendDataPos{nodesToExtendDataPos},
-          srcDstVectorsDataPos{std::move(srcDstVectorsDataPos)},
-          ftColIndicesToScan{std::move(ftColIndicesToScan)}, bfsUpperBound{bfsUpperBound},
-          ssspMorsel{nullptr}, simpleRecursiveJoinGlobalState{
-                                   std::move(simpleRecursiveJoinGlobalState)} {}
+          srcDstVectorsDataPos{std::move(srcDstVectorsDataPos)}, ftColIndicesToScan{std::move(
+                                                                     ftColIndicesToScan)},
+          upperBound{upperBound}, ssspMorsel{nullptr}, simpleRecursiveJoinGlobalState{std::move(
+                                                           simpleRecursiveJoinGlobalState)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
@@ -131,7 +131,7 @@ public:
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
-            srcDstVectorsDataPos, ftColIndicesToScan, bfsUpperBound, simpleRecursiveJoinGlobalState,
+            srcDstVectorsDataPos, ftColIndicesToScan, upperBound, simpleRecursiveJoinGlobalState,
             children[0]->clone(), id, paramsString);
     }
 
@@ -148,7 +148,7 @@ private:
     std::vector<common::ValueVector*> srcDstValueVectors;
     // The FTable column indices for the src, dest nodeIDs and node properties to scan.
     std::vector<uint32_t> ftColIndicesToScan;
-    uint8_t bfsUpperBound;
+    uint8_t upperBound;
     SSSPMorsel* ssspMorsel;
     std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
 };

@@ -10,34 +10,50 @@ namespace processor {
 void SimpleRecursiveJoin::initLocalStateInternal(
     kuzu::processor::ResultSet* resultSet, kuzu::processor::ExecutionContext* context) {
     threadID = std::this_thread::get_id();
-    inputNodeIDVector = resultSet->getValueVector(inputNodeIDDataPos);
-    for (auto& dataPos : srcDstNodeIDDataPos) {
-        srcDstNodeIDValueVectors.push_back(resultSet->getValueVector(dataPos));
+    inputIDVector = resultSet->getValueVector(inputIDPos);
+    for (auto [dataPos, _] : payloadsPosAndType) {
+        auto vector = resultSet->getValueVector(dataPos);
+        vectorsToCollect.push_back(vector.get());
     }
-    dstDistances = resultSet->getValueVector(dstDistanceVectorDataPos);
+    localFTable = std::make_unique<FactorizedTable>(context->memoryManager, populateTableSchema());
 }
 
-bool SimpleRecursiveJoin::getNextTuplesInternal() {
+void SimpleRecursiveJoin::executeInternal(kuzu::processor::ExecutionContext* context) {
     while (true) {
+        /*
+         * If the child operator returns false, there are 2 cases to be considered -
+         *
+         * 1) ScanBFSLevel failed to grab an SSSPMorsel: The assigned morsel for the thread will be
+         * null, and we should merge the local factorized table to the global table and exit.
+         *
+         * 2) The SSSPMorsel is complete: If the morsel is complete, then we try to write the
+         * destination distances to the distance value vector. If the total distances written is
+         * greater than 0, that indicates some destinations were reached, and we should append the
+         * vectors to the factorized table. If not, we continue (meaning fetch another morsel).
+         */
         if (!children[0]->getNextTuple()) {
             auto ssspMorsel = simpleRecursiveJoinGlobalState->getAssignedSSSPMorsel(threadID);
             if (!ssspMorsel) {
-                return false;
-            } else if (ssspMorsel->isComplete(bfsUpperBound) &&
-                       writeDistToOutputVector(ssspMorsel)) {
-                return true;
-            } else {
-                continue;
+                sharedState->mergeLocalTable(*localFTable);
+                return;
+            } else if (ssspMorsel->isComplete(upperBound) &&
+                       writeDistToOutputVector(ssspMorsel) > 0) {
+                localFTable->append(vectorsToCollect);
             }
+            continue;
         }
+        /*
+         * If an SSSPMorsel is complete, ignore traversing through the inputIDVector.
+         * This can happen when we have finished a morsel but ScanRelTable is still extending nodes.
+         */
         auto ssspMorsel = simpleRecursiveJoinGlobalState->getAssignedSSSPMorsel(threadID);
-        if (ssspMorsel->isComplete(bfsUpperBound)) {
+        if (ssspMorsel->isComplete(upperBound)) {
             continue;
         }
         auto& visitedNodes = ssspMorsel->bfsVisitedNodes;
-        for (int i = 0; i < inputNodeIDVector->state->selVector->selectedSize; i++) {
-            auto selectedPos = inputNodeIDVector->state->selVector->selectedPositions[i];
-            auto nodeID = ((nodeID_t*)(inputNodeIDVector->getData()))[selectedPos];
+        for (int i = 0; i < inputIDVector->state->selVector->selectedSize; i++) {
+            auto selectedPos = inputIDVector->state->selVector->selectedPositions[i];
+            auto nodeID = ((nodeID_t*)(inputIDVector->getData()))[selectedPos];
             if (visitedNodes[nodeID.offset] == NOT_VISITED_DST) {
                 visitedNodes[nodeID.offset] = VISITED_DST;
                 ssspMorsel->numDstNodesNotReached--;
@@ -49,43 +65,55 @@ bool SimpleRecursiveJoin::getNextTuplesInternal() {
             }
             ssspMorsel->nextBFSLevel->bfsLevelNodes.emplace_back(nodeID);
         }
-        if (ssspMorsel->isComplete(bfsUpperBound) && writeDistToOutputVector(ssspMorsel)) {
-            return true;
+        if (ssspMorsel->isComplete(upperBound) && writeDistToOutputVector(ssspMorsel) > 0) {
+            localFTable->append(vectorsToCollect);
         }
     }
 }
 
 // Write (only) reached destination distances to output value vector.
-bool SimpleRecursiveJoin::writeDistToOutputVector(SSSPMorsel* ssspMorsel) {
-    auto dstValVector = srcDstNodeIDValueVectors[1];
-    auto srcValVector = srcDstNodeIDValueVectors[0];
+// This function returns the number of destinations for which a distance was written (meaning it was
+// reached). If we return 0, it is an indication to NOT append the vectors to the factorized table.
+uint16_t SimpleRecursiveJoin::writeDistToOutputVector(SSSPMorsel* ssspMorsel) {
     std::vector<uint16_t> newSelPositions = std::vector<uint16_t>();
-    for (int i = 0; i < dstValVector->state->selVector->selectedSize; i++) {
-        auto destIdx = dstValVector->state->selVector->selectedPositions[i];
-        if (!dstValVector->isNull(destIdx)) {
-            auto nodeOffset = dstValVector->readNodeOffset(destIdx);
+    auto dstDistancesVector = resultSet->getValueVector(dstDistancesPos);
+    auto dstIDVector = resultSet->getValueVector(dstIDPos);
+    uint16_t distancesWritten = 0u;
+    for (int i = 0; i < dstIDVector->state->selVector->selectedSize; i++) {
+        auto dstIdx = dstIDVector->state->selVector->selectedPositions[i];
+        if (!dstIDVector->isNull(dstIdx)) {
+            auto nodeOffset = dstIDVector->readNodeOffset(dstIdx);
             auto visitedState = ssspMorsel->bfsVisitedNodes[nodeOffset];
             if (visitedState == VISITED_DST &&
-                ssspMorsel->dstNodeDistances[nodeOffset] >= bfsLowerBound) {
-                newSelPositions.push_back(destIdx);
-                dstDistances->setValue<int64_t>(destIdx, ssspMorsel->dstNodeDistances[nodeOffset]);
+                ssspMorsel->dstNodeDistances[nodeOffset] >= lowerBound) {
+                newSelPositions.push_back(dstIdx);
+                dstDistancesVector->setValue<int64_t>(
+                    dstIdx, ssspMorsel->dstNodeDistances[nodeOffset]);
+                distancesWritten++;
             }
         }
     }
-    // In case NO destination was reached in an SSSPMorsel, then the source should also not be
-    // printed in the final output. This is the same semantics as Neo4j, where an empty result is
-    // returned when no dest is reached. That's why we set both srcValVector and the dstValVector
-    // sharedState's selectedSize to be 0.
-    if (newSelPositions.empty()) {
-        dstValVector->state->selVector->selectedSize = 0u;
-        srcValVector->state->selVector->selectedSize = 0u;
-        return false;
-    }
-    dstValVector->state->selVector->resetSelectorToValuePosBufferWithSize(newSelPositions.size());
+    dstIDVector->state->selVector->resetSelectorToValuePosBufferWithSize(newSelPositions.size());
     for (int i = 0; i < newSelPositions.size(); i++) {
-        dstValVector->state->selVector->selectedPositions[i] = newSelPositions[i];
+        dstIDVector->state->selVector->selectedPositions[i] = newSelPositions[i];
     }
-    return true;
+    return distancesWritten;
+}
+
+void SimpleRecursiveJoin::initGlobalStateInternal(kuzu::processor::ExecutionContext* context) {
+    sharedState->initTableIfNecessary(context->memoryManager, populateTableSchema());
+}
+
+std::unique_ptr<FactorizedTableSchema> SimpleRecursiveJoin::populateTableSchema() {
+    std::unique_ptr<FactorizedTableSchema> tableSchema = std::make_unique<FactorizedTableSchema>();
+    for (auto i = 0u; i < payloadsPosAndType.size(); ++i) {
+        auto [dataPos, dataType] = payloadsPosAndType[i];
+        tableSchema->appendColumn(
+            std::make_unique<ColumnSchema>(!isPayloadFlat[i], dataPos.dataChunkPos,
+                isPayloadFlat[i] ? Types::getDataTypeSize(dataType) :
+                                   (uint32_t)sizeof(overflow_value_t)));
+    }
+    return tableSchema;
 }
 
 } // namespace processor

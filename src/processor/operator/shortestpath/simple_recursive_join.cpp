@@ -84,11 +84,9 @@ uint16_t SimpleRecursiveJoin::writeDistToOutputVector(SSSPMorsel* ssspMorsel) {
         if (!dstIDVector->isNull(dstIdx)) {
             auto nodeOffset = dstIDVector->readNodeOffset(dstIdx);
             auto visitedState = ssspMorsel->bfsVisitedNodes[nodeOffset];
-            if (visitedState == VISITED_DST &&
-                ssspMorsel->dstDistances[nodeOffset] >= lowerBound) {
+            if (visitedState == VISITED_DST && ssspMorsel->dstDistances[nodeOffset] >= lowerBound) {
                 newSelPositions.push_back(dstIdx);
-                dstDistancesVector->setValue<int64_t>(
-                    dstIdx, ssspMorsel->dstDistances[nodeOffset]);
+                dstDistancesVector->setValue<int64_t>(dstIdx, ssspMorsel->dstDistances[nodeOffset]);
                 distancesWritten++;
             }
         }

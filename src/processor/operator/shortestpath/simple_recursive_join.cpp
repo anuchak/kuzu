@@ -57,7 +57,7 @@ void SimpleRecursiveJoin::executeInternal(kuzu::processor::ExecutionContext* con
             if (visitedNodes[nodeID.offset] == NOT_VISITED_DST) {
                 visitedNodes[nodeID.offset] = VISITED_DST;
                 ssspMorsel->numDstNodesNotReached--;
-                ssspMorsel->dstNodeDistances[nodeID.offset] = ssspMorsel->nextBFSLevel->levelNumber;
+                ssspMorsel->dstDistances[nodeID.offset] = ssspMorsel->nextBFSLevel->levelNumber;
             } else if (visitedNodes[nodeID.offset] == NOT_VISITED) {
                 visitedNodes[nodeID.offset] = VISITED;
             } else {
@@ -85,10 +85,10 @@ uint16_t SimpleRecursiveJoin::writeDistToOutputVector(SSSPMorsel* ssspMorsel) {
             auto nodeOffset = dstIDVector->readNodeOffset(dstIdx);
             auto visitedState = ssspMorsel->bfsVisitedNodes[nodeOffset];
             if (visitedState == VISITED_DST &&
-                ssspMorsel->dstNodeDistances[nodeOffset] >= lowerBound) {
+                ssspMorsel->dstDistances[nodeOffset] >= lowerBound) {
                 newSelPositions.push_back(dstIdx);
                 dstDistancesVector->setValue<int64_t>(
-                    dstIdx, ssspMorsel->dstNodeDistances[nodeOffset]);
+                    dstIdx, ssspMorsel->dstDistances[nodeOffset]);
                 distancesWritten++;
             }
         }

@@ -51,7 +51,7 @@ struct SSSPMorsel {
 public:
     explicit SSSPMorsel(common::offset_t maxNodeOffset)
         : numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u}, dstTableID{0u},
-          dstNodeDistances{std::unordered_map<common::offset_t, uint32_t>()},
+          dstDistances{std::unordered_map<common::offset_t, uint32_t>()},
           curBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
           bfsVisitedNodes{std::vector<uint8_t>(maxNodeOffset + 1, NOT_VISITED)} {}
 
@@ -73,7 +73,7 @@ public:
     uint32_t numDstNodesNotReached;
     uint32_t bfsMorselNextStartIdx;
     common::table_id_t dstTableID;
-    std::unordered_map<common::offset_t, uint32_t> dstNodeDistances;
+    std::unordered_map<common::offset_t, uint32_t> dstDistances;
     std::unique_ptr<BFSLevel> curBFSLevel;
     std::unique_ptr<BFSLevel> nextBFSLevel;
     // Each element is of size 1 byte (unsigned char) and enum VisitedState states are stored.

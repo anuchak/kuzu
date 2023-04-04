@@ -32,7 +32,7 @@ void SSSPMorsel::markDstNodeOffsets(
             // right here and place distance as 0;
             if (dstNodeOffset == srcNodeOffset) {
                 bfsVisitedNodes[srcNodeOffset] = VISITED_DST;
-                dstNodeDistances[srcNodeOffset] = 0;
+                dstDistances[srcNodeOffset] = 0;
             } else {
                 bfsVisitedNodes[dstNodeOffset] = NOT_VISITED_DST;
                 numDstNodesNotReached++;

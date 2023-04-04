@@ -124,10 +124,9 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
         std::move(relExpr), RelDirection::FWD, properties, true, leftPlan->getLastOperator());
     leftPlan->setLastOperator(logicalExtend);
     logicalExtend->computeFactorizedSchema();
-    auto logicalSimpleRecursiveJoin = std::make_shared<LogicalSimpleRecursiveJoin>(srcExpression,
-        dstExpression, pathExpression->getPathLengthExpression(),
-        logicalScanBFSLevel->getNodesToExtendBoundExpr(), nodesAfterExtendNbrExpr_, relExpression,
-        leftPlan->getLastOperator());
+    auto logicalSimpleRecursiveJoin = std::make_shared<LogicalSimpleRecursiveJoin>(dstExpression,
+        pathExpression->getPathLengthExpression(), logicalScanBFSLevel->getNodesToExtendBoundExpr(),
+        nodesAfterExtendNbrExpr_, relExpression, leftPlan->getLastOperator());
     leftPlan->setLastOperator(logicalSimpleRecursiveJoin);
     logicalSimpleRecursiveJoin->computeFactorizedSchema();
     expression_vector srcDstNodePropertiesToScan;

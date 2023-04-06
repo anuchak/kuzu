@@ -13,6 +13,7 @@
 #include "planner/logical_plan/logical_operator/logical_limit.h"
 #include "planner/logical_plan/logical_operator/logical_order_by.h"
 #include "planner/logical_plan/logical_operator/logical_projection.h"
+#include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
 #include "planner/logical_plan/logical_operator/logical_set.h"
 #include "planner/logical_plan/logical_operator/logical_skip.h"
 #include "planner/logical_plan/logical_operator/logical_union.h"
@@ -34,6 +35,12 @@ void FactorizationRewriter::visitOperator(planner::LogicalOperator* op) {
     }
     visitOperatorSwitch(op);
     op->computeFactorizedSchema();
+}
+
+void FactorizationRewriter::visitScanBFSLevel(planner::LogicalOperator* op) {
+    auto scanBFSLevel = (LogicalScanBFSLevel*)op;
+    auto groupPosToFlatten = scanBFSLevel->getGroupPosOfSrcNodeToFlatten();
+    scanBFSLevel->setChild(0, appendFlattens(scanBFSLevel->getChild(0), {groupPosToFlatten}));
 }
 
 void FactorizationRewriter::visitExtend(planner::LogicalOperator* op) {

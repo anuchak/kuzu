@@ -10,6 +10,7 @@ public:
 
 private:
     void visitOperator(planner::LogicalOperator* op);
+    void visitScanBFSLevel(planner::LogicalOperator* op) override;
     void visitExtend(planner::LogicalOperator* op) override;
     void visitHashJoin(planner::LogicalOperator* op) override;
     void visitIntersect(planner::LogicalOperator* op) override;

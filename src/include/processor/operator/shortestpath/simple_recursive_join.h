@@ -16,36 +16,36 @@ namespace processor {
  * time. Different threads will be assigned sets of single src + multiple dst computations. If
  * there is no path from a single src to another dst then that dst is unreachable and not part of
  * the final output. If no dst is reachable from a src then that src is also discarded from the
- * final output i.e no distance is reported for it since no dst is reachable.
+ * final output i.e, no distance is reported for it since no dst is reachable.
  */
 class SimpleRecursiveJoin : public Sink {
 
 public:
     SimpleRecursiveJoin(std::unique_ptr<ResultSetDescriptor> resultSetDescriptor,
         uint8_t lowerBound, uint8_t upperBound, const DataPos& dstIDPos,
-        std::shared_ptr<SimpleRecursiveJoinGlobalState>& simpleRecursiveJoinSharedState,
-        const DataPos& inputIDPos, const DataPos& dstDistancesPos,
-        std::shared_ptr<FTableSharedState> sharedState,
+        std::shared_ptr<SSSPMorselTracker>& ssspMorselTracker, const DataPos& extendedNbrsIDPos,
+        const DataPos& dstDistancesPos, std::shared_ptr<FTableSharedState> sharedOutputFState,
         std::vector<std::pair<DataPos, common::DataType>>& payloadsPosAndType,
-        std::vector<bool>& isPayloadFlat, std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        std::vector<bool>& payloadsFlatState, std::unique_ptr<PhysicalOperator> child, uint32_t id,
         const std::string& paramsString)
         : Sink(std::move(resultSetDescriptor), PhysicalOperatorType::SIMPLE_RECURSIVE_JOIN,
               std::move(child), id, paramsString),
           lowerBound{lowerBound}, upperBound{upperBound}, dstIDPos{dstIDPos},
-          isPayloadFlat{isPayloadFlat}, inputIDPos{inputIDPos}, sharedState{std::move(sharedState)},
-          payloadsPosAndType{payloadsPosAndType}, dstDistancesPos{dstDistancesPos},
-          simpleRecursiveJoinGlobalState{simpleRecursiveJoinSharedState} {}
+          payloadsFlatState{payloadsFlatState}, extendedNbrIDsPos{extendedNbrsIDPos},
+          sharedOutputFState{std::move(sharedOutputFState)}, payloadsPosAndType{payloadsPosAndType},
+          dstDistancesPos{dstDistancesPos}, ssspMorselTracker{ssspMorselTracker} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
-    uint16_t writeDistToOutputVector(SSSPMorsel* ssspMorsel);
+    uint64_t writeDistToOutputVector(SSSPMorsel* ssspMorsel);
 
     void executeInternal(ExecutionContext* context) override;
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<SimpleRecursiveJoin>(resultSetDescriptor->copy(), lowerBound,
-            upperBound, dstIDPos, simpleRecursiveJoinGlobalState, inputIDPos, dstDistancesPos,
-            sharedState, payloadsPosAndType, isPayloadFlat, children[0]->clone(), id, paramsString);
+            upperBound, dstIDPos, ssspMorselTracker, extendedNbrIDsPos, dstDistancesPos,
+            sharedOutputFState, payloadsPosAndType, payloadsFlatState, children[0]->clone(), id,
+            paramsString);
     }
 
 private:
@@ -59,13 +59,13 @@ private:
     std::thread::id threadID;
     DataPos dstIDPos;
     DataPos dstDistancesPos;
-    DataPos inputIDPos;
-    std::shared_ptr<common::ValueVector> inputIDVector;
-    std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
-    std::shared_ptr<FTableSharedState> sharedState;
-    std::unique_ptr<FactorizedTable> localFTable;
+    DataPos extendedNbrIDsPos;
+    std::shared_ptr<common::ValueVector> extendedNbrIDs;
+    std::shared_ptr<SSSPMorselTracker> ssspMorselTracker;
+    std::shared_ptr<FTableSharedState> sharedOutputFState;
+    std::unique_ptr<FactorizedTable> localOutputFTable;
     std::vector<std::pair<DataPos, common::DataType>> payloadsPosAndType;
-    std::vector<bool> isPayloadFlat;
+    std::vector<bool> payloadsFlatState;
     std::vector<common::ValueVector*> vectorsToCollect;
 };
 

@@ -20,7 +20,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalSimpleRecursiveJoinToPhy
         *logicalSimpleRecursiveJoin->getNbrNodeExpression()->getInternalIDProperty()));
     auto dstDistancesPos =
         DataPos(inputSchema->getExpressionPos(*logicalSimpleRecursiveJoin->getPathExpression()));
-    auto sharedState = std::make_shared<FTableSharedState>();
+    auto sharedOutputFTState = std::make_shared<FTableSharedState>();
     std::vector<std::pair<DataPos, common::DataType>> payloadsPosAndType;
     std::vector<bool> isPayloadFlat;
     std::vector<DataPos> outVecPositions;
@@ -41,12 +41,12 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalSimpleRecursiveJoinToPhy
     auto simpleRecursiveJoin = std::make_unique<SimpleRecursiveJoin>(
         std::make_unique<ResultSetDescriptor>(*logicalSimpleRecursiveJoin->getSchema()),
         logicalSimpleRecursiveJoin->getLowerBound(), logicalSimpleRecursiveJoin->getUpperBound(),
-        dstInternalIDPos, scanBFSLevel->getSimpleRecursiveJoinGlobalState(), inputIDPos,
-        dstDistancesPos, sharedState, payloadsPosAndType, isPayloadFlat, std::move(prevOperator),
+        dstInternalIDPos, scanBFSLevel->getSSSPMorselTracker(), inputIDPos, dstDistancesPos,
+        sharedOutputFTState, payloadsPosAndType, isPayloadFlat, std::move(prevOperator),
         getOperatorID(), logicalSimpleRecursiveJoin->getExpressionsForPrinting());
-    auto ftableScan =
-        std::make_unique<FactorizedTableScan>(outVecPositions, colIndicesToScan, sharedState,
-            std::move(simpleRecursiveJoin), getOperatorID(), /*get expressions for scanning*/ "");
+    auto ftableScan = std::make_unique<FactorizedTableScan>(outVecPositions, colIndicesToScan,
+        sharedOutputFTState, std::move(simpleRecursiveJoin), getOperatorID(),
+        logicalSimpleRecursiveJoin->getExpressionsForPrinting());
     return ftableScan;
 }
 } // namespace processor

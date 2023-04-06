@@ -26,7 +26,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
         *logicalScanBFSLevel->getSourceNodeExpression()->getInternalIDProperty()));
     srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(
         *logicalScanBFSLevel->getDestNodeExpression()->getInternalIDProperty()));
-    for (auto& expression : logicalScanBFSLevel->getSrcDstNodePropertiesToScan()) {
+    for (auto& expression : logicalScanBFSLevel->getSrcDstPropertiesToScan()) {
         srcDstVectorsDataPos.emplace_back(outSchema->getExpressionPos(*expression));
     }
     std::vector<uint32_t> ftColIndicesToScan = std::vector<uint32_t>();
@@ -53,11 +53,10 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
         ftColIndicesToScan.push_back(i);
     }
     auto sharedState = resultCollector->getSharedState();
-    auto simpleRecursiveJoinSharedState =
-        std::make_shared<SimpleRecursiveJoinGlobalState>(sharedState);
+    auto ssspMorselTracker = std::make_shared<SSSPMorselTracker>(sharedState);
     auto scanBFSLevel = std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
         srcDstVectorsDataPos, ftColIndicesToScan, logicalScanBFSLevel->getUpperBound(),
-        simpleRecursiveJoinSharedState, std::move(resultCollector), getOperatorID(),
+        ssspMorselTracker, std::move(resultCollector), getOperatorID(),
         logicalScanBFSLevel->getExpressionsForPrinting());
     return std::move(scanBFSLevel);
 }

@@ -139,7 +139,7 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
             }
         }
     }
-    logicalScanBFSLevel->setSrcDstNodePropertiesToScan(srcDstNodePropertiesToScan);
+    logicalScanBFSLevel->setSrcDstPropertiesToScan(srcDstNodePropertiesToScan);
     std::vector<std::unique_ptr<LogicalPlan>> plans;
     plans.push_back(std::move(leftPlan));
     return plans;

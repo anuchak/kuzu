@@ -41,7 +41,7 @@ void SSSPMorsel::markDstNodeOffsets(
     }
 }
 
-SSSPMorsel* SimpleRecursiveJoinGlobalState::getAssignedSSSPMorsel(std::thread::id threadID) {
+SSSPMorsel* SSSPMorselTracker::getAssignedSSSPMorsel(std::thread::id threadID) {
     std::unique_lock<std::shared_mutex> lck{mutex};
     if (ssspMorselPerThread.contains(threadID)) {
         return ssspMorselPerThread[threadID].get();
@@ -49,7 +49,7 @@ SSSPMorsel* SimpleRecursiveJoinGlobalState::getAssignedSSSPMorsel(std::thread::i
     return nullptr;
 }
 
-void SimpleRecursiveJoinGlobalState::removePrevAssignedSSSPMorsel(std::thread::id threadID) {
+void SSSPMorselTracker::removePrevAssignedSSSPMorsel(std::thread::id threadID) {
     std::unique_lock<std::shared_mutex> lck{mutex};
     if (ssspMorselPerThread.contains(threadID)) {
         ssspMorselPerThread.erase(threadID);
@@ -63,7 +63,7 @@ void SimpleRecursiveJoinGlobalState::removePrevAssignedSSSPMorsel(std::thread::i
  * 2) Setting the destination node offset positions.
  * 3) Initialises bfsLevelNodes of curBFSLevel, adds the source nodeID.
  */
-SSSPMorsel* SimpleRecursiveJoinGlobalState::getSSSPMorsel(std::thread::id threadID,
+SSSPMorsel* SSSPMorselTracker::getSSSPMorsel(std::thread::id threadID,
     common::offset_t maxNodeOffset, std::vector<common::ValueVector*> srcDstValueVectors,
     std::vector<uint32_t>& ftColIndicesToScan) {
     auto ssspMorsel = std::make_unique<SSSPMorsel>(maxNodeOffset);
@@ -99,7 +99,7 @@ void ScanBFSLevel::initLocalStateInternal(
 
 bool ScanBFSLevel::getNextTuplesInternal() {
     if (!ssspMorsel || ssspMorsel->isComplete(upperBound)) {
-        ssspMorsel = simpleRecursiveJoinGlobalState->getSSSPMorsel(
+        ssspMorsel = ssspMorselTracker->getSSSPMorsel(
             threadID, maxNodeOffset, srcDstValueVectors, ftColIndicesToScan);
         if (!ssspMorsel) {
             return false;
@@ -121,11 +121,12 @@ bool ScanBFSLevel::getNextTuplesInternal() {
             return false;
         }
     }
-    copyNodeIDsToVector(*ssspMorsel->curBFSLevel, bfsLevelMorsel);
+    copyCurBFSLevelNodesToVector(*ssspMorsel->curBFSLevel, bfsLevelMorsel);
     return true;
 }
 
-void ScanBFSLevel::copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel) {
+void ScanBFSLevel::copyCurBFSLevelNodesToVector(
+    BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel) {
     auto finalScanIdx = bfsLevelMorsel.startIdx + bfsLevelMorsel.size;
     for (auto idx = bfsLevelMorsel.startIdx; idx < finalScanIdx; idx++) {
         auto nodeID = curBFSLevel.bfsLevelNodes[idx];

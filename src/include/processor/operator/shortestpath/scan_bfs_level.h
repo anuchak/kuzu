@@ -50,8 +50,8 @@ public:
 struct SSSPMorsel {
 public:
     explicit SSSPMorsel(common::offset_t maxNodeOffset)
-        : numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u}, dstTableID{0u},
-          dstDistances{std::unordered_map<common::offset_t, uint32_t>()},
+        : isWrittenToOutFTable{false}, numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u},
+          dstTableID{0u}, dstDistances{std::unordered_map<common::offset_t, uint32_t>()},
           curBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
           bfsVisitedNodes{std::vector<uint8_t>(maxNodeOffset + 1, NOT_VISITED)} {}
 
@@ -61,15 +61,13 @@ public:
         common::offset_t srcNodeOffset, common::ValueVector* dstNodeIDValueVector);
 
     inline bool isComplete(uint8_t upperBound) const {
-        if (numDstNodesNotReached == 0 || upperBound == curBFSLevel->levelNumber ||
-            curBFSLevel->bfsLevelNodes.empty()) {
-            return true;
-        }
-        return false;
+        return (numDstNodesNotReached == 0 || upperBound == curBFSLevel->levelNumber ||
+                curBFSLevel->bfsLevelNodes.empty());
     }
 
 public:
     std::shared_mutex mutex;
+    bool isWrittenToOutFTable;
     uint32_t numDstNodesNotReached;
     uint32_t bfsMorselNextStartIdx;
     common::table_id_t dstTableID;
@@ -81,9 +79,9 @@ public:
     std::vector<uint8_t> bfsVisitedNodes;
 };
 
-struct SimpleRecursiveJoinGlobalState {
+struct SSSPMorselTracker {
 public:
-    explicit SimpleRecursiveJoinGlobalState(std::shared_ptr<FTableSharedState> inputFTable)
+    explicit SSSPMorselTracker(std::shared_ptr<FTableSharedState> inputFTable)
         : ssspMorselPerThread{std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>>()},
           inputFTable{std::move(inputFTable)} {};
 
@@ -106,16 +104,15 @@ class ScanBFSLevel : public PhysicalOperator {
 public:
     ScanBFSLevel(common::offset_t maxNodeOffset, const DataPos& nodesToExtendDataPos,
         std::vector<DataPos> srcDstVectorsDataPos, std::vector<uint32_t> ftColIndicesToScan,
-        uint8_t upperBound,
-        std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState,
+        uint8_t upperBound, std::shared_ptr<SSSPMorselTracker> ssspMorselTracker,
         std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : PhysicalOperator(
               PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id, paramsString),
           maxNodeOffset{maxNodeOffset}, nodesToExtendDataPos{nodesToExtendDataPos},
           srcDstVectorsDataPos{std::move(srcDstVectorsDataPos)}, ftColIndicesToScan{std::move(
                                                                      ftColIndicesToScan)},
-          upperBound{upperBound}, ssspMorsel{nullptr}, simpleRecursiveJoinGlobalState{std::move(
-                                                           simpleRecursiveJoinGlobalState)} {}
+          upperBound{upperBound}, ssspMorsel{nullptr}, ssspMorselTracker{
+                                                           std::move(ssspMorselTracker)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
@@ -123,15 +120,13 @@ public:
 
     bool getNextTuplesInternal() override;
 
-    void copyNodeIDsToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel);
+    void copyCurBFSLevelNodesToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel);
 
-    std::shared_ptr<SimpleRecursiveJoinGlobalState>& getSimpleRecursiveJoinGlobalState() {
-        return simpleRecursiveJoinGlobalState;
-    }
+    std::shared_ptr<SSSPMorselTracker>& getSSSPMorselTracker() { return ssspMorselTracker; }
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
-            srcDstVectorsDataPos, ftColIndicesToScan, upperBound, simpleRecursiveJoinGlobalState,
+            srcDstVectorsDataPos, ftColIndicesToScan, upperBound, ssspMorselTracker,
             children[0]->clone(), id, paramsString);
     }
 
@@ -150,7 +145,7 @@ private:
     std::vector<uint32_t> ftColIndicesToScan;
     uint8_t upperBound;
     SSSPMorsel* ssspMorsel;
-    std::shared_ptr<SimpleRecursiveJoinGlobalState> simpleRecursiveJoinGlobalState;
+    std::shared_ptr<SSSPMorselTracker> ssspMorselTracker;
 };
 } // namespace processor
 } // namespace kuzu

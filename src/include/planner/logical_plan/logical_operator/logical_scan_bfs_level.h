@@ -46,11 +46,15 @@ public:
 
     inline std::shared_ptr<Expression> getPathExpression() { return pathExpression; }
 
-    inline void setSrcDstNodePropertiesToScan(expression_vector srcDstNodePropertiesToScan_) {
-        srcDstNodePropertiesToScan = std::move(srcDstNodePropertiesToScan_);
+    inline void setSrcDstPropertiesToScan(expression_vector srcDstPropertiesToScan_) {
+        srcDstPropertiesToScan = std::move(srcDstPropertiesToScan_);
     }
 
-    inline expression_vector getSrcDstNodePropertiesToScan() { return srcDstNodePropertiesToScan; }
+    inline expression_vector getSrcDstPropertiesToScan() { return srcDstPropertiesToScan; }
+
+    inline f_group_pos getGroupPosOfSrcNodeToFlatten() {
+        return schema->getGroupPos(sourceNodeExpression->getInternalIDProperty()->getUniqueName());
+    }
 
     void computeFactorizedSchema() override;
 
@@ -61,7 +65,7 @@ public:
     std::unique_ptr<LogicalOperator> copy() override {
         auto logicalScanBFSLevel = make_unique<LogicalScanBFSLevel>(lowerBound, upperBound,
             sourceNodeExpression, destNodeExpression, pathExpression, children[0]->copy());
-        logicalScanBFSLevel->setSrcDstNodePropertiesToScan(srcDstNodePropertiesToScan);
+        logicalScanBFSLevel->setSrcDstPropertiesToScan(srcDstPropertiesToScan);
         logicalScanBFSLevel->setNodesToExtendBoundExpr(nodesToExtendBoundExpr);
         return std::move(logicalScanBFSLevel);
     }
@@ -73,7 +77,7 @@ private:
     std::shared_ptr<NodeExpression> destNodeExpression;
     std::shared_ptr<NodeExpression> nodesToExtendBoundExpr;
     std::shared_ptr<Expression> pathExpression;
-    expression_vector srcDstNodePropertiesToScan;
+    expression_vector srcDstPropertiesToScan;
 };
 } // namespace planner
 } // namespace kuzu

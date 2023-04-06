@@ -35,7 +35,7 @@ Elizabeth|Greg|1
 Elizabeth|Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|1
 
 -NAME SingleSourceUnreachableDestination
--QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' AND b.fName = 'Elizabeth' RETURN a.fName, b.fName, p.length
+-QUERY MATCH p = (a:person)-[:knows* SHORTEST]->(b:person) WHERE a.fName = 'Alice' AND b.fName = 'Alice11' RETURN a.fName, b.fName, p.length
 ---- 0
 
 -NAME AllSourcesSingleDestinationQuery

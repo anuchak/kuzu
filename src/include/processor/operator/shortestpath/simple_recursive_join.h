@@ -72,8 +72,6 @@ private:
     std::vector<std::pair<DataPos, common::DataType>> payloadsPosAndType;
     std::vector<bool> payloadsFlatState;
     std::vector<common::ValueVector*> vectorsToCollect;
-
-    // new additions
     std::shared_ptr<FTableSharedState> inputFTable;
     std::vector<DataPos> srcDstVectorsDataPos;
     std::vector<common::ValueVector*> srcDstValueVectors;

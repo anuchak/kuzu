@@ -15,6 +15,10 @@ void SimpleRecursiveJoin::initLocalStateInternal(
         auto vector = resultSet->getValueVector(dataPos);
         vectorsToCollect.push_back(vector.get());
     }
+    for (auto dataPos : srcDstVectorsDataPos) {
+        auto vector = resultSet->getValueVector(dataPos);
+        srcDstValueVectors.push_back(vector.get());
+    }
     localOutputFTable =
         std::make_unique<FactorizedTable>(context->memoryManager, populateTableSchema());
 }
@@ -37,9 +41,8 @@ void SimpleRecursiveJoin::executeInternal(kuzu::processor::ExecutionContext* con
             if (!ssspMorsel) {
                 sharedOutputFState->mergeLocalTable(*localOutputFTable);
                 return;
-            } else if (ssspMorsel->isComplete(upperBound) &&
-                       writeDistToOutputVector(ssspMorsel) > 0) {
-                localOutputFTable->append(vectorsToCollect);
+            } else if (ssspMorsel->isComplete(upperBound)) {
+                writeToLocalOutputFTable(ssspMorsel);
             }
             continue;
         }
@@ -66,7 +69,27 @@ void SimpleRecursiveJoin::executeInternal(kuzu::processor::ExecutionContext* con
             }
             ssspMorsel->nextBFSLevel->bfsLevelNodes.emplace_back(nodeID);
         }
-        if (ssspMorsel->isComplete(upperBound) && writeDistToOutputVector(ssspMorsel) > 0) {
+        if (ssspMorsel->isComplete(upperBound)) {
+            writeToLocalOutputFTable(ssspMorsel);
+        }
+    }
+}
+
+// Since we may have > 2048 destinations for a single source, we have to scan from the inputFTable
+// again and decide which destinations have been reached or not and then append them to the FTable.
+// We are scanning from the startScanIdx of the ssspMorsel and scan numTuplesToScan total tuples.
+void SimpleRecursiveJoin::writeToLocalOutputFTable(SSSPMorsel* ssspMorsel) {
+    ssspMorsel->isWrittenToOutFTable = true;
+    auto dstNodeDataChunkState = resultSet->getValueVector(dstIDPos)->state;
+    for (auto idx = ssspMorsel->startScanIdx;
+         idx < ssspMorsel->startScanIdx + ssspMorsel->numTuplesToScan; idx++) {
+        // To scan an unflat column into an unflat vector, the selected positions of selVector needs
+        // to be reset to 2048. Since we are reusing the same ValueVectors to scan everytime, we
+        // need to reset the dataChunk state everytime before scanning.
+        dstNodeDataChunkState->selVector->resetSelectorToUnselected();
+        inputFTable->getTable()->scan(
+            srcDstValueVectors, idx, 1 /* numTuplesToScan */, ftColIndicesToScan);
+        if (writeDistToOutputVector(ssspMorsel) > 0) {
             localOutputFTable->append(vectorsToCollect);
         }
     }
@@ -80,7 +103,6 @@ uint64_t SimpleRecursiveJoin::writeDistToOutputVector(SSSPMorsel* ssspMorsel) {
     auto dstDistancesVector = resultSet->getValueVector(dstDistancesPos);
     auto dstIDVector = resultSet->getValueVector(dstIDPos);
     uint64_t distancesWritten = 0u;
-    ssspMorsel->isWrittenToOutFTable = true;
     for (int i = 0; i < dstIDVector->state->selVector->selectedSize; i++) {
         auto dstIdx = dstIDVector->state->selVector->selectedPositions[i];
         if (!dstIDVector->isNull(dstIdx)) {

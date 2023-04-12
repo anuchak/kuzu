@@ -26,16 +26,21 @@ public:
         std::shared_ptr<SSSPMorselTracker>& ssspMorselTracker, const DataPos& extendedNbrsIDPos,
         const DataPos& dstDistancesPos, std::shared_ptr<FTableSharedState> sharedOutputFState,
         std::vector<std::pair<DataPos, common::DataType>>& payloadsPosAndType,
-        std::vector<bool>& payloadsFlatState, std::unique_ptr<PhysicalOperator> child, uint32_t id,
-        const std::string& paramsString)
+        std::vector<bool>& payloadsFlatState, std::shared_ptr<FTableSharedState>& inputFTable,
+        std::vector<DataPos>& srcDstVectorsDataPos, std::vector<uint32_t>& ftColIndicesToScan,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : Sink(std::move(resultSetDescriptor), PhysicalOperatorType::SIMPLE_RECURSIVE_JOIN,
               std::move(child), id, paramsString),
           lowerBound{lowerBound}, upperBound{upperBound}, dstIDPos{dstIDPos},
           payloadsFlatState{payloadsFlatState}, extendedNbrIDsPos{extendedNbrsIDPos},
           sharedOutputFState{std::move(sharedOutputFState)}, payloadsPosAndType{payloadsPosAndType},
-          dstDistancesPos{dstDistancesPos}, ssspMorselTracker{ssspMorselTracker} {}
+          dstDistancesPos{dstDistancesPos}, ssspMorselTracker{ssspMorselTracker},
+          inputFTable{inputFTable}, srcDstVectorsDataPos{srcDstVectorsDataPos},
+          ftColIndicesToScan{ftColIndicesToScan} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
+
+    void writeToLocalOutputFTable(SSSPMorsel* ssspMorsel);
 
     uint64_t writeDistToOutputVector(SSSPMorsel* ssspMorsel);
 
@@ -44,8 +49,8 @@ public:
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<SimpleRecursiveJoin>(resultSetDescriptor->copy(), lowerBound,
             upperBound, dstIDPos, ssspMorselTracker, extendedNbrIDsPos, dstDistancesPos,
-            sharedOutputFState, payloadsPosAndType, payloadsFlatState, children[0]->clone(), id,
-            paramsString);
+            sharedOutputFState, payloadsPosAndType, payloadsFlatState, inputFTable,
+            srcDstVectorsDataPos, ftColIndicesToScan, children[0]->clone(), id, paramsString);
     }
 
 private:
@@ -67,6 +72,12 @@ private:
     std::vector<std::pair<DataPos, common::DataType>> payloadsPosAndType;
     std::vector<bool> payloadsFlatState;
     std::vector<common::ValueVector*> vectorsToCollect;
+
+    // new additions
+    std::shared_ptr<FTableSharedState> inputFTable;
+    std::vector<DataPos> srcDstVectorsDataPos;
+    std::vector<common::ValueVector*> srcDstValueVectors;
+    std::vector<uint32_t> ftColIndicesToScan;
 };
 
 } // namespace processor

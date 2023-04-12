@@ -38,12 +38,15 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalSimpleRecursiveJoinToPhy
         outVecPositions.push_back(dataPos);
         colIndicesToScan.push_back(i);
     }
+    auto inputFTable = scanBFSLevel->getSSSPMorselTracker()->getInputFTable();
     auto simpleRecursiveJoin = std::make_unique<SimpleRecursiveJoin>(
         std::make_unique<ResultSetDescriptor>(*logicalSimpleRecursiveJoin->getSchema()),
         logicalSimpleRecursiveJoin->getLowerBound(), logicalSimpleRecursiveJoin->getUpperBound(),
         dstInternalIDPos, scanBFSLevel->getSSSPMorselTracker(), inputIDPos, dstDistancesPos,
-        sharedOutputFTState, payloadsPosAndType, isPayloadFlat, std::move(prevOperator),
-        getOperatorID(), logicalSimpleRecursiveJoin->getExpressionsForPrinting());
+        sharedOutputFTState, payloadsPosAndType, isPayloadFlat, inputFTable,
+        scanBFSLevel->getSrcDstVectorsDataPos(), scanBFSLevel->getFTableColIndicesToScan(),
+        std::move(prevOperator), getOperatorID(),
+        logicalSimpleRecursiveJoin->getExpressionsForPrinting());
     auto ftableScan = std::make_unique<FactorizedTableScan>(outVecPositions, colIndicesToScan,
         sharedOutputFTState, std::move(simpleRecursiveJoin), getOperatorID(),
         logicalSimpleRecursiveJoin->getExpressionsForPrinting());

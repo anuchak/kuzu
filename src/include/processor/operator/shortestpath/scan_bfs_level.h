@@ -68,7 +68,6 @@ public:
     }
 
 public:
-    std::shared_mutex mutex;
     uint64_t startScanIdx;
     uint64_t numTuplesToScan;
     bool isWrittenToOutFTable;
@@ -106,6 +105,7 @@ public:
 
 private:
     std::shared_mutex mutex;
+    std::shared_mutex mapMutex;
     uint64_t scanStartIdx;
     std::vector<common::ValueVector*> tmpSrcOffsetVector;
     std::vector<ft_col_idx_t> tmpSrcOffsetColIdx;

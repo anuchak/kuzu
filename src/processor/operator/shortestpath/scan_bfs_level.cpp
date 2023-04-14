@@ -9,7 +9,6 @@ namespace kuzu {
 namespace processor {
 
 BFSLevelMorsel SSSPMorsel::getBFSLevelMorsel() {
-    std::unique_lock<std::shared_mutex> lck(mutex);
     if (bfsMorselNextStartIdx == curBFSLevel->bfsLevelNodes.size()) {
         return BFSLevelMorsel(bfsMorselNextStartIdx, 0 /* bfsLevelMorsel size */);
     }
@@ -42,7 +41,7 @@ void SSSPMorsel::markDstNodeOffsets(
 }
 
 SSSPMorsel* SSSPMorselTracker::getAssignedSSSPMorsel(std::thread::id threadID) {
-    std::unique_lock<std::shared_mutex> lck{mutex};
+    std::unique_lock<std::shared_mutex> lck{mapMutex};
     if (ssspMorselPerThread.contains(threadID)) {
         return ssspMorselPerThread[threadID].get();
     }
@@ -50,7 +49,7 @@ SSSPMorsel* SSSPMorselTracker::getAssignedSSSPMorsel(std::thread::id threadID) {
 }
 
 void SSSPMorselTracker::removePrevAssignedSSSPMorsel(std::thread::id threadID) {
-    std::unique_lock<std::shared_mutex> lck{mutex};
+    std::unique_lock<std::shared_mutex> lck{mapMutex};
     if (ssspMorselPerThread.contains(threadID)) {
         ssspMorselPerThread.erase(threadID);
     }
@@ -113,7 +112,7 @@ SSSPMorsel* SSSPMorselTracker::getSSSPMorsel(std::thread::id threadID,
             1 /* numTuplesToScan */, ftColIndicesToScan);
         ssspMorsel->markDstNodeOffsets(srcNodeID.offset, srcDstValueVectors[1]);
     }
-    std::unique_lock<std::shared_mutex> lck{mutex};
+    std::unique_lock<std::shared_mutex> lck{mapMutex};
     return (ssspMorselPerThread[threadID] = std::move(ssspMorsel)).get();
 }
 

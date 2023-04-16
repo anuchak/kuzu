@@ -97,7 +97,7 @@ void ScanBFSLevel::initLocalStateInternal(
     nodesToExtend = resultSet->getValueVector(nodesToExtendDataPos);
 }
 
-bool ScanBFSLevel::getNextTuplesInternal() {
+bool ScanBFSLevel::getNextTuplesInternal(ExecutionContext* context) {
     if (!ssspMorsel || ssspMorsel->isComplete(upperBound)) {
         ssspMorsel = ssspMorselTracker->getSSSPMorsel(
             threadID, maxNodeOffset, srcDstValueVectors, ftColIndicesToScan);

@@ -87,12 +87,12 @@ void Binder::bindPathExpression(const parser::PatternElement& patternElement,
     std::vector<std::shared_ptr<RelExpression>> relExpressions =
         std::vector<std::shared_ptr<RelExpression>>();
     auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
-    queryGraph->insertQueryNodeNameToPosMap(leftNode, 0);
+    queryGraph->addQueryNode(leftNode);
     nodeExpressions.push_back(leftNode);
     for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
         auto patternElementChain = patternElement.getPatternElementChain(i);
         auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
-        queryGraph->insertQueryNodeNameToPosMap(rightNode, i + 1);
+        queryGraph->addQueryNode(rightNode);
         nodeExpressions.push_back(rightNode);
         relExpressions.push_back(
             bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));

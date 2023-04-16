@@ -7,7 +7,6 @@
 #include "planner/logical_plan/logical_operator/logical_extend.h"
 #include "planner/logical_plan/logical_operator/logical_filter.h"
 #include "planner/logical_plan/logical_operator/logical_flatten.h"
-#include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
 #include "planner/logical_plan/logical_operator/logical_scan_node_property.h"
 #include "planner/logical_plan/logical_operator/logical_union.h"
 #include "planner/logical_plan/logical_operator/logical_unwind.h"

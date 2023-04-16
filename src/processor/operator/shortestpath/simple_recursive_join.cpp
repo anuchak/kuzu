@@ -32,7 +32,7 @@ void SimpleRecursiveJoin::executeInternal(kuzu::processor::ExecutionContext* con
          * greater than 0, that indicates some destinations were reached, and we should append the
          * ValueVectors to the factorized table. If not, we continue (meaning fetch another morsel).
          */
-        if (!children[0]->getNextTuple()) {
+        if (!children[0]->getNextTuple(context)) {
             auto ssspMorsel = ssspMorselTracker->getAssignedSSSPMorsel(threadID);
             if (!ssspMorsel) {
                 sharedOutputFState->mergeLocalTable(*localOutputFTable);

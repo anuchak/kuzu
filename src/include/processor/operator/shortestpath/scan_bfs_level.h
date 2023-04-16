@@ -118,7 +118,7 @@ public:
 
     bool isSource() const override { return true; }
 
-    bool getNextTuplesInternal() override;
+    bool getNextTuplesInternal(ExecutionContext* context) override;
 
     void copyCurBFSLevelNodesToVector(BFSLevel& curBFSLevel, BFSLevelMorsel& bfsLevelMorsel);
 

@@ -50,79 +50,6 @@ std::unique_ptr<QueryGraph> Binder::bindPatternElement(
     return queryGraph;
 }
 
-void Binder::bindPathExpression(const parser::PatternElement& patternElement,
-    QueryGraph* queryGraph, PropertyKeyValCollection& collection) {
-    validateNodeInPathExpression(patternElement);
-    validateRelInPathExpression(patternElement);
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        if (!patternElementChain->getRelPattern()->getIsShortestPath()) {
-            throw BinderException("Binding query pattern to path variable is only supported for "
-                                  "Shortest Path queries.");
-        }
-    }
-    if (patternElement.getNumPatternElementChains() > 1) {
-        throw BinderException("Shortest path query pattern not valid (more than source, "
-                              "destination nodes not allowed).");
-    }
-    std::vector<std::shared_ptr<NodeExpression>> nodeExpressions =
-        std::vector<std::shared_ptr<NodeExpression>>();
-    std::vector<std::shared_ptr<RelExpression>> relExpressions =
-        std::vector<std::shared_ptr<RelExpression>>();
-    auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
-    queryGraph->insertQueryNodeNameToPosMap(leftNode, 0);
-    nodeExpressions.push_back(leftNode);
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
-        queryGraph->insertQueryNodeNameToPosMap(rightNode, i + 1);
-        nodeExpressions.push_back(rightNode);
-        relExpressions.push_back(
-            bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));
-        queryGraph->insertQueryRelNameToPosMap(relExpressions[i], i);
-    }
-    auto pathVariableExpression = std::make_shared<PathExpression>(
-        DataTypeID::PATH, patternElement.getPathVariable(), nodeExpressions, relExpressions);
-    auto dataType = DataType(common::INT64);
-    std::unordered_map<common::table_id_t, common::property_id_t> propertyIDPerTable;
-    auto pathLengthPropertyExpression = std::make_shared<PropertyExpression>(
-        dataType, PATH_TYPE_LENGTH_PROPERTY, *pathVariableExpression, propertyIDPerTable, false);
-    pathVariableExpression->setPathLengthExpression(pathLengthPropertyExpression);
-    variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
-    queryGraph->setPathExpression(pathVariableExpression);
-}
-
-void Binder::validateNodeInPathExpression(const parser::PatternElement& patternElement) {
-    if (patternElement.getNumPatternElementChains() == 0) {
-        throw BinderException("Binding path to a single node is not supported.");
-    }
-    if (patternElement.getFirstNodePattern()->getTableNames().size() != 1) {
-        throw BinderException(
-            "Multi Label node pattern is not supported for Shortest Path query expressions.");
-    }
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        if (patternElementChain->getNodePattern()->getTableNames().size() != 1) {
-            throw BinderException(
-                "Multi Label node pattern is not supported for Shortest Path query expressions.");
-        }
-    }
-}
-
-void Binder::validateRelInPathExpression(const parser::PatternElement& patternElement) {
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        if (patternElementChain->getRelPattern()->getTableNames().size() != 1) {
-            throw BinderException(
-                "Multi Label rel pattern is not supported for Shortest Path query expressions.");
-        }
-        if (!patternElementChain->getRelPattern()->getVariableName().empty()) {
-            throw BinderException(
-                "Rel variable for Shortest path expression queries are not allowed.");
-        }
-    }
-}
-
 static std::vector<table_id_t> pruneRelTableIDs(const Catalog& catalog_,
     const std::vector<table_id_t>& relTableIDs, const NodeExpression& srcNode,
     const NodeExpression& dstNode) {
@@ -160,12 +87,12 @@ void Binder::bindPathExpression(const parser::PatternElement& patternElement,
     std::vector<std::shared_ptr<RelExpression>> relExpressions =
         std::vector<std::shared_ptr<RelExpression>>();
     auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
-    queryGraph->insertQueryNodeNameToPosMap(leftNode, 0);
+    queryGraph->addQueryNode(leftNode);
     nodeExpressions.push_back(leftNode);
     for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
         auto patternElementChain = patternElement.getPatternElementChain(i);
         auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
-        queryGraph->insertQueryNodeNameToPosMap(rightNode, i + 1);
+        queryGraph->addQueryNode(rightNode);
         nodeExpressions.push_back(rightNode);
         relExpressions.push_back(
             bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));

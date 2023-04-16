@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "planner/logical_plan/logical_operator/logical_cross_product.h"
 #include "processor/mapper/expression_mapper.h"
 #include "processor/operator/result_collector.h"
 
@@ -133,6 +134,12 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     } break;
     case LogicalOperatorType::RENAME_PROPERTY: {
         physicalOperator = mapLogicalRenamePropertyToPhysical(logicalOperator.get());
+    } break;
+    case LogicalOperatorType::SCAN_BFS_LEVEL: {
+        physicalOperator = mapLogicalScanBFSLevelToPhysical(logicalOperator.get());
+    } break;
+    case LogicalOperatorType::SIMPLE_RECURSIVE_JOIN: {
+        physicalOperator = mapLogicalSimpleRecursiveJoinToPhysical(logicalOperator.get());
     } break;
     default:
         throw common::NotImplementedException("PlanMapper::mapLogicalOperatorToPhysical()");

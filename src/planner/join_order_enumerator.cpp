@@ -1,7 +1,7 @@
 #include "planner/join_order_enumerator.h"
 
-#include "planner/join_order/cost_model.h"
 #include "binder/expression/path_expression.h"
+#include "planner/join_order/cost_model.h"
 #include "planner/logical_plan/logical_operator/logical_cross_product.h"
 #include "planner/logical_plan/logical_operator/logical_extend.h"
 #include "planner/logical_plan/logical_operator/logical_ftable_scan.h"
@@ -9,9 +9,9 @@
 #include "planner/logical_plan/logical_operator/logical_intersect.h"
 #include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
 #include "planner/logical_plan/logical_operator/logical_scan_node.h"
-#include "planner/projection_planner.h"
 #include "planner/logical_plan/logical_operator/logical_simple_recursive_join.h"
 #include "planner/logical_plan/logical_plan_util.h"
+#include "planner/projection_planner.h"
 #include "planner/query_planner.h"
 
 using namespace kuzu::common;
@@ -66,6 +66,7 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::enumerate(
 
 std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
     QueryGraph* queryGraph, binder::expression_vector& predicates) {
+    queryPlanner->cardinalityEstimator->initNodeIDDom(queryGraph);
     auto pathExpression = (PathExpression*)queryGraph->getPathExpression().get();
     auto srcExpression = pathExpression->getSrcExpression();
     auto relExpression = pathExpression->getRelExpression();
@@ -87,10 +88,12 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
             }
         }
     }
+    queryPlanner->appendScanNodePropIfNecessary(
+        queryPlanner->getPropertiesForNode(*srcExpression), srcExpression, *leftPlan);
     queryPlanner->appendFilters(srcPredicates, *leftPlan);
-    queryPlanner->appendScanNodePropIfNecessary(queryPlanner->getPropertiesForNode(*srcExpression), srcExpression, *leftPlan);
+    queryPlanner->appendScanNodePropIfNecessary(
+        queryPlanner->getPropertiesForNode(*dstExpression), dstExpression, *rightPlan);
     queryPlanner->appendFilters(dstPredicates, *rightPlan);
-    queryPlanner->appendScanNodePropIfNecessary(queryPlanner->getPropertiesForNode(*dstExpression), dstExpression, *rightPlan);
     appendCrossProduct(*leftPlan, *rightPlan);
     queryPlanner->appendFlattenIfNecessary(
         leftPlan->getSchema()->getGroupPos(srcExpression->getInternalIDProperty()->getUniqueName()),

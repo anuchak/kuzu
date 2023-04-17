@@ -137,3 +137,17 @@ TEST_F(ApiTest, Profile) {
                     "b.fName='Farooq' } RETURN a.ID, min(a.age)");
     ASSERT_TRUE(result->isSuccess());
 }
+
+TEST_F(ApiTest, Interrupt) {
+    std::thread longRunningQueryThread(executeLongRunningQuery, conn.get());
+    sleep(1 /* sleep 1 second before interrupt the query */);
+    conn->interrupt();
+    longRunningQueryThread.join();
+}
+
+TEST_F(ApiTest, TimeOut) {
+    conn->setQueryTimeOut(1000 /* timeoutInMS */);
+    auto result = conn->query("MATCH (a:person)-[:knows*1..28]->(b:person) RETURN COUNT(*);");
+    ASSERT_FALSE(result->isSuccess());
+    ASSERT_EQ(result->getErrorMessage(), "Interrupted.");
+}

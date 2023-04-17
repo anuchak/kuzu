@@ -23,7 +23,8 @@ void PyQueryResult::initialize(py::handle& m) {
         .def("getAsArrow", &PyQueryResult::getAsArrow)
         .def("getColumnNames", &PyQueryResult::getColumnNames)
         .def("getColumnDataTypes", &PyQueryResult::getColumnDataTypes)
-        .def("resetIterator", &PyQueryResult::resetIterator);
+        .def("resetIterator", &PyQueryResult::resetIterator)
+        .def("isSuccess", &PyQueryResult::isSuccess);
     // PyDateTime_IMPORT is a macro that must be invoked before calling any other cpython datetime
     // macros. One could also invoke this in a separate function like constructor. See
     // https://docs.python.org/3/c-api/datetime.html for details.
@@ -70,8 +71,17 @@ py::object PyQueryResult::convertValueToPyObject(const Value& value) {
     case BOOL: {
         return py::cast(value.getValue<bool>());
     }
+    case INT16: {
+        return py::cast(value.getValue<int16_t>());
+    }
+    case INT32: {
+        return py::cast(value.getValue<int32_t>());
+    }
     case INT64: {
         return py::cast(value.getValue<int64_t>());
+    }
+    case FLOAT: {
+        return py::cast(value.getValue<float>());
     }
     case DOUBLE: {
         return py::cast(value.getValue<double>());
@@ -103,7 +113,8 @@ py::object PyQueryResult::convertValueToPyObject(const Value& value) {
                                         .attr("timedelta")(py::arg("days") = days,
                                             py::arg("microseconds") = intervalVal.micros));
     }
-    case VAR_LIST: {
+    case VAR_LIST:
+    case FIXED_LIST: {
         auto& listVal = value.getListValReference();
         py::list list;
         for (auto i = 0u; i < listVal.size(); ++i) {
@@ -192,6 +203,10 @@ py::list PyQueryResult::getColumnNames() {
 
 void PyQueryResult::resetIterator() {
     queryResult->resetIterator();
+}
+
+bool PyQueryResult::isSuccess() const {
+    return queryResult->isSuccess();
 }
 
 py::dict PyQueryResult::getPyDictFromProperties(

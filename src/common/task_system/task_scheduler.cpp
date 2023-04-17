@@ -62,12 +62,19 @@ void TaskScheduler::waitAllTasksToCompleteOrError() {
     }
 }
 
-void TaskScheduler::scheduleTaskAndWaitOrError(const std::shared_ptr<Task>& task) {
+void TaskScheduler::scheduleTaskAndWaitOrError(
+    const std::shared_ptr<Task>& task, processor::ExecutionContext* context) {
     for (auto& dependency : task->children) {
-        scheduleTaskAndWaitOrError(dependency);
+        scheduleTaskAndWaitOrError(dependency, context);
     }
     auto scheduledTask = scheduleTask(task);
     while (!task->isCompleted()) {
+        if (context != nullptr && context->clientContext->isTimeOutEnabled()) {
+            interruptTaskIfTimeOutNoLock(context);
+        } else if (task->hasException()) {
+            // Interrupt tasks that errored, so other threads can stop working on them early.
+            context->clientContext->interrupt();
+        }
         std::this_thread::sleep_for(
             std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
     }
@@ -141,6 +148,12 @@ void TaskScheduler::runWorkerThread() {
             scheduledTask->task->deRegisterThreadAndFinalizeTaskIfNecessary();
             continue;
         }
+    }
+}
+
+void TaskScheduler::interruptTaskIfTimeOutNoLock(processor::ExecutionContext* context) {
+    if (context->clientContext->isTimeOut()) {
+        context->clientContext->interrupt();
     }
 }
 

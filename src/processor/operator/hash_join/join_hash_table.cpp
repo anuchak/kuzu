@@ -12,7 +12,7 @@ namespace processor {
 JoinHashTable::JoinHashTable(MemoryManager& memoryManager, uint64_t numKeyColumns,
     std::unique_ptr<FactorizedTableSchema> tableSchema)
     : BaseHashTable{memoryManager}, numKeyColumns{numKeyColumns} {
-    auto numSlotsPerBlock = BufferPoolConstants::LARGE_PAGE_SIZE / sizeof(uint8_t*);
+    auto numSlotsPerBlock = BufferPoolConstants::PAGE_256KB_SIZE / sizeof(uint8_t*);
     assert(numSlotsPerBlock == nextPowerOfTwo(numSlotsPerBlock));
     numSlotsPerBlockLog2 = std::log2(numSlotsPerBlock);
     slotIdxInBlockMask = BitmaskUtils::all1sMaskForLeastSignificantBits(numSlotsPerBlockLog2);
@@ -34,7 +34,8 @@ bool JoinHashTable::discardNullFromKeys(
 }
 
 // TODO(Guodong): refactor this function to partially re-use FactorizedTable::append, but calculate
-// numTuplesToAppend here.
+// numTuplesToAppend here. The refactor should also handle the case where multiple unFlat vectors
+// are in the same dataChunk.
 void JoinHashTable::append(const std::vector<ValueVector*>& vectorsToAppend) {
     if (!discardNullFromKeys(vectorsToAppend, numKeyColumns)) {
         return;
@@ -42,9 +43,12 @@ void JoinHashTable::append(const std::vector<ValueVector*>& vectorsToAppend) {
     // TODO(Guodong): use compiling information to remove the for loop.
     auto numTuplesToAppend = 1;
     for (auto i = 0u; i < numKeyColumns; i++) {
-        numTuplesToAppend *= (vectorsToAppend[i]->state->isFlat() ?
-                                  1 :
-                                  vectorsToAppend[i]->state->selVector->selectedSize);
+        // At most one unFlat key data chunk. If there are multiple unFlat key vectors, they must
+        // share the same state.
+        if (!vectorsToAppend[i]->state->isFlat()) {
+            numTuplesToAppend = vectorsToAppend[i]->state->selVector->selectedSize;
+            break;
+        }
     }
     auto appendInfos = factorizedTable->allocateFlatTupleBlocks(numTuplesToAppend);
     for (auto i = 0u; i < vectorsToAppend.size(); i++) {
@@ -80,7 +84,8 @@ void JoinHashTable::buildHashSlots() {
     }
 }
 
-void JoinHashTable::probe(const std::vector<ValueVector*>& keyVectors, uint8_t** probedTuples) {
+void JoinHashTable::probe(const std::vector<ValueVector*>& keyVectors,
+    common::ValueVector* hashVector, common::ValueVector* tmpHashVector, uint8_t** probedTuples) {
     assert(keyVectors.size() == numKeyColumns);
     if (getNumTuples() == 0) {
         return;
@@ -88,14 +93,10 @@ void JoinHashTable::probe(const std::vector<ValueVector*>& keyVectors, uint8_t**
     if (!discardNullFromKeys(keyVectors, numKeyColumns)) {
         return;
     }
-    auto hashVector = std::make_unique<ValueVector>(INT64, &memoryManager);
-    std::unique_ptr<ValueVector> tmpHashVector =
-        keyVectors.size() == 1 ? nullptr : std::make_unique<ValueVector>(INT64, &memoryManager);
-    function::VectorHashOperations::computeHash(keyVectors[0], hashVector.get());
+    function::VectorHashOperations::computeHash(keyVectors[0], hashVector);
     for (auto i = 1u; i < numKeyColumns; i++) {
-        function::VectorHashOperations::computeHash(keyVectors[i], tmpHashVector.get());
-        function::VectorHashOperations::combineHash(
-            hashVector.get(), tmpHashVector.get(), hashVector.get());
+        function::VectorHashOperations::computeHash(keyVectors[i], tmpHashVector);
+        function::VectorHashOperations::combineHash(hashVector, tmpHashVector, hashVector);
     }
     for (auto i = 0u; i < hashVector->state->selVector->selectedSize; i++) {
         auto pos = hashVector->state->selVector->selectedPositions[i];

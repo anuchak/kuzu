@@ -16,6 +16,8 @@ public:
 
     void run();
 
+    static void interruptHandler(int signal);
+
 private:
     void setNumThreads(const std::string& numThreadsString);
 
@@ -29,6 +31,8 @@ private:
     void updateTableNames();
 
     void setLoggingLevel(const std::string& loggingLevel);
+
+    void setQueryTimeout(const std::string& timeoutInMS);
 
 private:
     std::unique_ptr<Database> database;

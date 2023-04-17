@@ -1,15 +1,15 @@
 -NAME OrderByInt64Test
--QUERY MATCH (p:person) RETURN p.age ORDER BY p.age
+-QUERY MATCH (p:person) RETURN p.ID, p.age ORDER BY p.age + p.ID
 -PARALLELISM 3
 ---- 8
-20
-20
-25
-30
-35
-40
-45
-83
+5|20
+7|20
+2|30
+8|25
+0|35
+3|45
+9|40
+10|83
 
 -NAME OrderByInt32Test
 -QUERY MATCH (m:movies) RETURN m.length ORDER BY m.length
@@ -189,3 +189,19 @@ Elizabeth
 -NAME OrderByEmptyResult
 -QUERY MATCH (p:person) WHERE p.age > 100 RETURN p.age ORDER BY p.age 
 ---- 0
+
+-NAME OrderByAggregateTest1
+-QUERY MATCH (a:person)-[:knows]->(b:person) return a.age, COUNT(b) as c ORDER BY a.age
+-ENUMERATE
+---- 4
+20|5
+30|3
+35|3
+45|3
+
+-NAME OrderByAggregateTest2
+-QUERY MATCH (a:person)-[:knows]->(b:person) return a.gender, COUNT(b) ORDER BY COUNT(b) DESC
+-ENUMERATE
+---- 2
+1|8
+2|6

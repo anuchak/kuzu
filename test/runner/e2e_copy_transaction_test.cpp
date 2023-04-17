@@ -11,7 +11,7 @@ using namespace kuzu::storage;
 using namespace kuzu::testing;
 
 namespace kuzu {
-namespace transaction {
+namespace testing {
 
 class TinySnbCopyCSVTransactionTest : public EmptyDBTest {
 
@@ -21,8 +21,9 @@ public:
         createDBAndConn();
         catalog = getCatalog(*database);
         profiler = std::make_unique<Profiler>();
+        clientContext = std::make_unique<ClientContext>();
         executionContext = std::make_unique<ExecutionContext>(1 /* numThreads */, profiler.get(),
-            getMemoryManager(*database), getBufferManager(*database));
+            getMemoryManager(*database), getBufferManager(*database), clientContext.get());
     }
 
     void initWithoutLoadingGraph() {
@@ -57,7 +58,7 @@ public:
         ASSERT_EQ(getStorageManager(*database)
                       ->getNodesStore()
                       .getNodesStatisticsAndDeletedIDs()
-                      .getMaxNodeOffset(TransactionType::READ_ONLY, tableID),
+                      .getMaxNodeOffset(transaction::TransactionType::READ_ONLY, tableID),
             UINT64_MAX);
     }
 
@@ -75,7 +76,7 @@ public:
         ASSERT_EQ(getStorageManager(*database)
                       ->getNodesStore()
                       .getNodesStatisticsAndDeletedIDs()
-                      .getMaxNodeOffset(TransactionType::READ_ONLY, tableID),
+                      .getMaxNodeOffset(transaction::TransactionType::READ_ONLY, tableID),
             7);
     }
 
@@ -88,6 +89,7 @@ public:
         auto physicalPlan =
             mapper.mapLogicalPlanToPhysical(preparedStatement->logicalPlans[0].get(),
                 preparedStatement->getExpressionsToCollect(), preparedStatement->statementType);
+        clientContext->activeQuery = std::make_unique<ActiveQuery>();
         getQueryProcessor(*database)->execute(physicalPlan.get(), executionContext.get());
         auto tableID = catalog->getReadOnlyVersion()->getTableID("person");
         validateDatabaseStateBeforeCheckPointCopyNode(tableID);
@@ -135,7 +137,7 @@ public:
             relTableSchema, DBFileType::WAL_VERSION, true /* existence */);
         validateRelColumnAndListFilesExistence(
             relTableSchema, DBFileType::ORIGINAL, true /* existence */);
-        auto dummyWriteTrx = Transaction::getDummyWriteTrx();
+        auto dummyWriteTrx = transaction::Transaction::getDummyWriteTrx();
         ASSERT_EQ(getStorageManager(*database)->getRelsStore().getRelsStatistics().getNextRelOffset(
                       dummyWriteTrx.get(), tableID),
             14);
@@ -152,7 +154,7 @@ public:
             relTableSchema, DBFileType::ORIGINAL, true /* existence */);
         validateTinysnbKnowsDateProperty();
         auto& relsStatistics = getStorageManager(*database)->getRelsStore().getRelsStatistics();
-        auto dummyWriteTrx = Transaction::getDummyWriteTrx();
+        auto dummyWriteTrx = transaction::Transaction::getDummyWriteTrx();
         ASSERT_EQ(relsStatistics.getNextRelOffset(dummyWriteTrx.get(), knowsTableID), 14);
         ASSERT_EQ(relsStatistics.getReadOnlyVersion()->tableStatisticPerTable.size(), 1);
         auto knowsRelStatistics = (RelStatistics*)relsStatistics.getReadOnlyVersion()
@@ -172,6 +174,7 @@ public:
         auto physicalPlan =
             mapper.mapLogicalPlanToPhysical(preparedStatement->logicalPlans[0].get(),
                 preparedStatement->getExpressionsToCollect(), preparedStatement->statementType);
+        clientContext->activeQuery = std::make_unique<ActiveQuery>();
         getQueryProcessor(*database)->execute(physicalPlan.get(), executionContext.get());
         auto tableID = catalog->getReadOnlyVersion()->getTableID("knows");
         validateDatabaseStateBeforeCheckPointCopyRel(tableID);
@@ -191,7 +194,8 @@ public:
         "CREATE NODE TABLE person (ID INT64, fName STRING, gender INT64, isStudent BOOLEAN, "
         "isWorker BOOLEAN, "
         "age INT64, eyeSight DOUBLE, birthdate DATE, registerTime TIMESTAMP, lastJobDuration "
-        "INTERVAL, workedHours INT64[], usedNames STRING[], courseScoresPerTerm INT64[][], "
+        "INTERVAL, workedHours INT64[], usedNames STRING[], courseScoresPerTerm INT64[][], grades "
+        "INT64[4], height float, "
         "PRIMARY KEY (ID))";
     std::string copyPersonTableCMD =
         "COPY person FROM \"" +
@@ -203,6 +207,7 @@ public:
         "COPY knows FROM \"" + TestHelper::appendKuzuRootPath("dataset/tinysnb/eKnows.csv\"");
     std::unique_ptr<Profiler> profiler;
     std::unique_ptr<ExecutionContext> executionContext;
+    std::unique_ptr<ClientContext> clientContext;
 };
 
 TEST_F(TinySnbCopyCSVTransactionTest, CopyNodeCommitNormalExecution) {
@@ -243,5 +248,5 @@ TEST_F(TinySnbCopyCSVTransactionTest, CopyCSVStatementWithActiveTransactionError
         "previous transaction and issue a ddl query without opening a transaction.");
 }
 
-} // namespace transaction
+} // namespace testing
 } // namespace kuzu

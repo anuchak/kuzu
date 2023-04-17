@@ -11,6 +11,7 @@ namespace processor {
 std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalIntersectToPhysical(
     LogicalOperator* logicalOperator) {
     auto logicalIntersect = (LogicalIntersect*)logicalOperator;
+    auto intersectNodeID = logicalIntersect->getIntersectNodeID();
     auto outSchema = logicalIntersect->getSchema();
     std::vector<std::unique_ptr<PhysicalOperator>> children;
     children.resize(logicalOperator->getNumChildren());
@@ -22,17 +23,19 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalIntersectToPhysical(
         auto buildSchema = logicalIntersect->getChild(i)->getSchema();
         auto buildSidePrevOperator = mapLogicalOperatorToPhysical(logicalIntersect->getChild(i));
         std::vector<DataPos> payloadsDataPos;
-        auto buildDataInfo =
-            generateBuildDataInfo(*buildSchema, {keyNodeID}, buildSchema->getExpressionsInScope());
-        for (auto& [dataPos, _] : buildDataInfo.payloadsPosAndType) {
-            auto expression = buildSchema->getGroup(dataPos.dataChunkPos)
-                                  ->getExpressions()[dataPos.valueVectorPos];
-            if (expression->getUniqueName() ==
-                logicalIntersect->getIntersectNodeID()->getUniqueName()) {
+        binder::expression_vector expressionsToMaterialize;
+        expressionsToMaterialize.push_back(keyNodeID);
+        expressionsToMaterialize.push_back(intersectNodeID);
+        for (auto& expression : buildSchema->getExpressionsInScope()) {
+            if (expression->getUniqueName() == keyNodeID->getUniqueName() ||
+                expression->getUniqueName() == intersectNodeID->getUniqueName()) {
                 continue;
             }
+            expressionsToMaterialize.push_back(expression);
             payloadsDataPos.emplace_back(outSchema->getExpressionPos(*expression));
         }
+        auto buildDataInfo =
+            generateBuildDataInfo(*buildSchema, {keyNodeID}, expressionsToMaterialize);
         auto sharedState = std::make_shared<IntersectSharedState>();
         sharedStates.push_back(sharedState);
         children[i] = make_unique<IntersectBuild>(
@@ -48,8 +51,8 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalIntersectToPhysical(
         DataPos(outSchema->getExpressionPos(*logicalIntersect->getIntersectNodeID()));
     auto intersect = make_unique<Intersect>(outputDataPos, intersectDataInfos, sharedStates,
         std::move(children), getOperatorID(), logicalIntersect->getExpressionsForPrinting());
-    if (logicalIntersect->getSIP() == SidewaysInfoPassing::LEFT_TO_RIGHT) {
-        mapASP(intersect.get());
+    if (logicalIntersect->getSIP() == SidewaysInfoPassing::PROBE_TO_BUILD) {
+        mapAccHashJoin(intersect.get());
     }
     return intersect;
 }

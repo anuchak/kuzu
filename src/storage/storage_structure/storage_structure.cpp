@@ -16,12 +16,12 @@ static inline bool isInRange(uint64_t val, uint64_t start, uint64_t end) {
 void StorageStructure::addNewPageToFileHandle() {
     auto pageIdxInOriginalFile = fileHandle->addNewPage();
     auto pageIdxInWAL = wal->logPageInsertRecord(storageStructureID, pageIdxInOriginalFile);
-    bufferManager.pinWithoutAcquiringPageLock(
-        *wal->fileHandle, pageIdxInWAL, true /* do not read from file */);
-    fileHandle->createPageVersionGroupIfNecessary(pageIdxInOriginalFile);
-    fileHandle->setWALPageVersion(pageIdxInOriginalFile, pageIdxInWAL);
-    bufferManager.setPinnedPageDirty(*wal->fileHandle, pageIdxInWAL);
-    bufferManager.unpinWithoutAcquiringPageLock(*wal->fileHandle, pageIdxInWAL);
+    bufferManager.pin(
+        *wal->fileHandle, pageIdxInWAL, BufferManager::PageReadPolicy::DONT_READ_PAGE);
+    fileHandle->addWALPageIdxGroupIfNecessary(pageIdxInOriginalFile);
+    fileHandle->setWALPageIdx(pageIdxInOriginalFile, pageIdxInWAL);
+    wal->fileHandle->setLockedPageDirty(pageIdxInWAL);
+    bufferManager.unpin(*wal->fileHandle, pageIdxInWAL);
 }
 
 WALPageIdxPosInPageAndFrame StorageStructure::createWALVersionOfPageIfNecessaryForElement(
@@ -88,21 +88,21 @@ void BaseColumnOrList::readInternalIDsFromAPageBySequentialCopy(Transaction* tra
     auto [fileHandleToPin, pageIdxToPin] =
         StorageStructureUtils::getFileHandleAndPhysicalPageIdxToPin(
             *fileHandle, physicalPageIdx, *wal, transaction->getType());
-    auto frame = bufferManager.pin(*fileHandleToPin, pageIdxToPin);
-    if (hasNoNullGuarantee) {
-        vector->setRangeNonNull(vectorStartPos, numValuesToRead);
-    } else {
-        readNullBitsFromAPage(
-            vector, frame, pagePosOfFirstElement, vectorStartPos, numValuesToRead);
-    }
-    auto currentFrameHead = frame + getElemByteOffset(pagePosOfFirstElement);
-    for (auto i = 0u; i < numValuesToRead; i++) {
-        internalID_t internalID{0, commonTableID};
-        internalID.offset = *(offset_t*)currentFrameHead;
-        currentFrameHead += sizeof(offset_t);
-        vector->setValue(vectorStartPos + i, internalID);
-    }
-    bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
+    bufferManager.optimisticRead(*fileHandleToPin, pageIdxToPin, [&](uint8_t* frame) {
+        if (hasNoNullGuarantee) {
+            vector->setRangeNonNull(vectorStartPos, numValuesToRead);
+        } else {
+            readNullBitsFromAPage(
+                vector, frame, pagePosOfFirstElement, vectorStartPos, numValuesToRead);
+        }
+        auto currentFrameHead = frame + getElemByteOffset(pagePosOfFirstElement);
+        for (auto i = 0u; i < numValuesToRead; i++) {
+            internalID_t internalID{0, commonTableID};
+            internalID.offset = *(offset_t*)currentFrameHead;
+            currentFrameHead += sizeof(offset_t);
+            vector->setValue(vectorStartPos + i, internalID);
+        }
+    });
 }
 
 void BaseColumnOrList::readInternalIDsBySequentialCopyWithSelState(Transaction* transaction,
@@ -176,11 +176,12 @@ void BaseColumnOrList::readAPageBySequentialCopy(Transaction* transaction, Value
             *fileHandle, physicalPageIdx, *wal, transaction->getType());
     auto vectorBytesOffset = getElemByteOffset(vectorStartPos);
     auto frameBytesOffset = getElemByteOffset(pagePosOfFirstElement);
-    auto frame = bufferManager.pin(*fileHandleToPin, pageIdxToPin);
-    memcpy(vector->getData() + vectorBytesOffset, frame + frameBytesOffset,
-        numValuesToRead * elementSize);
-    readNullBitsFromAPage(vector, frame, pagePosOfFirstElement, vectorStartPos, numValuesToRead);
-    bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
+    bufferManager.optimisticRead(*fileHandleToPin, pageIdxToPin, [&](uint8_t* frame) {
+        memcpy(vector->getData() + vectorBytesOffset, frame + frameBytesOffset,
+            numValuesToRead * elementSize);
+        readNullBitsFromAPage(
+            vector, frame, pagePosOfFirstElement, vectorStartPos, numValuesToRead);
+    });
 }
 
 void BaseColumnOrList::readNullBitsFromAPage(ValueVector* valueVector, const uint8_t* frame,

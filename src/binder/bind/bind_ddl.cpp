@@ -6,6 +6,7 @@
 #include "binder/ddl/bound_drop_table.h"
 #include "binder/ddl/bound_rename_property.h"
 #include "binder/ddl/bound_rename_table.h"
+#include "common/string_utils.h"
 #include "parser/ddl/add_property.h"
 #include "parser/ddl/create_node_clause.h"
 #include "parser/ddl/create_rel_clause.h"
@@ -158,10 +159,14 @@ uint32_t Binder::bindPrimaryKey(
     }
     auto primaryKey = propertyNameDataTypes[primaryKeyIdx];
     StringUtils::toUpper(primaryKey.second);
-    // We only support INT64 and STRING column as the primary key.
-    if ((primaryKey.second != std::string("INT64")) &&
-        (primaryKey.second != std::string("STRING"))) {
-        throw BinderException("Invalid primary key type: " + primaryKey.second + ".");
+    // We only support INT64, and STRING column as the primary key.
+    switch (Types::dataTypeFromString(primaryKey.second).typeID) {
+    case common::INT64:
+    case common::STRING:
+        break;
+    default:
+        throw BinderException(
+            "Invalid primary key type: " + primaryKey.second + ". Expected STRING or INT64.");
     }
     return primaryKeyIdx;
 }
@@ -180,22 +185,26 @@ DataType Binder::bindDataType(const std::string& dataType) {
     auto boundType = Types::dataTypeFromString(dataType);
     if (boundType.typeID == common::FIXED_LIST) {
         auto validNumericTypes = common::DataType::getNumericalTypeIDs();
-        if (find(validNumericTypes.begin(), validNumericTypes.end(), boundType.childType->typeID) ==
-            validNumericTypes.end()) {
+        auto fixedListTypeInfo = reinterpret_cast<FixedListTypeInfo*>(boundType.getExtraTypeInfo());
+        if (find(validNumericTypes.begin(), validNumericTypes.end(),
+                boundType.getChildType()->typeID) == validNumericTypes.end()) {
             throw common::BinderException(
                 "The child type of a fixed list must be a numeric type. Given: " +
-                common::Types::dataTypeToString(*boundType.childType) + ".");
+                common::Types::dataTypeToString(*boundType.getChildType()) + ".");
         }
-        if (boundType.fixedNumElementsInList == 0) {
+        if (fixedListTypeInfo->getFixedNumElementsInList() == 0) {
             // Note: the parser already guarantees that the number of elements is a non-negative
             // number. However, we still need to check whether the number of elements is 0.
             throw common::BinderException(
                 "The number of elements in a fixed list must be greater than 0. Given: " +
-                std::to_string(boundType.fixedNumElementsInList) + ".");
+                std::to_string(fixedListTypeInfo->getFixedNumElementsInList()) + ".");
         }
-        if (Types::getDataTypeSize(boundType) > common::BufferPoolConstants::DEFAULT_PAGE_SIZE) {
-            throw common::BinderException("The size of fixed list is larger than a "
-                                          "DEFAULT_PAGE_SIZE, which is not supported yet.");
+        auto numElementsPerPage = storage::PageUtils::getNumElementsInAPage(
+            Types::getDataTypeSize(boundType), true /* hasNull */);
+        if (numElementsPerPage == 0) {
+            throw common::BinderException(
+                StringUtils::string_format("Cannot store a fixed list of size {} in a page.",
+                    Types::getDataTypeSize(boundType)));
         }
     }
     return boundType;

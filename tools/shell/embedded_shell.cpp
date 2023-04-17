@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <csignal>
 #include <regex>
 
 #include "catalog/catalog.h"
@@ -9,7 +10,6 @@
 #include "common/type_utils.h"
 #include "json.hpp"
 #include "processor/result/factorized_table.h"
-#include "processor/result/flat_tuple.h"
 #include "utf8proc.h"
 #include "utf8proc_wrapper.h"
 
@@ -36,8 +36,9 @@ struct ShellCommand {
     const std::string SHOW_NODE = ":show_node";
     const std::string SHOW_REL = ":show_rel";
     const std::string LOGGING_LEVEL = ":logging_level";
+    const std::string QUERY_TIMEOUT = ":timeout";
     const std::vector<std::string> commandList = {HELP, CLEAR, QUIT, THREAD, LIST_NODES, LIST_RELS,
-        SHOW_NODE, SHOW_REL, LOGGING_LEVEL};
+        SHOW_NODE, SHOW_REL, LOGGING_LEVEL, QUERY_TIMEOUT};
 } shellCommand;
 
 const char* TAB = "    ";
@@ -62,6 +63,8 @@ std::vector<std::string> relTableNames;
 
 bool continueLine = false;
 std::string currLine;
+
+static Connection* globalConnection;
 
 void EmbeddedShell::updateTableNames() {
     nodeTableNames.clear();
@@ -203,7 +206,9 @@ EmbeddedShell::EmbeddedShell(const std::string& databasePath, const SystemConfig
     linenoiseSetHighlightCallback(highlight);
     database = std::make_unique<Database>(databasePath, systemConfig);
     conn = std::make_unique<Connection>(database.get());
+    globalConnection = conn.get();
     updateTableNames();
+    signal(SIGINT, interruptHandler);
 }
 
 void EmbeddedShell::run() {
@@ -236,6 +241,8 @@ void EmbeddedShell::run() {
             printRelSchema(lineStr.substr(shellCommand.SHOW_REL.length()));
         } else if (lineStr.rfind(shellCommand.LOGGING_LEVEL) == 0) {
             setLoggingLevel(lineStr.substr(shellCommand.LOGGING_LEVEL.length()));
+        } else if (lineStr.rfind(shellCommand.QUERY_TIMEOUT) == 0) {
+            setQueryTimeout(lineStr.substr(shellCommand.QUERY_TIMEOUT.length()));
         } else if (!lineStr.empty()) {
             ss.clear();
             ss.str(lineStr);
@@ -261,6 +268,10 @@ void EmbeddedShell::run() {
     }
 }
 
+void EmbeddedShell::interruptHandler(int signal) {
+    globalConnection->interrupt();
+}
+
 void EmbeddedShell::setNumThreads(const std::string& numThreadsString) {
     auto numThreads = 0;
     try {
@@ -268,6 +279,7 @@ void EmbeddedShell::setNumThreads(const std::string& numThreadsString) {
     } catch (std::exception& e) {
         printf(
             "Cannot parse '%s' as number of threads. Expect integer.\n", numThreadsString.c_str());
+        return;
     }
     try {
         conn->setMaxNumThreadForExec(numThreads);
@@ -304,6 +316,8 @@ void EmbeddedShell::printHelp() {
     printf("%s%s [logging_level] %sset logging level of database, available options: debug, info, "
            "err\n",
         TAB, shellCommand.LOGGING_LEVEL.c_str(), TAB);
+    printf("%s%s [query_timeout] %sset query timeout in ms\n", TAB,
+        shellCommand.QUERY_TIMEOUT.c_str(), TAB);
     printf("%s%s %slist all node tables\n", TAB, shellCommand.LIST_NODES.c_str(), TAB);
     printf("%s%s %slist all rel tables\n", TAB, shellCommand.LIST_RELS.c_str(), TAB);
     printf("%s%s %s[table_name] show node schema\n", TAB, shellCommand.SHOW_NODE.c_str(), TAB);
@@ -393,6 +407,12 @@ void EmbeddedShell::setLoggingLevel(const std::string& loggingLevel) {
         database->setLoggingLevel(level);
         printf("logging level has been set to: %s.\n", level.c_str());
     } catch (Exception& e) { printf("%s", e.what()); }
+}
+
+void EmbeddedShell::setQueryTimeout(const std::string& timeoutInMS) {
+    auto queryTimeOutVal = std::stoull(ltrim(timeoutInMS));
+    conn->setQueryTimeOut(queryTimeOutVal);
+    printf("query timeout value has been set to: %llu ms.\n", queryTimeOutVal);
 }
 
 } // namespace main

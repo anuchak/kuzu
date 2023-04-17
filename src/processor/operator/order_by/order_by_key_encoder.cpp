@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include "common/string_utils.h"
+
 using namespace kuzu::common;
 using namespace kuzu::storage;
 
@@ -22,11 +24,11 @@ OrderByKeyEncoder::OrderByKeyEncoder(std::vector<ValueVector*>& orderByVectors,
     }
     keyBlocks.emplace_back(std::make_unique<DataBlock>(memoryManager));
     assert(this->numBytesPerTuple == getNumBytesPerTuple());
-    maxNumTuplesPerBlock = BufferPoolConstants::LARGE_PAGE_SIZE / numBytesPerTuple;
+    maxNumTuplesPerBlock = BufferPoolConstants::PAGE_256KB_SIZE / numBytesPerTuple;
     if (maxNumTuplesPerBlock <= 0) {
         throw RuntimeException(StringUtils::string_format(
             "TupleSize({} bytes) is larger than the LARGE_PAGE_SIZE({} bytes)", numBytesPerTuple,
-            BufferPoolConstants::LARGE_PAGE_SIZE));
+            BufferPoolConstants::PAGE_256KB_SIZE));
     }
     encodeFunctions.resize(orderByVectors.size());
     for (auto i = 0u; i < orderByVectors.size(); i++) {
@@ -74,12 +76,6 @@ uint32_t OrderByKeyEncoder::getEncodingSize(const DataType& dataType) {
     default:
         return 1 + Types::getDataTypeSize(dataType);
     }
-}
-
-bool OrderByKeyEncoder::isLittleEndian() {
-    // Little endian arch stores the least significant value in the lower bytes.
-    int testNumber = 1;
-    return *(uint8_t*)&testNumber == 1;
 }
 
 void OrderByKeyEncoder::flipBytesIfNecessary(

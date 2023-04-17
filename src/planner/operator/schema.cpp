@@ -99,6 +99,14 @@ void Schema::clear() {
     clearExpressionsInScope();
 }
 
+size_t Schema::getNumGroups(bool isFlat) const {
+    auto result = 0u;
+    for (auto groupPos : getGroupsPosInScope()) {
+        result += groups[groupPos]->isFlat() == isFlat;
+    }
+    return result;
+}
+
 std::vector<binder::expression_vector> SchemaUtils::getExpressionsPerGroup(
     const binder::expression_vector& expressions, const Schema& schema) {
     std::vector<binder::expression_vector> result;

@@ -76,7 +76,7 @@ TEST_F(BinderErrorTest, BindVariableNotInScope2) {
 
 TEST_F(BinderErrorTest, BindPropertyLookUpOnExpression) {
     std::string expectedException =
-        "Binder exception: +(a.age,2) has data type INT64. (REL,NODE) was expected.";
+        "Binder exception: +(a.age,2) has data type INT64. (PATH,REL,NODE) was expected.";
     auto input = "MATCH (a:person)-[e1:knows]->(b:person) RETURN (a.age + 2).age;";
     ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
 }
@@ -168,8 +168,9 @@ TEST_F(BinderErrorTest, BindFunctionWithWrongParamType) {
 }
 
 TEST_F(BinderErrorTest, OrderByVariableNotInScope) {
-    std::string expectedException = "Binder exception: Variable a is not in scope.";
-    auto input = "MATCH (a:person)-[e1:knows]->(b:person) RETURN SUM(a.age) ORDER BY a;";
+    std::string expectedException =
+        "Binder exception: Order by expression a.ID is not in RETURN or WITH clause.";
+    auto input = "MATCH (a:person)-[e1:knows]->(b:person) RETURN SUM(a.age) ORDER BY a.ID;";
     ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
 }
 
@@ -295,7 +296,7 @@ TEST_F(BinderErrorTest, CreateNodeTableDuplicatedColumnName) {
 }
 
 TEST_F(BinderErrorTest, CopyCSVInvalidParsingOption) {
-    std::string expectedException = "Binder exception: Unrecognized parsing csv option: pk.";
+    std::string expectedException = "Binder exception: Unrecognized parsing csv option: PK.";
     auto input = R"(COPY person FROM "person_0_0.csv" (pk=","))";
     ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
 }
@@ -388,9 +389,12 @@ TEST_F(BinderErrorTest, MaxNodeID) {
     std::string expectedException =
         "Binder exception: Cannot match a built-in function for given function MIN(INTERNAL_ID). "
         "Supported inputs are\nDISTINCT (BOOL) -> BOOL\n(BOOL) -> BOOL\nDISTINCT (INT64) -> "
-        "INT64\n(INT64) -> INT64\nDISTINCT (DOUBLE) -> DOUBLE\n(DOUBLE) -> DOUBLE\nDISTINCT "
-        "(DATE) -> DATE\n(DATE) -> DATE\nDISTINCT (STRING) -> STRING\n(STRING) -> "
-        "STRING\n";
+        "INT64\n(INT64) -> INT64\nDISTINCT (INT32) -> INT32\n(INT32) -> INT32\nDISTINCT (INT16) -> "
+        "INT16\n(INT16) -> INT16\nDISTINCT (DOUBLE) -> DOUBLE\n(DOUBLE) -> DOUBLE\nDISTINCT "
+        "(FLOAT) -> FLOAT\n(FLOAT) -> FLOAT\nDISTINCT "
+        "(DATE) -> DATE\n(DATE) -> DATE\nDISTINCT (TIMESTAMP) -> TIMESTAMP\n(TIMESTAMP) -> "
+        "TIMESTAMP\nDISTINCT (INTERVAL) -> INTERVAL\n(INTERVAL) -> INTERVAL\nDISTINCT (STRING) -> "
+        "STRING\n(STRING) -> STRING\n";
     auto input = "MATCH (a:person) RETURN MIN(a);";
     ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
 }
@@ -427,10 +431,9 @@ TEST_F(BinderErrorTest, AddPropertyDuplicateName) {
 }
 
 TEST_F(BinderErrorTest, AddPropertyUnmatchedDefaultValueType) {
-    std::string expectedException =
-        "Binder exception: Expression 3.200000 has data type DOUBLE but expect "
-        "INT64. Implicit cast is not supported.";
-    auto input = "alter table person add intCol INT64 DEFAULT 3.2";
+    std::string expectedException = "Binder exception: Expression 3.2 has data type STRING but "
+                                    "expect INT64. Implicit cast is not supported.";
+    auto input = "alter table person add intCol INT64 DEFAULT '3.2'";
     ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
 }
 
@@ -477,5 +480,25 @@ TEST_F(BinderErrorTest, InvalidFixedListNumElements) {
     std::string expectedException = "Binder exception: The number of elements in a fixed list must "
                                     "be greater than 0. Given: 0.";
     auto input = "create node table test1(ID INT64, marks INT64[0], PRIMARY KEY(ID))";
+    ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
+}
+
+TEST_F(BinderErrorTest, InvalidFixedListSize) {
+    std::string expectedException =
+        "Binder exception: Cannot store a fixed list of size 4096 in a page.";
+    auto input = "create node table test1(ID INT64, marks INT64[512], PRIMARY KEY(ID))";
+    ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
+}
+
+TEST_F(BinderErrorTest, MissingStructFieldType) {
+    std::string expectedException = "Cannot parse dataTypeID: INT35";
+    auto input = "create node table test1(ID INT64, description STRUCT(name INT64, age INT35), "
+                 "PRIMARY KEY(ID))";
+    ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
+}
+
+TEST_F(BinderErrorTest, MissingStructFields) {
+    std::string expectedException = "Cannot parse struct type: STRUCT";
+    auto input = "create node table test1(ID INT64, description STRUCT, PRIMARY KEY(ID))";
     ASSERT_STREQ(expectedException.c_str(), getBindingError(input).c_str());
 }

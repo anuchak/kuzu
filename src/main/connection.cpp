@@ -229,7 +229,7 @@ std::string Connection::getNodePropertyNames(const std::string& tableName) {
     lock_t lck{mtx};
     auto catalog = database->catalog.get();
     if (!catalog->getReadOnlyVersion()->containNodeTable(tableName)) {
-        throw Exception("Cannot find node table " + tableName);
+        throw RuntimeException("Cannot find node table " + tableName);
     }
     std::string result = tableName + " properties: \n";
     auto tableID = catalog->getReadOnlyVersion()->getTableID(tableName);
@@ -246,7 +246,7 @@ std::string Connection::getRelPropertyNames(const std::string& relTableName) {
     lock_t lck{mtx};
     auto catalog = database->catalog.get();
     if (!catalog->getReadOnlyVersion()->containRelTable(relTableName)) {
-        throw Exception("Cannot find rel table " + relTableName);
+        throw RuntimeException("Cannot find rel table " + relTableName);
     }
     auto relTableID = catalog->getReadOnlyVersion()->getTableID(relTableName);
     auto srcTableID =
@@ -269,6 +269,15 @@ std::string Connection::getRelPropertyNames(const std::string& relTableName) {
 
 std::unique_ptr<QueryResult> Connection::kuzu_query(const char* queryString) {
     return query(queryString);
+}
+
+void Connection::interrupt() {
+    clientContext->activeQuery->interrupted = true;
+}
+
+void Connection::setQueryTimeOut(uint64_t timeoutInMS) {
+    lock_t lck{mtx};
+    clientContext->timeoutInMS = timeoutInMS;
 }
 
 std::unique_ptr<QueryResult> Connection::executeWithParams(PreparedStatement* preparedStatement,
@@ -305,6 +314,8 @@ void Connection::bindParametersNoLock(PreparedStatement* preparedStatement,
 
 std::unique_ptr<QueryResult> Connection::executeAndAutoCommitIfNecessaryNoLock(
     PreparedStatement* preparedStatement, uint32_t planIdx) {
+    clientContext->activeQuery = std::make_unique<ActiveQuery>();
+    clientContext->startTimingIfEnabled();
     auto mapper = PlanMapper(
         *database->storageManager, database->memoryManager.get(), database->catalog.get());
     std::unique_ptr<PhysicalPlan> physicalPlan;
@@ -326,7 +337,7 @@ std::unique_ptr<QueryResult> Connection::executeAndAutoCommitIfNecessaryNoLock(
     auto profiler = std::make_unique<Profiler>();
     auto executionContext =
         std::make_unique<ExecutionContext>(clientContext->numThreadsForExecution, profiler.get(),
-            database->memoryManager.get(), database->bufferManager.get());
+            database->memoryManager.get(), database->bufferManager.get(), clientContext.get());
     // Execute query if EXPLAIN is not enabled.
     if (!preparedStatement->preparedSummary.isExplain) {
         profiler->enabled = preparedStatement->preparedSummary.isProfile;
@@ -341,11 +352,7 @@ std::unique_ptr<QueryResult> Connection::executeAndAutoCommitIfNecessaryNoLock(
             if (ConnectionTransactionMode::AUTO_COMMIT == transactionMode) {
                 commitNoLock();
             }
-        } catch (Exception& exception) {
-            rollbackIfNecessaryNoLock();
-            std::string errMsg = exception.what();
-            return queryResultWithError(errMsg);
-        }
+        } catch (Exception& exception) { return getQueryResultWithError(exception.what()); }
         executingTimer.stop();
         queryResult->querySummary->executionTime = executingTimer.getElapsedTimeMS();
         queryResult->initResultTableAndIterator(std::move(resultFT),

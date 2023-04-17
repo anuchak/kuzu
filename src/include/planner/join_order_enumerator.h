@@ -18,13 +18,9 @@ class JoinOrderEnumeratorContext;
  *      filter push down
  */
 class JoinOrderEnumerator {
-    friend class ASPOptimizer;
-
 public:
-    JoinOrderEnumerator(const catalog::Catalog& catalog,
-        const storage::NodesStatisticsAndDeletedIDs& nodesStatistics,
-        const storage::RelsStatistics& relsStatistics, QueryPlanner* queryPlanner)
-        : catalog{catalog}, nodesStatistics{nodesStatistics}, relsStatistics{relsStatistics},
+    JoinOrderEnumerator(const catalog::Catalog& catalog, QueryPlanner* queryPlanner)
+        : catalog{catalog},
           queryPlanner{queryPlanner}, context{std::make_unique<JoinOrderEnumeratorContext>()} {};
 
     std::vector<std::unique_ptr<LogicalPlan>> enumerate(
@@ -32,33 +28,23 @@ public:
 
     inline void resetState() { context->resetState(); }
 
-    std::unique_ptr<JoinOrderEnumeratorContext> enterSubquery(LogicalPlan* outerPlan,
-        binder::expression_vector expressionsToScan,
+    std::unique_ptr<JoinOrderEnumeratorContext> enterSubquery(
         binder::expression_vector nodeIDsToScanFromInnerAndOuter);
     void exitSubquery(std::unique_ptr<JoinOrderEnumeratorContext> prevContext);
 
-    static inline void planMarkJoin(const binder::expression_vector& joinNodeIDs,
+    inline void planMarkJoin(const binder::expression_vector& joinNodeIDs,
         std::shared_ptr<Expression> mark, LogicalPlan& probePlan, LogicalPlan& buildPlan) {
         planJoin(joinNodeIDs, common::JoinType::MARK, mark, probePlan, buildPlan);
     }
-    static inline void planInnerHashJoin(
-        const std::vector<std::shared_ptr<NodeExpression>>& joinNodes, LogicalPlan& probePlan,
-        LogicalPlan& buildPlan) {
-        binder::expression_vector joinNodeIDs;
-        for (auto& joinNode : joinNodes) {
-            joinNodeIDs.push_back(joinNode->getInternalIDProperty());
-        }
-        planJoin(joinNodeIDs, common::JoinType::INNER, nullptr /* mark */, probePlan, buildPlan);
-    }
-    static inline void planInnerHashJoin(const binder::expression_vector& joinNodeIDs,
+    inline void planInnerHashJoin(const binder::expression_vector& joinNodeIDs,
         LogicalPlan& probePlan, LogicalPlan& buildPlan) {
         planJoin(joinNodeIDs, common::JoinType::INNER, nullptr /* mark */, probePlan, buildPlan);
     }
-    static inline void planLeftHashJoin(const binder::expression_vector& joinNodeIDs,
+    inline void planLeftHashJoin(const binder::expression_vector& joinNodeIDs,
         LogicalPlan& probePlan, LogicalPlan& buildPlan) {
         planJoin(joinNodeIDs, common::JoinType::LEFT, nullptr /* mark */, probePlan, buildPlan);
     }
-    static inline void planCrossProduct(LogicalPlan& probePlan, LogicalPlan& buildPlan) {
+    inline void planCrossProduct(LogicalPlan& probePlan, LogicalPlan& buildPlan) {
         appendCrossProduct(probePlan, buildPlan);
     }
 
@@ -73,19 +59,11 @@ public:
     std::vector<std::unique_ptr<LogicalPlan>> enumerate(
         QueryGraph* queryGraph, binder::expression_vector& predicates);
 
-    void planTableScan();
-
+    void planBaseTableScan();
     void planNodeScan(uint32_t nodePos);
-    // Filter push down for node table.
-    void planFiltersForNode(binder::expression_vector& predicates,
-        std::shared_ptr<NodeExpression> node, LogicalPlan& plan);
-    // Property push down for node table.
-    void planPropertyScansForNode(std::shared_ptr<NodeExpression> node, LogicalPlan& plan);
-
     void planRelScan(uint32_t relPos);
-
-    void planExtendAndFilters(std::shared_ptr<RelExpression> rel, common::RelDirection direction,
-        binder::expression_vector& predicates, LogicalPlan& plan);
+    void appendExtendAndFilter(std::shared_ptr<RelExpression> rel, common::RelDirection direction,
+        const expression_vector& predicates, LogicalPlan& plan);
 
     void planLevel(uint32_t level);
     void planLevelExactly(uint32_t level);
@@ -98,18 +76,14 @@ public:
 
     void planInnerJoin(uint32_t leftLevel, uint32_t rightLevel);
 
-    bool canApplyINLJoin(const SubqueryGraph& subgraph, const SubqueryGraph& otherSubgraph,
-        const std::vector<std::shared_ptr<NodeExpression>>& joinNodes);
-    void planInnerINLJoin(const SubqueryGraph& subgraph, const SubqueryGraph& otherSubgraph,
+    bool tryPlanINLJoin(const SubqueryGraph& subgraph, const SubqueryGraph& otherSubgraph,
         const std::vector<std::shared_ptr<NodeExpression>>& joinNodes);
     void planInnerHashJoin(const SubqueryGraph& subgraph, const SubqueryGraph& otherSubgraph,
         std::vector<std::shared_ptr<NodeExpression>> joinNodes, bool flipPlan);
     // Filter push down for hash join.
     void planFiltersForHashJoin(binder::expression_vector& predicates, LogicalPlan& plan);
 
-    void appendScanNode(std::shared_ptr<NodeExpression>& node, LogicalPlan& plan);
-    void appendIndexScanNode(std::shared_ptr<NodeExpression>& node,
-        std::shared_ptr<Expression> indexExpression, LogicalPlan& plan);
+    void appendScanNodeID(std::shared_ptr<NodeExpression>& node, LogicalPlan& plan);
 
     bool needExtendToNewGroup(
         RelExpression& rel, NodeExpression& boundNode, common::RelDirection direction);
@@ -118,21 +92,16 @@ public:
         common::RelDirection direction, const binder::expression_vector& properties,
         LogicalPlan& plan);
 
-    static void planJoin(const binder::expression_vector& joinNodeIDs, common::JoinType joinType,
+    void planJoin(const binder::expression_vector& joinNodeIDs, common::JoinType joinType,
         std::shared_ptr<Expression> mark, LogicalPlan& probePlan, LogicalPlan& buildPlan);
-    static void appendHashJoin(const binder::expression_vector& joinNodeIDs,
-        common::JoinType joinType, LogicalPlan& probePlan, LogicalPlan& buildPlan);
-    static void appendMarkJoin(const binder::expression_vector& joinNodeIDs,
+    void appendHashJoin(const binder::expression_vector& joinNodeIDs, common::JoinType joinType,
+        LogicalPlan& probePlan, LogicalPlan& buildPlan);
+    void appendMarkJoin(const binder::expression_vector& joinNodeIDs,
         const std::shared_ptr<Expression>& mark, LogicalPlan& probePlan, LogicalPlan& buildPlan);
-    static void appendIntersect(const std::shared_ptr<Expression>& intersectNodeID,
+    void appendIntersect(const std::shared_ptr<Expression>& intersectNodeID,
         binder::expression_vector& boundNodeIDs, LogicalPlan& probePlan,
         std::vector<std::unique_ptr<LogicalPlan>>& buildPlans);
-    static void appendCrossProduct(LogicalPlan& probePlan, LogicalPlan& buildPlan);
-
-    binder::expression_vector getPropertiesForVariable(
-        Expression& expression, Expression& variable);
-    uint64_t getExtensionRate(
-        const RelExpression& rel, const NodeExpression& boundNode, common::RelDirection direction);
+    void appendCrossProduct(LogicalPlan& probePlan, LogicalPlan& buildPlan);
 
     static binder::expression_vector getNewlyMatchedExpressions(const SubqueryGraph& prevSubgraph,
         const SubqueryGraph& newSubgraph, const binder::expression_vector& expressions) {
@@ -147,8 +116,6 @@ public:
 
 private:
     const catalog::Catalog& catalog;
-    const storage::NodesStatisticsAndDeletedIDs& nodesStatistics;
-    const storage::RelsStatistics& relsStatistics;
     QueryPlanner* queryPlanner;
     std::unique_ptr<JoinOrderEnumeratorContext> context;
 };

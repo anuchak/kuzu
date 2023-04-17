@@ -1,5 +1,6 @@
 #include "storage/store/rel_table.h"
 
+#include "common/string_utils.h"
 #include "spdlog/spdlog.h"
 #include "storage/storage_structure/lists/lists_update_iterator.h"
 
@@ -449,7 +450,7 @@ void RelTable::prepareCommitForList(AdjLists* adjLists, offset_t nodeOffset,
     ListsUpdatesForNodeOffset* listsUpdatesForNodeOffset, RelDirection relDirection,
     ListsUpdateIteratorsForDirection* listsUpdateIteratorsForDirection) {
     auto relIDLists =
-        (RelIDList*)getPropertyLists(relDirection, RelTableSchema::INTERNAL_REL_ID_PROPERTY_IDX);
+        (RelIDList*)getPropertyLists(relDirection, RelTableSchema::INTERNAL_REL_ID_PROPERTY_ID);
     auto deletedRelOffsets = relIDLists->getDeletedRelOffsetsInListForNodeOffset(nodeOffset);
     // Note: updating adjList is not supported, thus updatedPersistentListOffsets
     // for adjList should be empty.

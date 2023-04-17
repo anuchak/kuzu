@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG release-1.11.0
+        GIT_TAG v1.13.0
 )
 FetchContent_MakeAvailable(googletest)
 add_library(GTest::GTest INTERFACE IMPORTED)
@@ -19,6 +19,7 @@ add_subdirectory(common)
 add_subdirectory(copy)
 add_subdirectory(demo_db)
 add_subdirectory(main)
+add_subdirectory(optimizer)
 add_subdirectory(parser)
 add_subdirectory(processor)
 add_subdirectory(runner)

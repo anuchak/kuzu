@@ -9,7 +9,7 @@ namespace processor {
 
 void SimpleRecursiveJoin::initLocalStateInternal(
     kuzu::processor::ResultSet* resultSet, kuzu::processor::ExecutionContext* context) {
-    threadID = std::this_thread::get_id();
+    threadIdx = ssspMorselTracker->getThreadIdx(std::this_thread::get_id());
     extendedNbrIDs = resultSet->getValueVector(extendedNbrIDsPos);
     for (auto [dataPos, _] : payloadsPosAndType) {
         auto vector = resultSet->getValueVector(dataPos);
@@ -37,7 +37,7 @@ void SimpleRecursiveJoin::executeInternal(kuzu::processor::ExecutionContext* con
          * ValueVectors to the factorized table. If not, we continue (meaning fetch another morsel).
          */
         if (!children[0]->getNextTuple(context)) {
-            auto ssspMorsel = ssspMorselTracker->getAssignedSSSPMorsel(threadID);
+            auto ssspMorsel = ssspMorselTracker->getAssignedSSSPMorsel(threadIdx);
             if (!ssspMorsel) {
                 sharedOutputFState->mergeLocalTable(*localOutputFTable);
                 return;
@@ -50,7 +50,7 @@ void SimpleRecursiveJoin::executeInternal(kuzu::processor::ExecutionContext* con
          * If an SSSPMorsel is complete, ignore traversing through the inputIDVector.
          * This can happen when we have finished a morsel but ScanRelTable is still extending nodes.
          */
-        auto ssspMorsel = ssspMorselTracker->getAssignedSSSPMorsel(threadID);
+        auto ssspMorsel = ssspMorselTracker->getAssignedSSSPMorsel(threadIdx);
         if (ssspMorsel->isComplete(upperBound) && ssspMorsel->isWrittenToOutFTable) {
             continue;
         }

@@ -87,17 +87,21 @@ public:
         std::vector<common::ValueVector*>& tmpSrcOffsetVector,
         std::vector<ft_col_idx_t>& tmpSrcOffsetColIdx)
         : scanStartIdx{0u}, tmpSrcOffsetVector{tmpSrcOffsetVector},
-          tmpSrcOffsetColIdx{tmpSrcOffsetColIdx},
-          ssspMorselPerThread{std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>>()},
-          inputFTable{std::move(inputFTable)} {};
+          tmpSrcOffsetColIdx{tmpSrcOffsetColIdx}, inputFTable{std::move(inputFTable)},
+          nextLocalThreadID{0u}, threadIdxMap{std::unordered_map<std::thread::id, uint64_t>()},
+          ssspMorselPerThreadVector{std::vector<std::unique_ptr<SSSPMorsel>>()} {};
 
-    SSSPMorsel* getAssignedSSSPMorsel(std::thread::id threadID);
+    uint64_t getLocalThreadIdx(std::thread::id threadID);
 
-    void removePrevAssignedSSSPMorsel(std::thread::id threadID);
+    uint64_t getThreadIdx(std::thread::id threadID);
+
+    SSSPMorsel* getAssignedSSSPMorsel(uint64_t threadIdx);
+
+    void removePrevAssignedSSSPMorsel(uint64_t threadIdx);
 
     std::pair<uint64_t, uint64_t> findSSSPMorselScanRange();
 
-    SSSPMorsel* getSSSPMorsel(std::thread::id threadID, common::offset_t maxNodeOffset,
+    SSSPMorsel* getSSSPMorsel(uint64_t threadIdx, common::offset_t maxNodeOffset,
         std::vector<common::ValueVector*> srcDstValueVectors,
         std::vector<uint32_t>& ftColIndicesToScan);
 
@@ -106,10 +110,12 @@ public:
 private:
     std::shared_mutex mutex;
     std::shared_mutex mapMutex;
+    uint64_t nextLocalThreadID;
+    std::unordered_map<std::thread::id, uint64_t> threadIdxMap;
     uint64_t scanStartIdx;
     std::vector<common::ValueVector*> tmpSrcOffsetVector;
     std::vector<ft_col_idx_t> tmpSrcOffsetColIdx;
-    std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>> ssspMorselPerThread;
+    std::vector<std::unique_ptr<SSSPMorsel>> ssspMorselPerThreadVector;
     std::shared_ptr<FTableSharedState> inputFTable;
 };
 
@@ -149,7 +155,7 @@ public:
     }
 
 private:
-    std::thread::id threadID;
+    uint64_t threadIdx;
     common::offset_t maxNodeOffset;
     // The ValueVector into which ScanBFSLevel will write the nodes to be extended.
     DataPos nodesToExtendDataPos;

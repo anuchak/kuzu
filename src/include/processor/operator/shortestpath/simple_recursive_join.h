@@ -61,7 +61,7 @@ private:
 private:
     uint8_t lowerBound;
     uint8_t upperBound;
-    std::thread::id threadID;
+    uint64_t threadIdx;
     DataPos dstIDPos;
     DataPos dstDistancesPos;
     DataPos extendedNbrIDsPos;

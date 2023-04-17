@@ -91,13 +91,12 @@ std::vector<std::unique_ptr<LogicalPlan>> JoinOrderEnumerator::planShortestPath(
     queryPlanner->appendScanNodePropIfNecessary(
         queryPlanner->getPropertiesForNode(*srcExpression), srcExpression, *leftPlan);
     queryPlanner->appendFilters(srcPredicates, *leftPlan);
-    queryPlanner->appendScanNodePropIfNecessary(
-        queryPlanner->getPropertiesForNode(*dstExpression), dstExpression, *rightPlan);
-    queryPlanner->appendFilters(dstPredicates, *rightPlan);
-    appendCrossProduct(*leftPlan, *rightPlan);
     queryPlanner->appendFlattenIfNecessary(
         leftPlan->getSchema()->getGroupPos(srcExpression->getInternalIDProperty()->getUniqueName()),
         *leftPlan);
+    queryPlanner->appendScanNodePropIfNecessary(
+        queryPlanner->getPropertiesForNode(*dstExpression), dstExpression, *rightPlan);
+    queryPlanner->appendFilters(dstPredicates, *rightPlan);
     appendCrossProduct(*leftPlan, *rightPlan);
     auto logicalScanBFSLevel = std::make_shared<LogicalScanBFSLevel>(relExpression->getLowerBound(),
         relExpression->getUpperBound(), srcExpression, dstExpression,

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(Kuzu VERSION 0.0.4 LANGUAGES CXX)
+project(Kuzu VERSION 0.0.3.1 LANGUAGES CXX)
 
 find_package(Threads REQUIRED)
 
@@ -78,6 +78,7 @@ function(add_kuzu_test TEST_NAME)
 endfunction()
 
 add_definitions(-DKUZU_ROOT_DIRECTORY="${PROJECT_SOURCE_DIR}")
+add_definitions(-DKUZU_STORAGE_VERSION="${CMAKE_PROJECT_VERSION}")
 
 set(ARROW_INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/external/build/arrow/install)
 find_library(ARROW_DEPS_PATH arrow_bundled_dependencies HINTS ${ARROW_INSTALL}/lib ${ARROW_INSTALL}/lib64)
@@ -97,9 +98,11 @@ include_directories(third_party/antlr4_cypher/include)
 include_directories(third_party/antlr4_runtime/src)
 include_directories(third_party/spdlog)
 include_directories(third_party/nlohmann_json)
+include_directories(third_party/pyparse)
 include_directories(third_party/utf8proc/include)
 include_directories(third_party/pybind11/include)
 include_directories(third_party/re2/include)
+include_directories(third_party/concurrentqueue)
 
 add_subdirectory(third_party)
 add_subdirectory(src)

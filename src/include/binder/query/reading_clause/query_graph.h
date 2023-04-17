@@ -9,10 +9,14 @@
 namespace kuzu {
 namespace binder {
 
-const uint8_t MAX_NUM_VARIABLES = 64;
+constexpr static uint8_t MAX_NUM_QUERY_VARIABLES = 64;
 
 class QueryGraph;
 struct SubqueryGraph;
+struct SubqueryGraphHasher;
+using subquery_graph_set_t = std::unordered_set<SubqueryGraph, SubqueryGraphHasher>;
+template<typename T>
+using subquery_graph_V_map_t = std::unordered_map<SubqueryGraph, T, SubqueryGraphHasher>;
 
 // hash on node bitset if subgraph has no rel
 struct SubqueryGraphHasher {
@@ -22,8 +26,8 @@ struct SubqueryGraphHasher {
 struct SubqueryGraph {
 
     const QueryGraph& queryGraph;
-    std::bitset<MAX_NUM_VARIABLES> queryNodesSelector;
-    std::bitset<MAX_NUM_VARIABLES> queryRelsSelector;
+    std::bitset<MAX_NUM_QUERY_VARIABLES> queryNodesSelector;
+    std::bitset<MAX_NUM_QUERY_VARIABLES> queryRelsSelector;
 
     explicit SubqueryGraph(const QueryGraph& queryGraph) : queryGraph{queryGraph} {}
 
@@ -52,7 +56,7 @@ struct SubqueryGraph {
 
     std::unordered_set<uint32_t> getNodeNbrPositions() const;
     std::unordered_set<uint32_t> getRelNbrPositions() const;
-    std::unordered_set<SubqueryGraph, SubqueryGraphHasher> getNbrSubgraphs(uint32_t size) const;
+    subquery_graph_set_t getNbrSubgraphs(uint32_t size) const;
     std::vector<uint32_t> getConnectedNodePos(const SubqueryGraph& nbr) const;
 
     // E.g. query graph (a)-[e1]->(b) and subgraph (a)-[e1], although (b) is not in subgraph, we
@@ -66,9 +70,8 @@ struct SubqueryGraph {
     }
 
 private:
-    std::unordered_set<SubqueryGraph, SubqueryGraphHasher> getBaseNbrSubgraph() const;
-    std::unordered_set<SubqueryGraph, SubqueryGraphHasher> getNextNbrSubgraphs(
-        const SubqueryGraph& prevNbr) const;
+    subquery_graph_set_t getBaseNbrSubgraph() const;
+    subquery_graph_set_t getNextNbrSubgraphs(const SubqueryGraph& prevNbr) const;
 };
 
 // QueryGraph represents a connected pattern specified in MATCH clause.

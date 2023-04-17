@@ -16,11 +16,17 @@ namespace common {
 using sel_t = uint16_t;
 using hash_t = uint64_t;
 using page_idx_t = uint32_t;
+using frame_idx_t = page_idx_t;
 using page_offset_t = uint32_t;
-constexpr page_idx_t PAGE_IDX_MAX = UINT32_MAX;
+constexpr page_idx_t INVALID_PAGE_IDX = UINT32_MAX;
+using page_group_idx_t = uint32_t;
+using frame_group_idx_t = page_group_idx_t;
 using list_header_t = uint32_t;
 using property_id_t = uint32_t;
 constexpr property_id_t INVALID_PROPERTY_ID = UINT32_MAX;
+using vector_idx_t = uint32_t;
+constexpr vector_idx_t INVALID_VECTOR_IDX = UINT32_MAX;
+using block_idx_t = uint64_t;
 
 // System representation for a variable-sized overflow value.
 struct overflow_value_t {
@@ -64,6 +70,59 @@ KUZU_API enum DataTypeID : uint8_t {
     // variable size types
     STRING = 50,
     VAR_LIST = 52,
+    STRUCT = 53,
+};
+
+class DataType;
+
+class ExtraTypeInfo {
+public:
+    virtual std::unique_ptr<ExtraTypeInfo> copy() const = 0;
+    virtual ~ExtraTypeInfo() = default;
+};
+
+class VarListTypeInfo : public ExtraTypeInfo {
+    friend class SerDeser;
+
+public:
+    explicit VarListTypeInfo(std::unique_ptr<DataType> childType)
+        : childType{std::move(childType)} {}
+    VarListTypeInfo() = default;
+    inline DataType* getChildType() const { return childType.get(); }
+    bool operator==(const VarListTypeInfo& other) const;
+    std::unique_ptr<ExtraTypeInfo> copy() const override;
+
+protected:
+    std::unique_ptr<DataType> childType;
+};
+
+class FixedListTypeInfo : public VarListTypeInfo {
+    friend class SerDeser;
+
+public:
+    explicit FixedListTypeInfo(std::unique_ptr<DataType> childType, uint64_t fixedNumElementsInList)
+        : VarListTypeInfo{std::move(childType)}, fixedNumElementsInList{fixedNumElementsInList} {}
+    FixedListTypeInfo() = default;
+    inline uint64_t getFixedNumElementsInList() const { return fixedNumElementsInList; }
+    bool operator==(const FixedListTypeInfo& other) const;
+    std::unique_ptr<ExtraTypeInfo> copy() const override;
+
+private:
+    uint64_t fixedNumElementsInList;
+};
+
+class StructTypeInfo : public ExtraTypeInfo {
+    friend class SerDeser;
+
+public:
+    explicit StructTypeInfo(std::vector<std::unique_ptr<DataType>> childrenTypes)
+        : childrenTypes{std::move(childrenTypes)} {}
+    StructTypeInfo() = default;
+    std::unique_ptr<ExtraTypeInfo> copy() const override;
+    std::vector<DataType*> getChildrenTypes() const;
+
+private:
+    std::vector<std::unique_ptr<DataType>> childrenTypes;
 };
 
 class DataType {
@@ -73,10 +132,12 @@ public:
     KUZU_API DataType(DataTypeID typeID, std::unique_ptr<DataType> childType);
     KUZU_API DataType(
         DataTypeID typeID, std::unique_ptr<DataType> childType, uint64_t fixedNumElementsInList);
+    KUZU_API DataType(DataTypeID typeID, std::vector<std::unique_ptr<DataType>> childrenTypes);
     KUZU_API DataType(const DataType& other);
     KUZU_API DataType(DataType&& other) noexcept;
 
     static std::vector<DataTypeID> getNumericalTypeIDs();
+    static std::vector<DataTypeID> getAllValidComparableTypes();
     static std::vector<DataTypeID> getAllValidTypeIDs();
 
     KUZU_API DataType& operator=(const DataType& other);
@@ -88,16 +149,16 @@ public:
     KUZU_API DataType& operator=(DataType&& other) noexcept;
 
     KUZU_API DataTypeID getTypeID() const;
-    KUZU_API DataType* getChildType() const;
+
+    DataType* getChildType() const;
+
+    std::unique_ptr<DataType> copy();
+
+    ExtraTypeInfo* getExtraTypeInfo() const;
 
 public:
     DataTypeID typeID;
-    // The following fields are only used by LIST DataType.
-    std::unique_ptr<DataType> childType;
-    uint64_t fixedNumElementsInList = UINT64_MAX;
-
-private:
-    std::unique_ptr<DataType> copy();
+    std::unique_ptr<ExtraTypeInfo> extraTypeInfo;
 };
 
 class Types {
@@ -109,6 +170,7 @@ public:
     KUZU_API static DataType dataTypeFromString(const std::string& dataTypeString);
     static uint32_t getDataTypeSize(DataTypeID dataTypeID);
     static uint32_t getDataTypeSize(const DataType& dataType);
+    static bool isNumerical(const DataType& dataType);
 
 private:
     static DataTypeID dataTypeIDFromString(const std::string& dataTypeIDString);

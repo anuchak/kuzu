@@ -6,7 +6,8 @@ namespace testing {
 class ApiTest;
 class BaseGraphTest;
 class TestHelper;
-class TestHelper;
+class TinySnbDDLTest;
+class TinySnbCopyCSVTransactionTest;
 } // namespace testing
 
 namespace benchmark {
@@ -51,8 +52,6 @@ namespace transaction {
 class Transaction;
 enum class TransactionType : uint8_t;
 class TransactionManager;
-class TinySnbDDLTest;
-class TinySnbCopyCSVTransactionTest;
 } // namespace transaction
 
 } // namespace kuzu

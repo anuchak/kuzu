@@ -1,3 +1,4 @@
+#include "common/string_utils.h"
 #include "graph_test/graph_test.h"
 #include "processor/mapper/plan_mapper.h"
 #include "processor/processor.h"
@@ -9,7 +10,7 @@ using namespace kuzu::storage;
 using namespace kuzu::testing;
 
 namespace kuzu {
-namespace transaction {
+namespace testing {
 
 class PrimaryKeyTest : public EmptyDBTest {
 public:
@@ -107,14 +108,12 @@ public:
         DBTest::SetUp();
         catalog = getCatalog(*database);
         profiler = std::make_unique<Profiler>();
-        bufferManager =
-            std::make_unique<BufferManager>(StorageConstants::DEFAULT_BUFFER_POOL_SIZE_FOR_TESTING *
-                                                StorageConstants::DEFAULT_PAGES_BUFFER_RATIO,
-                StorageConstants::DEFAULT_BUFFER_POOL_SIZE_FOR_TESTING *
-                    StorageConstants::LARGE_PAGES_BUFFER_RATIO);
+        bufferManager = std::make_unique<BufferManager>(
+            BufferPoolConstants::DEFAULT_BUFFER_POOL_SIZE_FOR_TESTING);
         memoryManager = std::make_unique<MemoryManager>(bufferManager.get());
-        executionContext = std::make_unique<ExecutionContext>(
-            1 /* numThreads */, profiler.get(), memoryManager.get(), bufferManager.get());
+        clientContext = std::make_unique<ClientContext>();
+        executionContext = std::make_unique<ExecutionContext>(1 /* numThreads */, profiler.get(),
+            memoryManager.get(), bufferManager.get(), clientContext.get());
         personTableID = catalog->getReadOnlyVersion()->getTableID("person");
         studyAtTableID = catalog->getReadOnlyVersion()->getTableID("studyAt");
     }
@@ -367,6 +366,7 @@ public:
         auto physicalPlan =
             mapper.mapLogicalPlanToPhysical(preparedStatement->logicalPlans[0].get(),
                 preparedStatement->getExpressionsToCollect(), preparedStatement->statementType);
+        executionContext->clientContext->activeQuery = std::make_unique<ActiveQuery>();
         getQueryProcessor(*database)->execute(physicalPlan.get(), executionContext.get());
     }
 
@@ -579,6 +579,7 @@ public:
     std::unique_ptr<BufferManager> bufferManager;
     std::unique_ptr<MemoryManager> memoryManager;
     std::unique_ptr<ExecutionContext> executionContext;
+    std::unique_ptr<ClientContext> clientContext;
     std::unique_ptr<Profiler> profiler;
     table_id_t personTableID;
     table_id_t studyAtTableID;
@@ -696,9 +697,9 @@ TEST_F(TinySnbDDLTest, DropNodeTablePropertyNormalExecution) {
     dropNodeTableProperty(TransactionTestType::NORMAL_EXECUTION);
 }
 
-// TEST_F(TinySnbDDLTest, DropNodeTablePropertyRecovery) {
-//    dropNodeTableProperty(TransactionTestType::RECOVERY);
-//}
+TEST_F(TinySnbDDLTest, DropNodeTablePropertyRecovery) {
+    dropNodeTableProperty(TransactionTestType::RECOVERY);
+}
 
 TEST_F(TinySnbDDLTest, DropRelTablePropertyNormalExecution) {
     dropRelTableProperty(TransactionTestType::NORMAL_EXECUTION);
@@ -934,5 +935,5 @@ TEST_F(TinySnbDDLTest, RenamePropertyRecovery) {
     renameProperty(TransactionTestType::RECOVERY);
 }
 
-} // namespace transaction
+} // namespace testing
 } // namespace kuzu

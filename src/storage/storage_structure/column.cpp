@@ -9,6 +9,20 @@ using namespace kuzu::transaction;
 namespace kuzu {
 namespace storage {
 
+void Column::scan(const common::offset_t* nodeOffsets, size_t size, uint8_t* result) {
+    for (auto i = 0u; i < size; ++i) {
+        auto nodeOffset = nodeOffsets[i];
+        auto cursor = PageUtils::getPageElementCursorForPos(nodeOffset, numElementsPerPage);
+        auto [fileHandleToPin, pageIdxToPin] =
+            StorageStructureUtils::getFileHandleAndPhysicalPageIdxToPin(
+                *fileHandle, cursor.pageIdx, *wal, TransactionType::READ_ONLY);
+        bufferManager.optimisticRead(*fileHandleToPin, pageIdxToPin, [&](uint8_t* frame) -> void {
+            auto frameBytesOffset = getElemByteOffset(cursor.elemPosInPage);
+            memcpy(result + i * elementSize, frame + frameBytesOffset, elementSize);
+        });
+    }
+}
+
 void Column::read(Transaction* transaction, common::ValueVector* nodeIDVector,
     common::ValueVector* resultVector) {
     if (nodeIDVector->state->isFlat()) {
@@ -59,38 +73,45 @@ void Column::writeValues(
     }
 }
 
-Value Column::readValue(offset_t offset) {
+Value Column::readValueForTestingOnly(offset_t offset) {
     auto cursor = PageUtils::getPageElementCursorForPos(offset, numElementsPerPage);
-    auto frame = bufferManager.pin(*fileHandle, cursor.pageIdx);
-    auto retVal = Value(dataType, frame + mapElementPosToByteOffset(cursor.elemPosInPage));
-    bufferManager.unpin(*fileHandle, cursor.pageIdx);
+    Value retVal = Value::createDefaultValue(dataType);
+    bufferManager.optimisticRead(*fileHandle, cursor.pageIdx, [&](uint8_t* frame) {
+        retVal.copyValueFrom(frame + mapElementPosToByteOffset(cursor.elemPosInPage));
+    });
     return retVal;
 }
 
 bool Column::isNull(offset_t nodeOffset, Transaction* transaction) {
     auto cursor = PageUtils::getPageElementCursorForPos(nodeOffset, numElementsPerPage);
     auto originalPageIdx = cursor.pageIdx;
-    fileHandle->acquirePageLock(originalPageIdx, true /* block */);
-    auto checkWALVersionOfPage =
-        !transaction->isReadOnly() && fileHandle->hasWALPageVersionNoPageLock(originalPageIdx);
-    uint8_t* frame;
     page_idx_t pageIdxInWAL;
-    if (checkWALVersionOfPage) {
-        pageIdxInWAL = fileHandle->getWALPageVersionNoPageLock(originalPageIdx);
-        frame = bufferManager.pinWithoutAcquiringPageLock(
-            *wal->fileHandle, pageIdxInWAL, false /* read from file */);
+    uint8_t* frame;
+    bool readFromWALVersionPage = false;
+    if (transaction->isWriteTransaction() && fileHandle->hasWALPageGroup(originalPageIdx)) {
+        fileHandle->acquireWALPageIdxLock(originalPageIdx);
+        if (fileHandle->hasWALPageVersionNoWALPageIdxLock(originalPageIdx)) {
+            pageIdxInWAL = fileHandle->getWALPageIdxNoWALPageIdxLock(originalPageIdx);
+            readFromWALVersionPage = true;
+        } else {
+            fileHandle->releaseWALPageIdxLock(originalPageIdx);
+        }
+    }
+    if (readFromWALVersionPage) {
+        frame = bufferManager.pin(
+            *wal->fileHandle, pageIdxInWAL, BufferManager::PageReadPolicy::READ_PAGE);
     } else {
-        frame = bufferManager.pinWithoutAcquiringPageLock(
-            *fileHandle, originalPageIdx, false /* read from file */);
+        frame = bufferManager.pin(
+            *fileHandle, originalPageIdx, BufferManager::PageReadPolicy::READ_PAGE);
     }
     auto nullEntries = (uint64_t*)(frame + (elementSize * numElementsPerPage));
     auto isNull = NullMask::isNull(nullEntries, cursor.elemPosInPage);
-    if (checkWALVersionOfPage) {
-        bufferManager.unpinWithoutAcquiringPageLock(*wal->fileHandle, pageIdxInWAL);
+    if (readFromWALVersionPage) {
+        bufferManager.unpin(*wal->fileHandle, pageIdxInWAL);
+        fileHandle->releaseWALPageIdxLock(originalPageIdx);
     } else {
-        bufferManager.unpinWithoutAcquiringPageLock(*fileHandle, originalPageIdx);
+        bufferManager.unpin(*fileHandle, originalPageIdx);
     }
-    fileHandle->releasePageLock(originalPageIdx);
     return isNull;
 }
 
@@ -117,12 +138,12 @@ void Column::lookup(Transaction* transaction, common::ValueVector* resultVector,
     auto [fileHandleToPin, pageIdxToPin] =
         StorageStructureUtils::getFileHandleAndPhysicalPageIdxToPin(
             *fileHandle, cursor.pageIdx, *wal, transaction->getType());
-    auto frame = bufferManager.pin(*fileHandleToPin, pageIdxToPin);
-    auto vectorBytesOffset = getElemByteOffset(vectorPos);
-    auto frameBytesOffset = getElemByteOffset(cursor.elemPosInPage);
-    memcpy(resultVector->getData() + vectorBytesOffset, frame + frameBytesOffset, elementSize);
-    readSingleNullBit(resultVector, frame, cursor.elemPosInPage, vectorPos);
-    bufferManager.unpin(*fileHandleToPin, pageIdxToPin);
+    bufferManager.optimisticRead(*fileHandleToPin, pageIdxToPin, [&](uint8_t* frame) -> void {
+        auto vectorBytesOffset = getElemByteOffset(vectorPos);
+        auto frameBytesOffset = getElemByteOffset(cursor.elemPosInPage);
+        memcpy(resultVector->getData() + vectorBytesOffset, frame + frameBytesOffset, elementSize);
+        readSingleNullBit(resultVector, frame, cursor.elemPosInPage, vectorPos);
+    });
 }
 
 WALPageIdxPosInPageAndFrame Column::beginUpdatingPage(
@@ -162,20 +183,31 @@ void StringPropertyColumn::writeValueForSingleNodeIDPosition(
         // If the string we write is a long string, it's overflowPtr is currently pointing to
         // the overflow buffer of vectorToWriteFrom. We need to move it to storage.
         if (!ku_string_t::isShortString(stringToWriteFrom.len)) {
-            diskOverflowFile.writeStringOverflowAndUpdateOverflowPtr(
-                stringToWriteFrom, *stringToWriteTo);
+            try {
+                diskOverflowFile.writeStringOverflowAndUpdateOverflowPtr(
+                    stringToWriteFrom, *stringToWriteTo);
+            } catch (RuntimeException& e) {
+                // Note: The try catch block is to make sure that we correctly unpin the WAL page
+                // and release the page lock of the original page, which was acquired inside
+                // `beginUpdatingPage`. Otherwise, we may cause a deadlock in other threads or tasks
+                // which requires the same page lock.
+                StorageStructureUtils::unpinWALPageAndReleaseOriginalPageLock(
+                    updatedPageInfoAndWALPageFrame, *fileHandle, bufferManager, *wal);
+                throw e;
+            }
         }
     }
     StorageStructureUtils::unpinWALPageAndReleaseOriginalPageLock(
         updatedPageInfoAndWALPageFrame, *fileHandle, bufferManager, *wal);
 }
 
-Value StringPropertyColumn::readValue(offset_t offset) {
+Value StringPropertyColumn::readValueForTestingOnly(offset_t offset) {
     auto cursor = PageUtils::getPageElementCursorForPos(offset, numElementsPerPage);
     ku_string_t kuString;
-    auto frame = bufferManager.pin(*fileHandle, cursor.pageIdx);
-    memcpy(&kuString, frame + mapElementPosToByteOffset(cursor.elemPosInPage), sizeof(ku_string_t));
-    bufferManager.unpin(*fileHandle, cursor.pageIdx);
+    bufferManager.optimisticRead(*fileHandle, cursor.pageIdx, [&](uint8_t* frame) -> void {
+        memcpy(&kuString, frame + mapElementPosToByteOffset(cursor.elemPosInPage),
+            sizeof(ku_string_t));
+    });
     return Value(diskOverflowFile.readString(TransactionType::READ_ONLY, kuString));
 }
 
@@ -189,19 +221,29 @@ void ListPropertyColumn::writeValueForSingleNodeIDPosition(
             ((ku_list_t*)(updatedPageInfoAndWALPageFrame.frame +
                           mapElementPosToByteOffset(updatedPageInfoAndWALPageFrame.posInPage)));
         auto kuListToWriteFrom = vectorToWriteFrom->getValue<ku_list_t>(posInVectorToWriteFrom);
-        diskOverflowFile.writeListOverflowAndUpdateOverflowPtr(
-            kuListToWriteFrom, *kuListToWriteTo, vectorToWriteFrom->dataType);
+        try {
+            diskOverflowFile.writeListOverflowAndUpdateOverflowPtr(
+                kuListToWriteFrom, *kuListToWriteTo, vectorToWriteFrom->dataType);
+        } catch (RuntimeException& e) {
+            // Note: The try catch block is to make sure that we correctly unpin the WAL page
+            // and release the page lock of the original page, which was acquired inside
+            // `beginUpdatingPage`. Otherwise, we may cause a deadlock in other threads or tasks
+            // which requires the same page lock.
+            StorageStructureUtils::unpinWALPageAndReleaseOriginalPageLock(
+                updatedPageInfoAndWALPageFrame, *fileHandle, bufferManager, *wal);
+            throw e;
+        }
     }
     StorageStructureUtils::unpinWALPageAndReleaseOriginalPageLock(
         updatedPageInfoAndWALPageFrame, *fileHandle, bufferManager, *wal);
 }
 
-Value ListPropertyColumn::readValue(offset_t offset) {
+Value ListPropertyColumn::readValueForTestingOnly(offset_t offset) {
     auto cursor = PageUtils::getPageElementCursorForPos(offset, numElementsPerPage);
     ku_list_t kuList;
-    auto frame = bufferManager.pin(*fileHandle, cursor.pageIdx);
-    memcpy(&kuList, frame + mapElementPosToByteOffset(cursor.elemPosInPage), sizeof(ku_list_t));
-    bufferManager.unpin(*fileHandle, cursor.pageIdx);
+    bufferManager.optimisticRead(*fileHandle, cursor.pageIdx, [&](uint8_t* frame) -> void {
+        memcpy(&kuList, frame + mapElementPosToByteOffset(cursor.elemPosInPage), sizeof(ku_list_t));
+    });
     return Value(dataType, diskOverflowFile.readList(TransactionType::READ_ONLY, kuList, dataType));
 }
 

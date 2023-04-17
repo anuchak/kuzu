@@ -1,6 +1,7 @@
 #include "common/file_utils.h"
 
 #include "common/exception.h"
+#include "common/string_utils.h"
 #include "common/utils.h"
 
 namespace kuzu {
@@ -12,6 +13,12 @@ std::unique_ptr<FileInfo> FileUtils::openFile(const std::string& path, int flags
         throw Exception("Cannot open file: " + path);
     }
     return make_unique<FileInfo>(path, fd);
+}
+
+void FileUtils::createFileWithSize(const std::string& path, uint64_t size) {
+    auto fileInfo = common::FileUtils::openFile(path, O_WRONLY | O_CREAT);
+    common::FileUtils::truncateFileToSize(fileInfo.get(), size);
+    fileInfo.reset();
 }
 
 void FileUtils::writeToFile(
@@ -107,10 +114,6 @@ void FileUtils::removeFileIfExists(const std::string& path) {
         throw Exception(StringUtils::string_format(
             "Error removing directory or file {}.  Error Message: ", path));
     }
-}
-
-void FileUtils::truncateFileToEmpty(FileInfo* fileInfo) {
-    ftruncate(fileInfo->fd, 0);
 }
 
 std::vector<std::string> FileUtils::globFilePath(const std::string& path) {

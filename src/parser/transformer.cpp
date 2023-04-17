@@ -1,7 +1,8 @@
 #include "parser/transformer.h"
 
+#include "common/copier_config/copier_config.h"
 #include "common/exception.h"
-#include "common/utils.h"
+#include "common/string_utils.h"
 #include "parser/copy_csv/copy_csv.h"
 #include "parser/ddl/add_property.h"
 #include "parser/ddl/create_node_clause.h"
@@ -31,6 +32,8 @@ std::unique_ptr<Statement> Transformer::transform() {
         statement = transformQuery(*root.oC_Statement()->oC_Query());
     } else if (root.kU_DDL()) {
         statement = transformDDL(*root.kU_DDL());
+    } else if (root.kU_CopyNPY()) {
+        statement = transformCopyNPY(*root.kU_CopyNPY());
     } else {
         statement = transformCopyCSV(*root.kU_CopyCSV());
     }
@@ -1004,11 +1007,7 @@ std::vector<std::pair<std::string, std::string>> Transformer::transformPropertyD
 }
 
 std::string Transformer::transformDataType(CypherParser::KU_DataTypeContext& ctx) {
-    auto dataType = transformSymbolicName(*ctx.oC_SymbolicName());
-    if (ctx.kU_ListIdentifiers()) {
-        dataType += transformListIdentifiers(*ctx.kU_ListIdentifiers());
-    }
-    return dataType;
+    return ctx.getText();
 }
 
 std::string Transformer::transformListIdentifiers(CypherParser::KU_ListIdentifiersContext& ctx) {
@@ -1024,18 +1023,27 @@ std::string Transformer::transformPrimaryKey(CypherParser::KU_CreateNodeConstrai
 }
 
 std::unique_ptr<Statement> Transformer::transformCopyCSV(CypherParser::KU_CopyCSVContext& ctx) {
-    auto filePaths = transformFilePaths(*ctx.kU_FilePaths());
+    auto filePaths = transformFilePaths(ctx.kU_FilePaths()->StringLiteral());
     auto tableName = transformSchemaName(*ctx.oC_SchemaName());
     auto parsingOptions = ctx.kU_ParsingOptions() ?
                               transformParsingOptions(*ctx.kU_ParsingOptions()) :
                               std::unordered_map<std::string, std::unique_ptr<ParsedExpression>>();
-    return std::make_unique<CopyCSV>(
-        std::move(filePaths), std::move(tableName), std::move(parsingOptions));
+    return std::make_unique<CopyCSV>(std::move(filePaths), std::move(tableName),
+        std::move(parsingOptions), common::CopyDescription::FileType::UNKNOWN);
 }
 
-std::vector<std::string> Transformer::transformFilePaths(CypherParser::KU_FilePathsContext& ctx) {
+std::unique_ptr<Statement> Transformer::transformCopyNPY(CypherParser::KU_CopyNPYContext& ctx) {
+    auto filePaths = transformFilePaths(ctx.StringLiteral());
+    auto tableName = transformSchemaName(*ctx.oC_SchemaName());
+    auto parsingOptions = std::unordered_map<std::string, std::unique_ptr<ParsedExpression>>();
+    return std::make_unique<CopyCSV>(std::move(filePaths), std::move(tableName),
+        std::move(parsingOptions), common::CopyDescription::FileType::NPY);
+}
+
+std::vector<std::string> Transformer::transformFilePaths(
+    std::vector<antlr4::tree::TerminalNode*> stringLiteral) {
     std::vector<std::string> csvFiles;
-    for (auto& csvFile : ctx.StringLiteral()) {
+    for (auto& csvFile : stringLiteral) {
         csvFiles.push_back(transformStringLiteral(*csvFile));
     }
     return csvFiles;

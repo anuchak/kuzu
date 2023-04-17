@@ -49,7 +49,7 @@ After build, our CLI binary `kuzu_shell` is available under the directory `build
 
 ## Installation
 ### Precompiled binary
-Precompiled binary of our latest release can be downloaded [here](https://github.com/kuzudb/kuzu/releases/tag/0.0.1).  
+Precompiled binary of our latest release can be downloaded [here](https://github.com/kuzudb/kuzu/releases/latest).  
 ### Python package
 Our Python package can be directly install through pip.
 ```
@@ -65,7 +65,7 @@ We take `tinysnb` as an example graph, which is under `dataset/demo-db/csv` in o
 ### CLI
 #### Start CLI
 ```
-./build/release/tools/shell/kuzu_shell -i "./testdb"
+./build/release/tools/shell/kuzu_shell "./testdb"
 ```
 #### Schema Definition
 ```cypher

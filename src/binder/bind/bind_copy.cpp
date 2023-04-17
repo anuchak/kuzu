@@ -1,6 +1,7 @@
 #include "binder/binder.h"
 #include "binder/copy/bound_copy.h"
 #include "binder/expression/literal_expression.h"
+#include "common/string_utils.h"
 #include "parser/copy_csv/copy_csv.h"
 
 using namespace kuzu::common;
@@ -16,16 +17,34 @@ std::unique_ptr<BoundStatement> Binder::bindCopy(const Statement& statement) {
     validateTableExist(catalog, tableName);
     auto tableID = catalogContent->getTableID(tableName);
     auto csvReaderConfig = bindParsingOptions(copyCSV.getParsingOptions());
-    auto filePaths = bindFilePaths(copyCSV.getFilePaths());
-    auto fileType = bindFileType(filePaths);
+    auto boundFilePaths = bindFilePaths(copyCSV.getFilePaths());
+    auto actualFileType = bindFileType(boundFilePaths);
+    auto expectedFileType = copyCSV.getFileType();
+    std::unordered_map<common::property_id_t, std::string> propertyToNpyMap;
+    if (expectedFileType == common::CopyDescription::FileType::UNKNOWN &&
+        actualFileType == common::CopyDescription::FileType::NPY) {
+        throw BinderException("Please use COPY FROM BY COLUMN statement for copying npy files.");
+    }
+    if (expectedFileType == common::CopyDescription::FileType::NPY &&
+        actualFileType != expectedFileType) {
+        throw BinderException("Please use COPY FROM statement for copying csv and parquet files.");
+    }
+    if (actualFileType == CopyDescription::FileType::NPY) {
+        propertyToNpyMap = bindPropertyToNpyMap(tableID, boundFilePaths);
+    }
     return make_unique<BoundCopy>(
-        CopyDescription(filePaths, csvReaderConfig, fileType), tableID, tableName);
+        CopyDescription(boundFilePaths, propertyToNpyMap, csvReaderConfig, actualFileType), tableID,
+        tableName);
 }
 
 std::vector<std::string> Binder::bindFilePaths(const std::vector<std::string>& filePaths) {
     std::vector<std::string> boundFilePaths;
     for (auto& filePath : filePaths) {
         auto globbedFilePaths = FileUtils::globFilePath(filePath);
+        if (globbedFilePaths.empty()) {
+            throw BinderException{StringUtils::string_format(
+                "No file found that matches the pattern: {}.", filePath)};
+        }
         boundFilePaths.insert(
             boundFilePaths.end(), globbedFilePaths.begin(), globbedFilePaths.end());
     }
@@ -35,11 +54,30 @@ std::vector<std::string> Binder::bindFilePaths(const std::vector<std::string>& f
     return boundFilePaths;
 }
 
+std::unordered_map<common::property_id_t, std::string> Binder::bindPropertyToNpyMap(
+    common::table_id_t tableID, const std::vector<std::string>& filePaths) {
+    auto catalogContent = catalog.getReadOnlyVersion();
+    auto tableSchema = catalogContent->getTableSchema(tableID);
+    if (tableSchema->properties.size() != filePaths.size()) {
+        throw BinderException(StringUtils::string_format(
+            "Number of npy files is not equal to number of properties in table {}.",
+            tableSchema->tableName));
+    }
+    std::unordered_map<common::property_id_t, std::string> propertyIDToNpyMap;
+    for (int i = 0; i < filePaths.size(); i++) {
+        auto& filePath = filePaths[i];
+        auto& propertyID = tableSchema->properties[i].propertyID;
+        propertyIDToNpyMap[propertyID] = filePath;
+    }
+    return propertyIDToNpyMap;
+}
+
 CSVReaderConfig Binder::bindParsingOptions(
     const std::unordered_map<std::string, std::unique_ptr<ParsedExpression>>* parsingOptions) {
     CSVReaderConfig csvReaderConfig;
     for (auto& parsingOption : *parsingOptions) {
         auto copyOptionName = parsingOption.first;
+        StringUtils::toUpper(copyOptionName);
         bool isValidStringParsingOption = validateStringParsingOptionName(copyOptionName);
         auto copyOptionExpression = parsingOption.second.get();
         auto boundCopyOptionExpression = expressionBinder.bindExpression(*copyOptionExpression);
@@ -97,13 +135,27 @@ CopyDescription::FileType Binder::bindFileType(std::vector<std::string> filePath
     auto fileName = filePaths[0];
     auto csvSuffix = CopyDescription::getFileTypeSuffix(CopyDescription::FileType::CSV);
     auto parquetSuffix = CopyDescription::getFileTypeSuffix(CopyDescription::FileType::PARQUET);
+    auto npySuffix = CopyDescription::getFileTypeSuffix(CopyDescription::FileType::NPY);
+    CopyDescription::FileType fileType;
+    std::string expectedSuffix;
     if (fileName.ends_with(csvSuffix)) {
-        return CopyDescription::FileType::CSV;
+        fileType = CopyDescription::FileType::CSV;
+        expectedSuffix = csvSuffix;
     } else if (fileName.ends_with(parquetSuffix)) {
-        return CopyDescription::FileType::PARQUET;
+        fileType = CopyDescription::FileType::PARQUET;
+        expectedSuffix = parquetSuffix;
+    } else if (fileName.ends_with(npySuffix)) {
+        fileType = CopyDescription::FileType::NPY;
+        expectedSuffix = npySuffix;
     } else {
         throw CopyException("Unsupported file type: " + fileName);
     }
+    for (auto& path : filePaths) {
+        if (!path.ends_with(expectedSuffix)) {
+            throw CopyException("Loading files with different types is not currently supported.");
+        }
+    }
+    return fileType;
 }
 
 } // namespace binder

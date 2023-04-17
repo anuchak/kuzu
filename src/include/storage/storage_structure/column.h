@@ -21,15 +21,19 @@ public:
         : Column(structureIDAndFName, dataType, common::Types::getDataTypeSize(dataType),
               bufferManager, wal){};
 
+    // Expose for feature store
+    void scan(const common::offset_t* nodeOffsets, size_t size, uint8_t* result);
+
     virtual void read(transaction::Transaction* transaction, common::ValueVector* nodeIDVector,
         common::ValueVector* resultVector);
 
     void writeValues(common::ValueVector* nodeIDVector, common::ValueVector* vectorToWriteFrom);
 
-    // Currently, used only in CopyCSV tests.
-    virtual common::Value readValue(common::offset_t offset);
     bool isNull(common::offset_t nodeOffset, transaction::Transaction* transaction);
     void setNodeOffsetToNull(common::offset_t nodeOffset);
+
+    // Currently, used only in CopyCSV tests.
+    virtual common::Value readValueForTestingOnly(common::offset_t offset);
 
 protected:
     void lookup(transaction::Transaction* transaction, common::ValueVector* nodeIDVector,
@@ -89,9 +93,7 @@ public:
     }
     inline DiskOverflowFile* getDiskOverflowFile() { return &diskOverflowFile; }
 
-    inline BufferManagedFileHandle* getDiskOverflowFileHandle() {
-        return diskOverflowFile.getFileHandle();
-    }
+    inline BMFileHandle* getDiskOverflowFileHandle() { return diskOverflowFile.getFileHandle(); }
 
 protected:
     DiskOverflowFile diskOverflowFile;
@@ -109,7 +111,7 @@ public:
         common::ValueVector* vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override;
 
     // Currently, used only in CopyCSV tests.
-    common::Value readValue(common::offset_t offset) override;
+    common::Value readValueForTestingOnly(common::offset_t offset) override;
 
 private:
     inline void lookup(transaction::Transaction* transaction, common::ValueVector* resultVector,
@@ -143,7 +145,7 @@ public:
     void writeValueForSingleNodeIDPosition(common::offset_t nodeOffset,
         common::ValueVector* vectorToWriteFrom, uint32_t posInVectorToWriteFrom) override;
 
-    common::Value readValue(common::offset_t offset) override;
+    common::Value readValueForTestingOnly(common::offset_t offset) override;
 
 private:
     inline void lookup(transaction::Transaction* transaction, common::ValueVector* resultVector,

@@ -27,6 +27,12 @@ protected:
         return op;
     }
 
+    virtual void visitIndexScanNode(planner::LogicalOperator* op) {}
+    virtual std::shared_ptr<planner::LogicalOperator> visitIndexScanNodeReplace(
+        std::shared_ptr<planner::LogicalOperator> op) {
+        return op;
+    }
+
     virtual void visitScanBFSLevel(planner::LogicalOperator* op) {}
 
     virtual void visitExtend(planner::LogicalOperator* op) {}

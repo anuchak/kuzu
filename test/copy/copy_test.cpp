@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 
+#include "common/string_utils.h"
 #include "graph_test/graph_test.h"
 #include "json.hpp"
 #include "storage/storage_manager.h"
@@ -115,9 +116,9 @@ TEST_F(CopyNodePropertyTest, NodeStructuredStringPropertyTest) {
     auto graph = getStorageManager(*database);
     auto catalog = getCatalog(*database);
     auto tableID = catalog->getReadOnlyVersion()->getTableID("person");
-    auto propertyIdx = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "randomString");
+    auto property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "randomString");
     auto column = reinterpret_cast<StringPropertyColumn*>(
-        graph->getNodesStore().getNodePropertyColumn(tableID, propertyIdx.propertyID));
+        graph->getNodesStore().getNodePropertyColumn(tableID, property.propertyID));
     std::string fName =
         TestHelper::appendKuzuRootPath("dataset/copy-node-property-test/vPerson.csv");
     std::ifstream f(fName);
@@ -143,7 +144,7 @@ TEST_F(CopyNodePropertyTest, NodeStructuredStringPropertyTest) {
             ASSERT_TRUE(column->isNull(count /* nodeOffset */, dummyReadOnlyTrx.get()));
         } else {
             ASSERT_FALSE(column->isNull(count /* nodeOffset */, dummyReadOnlyTrx.get()));
-            EXPECT_EQ(line, column->readValue(lineIdx).strVal);
+            EXPECT_EQ(line, column->readValueForTestingOnly(lineIdx).strVal);
         }
         lineIdx++;
         count++;
@@ -246,49 +247,48 @@ TEST_F(CopySpecialCharTest, CopySpecialChars) {
     auto storageManager = getStorageManager(*database);
     auto catalog = getCatalog(*database);
     auto tableID = catalog->getReadOnlyVersion()->getTableID("person");
-    auto propertyIdx = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "randomString");
-    auto col =
-        storageManager->getNodesStore().getNodePropertyColumn(tableID, propertyIdx.propertyID);
+    auto property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "randomString");
+    auto col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
 
-    EXPECT_EQ("this is |the first line", col->readValue(0).strVal);
-    EXPECT_EQ("the \" should be ignored", col->readValue(1).strVal);
-    EXPECT_EQ("the - should be escaped", col->readValue(2).strVal);
-    EXPECT_EQ("this -is #a mixed test", col->readValue(3).strVal);
-    EXPECT_EQ("only one # should be recognized", col->readValue(4).strVal);
-    EXPECT_EQ("this is a #plain# string", col->readValue(5).strVal);
-    EXPECT_EQ("this is another #plain# string with \\", col->readValue(6).strVal);
-    EXPECT_EQ("NA", col->readValue(7).strVal);
+    EXPECT_EQ("this is |the first line", col->readValueForTestingOnly(0).strVal);
+    EXPECT_EQ("the \" should be ignored", col->readValueForTestingOnly(1).strVal);
+    EXPECT_EQ("the - should be escaped", col->readValueForTestingOnly(2).strVal);
+    EXPECT_EQ("this -is #a mixed test", col->readValueForTestingOnly(3).strVal);
+    EXPECT_EQ("only one # should be recognized", col->readValueForTestingOnly(4).strVal);
+    EXPECT_EQ("this is a #plain# string", col->readValueForTestingOnly(5).strVal);
+    EXPECT_EQ("this is another #plain# string with \\", col->readValueForTestingOnly(6).strVal);
+    EXPECT_EQ("NA", col->readValueForTestingOnly(7).strVal);
 
     tableID = catalog->getReadOnlyVersion()->getTableID("organisation");
-    propertyIdx = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "name");
-    col = storageManager->getNodesStore().getNodePropertyColumn(tableID, propertyIdx.propertyID);
-    EXPECT_EQ("ABFsUni", col->readValue(0).strVal);
-    EXPECT_EQ("CsW,ork", col->readValue(1).strVal);
-    EXPECT_EQ("DEsW#ork", col->readValue(2).strVal);
+    property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "name");
+    col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
+    EXPECT_EQ("ABFsUni", col->readValueForTestingOnly(0).strVal);
+    EXPECT_EQ("CsW,ork", col->readValueForTestingOnly(1).strVal);
+    EXPECT_EQ("DEsW#ork", col->readValueForTestingOnly(2).strVal);
 }
 
 TEST_F(CopyLongStringTest, LongStringError) {
     auto storageManager = getStorageManager(*database);
     auto catalog = getCatalog(*database);
     auto tableID = catalog->getReadOnlyVersion()->getTableID("person");
-    auto propertyIdx = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "fName");
+    auto propertyID = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "fName");
     auto col =
-        storageManager->getNodesStore().getNodePropertyColumn(tableID, propertyIdx.propertyID);
+        storageManager->getNodesStore().getNodePropertyColumn(tableID, propertyID.propertyID);
 
-    EXPECT_EQ(4096, col->readValue(0).strVal.length());
+    EXPECT_EQ(4096, col->readValueForTestingOnly(0).strVal.length());
     std::string expectedResultName = "Alice";
     auto repeatedTimes = 4096 / expectedResultName.length() + 1;
     std::ostringstream os;
     for (auto i = 0; i < repeatedTimes; i++) {
         os << expectedResultName;
     }
-    EXPECT_EQ(os.str().substr(0, 4096), col->readValue(0).strVal);
-    EXPECT_EQ("Bob", col->readValue(1).strVal);
+    EXPECT_EQ(os.str().substr(0, 4096), col->readValueForTestingOnly(0).strVal);
+    EXPECT_EQ("Bob", col->readValueForTestingOnly(1).strVal);
 
-    propertyIdx = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "gender");
-    col = storageManager->getNodesStore().getNodePropertyColumn(tableID, propertyIdx.propertyID);
-    EXPECT_EQ(1, col->readValue(0).val.int64Val);
-    EXPECT_EQ(2, col->readValue(1).val.int64Val);
+    propertyID = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "gender");
+    col = storageManager->getNodesStore().getNodePropertyColumn(tableID, propertyID.propertyID);
+    EXPECT_EQ(1, col->readValueForTestingOnly(0).val.int64Val);
+    EXPECT_EQ(2, col->readValueForTestingOnly(1).val.int64Val);
 }
 
 TEST_F(CopyNodeInitRelTablesTest, CopyNodeAndQueryEmptyRelTable) {
@@ -300,7 +300,8 @@ TEST_F(CopyNodeInitRelTablesTest, CopyNodeAndQueryEmptyRelTable) {
                 "create node table person (ID INt64, fName StRING, gender INT64, isStudent "
                 "BoOLEAN, isWorker BOOLEAN, age INT64, eyeSight DOUBLE, birthdate DATE, "
                 "registerTime TIMESTAMP, lastJobDuration interval, workedHours INT64[], usedNames "
-                "STRING[], courseScoresPerTerm INT64[][], PRIMARY KEY (ID));")
+                "STRING[], courseScoresPerTerm INT64[][], grades INT64[4], height float, PRIMARY "
+                "KEY (ID));")
             ->isSuccess());
     ASSERT_TRUE(conn->query("create rel table knows (FROM person TO person, date DATE, meetTime "
                             "TIMESTAMP, validInterval INTERVAL, comments STRING[], MANY_MANY);")
@@ -342,4 +343,12 @@ TEST_F(CopyMultipleFilesTest, CopyFilesWithWildcardPattern) {
                         TestHelper::appendKuzuRootPath("dataset/copy-multiple-files-test/eK*")))
             ->isSuccess());
     validateKnowsTableAfterCopying();
+}
+
+TEST_F(CopyMultipleFilesTest, CopyFilesWithWrongPath) {
+    auto result = conn->query(StringUtils::string_format(R"(COPY person FROM ["1.csv", "{}"])",
+        TestHelper::appendKuzuRootPath("dataset/copy-multiple-files-test/vPerson?.csv")));
+    ASSERT_FALSE(result->isSuccess());
+    ASSERT_EQ(result->getErrorMessage(),
+        "Binder exception: No file found that matches the pattern: 1.csv.");
 }

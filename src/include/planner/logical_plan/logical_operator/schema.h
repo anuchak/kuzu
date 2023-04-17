@@ -7,12 +7,13 @@
 namespace kuzu {
 namespace planner {
 
-typedef uint32_t f_group_pos;
-typedef std::unordered_set<f_group_pos> f_group_pos_set;
+using f_group_pos = uint32_t;
+using f_group_pos_set = std::unordered_set<f_group_pos>;
 constexpr f_group_pos INVALID_F_GROUP_POS = UINT32_MAX;
 
 class FactorizationGroup {
     friend class Schema;
+    friend class CardinalityEstimator;
 
 public:
     FactorizationGroup() : flat{false}, singleState{false}, cardinalityMultiplier{1} {}
@@ -33,8 +34,8 @@ public:
     }
     inline bool isSingleState() const { return singleState; }
 
-    inline void setMultiplier(uint64_t multiplier) { cardinalityMultiplier = multiplier; }
-    inline uint64_t getMultiplier() const { return cardinalityMultiplier; }
+    inline void setMultiplier(double multiplier) { cardinalityMultiplier = multiplier; }
+    inline double getMultiplier() const { return cardinalityMultiplier; }
 
     inline void insertExpression(const std::shared_ptr<binder::Expression>& expression) {
         assert(!expressionNameToPos.contains(expression->getUniqueName()));
@@ -50,14 +51,16 @@ public:
 private:
     bool flat;
     bool singleState;
-    uint64_t cardinalityMultiplier;
+    double cardinalityMultiplier;
     binder::expression_vector expressions;
     std::unordered_map<std::string, uint32_t> expressionNameToPos;
 };
 
 class Schema {
 public:
-    inline f_group_pos getNumGroups() const { return groups.size(); }
+    inline size_t getNumGroups() const { return groups.size(); }
+    inline size_t getNumFlatGroups() const { return getNumGroups(true /* isFlat */); }
+    inline size_t getNumUnFlatGroups() const { return getNumGroups(false /* isFlat */); }
 
     inline FactorizationGroup* getGroup(std::shared_ptr<binder::Expression> expression) const {
         return getGroup(getGroupPos(expression->getUniqueName()));
@@ -114,11 +117,14 @@ public:
     }
 
     // Get the group positions containing at least one expression in scope.
-    std::unordered_set<f_group_pos> getGroupsPosInScope() const;
+    f_group_pos_set getGroupsPosInScope() const;
 
     std::unique_ptr<Schema> copy() const;
 
     void clear();
+
+private:
+    size_t getNumGroups(bool isFlat) const;
 
 private:
     std::vector<std::unique_ptr<FactorizationGroup>> groups;

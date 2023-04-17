@@ -50,6 +50,23 @@ std::unique_ptr<QueryGraph> Binder::bindPatternElement(
     return queryGraph;
 }
 
+static std::vector<table_id_t> pruneRelTableIDs(const Catalog& catalog_,
+    const std::vector<table_id_t>& relTableIDs, const NodeExpression& srcNode,
+    const NodeExpression& dstNode) {
+    auto srcNodeTableIDs = srcNode.getTableIDsSet();
+    auto dstNodeTableIDs = dstNode.getTableIDsSet();
+    std::vector<table_id_t> result;
+    for (auto& relTableID : relTableIDs) {
+        auto relTableSchema = catalog_.getReadOnlyVersion()->getRelTableSchema(relTableID);
+        if (!srcNodeTableIDs.contains(relTableSchema->srcTableID) ||
+            !dstNodeTableIDs.contains(relTableSchema->dstTableID)) {
+            continue;
+        }
+        result.push_back(relTableID);
+    }
+    return result;
+}
+
 void Binder::bindPathExpression(const parser::PatternElement& patternElement,
     QueryGraph* queryGraph, PropertyKeyValCollection& collection) {
     validateNodeInPathExpression(patternElement);
@@ -70,12 +87,12 @@ void Binder::bindPathExpression(const parser::PatternElement& patternElement,
     std::vector<std::shared_ptr<RelExpression>> relExpressions =
         std::vector<std::shared_ptr<RelExpression>>();
     auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
-    queryGraph->insertQueryNodeNameToPosMap(leftNode, 0);
+    queryGraph->addQueryNode(leftNode);
     nodeExpressions.push_back(leftNode);
     for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
         auto patternElementChain = patternElement.getPatternElementChain(i);
         auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
-        queryGraph->insertQueryNodeNameToPosMap(rightNode, i + 1);
+        queryGraph->addQueryNode(rightNode);
         nodeExpressions.push_back(rightNode);
         relExpressions.push_back(
             bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));
@@ -121,23 +138,6 @@ void Binder::validateRelInPathExpression(const parser::PatternElement& patternEl
                 "Rel variable for Shortest path expression queries are not allowed.");
         }
     }
-}
-
-static std::vector<table_id_t> pruneRelTableIDs(const Catalog& catalog_,
-    const std::vector<table_id_t>& relTableIDs, const NodeExpression& srcNode,
-    const NodeExpression& dstNode) {
-    auto srcNodeTableIDs = srcNode.getTableIDsSet();
-    auto dstNodeTableIDs = dstNode.getTableIDsSet();
-    std::vector<table_id_t> result;
-    for (auto& relTableID : relTableIDs) {
-        auto relTableSchema = catalog_.getReadOnlyVersion()->getRelTableSchema(relTableID);
-        if (!srcNodeTableIDs.contains(relTableSchema->srcTableID) ||
-            !dstNodeTableIDs.contains(relTableSchema->dstTableID)) {
-            continue;
-        }
-        result.push_back(relTableID);
-    }
-    return result;
 }
 
 static std::vector<std::pair<std::string, std::vector<Property>>> getPropertyNameAndSchemasPairs(

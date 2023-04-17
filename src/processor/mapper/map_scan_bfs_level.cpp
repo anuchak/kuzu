@@ -53,15 +53,9 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalScanBFSLevelToPhysical(
         ftColIndicesToScan.push_back(i);
     }
     auto sharedState = resultCollector->getSharedState();
-    auto tmpSrcOffsetVector =
-        new common::ValueVector(common::DataTypeID::INTERNAL_ID, memoryManager);
-    auto dataChunkState = std::make_shared<common::DataChunkState>(1);
-    tmpSrcOffsetVector->state = dataChunkState;
-    auto tmpVector = std::vector<common::ValueVector*>();
-    tmpVector.push_back(tmpSrcOffsetVector);
-    auto tmpSrcOffsetColIdx = std::vector<ft_col_idx_t>({0});
     auto ssspMorselTracker =
-        std::make_shared<SSSPMorselTracker>(sharedState, tmpVector, tmpSrcOffsetColIdx);
+        std::make_shared<SSSPMorselTracker>(sharedState, numThreadsForExecution);
+    ssspMorselTracker->initTmpSrcOffsetVector(memoryManager);
     auto scanBFSLevel = std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
         srcDstVectorsDataPos, ftColIndicesToScan, logicalScanBFSLevel->getUpperBound(),
         ssspMorselTracker, std::move(resultCollector), getOperatorID(),

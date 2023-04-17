@@ -9,7 +9,7 @@ namespace processor {
 
 void SimpleRecursiveJoin::initLocalStateInternal(
     kuzu::processor::ResultSet* resultSet, kuzu::processor::ExecutionContext* context) {
-    threadIdx = ssspMorselTracker->getThreadIdx(std::this_thread::get_id());
+    threadIdx = ssspMorselTracker->getThreadIdxForThreadID(std::this_thread::get_id());
     extendedNbrIDs = resultSet->getValueVector(extendedNbrIDsPos);
     for (auto [dataPos, _] : payloadsPosAndType) {
         auto vector = resultSet->getValueVector(dataPos);

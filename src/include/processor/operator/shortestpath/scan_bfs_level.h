@@ -83,17 +83,18 @@ public:
 
 struct SSSPMorselTracker {
 public:
-    explicit SSSPMorselTracker(std::shared_ptr<FTableSharedState> inputFTable,
-        std::vector<common::ValueVector*>& tmpSrcOffsetVector,
-        std::vector<ft_col_idx_t>& tmpSrcOffsetColIdx)
-        : scanStartIdx{0u}, tmpSrcOffsetVector{tmpSrcOffsetVector},
-          tmpSrcOffsetColIdx{tmpSrcOffsetColIdx}, inputFTable{std::move(inputFTable)},
-          nextLocalThreadID{0u}, threadIdxMap{std::unordered_map<std::thread::id, uint64_t>()},
-          ssspMorselPerThreadVector{std::vector<std::unique_ptr<SSSPMorsel>>()} {};
+    explicit SSSPMorselTracker(
+        std::shared_ptr<FTableSharedState> inputFTable, uint64_t numThreadsForExecution)
+        : scanStartIdx{0u}, inputFTable{std::move(inputFTable)}, nextLocalThreadID{0u},
+          threadIdxMap{std::unordered_map<std::thread::id, uint64_t>()},
+          ssspMorselPerThreadVector{
+              std::vector<std::unique_ptr<SSSPMorsel>>(numThreadsForExecution)} {};
+
+    void initTmpSrcOffsetVector(storage::MemoryManager* memoryManager);
 
     uint64_t getLocalThreadIdx(std::thread::id threadID);
 
-    uint64_t getThreadIdx(std::thread::id threadID);
+    uint64_t getThreadIdxForThreadID(std::thread::id threadID);
 
     SSSPMorsel* getAssignedSSSPMorsel(uint64_t threadIdx);
 
@@ -108,8 +109,8 @@ public:
     inline std::shared_ptr<FTableSharedState> getInputFTable() { return inputFTable; }
 
 private:
-    std::shared_mutex mutex;
-    std::shared_mutex mapMutex;
+    std::shared_mutex threadIdxMutex;
+    std::shared_mutex ssspMorselScanRangeMutex;
     uint64_t nextLocalThreadID;
     std::unordered_map<std::thread::id, uint64_t> threadIdxMap;
     uint64_t scanStartIdx;

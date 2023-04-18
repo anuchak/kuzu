@@ -41,27 +41,26 @@ void SSSPMorsel::markDstNodeOffsets(
 }
 
 void SSSPMorselTracker::initTmpSrcOffsetVector(storage::MemoryManager* memoryManager) {
-    auto tmpSrcIDVector = new common::ValueVector(common::DataTypeID::INTERNAL_ID, memoryManager);
-    auto dataChunkState = std::make_shared<common::DataChunkState>(1);
-    tmpSrcIDVector->state = dataChunkState;
-    tmpSrcOffsetVector = std::vector<common::ValueVector*>();
-    tmpSrcOffsetVector.push_back(tmpSrcIDVector);
+    tmpSrcOffsetVector = std::move(
+        std::make_unique<common::ValueVector>(common::DataTypeID::INTERNAL_ID, memoryManager));
+    tmpDataChunkState = std::make_shared<common::DataChunkState>(1);
+    tmpSrcOffsetVector->state = tmpDataChunkState;
     tmpSrcOffsetColIdx = std::vector<ft_col_idx_t>({0 /* srcOffset column index */});
 }
 
 // We acquire a lock here because we map each threadID to a unique thread index. And then initialize
 // the SSSPMorsel to nullptr. Later this threadIdx position will be populated with the actual
 // SSSPMorsel.
-uint64_t SSSPMorselTracker::getLocalThreadIdx(std::thread::id threadID) {
-    std::unique_lock lck{threadIdxMutex};
-    uint64_t localThreadIdx = nextLocalThreadID++;
-    threadIdxMap.insert({threadID, localThreadIdx});
-    ssspMorselPerThreadVector[localThreadIdx] = nullptr;
-    return localThreadIdx;
+uint64_t SSSPMorselTracker::getThreadIdx(std::thread::id threadID) {
+    std::unique_lock lck{mutex};
+    uint64_t threadIdx = nextThreadIdx++;
+    threadIdxMap.insert({threadID, threadIdx});
+    ssspMorselPerThreadVector[threadIdx] = nullptr;
+    return threadIdx;
 }
 
 uint64_t SSSPMorselTracker::getThreadIdxForThreadID(std::thread::id threadID) {
-    std::unique_lock lck{threadIdxMutex};
+    std::unique_lock lck{mutex};
     return threadIdxMap[threadID];
 }
 
@@ -82,16 +81,18 @@ void SSSPMorselTracker::removePrevAssignedSSSPMorsel(uint64_t threadIdx) {
  * Returns the: i) starting scan index from FTable ii) number of tuples to scan from FTable
  */
 std::pair<uint64_t, uint64_t> SSSPMorselTracker::findSSSPMorselScanRange() {
-    std::unique_lock<std::shared_mutex> lck{ssspMorselScanRangeMutex};
+    std::unique_lock<std::shared_mutex> lck{mutex};
     if (inputFTable->getTable()->getNumTuples() == scanStartIdx) {
         return {scanStartIdx, 0u};
     }
     uint64_t startIdx = scanStartIdx;
     uint64_t srcNodeOffset = UINT64_MAX, tmpNodeOffset;
+    std::vector<ValueVector*> tmpVector = std::vector<ValueVector*>();
+    tmpVector.push_back(tmpSrcOffsetVector.get());
     do {
         inputFTable->getTable()->scan(
-            tmpSrcOffsetVector, scanStartIdx, 1 /* numTuplesToScan */, tmpSrcOffsetColIdx);
-        tmpNodeOffset = ((nodeID_t*)(tmpSrcOffsetVector[0]->getData()))[0].offset;
+            tmpVector, scanStartIdx, 1 /* numTuplesToScan */, tmpSrcOffsetColIdx);
+        tmpNodeOffset = ((nodeID_t*)(tmpSrcOffsetVector->getData()))[0].offset;
         if (srcNodeOffset == UINT64_MAX) {
             srcNodeOffset = tmpNodeOffset;
         }
@@ -135,13 +136,13 @@ SSSPMorsel* SSSPMorselTracker::getSSSPMorsel(uint64_t threadIdx, common::offset_
             1 /* numTuplesToScan */, ftColIndicesToScan);
         ssspMorsel->markDstNodeOffsets(srcNodeID.offset, srcDstValueVectors[1]);
     }
-    std::unique_lock<std::shared_mutex> lck{threadIdxMutex};
+    std::unique_lock<std::shared_mutex> lck{mutex};
     return (ssspMorselPerThreadVector[threadIdx] = std::move(ssspMorsel)).get();
 }
 
 void ScanBFSLevel::initLocalStateInternal(
     kuzu::processor::ResultSet* resultSet, kuzu::processor::ExecutionContext* context) {
-    threadIdx = ssspMorselTracker->getLocalThreadIdx(std::this_thread::get_id());
+    threadIdx = ssspMorselTracker->getThreadIdx(std::this_thread::get_id());
     for (auto& dataPos : srcDstVectorsDataPos) {
         srcDstValueVectors.push_back(resultSet->getValueVector(dataPos).get());
     }

@@ -40,7 +40,9 @@ void FactorizationRewriter::visitOperator(planner::LogicalOperator* op) {
 void FactorizationRewriter::visitScanBFSLevel(planner::LogicalOperator* op) {
     auto scanBFSLevel = (LogicalScanBFSLevel*)op;
     auto groupPosToFlatten = scanBFSLevel->getGroupPosOfSrcNodeToFlatten();
-    scanBFSLevel->setChild(0, appendFlattens(scanBFSLevel->getChild(0), {groupPosToFlatten}));
+    auto childOperator = scanBFSLevel->getChild(0);
+    childOperator->setChild(0, appendFlattens(childOperator->getChild(0), {groupPosToFlatten}));
+    childOperator->computeFactorizedSchema();
 }
 
 void FactorizationRewriter::visitExtend(planner::LogicalOperator* op) {

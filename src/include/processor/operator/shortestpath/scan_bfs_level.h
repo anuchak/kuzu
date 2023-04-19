@@ -49,9 +49,11 @@ public:
 
 struct SSSPMorsel {
 public:
-    explicit SSSPMorsel(common::offset_t maxNodeOffset)
-        : isWrittenToOutFTable{false}, numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u},
-          dstTableID{0u}, dstDistances{std::unordered_map<common::offset_t, uint32_t>()},
+    explicit SSSPMorsel(
+        common::offset_t maxNodeOffset, uint64_t startScanIdx, uint64_t numTuplesToScan)
+        : startScanIdx{startScanIdx}, numTuplesToScan{numTuplesToScan}, isWrittenToOutFTable{false},
+          numDstNodesNotReached{0u}, bfsMorselNextStartIdx{0u},
+          dstDistances{std::unordered_map<common::offset_t, uint32_t>()},
           curBFSLevel{std::make_unique<BFSLevel>()}, nextBFSLevel{std::make_unique<BFSLevel>()},
           bfsVisitedNodes{std::vector<uint8_t>(maxNodeOffset + 1, NOT_VISITED)} {}
 
@@ -66,11 +68,11 @@ public:
     }
 
 public:
-    std::shared_mutex mutex;
+    uint64_t startScanIdx;
+    uint64_t numTuplesToScan;
     bool isWrittenToOutFTable;
     uint32_t numDstNodesNotReached;
     uint32_t bfsMorselNextStartIdx;
-    common::table_id_t dstTableID;
     std::unordered_map<common::offset_t, uint32_t> dstDistances;
     std::unique_ptr<BFSLevel> curBFSLevel;
     std::unique_ptr<BFSLevel> nextBFSLevel;
@@ -81,21 +83,40 @@ public:
 
 struct SSSPMorselTracker {
 public:
-    explicit SSSPMorselTracker(std::shared_ptr<FTableSharedState> inputFTable)
-        : ssspMorselPerThread{std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>>()},
-          inputFTable{std::move(inputFTable)} {};
+    explicit SSSPMorselTracker(
+        std::shared_ptr<FTableSharedState> inputFTable, uint64_t numThreadsForExecution)
+        : scanStartIdx{0u}, inputFTable{std::move(inputFTable)}, nextThreadIdx{0u},
+          threadIdxMap{std::unordered_map<std::thread::id, uint64_t>()},
+          ssspMorselPerThreadVector{
+              std::vector<std::unique_ptr<SSSPMorsel>>(numThreadsForExecution)} {};
 
-    SSSPMorsel* getAssignedSSSPMorsel(std::thread::id threadID);
+    void initTmpSrcOffsetVector(storage::MemoryManager* memoryManager);
 
-    void removePrevAssignedSSSPMorsel(std::thread::id threadID);
+    uint64_t getThreadIdx(std::thread::id threadID);
 
-    SSSPMorsel* getSSSPMorsel(std::thread::id threadID, common::offset_t maxNodeOffset,
+    uint64_t getThreadIdxForThreadID(std::thread::id threadID);
+
+    SSSPMorsel* getAssignedSSSPMorsel(uint64_t threadIdx);
+
+    void removePrevAssignedSSSPMorsel(uint64_t threadIdx);
+
+    std::pair<uint64_t, uint64_t> findSSSPMorselScanRange();
+
+    SSSPMorsel* getSSSPMorsel(uint64_t threadIdx, common::offset_t maxNodeOffset,
         std::vector<common::ValueVector*> srcDstValueVectors,
         std::vector<uint32_t>& ftColIndicesToScan);
 
+    inline std::shared_ptr<FTableSharedState> getInputFTable() { return inputFTable; }
+
 private:
     std::shared_mutex mutex;
-    std::unordered_map<std::thread::id, std::unique_ptr<SSSPMorsel>> ssspMorselPerThread;
+    uint64_t nextThreadIdx;
+    std::unordered_map<std::thread::id, uint64_t> threadIdxMap;
+    uint64_t scanStartIdx;
+    std::unique_ptr<common::ValueVector> tmpSrcOffsetVector;
+    std::shared_ptr<common::DataChunkState> tmpDataChunkState;
+    std::vector<ft_col_idx_t> tmpSrcOffsetColIdx;
+    std::vector<std::unique_ptr<SSSPMorsel>> ssspMorselPerThreadVector;
     std::shared_ptr<FTableSharedState> inputFTable;
 };
 
@@ -124,6 +145,10 @@ public:
 
     std::shared_ptr<SSSPMorselTracker>& getSSSPMorselTracker() { return ssspMorselTracker; }
 
+    inline std::vector<DataPos>& getSrcDstVectorsDataPos() { return srcDstVectorsDataPos; }
+
+    inline std::vector<uint32_t>& getFTableColIndicesToScan() { return ftColIndicesToScan; }
+
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<ScanBFSLevel>(maxNodeOffset, nodesToExtendDataPos,
             srcDstVectorsDataPos, ftColIndicesToScan, upperBound, ssspMorselTracker,
@@ -131,7 +156,7 @@ public:
     }
 
 private:
-    std::thread::id threadID;
+    uint64_t threadIdx;
     common::offset_t maxNodeOffset;
     // The ValueVector into which ScanBFSLevel will write the nodes to be extended.
     DataPos nodesToExtendDataPos;

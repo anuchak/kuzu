@@ -22,35 +22,44 @@ using namespace kuzu::catalog;
 namespace kuzu {
 namespace binder {
 
-std::unique_ptr<BoundStatement> Binder::bindCreateNodeClause(const Statement& statement) {
-    auto& createNodeClause = (parser::CreateNodeClause&)statement;
-    auto tableName = createNodeClause.getTableName();
+std::unique_ptr<BoundStatement> Binder::bindCreateNodeTableClause(
+    const parser::Statement& statement) {
+    auto& createNodeTableClause = (parser::CreateNodeTableClause&)statement;
+    auto tableName = createNodeTableClause.getTableName();
     if (catalog.getReadOnlyVersion()->containTable(tableName)) {
         throw BinderException("Node " + tableName + " already exists.");
     }
-    auto boundPropertyNameDataTypes =
-        bindPropertyNameDataTypes(createNodeClause.getPropertyNameDataTypes());
+    auto boundProperties = bindProperties(createNodeTableClause.getPropertyNameDataTypes());
     auto primaryKeyIdx = bindPrimaryKey(
-        createNodeClause.getPKColName(), createNodeClause.getPropertyNameDataTypes());
-    return make_unique<BoundCreateNodeClause>(
-        tableName, std::move(boundPropertyNameDataTypes), primaryKeyIdx);
+        createNodeTableClause.getPKColName(), createNodeTableClause.getPropertyNameDataTypes());
+    for (auto i = 0u; i < boundProperties.size(); ++i) {
+        if (boundProperties[i].dataType.typeID == SERIAL && primaryKeyIdx != i) {
+            throw BinderException("Serial property in node table must be the primary key.");
+        }
+    }
+    return make_unique<BoundCreateNodeClause>(tableName, std::move(boundProperties), primaryKeyIdx);
 }
 
-std::unique_ptr<BoundStatement> Binder::bindCreateRelClause(const Statement& statement) {
+std::unique_ptr<BoundStatement> Binder::bindCreateRelTableClause(
+    const parser::Statement& statement) {
     auto& createRelClause = (CreateRelClause&)statement;
     auto tableName = createRelClause.getTableName();
     if (catalog.getReadOnlyVersion()->containTable(tableName)) {
         throw BinderException("Rel " + tableName + " already exists.");
     }
-    auto propertyNameDataTypes =
-        bindPropertyNameDataTypes(createRelClause.getPropertyNameDataTypes());
+    auto boundProperties = bindProperties(createRelClause.getPropertyNameDataTypes());
+    for (auto& boundProperty : boundProperties) {
+        if (boundProperty.dataType.typeID == SERIAL) {
+            throw BinderException("Serial property is not supported in rel table.");
+        }
+    }
     auto relMultiplicity = getRelMultiplicityFromString(createRelClause.getRelMultiplicity());
-    return make_unique<BoundCreateRelClause>(tableName, std::move(propertyNameDataTypes),
-        relMultiplicity, bindNodeTableID(createRelClause.getSrcTableName()),
+    return make_unique<BoundCreateRelClause>(tableName, std::move(boundProperties), relMultiplicity,
+        bindNodeTableID(createRelClause.getSrcTableName()),
         bindNodeTableID(createRelClause.getDstTableName()));
 }
 
-std::unique_ptr<BoundStatement> Binder::bindDropTable(const Statement& statement) {
+std::unique_ptr<BoundStatement> Binder::bindDropTableClause(const parser::Statement& statement) {
     auto& dropTable = (DropTable&)statement;
     auto tableName = dropTable.getTableName();
     validateTableExist(catalog, tableName);
@@ -62,7 +71,7 @@ std::unique_ptr<BoundStatement> Binder::bindDropTable(const Statement& statement
     return make_unique<BoundDropTable>(tableID, tableName);
 }
 
-std::unique_ptr<BoundStatement> Binder::bindRenameTable(const Statement& statement) {
+std::unique_ptr<BoundStatement> Binder::bindRenameTableClause(const parser::Statement& statement) {
     auto renameTable = (RenameTable&)statement;
     auto tableName = renameTable.getTableName();
     auto catalogContent = catalog.getReadOnlyVersion();
@@ -74,7 +83,7 @@ std::unique_ptr<BoundStatement> Binder::bindRenameTable(const Statement& stateme
         catalogContent->getTableID(tableName), tableName, renameTable.getNewName());
 }
 
-std::unique_ptr<BoundStatement> Binder::bindAddProperty(const Statement& statement) {
+std::unique_ptr<BoundStatement> Binder::bindAddPropertyClause(const parser::Statement& statement) {
     auto& addProperty = (AddProperty&)statement;
     auto tableName = addProperty.getTableName();
     validateTableExist(catalog, tableName);
@@ -84,13 +93,16 @@ std::unique_ptr<BoundStatement> Binder::bindAddProperty(const Statement& stateme
     if (catalogContent->getTableSchema(tableID)->containProperty(addProperty.getPropertyName())) {
         throw BinderException("Property: " + addProperty.getPropertyName() + " already exists.");
     }
+    if (dataType.typeID == SERIAL) {
+        throw BinderException("Serial property in node table must be the primary key.");
+    }
     auto defaultVal = ExpressionBinder::implicitCastIfNecessary(
         expressionBinder.bindExpression(*addProperty.getDefaultValue()), dataType);
     return make_unique<BoundAddProperty>(
         tableID, addProperty.getPropertyName(), dataType, defaultVal, tableName);
 }
 
-std::unique_ptr<BoundStatement> Binder::bindDropProperty(const Statement& statement) {
+std::unique_ptr<BoundStatement> Binder::bindDropPropertyClause(const parser::Statement& statement) {
     auto& dropProperty = (DropProperty&)statement;
     auto tableName = dropProperty.getTableName();
     validateTableExist(catalog, tableName);
@@ -107,7 +119,8 @@ std::unique_ptr<BoundStatement> Binder::bindDropProperty(const Statement& statem
     return make_unique<BoundDropProperty>(tableID, propertyID, tableName);
 }
 
-std::unique_ptr<BoundStatement> Binder::bindRenameProperty(const Statement& statement) {
+std::unique_ptr<BoundStatement> Binder::bindRenamePropertyClause(
+    const parser::Statement& statement) {
     auto& renameProperty = (RenameProperty&)statement;
     auto tableName = renameProperty.getTableName();
     validateTableExist(catalog, tableName);
@@ -123,9 +136,9 @@ std::unique_ptr<BoundStatement> Binder::bindRenameProperty(const Statement& stat
         tableID, tableName, propertyID, renameProperty.getNewName());
 }
 
-std::vector<PropertyNameDataType> Binder::bindPropertyNameDataTypes(
+std::vector<Property> Binder::bindProperties(
     std::vector<std::pair<std::string, std::string>> propertyNameDataTypes) {
-    std::vector<PropertyNameDataType> boundPropertyNameDataTypes;
+    std::vector<Property> boundPropertyNameDataTypes;
     std::unordered_set<std::string> boundPropertyNames;
     for (auto& propertyNameDataType : propertyNameDataTypes) {
         if (boundPropertyNames.contains(propertyNameDataType.first)) {
@@ -145,8 +158,8 @@ std::vector<PropertyNameDataType> Binder::bindPropertyNameDataTypes(
     return boundPropertyNameDataTypes;
 }
 
-uint32_t Binder::bindPrimaryKey(
-    std::string pkColName, std::vector<std::pair<std::string, std::string>> propertyNameDataTypes) {
+uint32_t Binder::bindPrimaryKey(const std::string& pkColName,
+    std::vector<std::pair<std::string, std::string>> propertyNameDataTypes) {
     uint32_t primaryKeyIdx = UINT32_MAX;
     for (auto i = 0u; i < propertyNameDataTypes.size(); i++) {
         if (propertyNameDataTypes[i].first == pkColName) {
@@ -159,10 +172,11 @@ uint32_t Binder::bindPrimaryKey(
     }
     auto primaryKey = propertyNameDataTypes[primaryKeyIdx];
     StringUtils::toUpper(primaryKey.second);
-    // We only support INT64, and STRING column as the primary key.
+    // We only support INT64, STRING and SERIAL column as the primary key.
     switch (Types::dataTypeFromString(primaryKey.second).typeID) {
     case common::INT64:
     case common::STRING:
+    case common::SERIAL:
         break;
     default:
         throw BinderException(

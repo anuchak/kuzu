@@ -91,17 +91,17 @@ TEST_F(CopyTwoDimensionalNpyTest, CopyTwoDimensionalNpyTest) {
 
     property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "i64");
     col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
-    auto listVal = col->readValueForTestingOnly(0).listVal;
+    auto listVal = col->readValueForTestingOnly(0).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int64Val, 1);
     ASSERT_EQ(listVal[1]->val.int64Val, 2);
     ASSERT_EQ(listVal[2]->val.int64Val, 3);
-    listVal = col->readValueForTestingOnly(1).listVal;
+    listVal = col->readValueForTestingOnly(1).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int64Val, 4);
     ASSERT_EQ(listVal[1]->val.int64Val, 5);
     ASSERT_EQ(listVal[2]->val.int64Val, 6);
-    listVal = col->readValueForTestingOnly(2).listVal;
+    listVal = col->readValueForTestingOnly(2).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int64Val, 7);
     ASSERT_EQ(listVal[1]->val.int64Val, 8);
@@ -109,17 +109,17 @@ TEST_F(CopyTwoDimensionalNpyTest, CopyTwoDimensionalNpyTest) {
 
     property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "i32");
     col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
-    listVal = col->readValueForTestingOnly(0).listVal;
+    listVal = col->readValueForTestingOnly(0).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int32Val, 1);
     ASSERT_EQ(listVal[1]->val.int32Val, 2);
     ASSERT_EQ(listVal[2]->val.int32Val, 3);
-    listVal = col->readValueForTestingOnly(1).listVal;
+    listVal = col->readValueForTestingOnly(1).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int32Val, 4);
     ASSERT_EQ(listVal[1]->val.int32Val, 5);
     ASSERT_EQ(listVal[2]->val.int32Val, 6);
-    listVal = col->readValueForTestingOnly(2).listVal;
+    listVal = col->readValueForTestingOnly(2).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int32Val, 7);
     ASSERT_EQ(listVal[1]->val.int32Val, 8);
@@ -127,17 +127,17 @@ TEST_F(CopyTwoDimensionalNpyTest, CopyTwoDimensionalNpyTest) {
 
     property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "i16");
     col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
-    listVal = col->readValueForTestingOnly(0).listVal;
+    listVal = col->readValueForTestingOnly(0).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int16Val, 1);
     ASSERT_EQ(listVal[1]->val.int16Val, 2);
     ASSERT_EQ(listVal[2]->val.int16Val, 3);
-    listVal = col->readValueForTestingOnly(1).listVal;
+    listVal = col->readValueForTestingOnly(1).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int16Val, 4);
     ASSERT_EQ(listVal[1]->val.int16Val, 5);
     ASSERT_EQ(listVal[2]->val.int16Val, 6);
-    listVal = col->readValueForTestingOnly(2).listVal;
+    listVal = col->readValueForTestingOnly(2).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.int16Val, 7);
     ASSERT_EQ(listVal[1]->val.int16Val, 8);
@@ -145,17 +145,17 @@ TEST_F(CopyTwoDimensionalNpyTest, CopyTwoDimensionalNpyTest) {
 
     property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "f64");
     col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
-    listVal = col->readValueForTestingOnly(0).listVal;
+    listVal = col->readValueForTestingOnly(0).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.doubleVal, 1.);
     ASSERT_EQ(listVal[1]->val.doubleVal, 2.);
     ASSERT_EQ(listVal[2]->val.doubleVal, 3.);
-    listVal = col->readValueForTestingOnly(1).listVal;
+    listVal = col->readValueForTestingOnly(1).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.doubleVal, 4.);
     ASSERT_EQ(listVal[1]->val.doubleVal, 5.);
     ASSERT_EQ(listVal[2]->val.doubleVal, 6.);
-    listVal = col->readValueForTestingOnly(2).listVal;
+    listVal = col->readValueForTestingOnly(2).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.doubleVal, 7.);
     ASSERT_EQ(listVal[1]->val.doubleVal, 8.);
@@ -163,17 +163,17 @@ TEST_F(CopyTwoDimensionalNpyTest, CopyTwoDimensionalNpyTest) {
 
     property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "f32");
     col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
-    listVal = col->readValueForTestingOnly(0).listVal;
+    listVal = col->readValueForTestingOnly(0).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.floatVal, 1.);
     ASSERT_EQ(listVal[1]->val.floatVal, 2.);
     ASSERT_EQ(listVal[2]->val.floatVal, 3.);
-    listVal = col->readValueForTestingOnly(1).listVal;
+    listVal = col->readValueForTestingOnly(1).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.floatVal, 4.);
     ASSERT_EQ(listVal[1]->val.floatVal, 5.);
     ASSERT_EQ(listVal[2]->val.floatVal, 6.);
-    listVal = col->readValueForTestingOnly(2).listVal;
+    listVal = col->readValueForTestingOnly(2).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 3);
     ASSERT_EQ(listVal[0]->val.floatVal, 7.);
     ASSERT_EQ(listVal[1]->val.floatVal, 8.);
@@ -191,7 +191,7 @@ TEST_F(CopyThreeDimensionalNpyTest, CopyThreeDimensionalNpyIntoTwoDimensionaTest
 
     property = catalog->getReadOnlyVersion()->getNodeProperty(tableID, "i64");
     col = storageManager->getNodesStore().getNodePropertyColumn(tableID, property.propertyID);
-    auto listVal = col->readValueForTestingOnly(0).listVal;
+    auto listVal = col->readValueForTestingOnly(0).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 12);
     ASSERT_EQ(listVal[0]->val.int16Val, 1);
     ASSERT_EQ(listVal[1]->val.int16Val, 2);
@@ -206,7 +206,7 @@ TEST_F(CopyThreeDimensionalNpyTest, CopyThreeDimensionalNpyIntoTwoDimensionaTest
     ASSERT_EQ(listVal[10]->val.int16Val, 11);
     ASSERT_EQ(listVal[11]->val.int16Val, 12);
 
-    listVal = col->readValueForTestingOnly(1).listVal;
+    listVal = col->readValueForTestingOnly(1).nestedTypeVal;
     ASSERT_EQ(listVal.size(), 12);
     ASSERT_EQ(listVal[0]->val.int16Val, 13);
     ASSERT_EQ(listVal[1]->val.int16Val, 14);
@@ -236,7 +236,8 @@ TEST_F(CopyLargeNpyTest, CopyLargeNpyTest) {
     for (size_t i = 0; i < 200000; ++i) {
         size_t rowIdx = i / 10;
         size_t colIdx = i % 10;
-        ASSERT_EQ(col->readValueForTestingOnly(rowIdx).listVal[colIdx]->val.floatVal, (float)i);
+        ASSERT_EQ(
+            col->readValueForTestingOnly(rowIdx).nestedTypeVal[colIdx]->val.floatVal, (float)i);
     }
 }
 
@@ -255,7 +256,8 @@ TEST_F(CopyNpyFaultTest, CopyNpyRedundantProperties) {
     validateCopyException("copy npytable from (\"" +
                               TestHelper::appendKuzuRootPath("dataset/npy-20k/id_int64.npy") +
                               "\", \"" + f32Path + "\") BY COLUMN;",
-        "The type of npy file " + f32Path + " does not match the type defined in table npytable.");
+        "Copy exception: The type of npy file " + f32Path +
+            " does not match the type defined in table npytable.");
 }
 
 TEST_F(CopyNpyFaultTest, CopyNpyVectorIntoScaler) {
@@ -264,7 +266,7 @@ TEST_F(CopyNpyFaultTest, CopyNpyVectorIntoScaler) {
     validateCopyException("copy npytable from (\"" +
                               TestHelper::appendKuzuRootPath("dataset/npy-20k/id_int64.npy") +
                               "\", \"" + f32Path + "\") by column;",
-        "Cannot copy a vector property in npy file " + f32Path +
+        "Copy exception: Cannot copy a vector property in npy file " + f32Path +
             " to a scalar property in table npytable.");
 }
 
@@ -274,7 +276,8 @@ TEST_F(CopyNpyFaultTest, CopyNpyWithMismatchedTypeOneDimensionTest) {
     validateCopyException("copy npytable from ( \"" +
                               TestHelper::appendKuzuRootPath("dataset/npy-1d/one_dim_int64.npy") +
                               "\", \"" + f32Path + "\") by column;",
-        "The type of npy file " + f32Path + " does not match the type defined in table npytable.");
+        "Copy exception: The type of npy file " + f32Path +
+            " does not match the type defined in table npytable.");
 }
 
 TEST_F(CopyNpyFaultTest, CopyNpyWithMismatchedTypeTwoDimensionTest) {
@@ -283,7 +286,8 @@ TEST_F(CopyNpyFaultTest, CopyNpyWithMismatchedTypeTwoDimensionTest) {
     validateCopyException("copy npytable from (\"" +
                               TestHelper::appendKuzuRootPath("dataset/npy-20k/id_int64.npy") +
                               "\", \"" + f32Path + "\") by column;",
-        "The type of npy file " + f32Path + " does not match the type defined in table npytable.");
+        "Copy exception: The type of npy file " + f32Path +
+            " does not match the type defined in table npytable.");
 }
 
 TEST_F(CopyNpyFaultTest, CopyNpyWithMismatchedDimensionTest) {
@@ -292,7 +296,7 @@ TEST_F(CopyNpyFaultTest, CopyNpyWithMismatchedDimensionTest) {
     validateCopyException("copy npytable from (\"" +
                               TestHelper::appendKuzuRootPath("dataset/npy-20k/id_int64.npy") +
                               "\", \"" + twoDimFloatNpyPath + "\") by column;",
-        "The shape of " + twoDimFloatNpyPath +
+        "Copy exception: The shape of " + twoDimFloatNpyPath +
             " does not match the length of the fixed list property in table npytable.");
 }
 
@@ -302,7 +306,7 @@ TEST_F(CopyNpyFaultTest, CopyNpyWithMismatchedLengthTest) {
         "copy npytable from (\"" + TestHelper::appendKuzuRootPath("dataset/npy-20k/id_int64.npy") +
             "\", \"" + TestHelper::appendKuzuRootPath("dataset/npy-3d/three_dim_int64.npy") +
             "\") by column;",
-        "Number of rows in npy files is not equal to each other.");
+        "Copy exception: Number of rows in npy files is not equal to each other.");
 }
 
 } // namespace testing

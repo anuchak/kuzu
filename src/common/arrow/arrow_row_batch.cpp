@@ -89,6 +89,12 @@ std::unique_ptr<ArrowVector> ArrowRowBatch::createVector(
     case INT64: {
         templateInitializeVector<INT64>(result.get(), typeInfo, capacity);
     } break;
+    case INT32: {
+        templateInitializeVector<INT32>(result.get(), typeInfo, capacity);
+    } break;
+    case INT16: {
+        templateInitializeVector<INT16>(result.get(), typeInfo, capacity);
+    } break;
     case DOUBLE: {
         templateInitializeVector<DOUBLE>(result.get(), typeInfo, capacity);
     } break;
@@ -183,7 +189,7 @@ void ArrowRowBatch::templateCopyNonNullValue<VAR_LIST>(
     ArrowVector* vector, const main::DataTypeInfo& typeInfo, Value* value, std::int64_t pos) {
     vector->data.resize((pos + 2) * sizeof(std::uint32_t));
     auto offsets = (std::uint32_t*)vector->data.data();
-    auto numElements = value->listVal.size();
+    auto numElements = value->nestedTypeVal.size();
     offsets[pos + 1] = offsets[pos] + numElements;
     auto numChildElements = offsets[pos + 1] + 1;
     auto currentNumBytesForChildValidity = vector->childData[0]->validity.size();
@@ -198,8 +204,8 @@ void ArrowRowBatch::templateCopyNonNullValue<VAR_LIST>(
             numChildElements * Types::getDataTypeSize(typeInfo.childrenTypesInfo[0]->typeID));
     }
     for (auto i = 0u; i < numElements; i++) {
-        appendValue(
-            vector->childData[0].get(), *typeInfo.childrenTypesInfo[0], value->listVal[i].get());
+        appendValue(vector->childData[0].get(), *typeInfo.childrenTypesInfo[0],
+            value->nestedTypeVal[i].get());
     }
 }
 
@@ -251,6 +257,12 @@ void ArrowRowBatch::copyNonNullValue(
     } break;
     case INT64: {
         templateCopyNonNullValue<INT64>(vector, typeInfo, value, pos);
+    } break;
+    case INT32: {
+        templateCopyNonNullValue<INT32>(vector, typeInfo, value, pos);
+    } break;
+    case INT16: {
+        templateCopyNonNullValue<INT16>(vector, typeInfo, value, pos);
     } break;
     case DOUBLE: {
         templateCopyNonNullValue<DOUBLE>(vector, typeInfo, value, pos);
@@ -316,6 +328,12 @@ void ArrowRowBatch::copyNullValue(ArrowVector* vector, Value* value, std::int64_
     } break;
     case INT64: {
         templateCopyNullValue<INT64>(vector, pos);
+    } break;
+    case INT32: {
+        templateCopyNullValue<INT32>(vector, pos);
+    } break;
+    case INT16: {
+        templateCopyNullValue<INT16>(vector, pos);
     } break;
     case DOUBLE: {
         templateCopyNullValue<DOUBLE>(vector, pos);
@@ -449,6 +467,12 @@ ArrowArray* ArrowRowBatch::convertVectorToArray(
     case INT64: {
         return templateCreateArray<INT64>(vector, typeInfo);
     }
+    case INT32: {
+        return templateCreateArray<INT32>(vector, typeInfo);
+    }
+    case INT16: {
+        return templateCreateArray<INT16>(vector, typeInfo);
+    }
     case DOUBLE: {
         return templateCreateArray<DOUBLE>(vector, typeInfo);
     }
@@ -513,7 +537,6 @@ ArrowArray ArrowRowBatch::append(main::QueryResult& queryResult, std::int64_t ch
             break;
         }
         auto tuple = queryResult.getNext();
-        std::vector<std::uint32_t> colWidths(numColumns, 10);
         for (auto i = 0u; i < numColumns; i++) {
             appendValue(vectors[i].get(), *typesInfo[i], tuple->getValue(i));
         }

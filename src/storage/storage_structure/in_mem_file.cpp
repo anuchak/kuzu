@@ -70,9 +70,10 @@ ku_string_t InMemOverflowFile::appendString(const char* rawString) {
     return result;
 }
 
-ku_string_t InMemOverflowFile::copyString(const char* rawString, PageByteCursor& overflowCursor) {
+ku_string_t InMemOverflowFile::copyString(
+    const char* rawString, common::page_offset_t length, PageByteCursor& overflowCursor) {
     ku_string_t kuString;
-    kuString.len = strlen(rawString);
+    kuString.len = length;
     std::memcpy(kuString.prefix, rawString,
         kuString.len <= ku_string_t::SHORT_STR_LENGTH ? kuString.len : ku_string_t::PREFIX_LENGTH);
     if (kuString.len > ku_string_t::SHORT_STR_LENGTH) {
@@ -99,26 +100,27 @@ void InMemOverflowFile::copyVarSizedValuesInList(ku_list_t& resultKUList, const 
     // Reserve space for ku_list or ku_string objects.
     overflowCursor.offsetInPage += (resultKUList.size * numBytesOfListElement);
     if constexpr (DT == STRING) {
-        std::vector<ku_string_t> kuStrings(listVal.listVal.size());
-        for (auto i = 0u; i < listVal.listVal.size(); i++) {
-            assert(listVal.listVal[i]->dataType.typeID == STRING);
-            kuStrings[i] = copyString(listVal.listVal[i]->strVal.c_str(), overflowCursor);
+        std::vector<ku_string_t> kuStrings(listVal.nestedTypeVal.size());
+        for (auto i = 0u; i < listVal.nestedTypeVal.size(); i++) {
+            assert(listVal.nestedTypeVal[i]->dataType.typeID == STRING);
+            auto strVal = listVal.nestedTypeVal[i]->strVal;
+            kuStrings[i] = copyString(strVal.c_str(), strVal.length(), overflowCursor);
         }
         std::shared_lock lck(lock);
-        for (auto i = 0u; i < listVal.listVal.size(); i++) {
+        for (auto i = 0u; i < listVal.nestedTypeVal.size(); i++) {
             pages[overflowPageIdx]->write(overflowPageOffset + (i * numBytesOfListElement),
                 overflowPageOffset + (i * numBytesOfListElement), (uint8_t*)&kuStrings[i],
                 numBytesOfListElement);
         }
     } else {
         assert(DT == VAR_LIST);
-        std::vector<ku_list_t> kuLists(listVal.listVal.size());
-        for (auto i = 0u; i < listVal.listVal.size(); i++) {
-            assert(listVal.listVal[i]->dataType.typeID == VAR_LIST);
-            kuLists[i] = copyList(*listVal.listVal[i], overflowCursor);
+        std::vector<ku_list_t> kuLists(listVal.nestedTypeVal.size());
+        for (auto i = 0u; i < listVal.nestedTypeVal.size(); i++) {
+            assert(listVal.nestedTypeVal[i]->dataType.typeID == VAR_LIST);
+            kuLists[i] = copyList(*listVal.nestedTypeVal[i], overflowCursor);
         }
         std::shared_lock lck(lock);
-        for (auto i = 0u; i < listVal.listVal.size(); i++) {
+        for (auto i = 0u; i < listVal.nestedTypeVal.size(); i++) {
             pages[overflowPageIdx]->write(overflowPageOffset + (i * numBytesOfListElement),
                 overflowPageOffset + (i * numBytesOfListElement), (uint8_t*)&kuLists[i],
                 numBytesOfListElement);
@@ -130,7 +132,7 @@ ku_list_t InMemOverflowFile::copyList(const Value& listValue, PageByteCursor& ov
     assert(listValue.dataType.typeID == VAR_LIST);
     ku_list_t resultKUList;
     auto numBytesOfListElement = Types::getDataTypeSize(*listValue.dataType.getChildType());
-    resultKUList.size = listValue.listVal.size();
+    resultKUList.size = listValue.nestedTypeVal.size();
     // Allocate a new page if necessary.
     if (overflowCursor.offsetInPage + (resultKUList.size * numBytesOfListElement) >=
             BufferPoolConstants::PAGE_4KB_SIZE ||

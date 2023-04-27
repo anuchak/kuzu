@@ -18,9 +18,9 @@ class PlanMapper {
 public:
     // Create plan mapper with default mapper context.
     PlanMapper(storage::StorageManager& storageManager, storage::MemoryManager* memoryManager,
-        catalog::Catalog* catalog, uint64_t numThreadsForExecution)
-        : storageManager{storageManager}, memoryManager{memoryManager}, expressionMapper{},
-          catalog{catalog}, numThreadsForExecution{numThreadsForExecution}, physicalOperatorID{0} {}
+        catalog::Catalog* catalog)
+        : storageManager{storageManager}, memoryManager{memoryManager},
+          expressionMapper{}, catalog{catalog}, physicalOperatorID{0} {}
 
     std::unique_ptr<PhysicalPlan> mapLogicalPlanToPhysical(planner::LogicalPlan* logicalPlan,
         const binder::expression_vector& expressionsToCollect, common::StatementType statementType);
@@ -35,6 +35,8 @@ private:
     std::unique_ptr<PhysicalOperator> mapLogicalUnwindToPhysical(
         planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapLogicalExtendToPhysical(
+        planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapLogicalRecursiveExtendToPhysical(
         planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapLogicalFlattenToPhysical(
         planner::LogicalOperator* logicalOperator);
@@ -100,10 +102,6 @@ private:
         planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapLogicalRenamePropertyToPhysical(
         planner::LogicalOperator* logicalOperator);
-    std::unique_ptr<PhysicalOperator> mapLogicalScanBFSLevelToPhysical(
-        planner::LogicalOperator* logicalOperator);
-    std::unique_ptr<PhysicalOperator> mapLogicalSimpleRecursiveJoinToPhysical(
-        planner::LogicalOperator* logicalOperator);
     std::unique_ptr<ResultCollector> appendResultCollector(
         const binder::expression_vector& expressionsToCollect, const planner::Schema& schema,
         std::unique_ptr<PhysicalOperator> prevOperator);
@@ -138,7 +136,6 @@ public:
 
 private:
     std::unordered_map<planner::LogicalOperator*, PhysicalOperator*> logicalOpToPhysicalOpMap;
-    uint64_t numThreadsForExecution;
     uint32_t physicalOperatorID;
 };
 

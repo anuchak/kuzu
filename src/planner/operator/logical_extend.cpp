@@ -7,13 +7,13 @@ namespace planner {
 
 f_group_pos_set LogicalExtend::getGroupsPosToFlatten() {
     f_group_pos_set result;
-    auto requireFlatBoundNode = extendToNewGroup || rel->isVariableLength();
-    if (requireFlatBoundNode) {
-        auto inSchema = children[0]->getSchema();
-        auto boundNodeGroupPos = inSchema->getGroupPos(*boundNode->getInternalIDProperty());
-        if (!inSchema->getGroup(boundNodeGroupPos)->isFlat()) {
-            result.insert(boundNodeGroupPos);
-        }
+    if (hasAtMostOneNbr) { // Column extend. No need to flatten input bound node.
+        return result;
+    }
+    auto inSchema = children[0]->getSchema();
+    auto boundNodeGroupPos = inSchema->getGroupPos(*boundNode->getInternalIDProperty());
+    if (!inSchema->getGroup(boundNodeGroupPos)->isFlat()) {
+        result.insert(boundNodeGroupPos);
     }
     return result;
 }
@@ -22,7 +22,7 @@ void LogicalExtend::computeFactorizedSchema() {
     copyChildSchema(0);
     auto boundGroupPos = schema->getGroupPos(boundNode->getInternalIDPropertyName());
     uint32_t nbrGroupPos = 0u;
-    if (!extendToNewGroup) {
+    if (hasAtMostOneNbr) {
         nbrGroupPos = boundGroupPos;
     } else {
         assert(schema->getGroup(boundGroupPos)->isFlat());

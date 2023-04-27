@@ -1,7 +1,6 @@
 #pragma once
 
 #include "binder/expression/expression.h"
-#include "binder/expression/path_expression.h"
 #include "catalog/catalog.h"
 #include "common/types/value.h"
 #include "parser/expression/parsed_expression.h"
@@ -40,8 +39,6 @@ private:
         const Expression& expression, const std::string& propertyName);
     std::shared_ptr<Expression> bindRelPropertyExpression(
         const Expression& expression, const std::string& propertyName);
-    std::shared_ptr<Expression> bindPathPropertyExpression(
-        PathExpression& pathExpression, const std::string& propertyName);
     std::unique_ptr<Expression> createPropertyExpression(const Expression& nodeOrRel,
         const std::vector<catalog::Property>& propertyName, bool isPrimaryKey);
 
@@ -49,17 +46,20 @@ private:
         const parser::ParsedExpression& parsedExpression);
     std::shared_ptr<Expression> bindScalarFunctionExpression(
         const parser::ParsedExpression& parsedExpression, const std::string& functionName);
+    std::shared_ptr<Expression> bindScalarFunctionExpression(
+        const expression_vector& children, const std::string& functionName);
     std::shared_ptr<Expression> bindAggregateFunctionExpression(
         const parser::ParsedExpression& parsedExpression, const std::string& functionName,
         bool isDistinct);
 
-    std::shared_ptr<Expression> staticEvaluate(const std::string& functionName,
-        const parser::ParsedExpression& parsedExpression, const expression_vector& children);
+    std::shared_ptr<Expression> staticEvaluate(
+        const std::string& functionName, const expression_vector& children);
 
     std::shared_ptr<Expression> bindInternalIDExpression(
         const parser::ParsedExpression& parsedExpression);
     std::shared_ptr<Expression> bindInternalIDExpression(const Expression& expression);
     std::unique_ptr<Expression> createInternalNodeIDExpression(const Expression& node);
+    std::shared_ptr<Expression> createInternalLengthExpression(const Expression& rel);
     std::shared_ptr<Expression> bindLabelFunction(const parser::ParsedExpression& parsedExpression);
     std::shared_ptr<Expression> bindNodeLabelFunction(const Expression& expression);
     std::shared_ptr<Expression> bindRelLabelFunction(const Expression& expression);

@@ -13,7 +13,7 @@
 #include "planner/logical_plan/logical_operator/logical_limit.h"
 #include "planner/logical_plan/logical_operator/logical_order_by.h"
 #include "planner/logical_plan/logical_operator/logical_projection.h"
-#include "planner/logical_plan/logical_operator/logical_scan_bfs_level.h"
+#include "planner/logical_plan/logical_operator/logical_recursive_extend.h"
 #include "planner/logical_plan/logical_operator/logical_set.h"
 #include "planner/logical_plan/logical_operator/logical_skip.h"
 #include "planner/logical_plan/logical_operator/logical_union.h"
@@ -37,16 +37,14 @@ void FactorizationRewriter::visitOperator(planner::LogicalOperator* op) {
     op->computeFactorizedSchema();
 }
 
-void FactorizationRewriter::visitScanBFSLevel(planner::LogicalOperator* op) {
-    auto scanBFSLevel = (LogicalScanBFSLevel*)op;
-    auto groupPosToFlatten = scanBFSLevel->getGroupPosOfSrcNodeToFlatten();
-    auto childOperator = scanBFSLevel->getChild(0);
-    childOperator->setChild(0, appendFlattens(childOperator->getChild(0), {groupPosToFlatten}));
-    childOperator->computeFactorizedSchema();
-}
-
 void FactorizationRewriter::visitExtend(planner::LogicalOperator* op) {
     auto extend = (LogicalExtend*)op;
+    auto groupsPosToFlatten = extend->getGroupsPosToFlatten();
+    extend->setChild(0, appendFlattens(extend->getChild(0), groupsPosToFlatten));
+}
+
+void FactorizationRewriter::visitRecursiveExtend(planner::LogicalOperator* op) {
+    auto extend = (LogicalRecursiveExtend*)op;
     auto groupsPosToFlatten = extend->getGroupsPosToFlatten();
     extend->setChild(0, appendFlattens(extend->getChild(0), groupsPosToFlatten));
 }

@@ -1,3 +1,4 @@
+#include "binder/expression/literal_expression.h"
 #include "binder/expression/rel_expression.h"
 #include "binder/expression_binder.h"
 #include "parser/expression/parsed_property_expression.h"
@@ -20,15 +21,17 @@ std::shared_ptr<Expression> ExpressionBinder::bindPropertyExpression(
             propertyName + " is reserved for system usage. External access is not allowed.");
     }
     auto child = bindExpression(*parsedExpression.getChild(0));
-    validateExpectedDataType(*child, std::unordered_set<DataTypeID>{NODE, REL, PATH});
+    validateExpectedDataType(*child, std::unordered_set<DataTypeID>{NODE, REL, STRUCT});
     if (NODE == child->dataType.typeID) {
         return bindNodePropertyExpression(*child, propertyName);
-    } else if (REL == child->dataType.typeID) {
+    } else if (common::REL == child->dataType.typeID) {
         return bindRelPropertyExpression(*child, propertyName);
     } else {
-        assert(PATH == child->dataType.typeID);
-        auto& pathExpression = (PathExpression&)*child;
-        return bindPathPropertyExpression(pathExpression, propertyName);
+        assert(common::STRUCT == child->dataType.typeID);
+        auto stringValue = std::make_unique<Value>(propertyName);
+        return bindScalarFunctionExpression(
+            expression_vector{child, createLiteralExpression(std::move(stringValue))},
+            STRUCT_EXTRACT_FUNC_NAME);
     }
 }
 
@@ -64,23 +67,22 @@ static std::unordered_map<table_id_t, property_id_t> populatePropertyIDPerTable(
 std::shared_ptr<Expression> ExpressionBinder::bindRelPropertyExpression(
     const Expression& expression, const std::string& propertyName) {
     auto& rel = (RelExpression&)expression;
-    if (rel.isVariableLength()) {
+    if (propertyName == INTERNAL_LENGTH_SUFFIX) {
+        return rel.getInternalLengthProperty();
+    }
+    switch (rel.getRelType()) {
+    case common::QueryRelType::VARIABLE_LENGTH:
+    case common::QueryRelType::SHORTEST:
         throw BinderException(
             "Cannot read property of variable length rel " + rel.toString() + ".");
+    default:
+        break;
     }
     if (!rel.hasPropertyExpression(propertyName)) {
         throw BinderException(
             "Cannot find property " + propertyName + " for " + expression.toString() + ".");
     }
     return rel.getPropertyExpression(propertyName);
-}
-
-std::shared_ptr<Expression> ExpressionBinder::bindPathPropertyExpression(
-    kuzu::binder::PathExpression& expression, const std::string& propertyName) {
-    if (propertyName != common::PATH_TYPE_LENGTH_PROPERTY) {
-        throw BinderException("Property other than length not supported for PATH type.");
-    }
-    return expression.getPathLengthExpression();
 }
 
 std::unique_ptr<Expression> ExpressionBinder::createPropertyExpression(

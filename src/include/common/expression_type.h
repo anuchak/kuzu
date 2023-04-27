@@ -56,6 +56,10 @@ const std::string ARRAY_HAS_FUNC_NAME = "ARRAY_HAS";
 const std::string LIST_SLICE_FUNC_NAME = "LIST_SLICE";
 const std::string ARRAY_SLICE_FUNC_NAME = "ARRAY_SLICE";
 
+// struct
+const std::string STRUCT_PACK_FUNC_NAME = "STRUCT_PACK";
+const std::string STRUCT_EXTRACT_FUNC_NAME = "STRUCT_EXTRACT";
+
 // comparison
 const std::string EQUALS_FUNC_NAME = "EQUALS";
 const std::string NOT_EQUALS_FUNC_NAME = "NOT_EQUALS";
@@ -165,9 +169,6 @@ const std::string TO_MICROSECONDS_FUNC_NAME = "TO_MICROSECONDS";
 const std::string ID_FUNC_NAME = "ID";
 const std::string LABEL_FUNC_NAME = "LABEL";
 const std::string OFFSET_FUNC_NAME = "OFFSET";
-
-// Path functions.
-const std::string PATH_LENGTH_FUNC_NAME = "PATH_LENGTH";
 
 enum ExpressionType : uint8_t {
 

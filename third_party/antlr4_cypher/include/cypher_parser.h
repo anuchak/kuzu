@@ -1,5 +1,5 @@
 
-// Generated from /home/a8chakra/Repos/shortestpath_kuzu_copy/kuzu/src/antlr4/Cypher.g4 by ANTLR 4.9
+// Generated from Cypher.g4 by ANTLR 4.9
 
 #pragma once
 
@@ -56,26 +56,26 @@ public:
     RuleOC_PatternElement = 54, RuleOC_NodePattern = 55, RuleOC_PatternElementChain = 56, 
     RuleOC_RelationshipPattern = 57, RuleOC_RelationshipDetail = 58, RuleKU_Properties = 59, 
     RuleOC_RelationshipTypes = 60, RuleOC_NodeLabels = 61, RuleOC_NodeLabel = 62, 
-    RuleOC_RangePattern = 63, RuleOC_RangeLiteral = 64, RuleOC_LabelName = 65, 
-    RuleOC_RelTypeName = 66, RuleOC_Expression = 67, RuleOC_OrExpression = 68, 
-    RuleOC_XorExpression = 69, RuleOC_AndExpression = 70, RuleOC_NotExpression = 71, 
-    RuleOC_ComparisonExpression = 72, RuleKU_ComparisonOperator = 73, RuleKU_BitwiseOrOperatorExpression = 74, 
-    RuleKU_BitwiseAndOperatorExpression = 75, RuleKU_BitShiftOperatorExpression = 76, 
-    RuleKU_BitShiftOperator = 77, RuleOC_AddOrSubtractExpression = 78, RuleKU_AddOrSubtractOperator = 79, 
-    RuleOC_MultiplyDivideModuloExpression = 80, RuleKU_MultiplyDivideModuloOperator = 81, 
-    RuleOC_PowerOfExpression = 82, RuleOC_UnaryAddSubtractOrFactorialExpression = 83, 
-    RuleOC_StringListNullOperatorExpression = 84, RuleOC_ListOperatorExpression = 85, 
-    RuleKU_ListExtractOperatorExpression = 86, RuleKU_ListSliceOperatorExpression = 87, 
-    RuleOC_StringOperatorExpression = 88, RuleOC_RegularExpression = 89, 
-    RuleOC_NullOperatorExpression = 90, RuleOC_PropertyOrLabelsExpression = 91, 
-    RuleOC_Atom = 92, RuleOC_Literal = 93, RuleOC_BooleanLiteral = 94, RuleOC_ListLiteral = 95, 
-    RuleOC_ParenthesizedExpression = 96, RuleOC_FunctionInvocation = 97, 
-    RuleOC_FunctionName = 98, RuleOC_ExistentialSubquery = 99, RuleOC_PropertyLookup = 100, 
-    RuleOC_CaseExpression = 101, RuleOC_CaseAlternative = 102, RuleOC_Variable = 103, 
-    RuleOC_NumberLiteral = 104, RuleOC_Parameter = 105, RuleOC_PropertyExpression = 106, 
-    RuleOC_PropertyKeyName = 107, RuleOC_IntegerLiteral = 108, RuleOC_DoubleLiteral = 109, 
-    RuleOC_SchemaName = 110, RuleOC_SymbolicName = 111, RuleOC_LeftArrowHead = 112, 
-    RuleOC_RightArrowHead = 113, RuleOC_Dash = 114
+    RuleOC_RangeLiteral = 63, RuleOC_LabelName = 64, RuleOC_RelTypeName = 65, 
+    RuleOC_Expression = 66, RuleOC_OrExpression = 67, RuleOC_XorExpression = 68, 
+    RuleOC_AndExpression = 69, RuleOC_NotExpression = 70, RuleOC_ComparisonExpression = 71, 
+    RuleKU_ComparisonOperator = 72, RuleKU_BitwiseOrOperatorExpression = 73, 
+    RuleKU_BitwiseAndOperatorExpression = 74, RuleKU_BitShiftOperatorExpression = 75, 
+    RuleKU_BitShiftOperator = 76, RuleOC_AddOrSubtractExpression = 77, RuleKU_AddOrSubtractOperator = 78, 
+    RuleOC_MultiplyDivideModuloExpression = 79, RuleKU_MultiplyDivideModuloOperator = 80, 
+    RuleOC_PowerOfExpression = 81, RuleOC_UnaryAddSubtractOrFactorialExpression = 82, 
+    RuleOC_StringListNullOperatorExpression = 83, RuleOC_ListOperatorExpression = 84, 
+    RuleKU_ListExtractOperatorExpression = 85, RuleKU_ListSliceOperatorExpression = 86, 
+    RuleOC_StringOperatorExpression = 87, RuleOC_RegularExpression = 88, 
+    RuleOC_NullOperatorExpression = 89, RuleOC_PropertyOrLabelsExpression = 90, 
+    RuleOC_Atom = 91, RuleOC_Literal = 92, RuleOC_BooleanLiteral = 93, RuleOC_ListLiteral = 94, 
+    RuleKU_StructLiteral = 95, RuleKU_StructField = 96, RuleOC_ParenthesizedExpression = 97, 
+    RuleOC_FunctionInvocation = 98, RuleOC_FunctionName = 99, RuleOC_ExistentialSubquery = 100, 
+    RuleOC_PropertyLookup = 101, RuleOC_CaseExpression = 102, RuleOC_CaseAlternative = 103, 
+    RuleOC_Variable = 104, RuleOC_NumberLiteral = 105, RuleOC_Parameter = 106, 
+    RuleOC_PropertyExpression = 107, RuleOC_PropertyKeyName = 108, RuleOC_IntegerLiteral = 109, 
+    RuleOC_DoubleLiteral = 110, RuleOC_SchemaName = 111, RuleOC_SymbolicName = 112, 
+    RuleOC_LeftArrowHead = 113, RuleOC_RightArrowHead = 114, RuleOC_Dash = 115
   };
 
   explicit CypherParser(antlr4::TokenStream *input);
@@ -151,7 +151,6 @@ public:
   class OC_RelationshipTypesContext;
   class OC_NodeLabelsContext;
   class OC_NodeLabelContext;
-  class OC_RangePatternContext;
   class OC_RangeLiteralContext;
   class OC_LabelNameContext;
   class OC_RelTypeNameContext;
@@ -184,6 +183,8 @@ public:
   class OC_LiteralContext;
   class OC_BooleanLiteralContext;
   class OC_ListLiteralContext;
+  class KU_StructLiteralContext;
+  class KU_StructFieldContext;
   class OC_ParenthesizedExpressionContext;
   class OC_FunctionInvocationContext;
   class OC_FunctionNameContext;
@@ -965,10 +966,7 @@ public:
   public:
     OC_PatternPartContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    OC_VariableContext *oC_Variable();
     OC_AnonymousPatternPartContext *oC_AnonymousPatternPart();
-    std::vector<antlr4::tree::TerminalNode *> SP();
-    antlr4::tree::TerminalNode* SP(size_t i);
 
    
   };
@@ -1056,7 +1054,7 @@ public:
     antlr4::tree::TerminalNode* SP(size_t i);
     OC_VariableContext *oC_Variable();
     OC_RelationshipTypesContext *oC_RelationshipTypes();
-    OC_RangePatternContext *oC_RangePattern();
+    OC_RangeLiteralContext *oC_RangeLiteral();
     KU_PropertiesContext *kU_Properties();
 
    
@@ -1120,29 +1118,16 @@ public:
 
   OC_NodeLabelContext* oC_NodeLabel();
 
-  class  OC_RangePatternContext : public antlr4::ParserRuleContext {
-  public:
-    OC_RangePatternContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *STAR();
-    std::vector<antlr4::tree::TerminalNode *> SP();
-    antlr4::tree::TerminalNode* SP(size_t i);
-    antlr4::tree::TerminalNode *SHORTEST();
-    OC_RangeLiteralContext *oC_RangeLiteral();
-
-   
-  };
-
-  OC_RangePatternContext* oC_RangePattern();
-
   class  OC_RangeLiteralContext : public antlr4::ParserRuleContext {
   public:
     OC_RangeLiteralContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *STAR();
     std::vector<OC_IntegerLiteralContext *> oC_IntegerLiteral();
     OC_IntegerLiteralContext* oC_IntegerLiteral(size_t i);
     std::vector<antlr4::tree::TerminalNode *> SP();
     antlr4::tree::TerminalNode* SP(size_t i);
+    antlr4::tree::TerminalNode *SHORTEST();
 
    
   };
@@ -1543,6 +1528,7 @@ public:
     OC_BooleanLiteralContext *oC_BooleanLiteral();
     antlr4::tree::TerminalNode *NULL_();
     OC_ListLiteralContext *oC_ListLiteral();
+    KU_StructLiteralContext *kU_StructLiteral();
 
    
   };
@@ -1574,6 +1560,34 @@ public:
   };
 
   OC_ListLiteralContext* oC_ListLiteral();
+
+  class  KU_StructLiteralContext : public antlr4::ParserRuleContext {
+  public:
+    KU_StructLiteralContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<KU_StructFieldContext *> kU_StructField();
+    KU_StructFieldContext* kU_StructField(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> SP();
+    antlr4::tree::TerminalNode* SP(size_t i);
+
+   
+  };
+
+  KU_StructLiteralContext* kU_StructLiteral();
+
+  class  KU_StructFieldContext : public antlr4::ParserRuleContext {
+  public:
+    KU_StructFieldContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    OC_SymbolicNameContext *oC_SymbolicName();
+    OC_ExpressionContext *oC_Expression();
+    std::vector<antlr4::tree::TerminalNode *> SP();
+    antlr4::tree::TerminalNode* SP(size_t i);
+
+   
+  };
+
+  KU_StructFieldContext* kU_StructField();
 
   class  OC_ParenthesizedExpressionContext : public antlr4::ParserRuleContext {
   public:

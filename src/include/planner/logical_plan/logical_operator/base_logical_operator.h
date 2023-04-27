@@ -9,7 +9,7 @@ enum class LogicalOperatorType : uint8_t {
     ACCUMULATE,
     ADD_PROPERTY,
     AGGREGATE,
-    COPY_CSV,
+    COPY,
     CREATE_NODE,
     CREATE_REL,
     CREATE_NODE_TABLE,
@@ -31,6 +31,7 @@ enum class LogicalOperatorType : uint8_t {
     MULTIPLICITY_REDUCER,
     ORDER_BY,
     PROJECTION,
+    RECURSIVE_EXTEND,
     RENAME_TABLE,
     RENAME_PROPERTY,
     SCAN_NODE,
@@ -42,9 +43,6 @@ enum class LogicalOperatorType : uint8_t {
     SKIP,
     UNION_ALL,
     UNWIND,
-    SHORTEST_PATH,
-    SCAN_BFS_LEVEL,
-    SIMPLE_RECURSIVE_JOIN
 };
 
 class LogicalOperatorUtils {

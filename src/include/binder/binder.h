@@ -39,24 +39,24 @@ private:
         const std::string& name, const common::DataType& dataType);
 
     /*** bind DDL ***/
-    std::unique_ptr<BoundStatement> bindCreateNodeClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindCreateRelClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindDropTable(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindRenameTable(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindAddProperty(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindDropProperty(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindRenameProperty(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindCreateNodeTableClause(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindCreateRelTableClause(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindDropTableClause(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindRenameTableClause(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindAddPropertyClause(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindDropPropertyClause(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindRenamePropertyClause(const parser::Statement& statement);
 
-    std::vector<catalog::PropertyNameDataType> bindPropertyNameDataTypes(
+    std::vector<catalog::Property> bindProperties(
         std::vector<std::pair<std::string, std::string>> propertyNameDataTypes);
-    uint32_t bindPrimaryKey(std::string pkColName,
+    uint32_t bindPrimaryKey(const std::string& pkColName,
         std::vector<std::pair<std::string, std::string>> propertyNameDataTypes);
     common::property_id_t bindPropertyName(
         catalog::NodeTableSchema::TableSchema* tableSchema, const std::string& propertyName);
     common::DataType bindDataType(const std::string& dataType);
 
     /*** bind copy csv ***/
-    std::unique_ptr<BoundStatement> bindCopy(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindCopyClause(const parser::Statement& statement);
 
     std::vector<std::string> bindFilePaths(const std::vector<std::string>& filePaths);
 
@@ -134,19 +134,13 @@ private:
     std::unique_ptr<QueryGraph> bindPatternElement(
         const parser::PatternElement& patternElement, PropertyKeyValCollection& collection);
 
-    void bindPathExpression(const parser::PatternElement& patternElement, QueryGraph* queryGraph,
-        PropertyKeyValCollection& collection);
-
-    static void validateNodeInPathExpression(const parser::PatternElement& patternElement);
-
-    static void validateRelInPathExpression(const parser::PatternElement& patternElement);
-
-    std::shared_ptr<RelExpression> bindQueryRel(const parser::RelPattern& relPattern,
+    void bindQueryRel(const parser::RelPattern& relPattern,
         const std::shared_ptr<NodeExpression>& leftNode,
-        const std::shared_ptr<NodeExpression>& rightNode, PropertyKeyValCollection& collection);
+        const std::shared_ptr<NodeExpression>& rightNode, QueryGraph& queryGraph,
+        PropertyKeyValCollection& collection);
     std::pair<uint64_t, uint64_t> bindVariableLengthRelBound(const parser::RelPattern& relPattern);
-    std::shared_ptr<NodeExpression> bindQueryNode(
-        const parser::NodePattern& nodePattern, PropertyKeyValCollection& collection);
+    std::shared_ptr<NodeExpression> bindQueryNode(const parser::NodePattern& nodePattern,
+        QueryGraph& queryGraph, PropertyKeyValCollection& collection);
     std::shared_ptr<NodeExpression> createQueryNode(const parser::NodePattern& nodePattern);
     inline std::vector<common::table_id_t> bindNodeTableIDs(
         const std::vector<std::string>& tableNames) {

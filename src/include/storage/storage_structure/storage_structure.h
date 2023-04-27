@@ -21,12 +21,15 @@ class StorageStructure {
     friend class ListsUpdateIterator;
 
 public:
+    StorageStructure() = default;
+
     StorageStructure(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        BufferManager& bufferManager, WAL* wal)
+        BufferManager* bufferManager, WAL* wal)
         : logger{common::LoggerUtils::getLogger(common::LoggerConstants::LoggerEnum::STORAGE)},
           storageStructureID{storageStructureIDAndFName.storageStructureID},
           bufferManager{bufferManager}, wal{wal} {
-        fileHandle = bufferManager.getBMFileHandle(storageStructureIDAndFName.fName,
+        assert(!storageStructureIDAndFName.fName.empty());
+        fileHandle = bufferManager->getBMFileHandle(storageStructureIDAndFName.fName,
             FileHandle::O_PERSISTENT_FILE_NO_CREATE,
             BMFileHandle::FileVersionedType::VERSIONED_FILE);
     }
@@ -51,7 +54,7 @@ protected:
     std::shared_ptr<spdlog::logger> logger;
     StorageStructureID storageStructureID;
     std::unique_ptr<BMFileHandle> fileHandle;
-    BufferManager& bufferManager;
+    BufferManager* bufferManager;
     WAL* wal;
 };
 
@@ -62,6 +65,8 @@ protected:
 class BaseColumnOrList : public StorageStructure {
 
 public:
+    BaseColumnOrList(const common::DataType& dataType) : dataType{dataType} {}
+
     // Maps the position of element in page to its byte offset in page.
     // TODO(Everyone): we should slowly get rid of this function.
     inline uint16_t mapElementPosToByteOffset(uint16_t pageElementPos) const {
@@ -78,7 +83,7 @@ protected:
     }
 
     BaseColumnOrList(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        common::DataType dataType, const size_t& elementSize, BufferManager& bufferManager,
+        common::DataType dataType, const size_t& elementSize, BufferManager* bufferManager,
         bool hasNULLBytes, WAL* wal);
 
     void readBySequentialCopy(transaction::Transaction* transaction, common::ValueVector* vector,

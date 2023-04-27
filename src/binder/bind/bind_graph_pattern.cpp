@@ -1,8 +1,6 @@
 #include <set>
 
 #include "binder/binder.h"
-#include "binder/expression/function_expression.h"
-#include "binder/expression/literal_expression.h"
 
 using namespace kuzu::common;
 using namespace kuzu::parser;
@@ -33,18 +31,13 @@ Binder::bindGraphPattern(const std::vector<std::unique_ptr<PatternElement>>& gra
 std::unique_ptr<QueryGraph> Binder::bindPatternElement(
     const PatternElement& patternElement, PropertyKeyValCollection& collection) {
     auto queryGraph = std::make_unique<QueryGraph>();
-    if (patternElement.hasPathVariable()) {
-        bindPathExpression(patternElement, queryGraph.get(), collection);
-        return queryGraph;
-    }
-    auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
-    queryGraph->addQueryNode(leftNode);
+    auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), *queryGraph, collection);
     for (auto i = 0u; i < patternElement.getNumPatternElementChains(); ++i) {
         auto patternElementChain = patternElement.getPatternElementChain(i);
-        auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
-        queryGraph->addQueryNode(rightNode);
-        queryGraph->addQueryRel(
-            bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));
+        auto rightNode =
+            bindQueryNode(*patternElementChain->getNodePattern(), *queryGraph, collection);
+        bindQueryRel(
+            *patternElementChain->getRelPattern(), leftNode, rightNode, *queryGraph, collection);
         leftNode = rightNode;
     }
     return queryGraph;
@@ -65,79 +58,6 @@ static std::vector<table_id_t> pruneRelTableIDs(const Catalog& catalog_,
         result.push_back(relTableID);
     }
     return result;
-}
-
-void Binder::bindPathExpression(const parser::PatternElement& patternElement,
-    QueryGraph* queryGraph, PropertyKeyValCollection& collection) {
-    validateNodeInPathExpression(patternElement);
-    validateRelInPathExpression(patternElement);
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        if (!patternElementChain->getRelPattern()->getIsShortestPath()) {
-            throw BinderException("Binding query pattern to path variable is only supported for "
-                                  "Shortest Path queries.");
-        }
-    }
-    if (patternElement.getNumPatternElementChains() > 1) {
-        throw BinderException("Shortest path query pattern not valid (more than source, "
-                              "destination nodes not allowed).");
-    }
-    std::vector<std::shared_ptr<NodeExpression>> nodeExpressions =
-        std::vector<std::shared_ptr<NodeExpression>>();
-    std::vector<std::shared_ptr<RelExpression>> relExpressions =
-        std::vector<std::shared_ptr<RelExpression>>();
-    auto leftNode = bindQueryNode(*patternElement.getFirstNodePattern(), collection);
-    queryGraph->addQueryNode(leftNode);
-    nodeExpressions.push_back(leftNode);
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        auto rightNode = bindQueryNode(*patternElementChain->getNodePattern(), collection);
-        queryGraph->addQueryNode(rightNode);
-        nodeExpressions.push_back(rightNode);
-        relExpressions.push_back(
-            bindQueryRel(*patternElementChain->getRelPattern(), leftNode, rightNode, collection));
-        queryGraph->insertQueryRelNameToPosMap(relExpressions[i], i);
-    }
-    auto pathVariableExpression = std::make_shared<PathExpression>(
-        DataTypeID::PATH, patternElement.getPathVariable(), nodeExpressions, relExpressions);
-    auto dataType = DataType(common::INT64);
-    std::unordered_map<common::table_id_t, common::property_id_t> propertyIDPerTable;
-    auto pathLengthPropertyExpression = std::make_shared<PropertyExpression>(
-        dataType, PATH_TYPE_LENGTH_PROPERTY, *pathVariableExpression, propertyIDPerTable, false);
-    pathVariableExpression->setPathLengthExpression(pathLengthPropertyExpression);
-    variablesInScope.insert({patternElement.getPathVariable(), pathVariableExpression});
-    queryGraph->setPathExpression(pathVariableExpression);
-}
-
-void Binder::validateNodeInPathExpression(const parser::PatternElement& patternElement) {
-    if (patternElement.getNumPatternElementChains() == 0) {
-        throw BinderException("Binding path to a single node is not supported.");
-    }
-    if (patternElement.getFirstNodePattern()->getTableNames().size() != 1) {
-        throw BinderException(
-            "Multi Label node pattern is not supported for Shortest Path query expressions.");
-    }
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        if (patternElementChain->getNodePattern()->getTableNames().size() != 1) {
-            throw BinderException(
-                "Multi Label node pattern is not supported for Shortest Path query expressions.");
-        }
-    }
-}
-
-void Binder::validateRelInPathExpression(const parser::PatternElement& patternElement) {
-    for (int i = 0; i < patternElement.getNumPatternElementChains(); i++) {
-        auto patternElementChain = patternElement.getPatternElementChain(i);
-        if (patternElementChain->getRelPattern()->getTableNames().size() != 1) {
-            throw BinderException(
-                "Multi Label rel pattern is not supported for Shortest Path query expressions.");
-        }
-        if (!patternElementChain->getRelPattern()->getVariableName().empty()) {
-            throw BinderException(
-                "Rel variable for Shortest path expression queries are not allowed.");
-        }
-    }
 }
 
 static std::vector<std::pair<std::string, std::vector<Property>>> getPropertyNameAndSchemasPairs(
@@ -183,9 +103,10 @@ getNodePropertyNameAndPropertiesPairs(const std::vector<NodeTableSchema*>& nodeT
     return getPropertyNameAndSchemasPairs(propertyNames, propertyNamesToSchemas);
 }
 
-std::shared_ptr<RelExpression> Binder::bindQueryRel(const RelPattern& relPattern,
+void Binder::bindQueryRel(const RelPattern& relPattern,
     const std::shared_ptr<NodeExpression>& leftNode,
-    const std::shared_ptr<NodeExpression>& rightNode, PropertyKeyValCollection& collection) {
+    const std::shared_ptr<NodeExpression>& rightNode, QueryGraph& queryGraph,
+    PropertyKeyValCollection& collection) {
     auto parsedName = relPattern.getVariableName();
     if (variablesInScope.contains(parsedName)) {
         auto prevVariable = variablesInScope.at(parsedName);
@@ -210,21 +131,24 @@ std::shared_ptr<RelExpression> Binder::bindQueryRel(const RelPattern& relPattern
     // bind variable length
     auto [lowerBound, upperBound] = bindVariableLengthRelBound(relPattern);
     auto queryRel = make_shared<RelExpression>(getUniqueExpressionName(parsedName), parsedName,
-        tableIDs, srcNode, dstNode, lowerBound, upperBound);
+        tableIDs, srcNode, dstNode, relPattern.getRelType(), lowerBound, upperBound);
     queryRel->setAlias(parsedName);
     // resolve properties associate with rel table
     std::vector<RelTableSchema*> relTableSchemas;
     for (auto tableID : tableIDs) {
         relTableSchemas.push_back(catalog.getReadOnlyVersion()->getRelTableSchema(tableID));
     }
-    // we don't support reading property for variable length rel yet.
-    if (!queryRel->isVariableLength()) {
+    if (queryRel->getRelType() == common::QueryRelType::NON_RECURSIVE) {
+        // we don't support reading property for VARIABLE_LENGTH or SHORTEST rel.
         for (auto& [propertyName, propertySchemas] :
             getRelPropertyNameAndPropertiesPairs(relTableSchemas)) {
             auto propertyExpression = expressionBinder.createPropertyExpression(
                 *queryRel, propertySchemas, false /* isPrimaryKey */);
             queryRel->addPropertyExpression(propertyName, std::move(propertyExpression));
         }
+    } else if (queryRel->getRelType() == common::QueryRelType::SHORTEST) {
+        queryRel->setInternalLengthProperty(
+            expressionBinder.createInternalLengthExpression(*queryRel));
     }
     if (!parsedName.empty()) {
         variablesInScope.insert({parsedName, queryRel});
@@ -236,7 +160,7 @@ std::shared_ptr<RelExpression> Binder::bindQueryRel(const RelPattern& relPattern
         boundRhs = ExpressionBinder::implicitCastIfNecessary(boundRhs, boundLhs->dataType);
         collection.addPropertyKeyValPair(*queryRel, std::make_pair(boundLhs, boundRhs));
     }
-    return queryRel;
+    queryGraph.addQueryRel(queryRel);
 }
 
 std::pair<uint64_t, uint64_t> Binder::bindVariableLengthRelBound(
@@ -256,7 +180,7 @@ std::pair<uint64_t, uint64_t> Binder::bindVariableLengthRelBound(
 }
 
 std::shared_ptr<NodeExpression> Binder::bindQueryNode(
-    const NodePattern& nodePattern, PropertyKeyValCollection& collection) {
+    const NodePattern& nodePattern, QueryGraph& queryGraph, PropertyKeyValCollection& collection) {
     auto parsedName = nodePattern.getVariableName();
     std::shared_ptr<NodeExpression> queryNode;
     if (variablesInScope.contains(parsedName)) { // bind to node in scope
@@ -279,6 +203,7 @@ std::shared_ptr<NodeExpression> Binder::bindQueryNode(
         boundRhs = ExpressionBinder::implicitCastIfNecessary(boundRhs, boundLhs->dataType);
         collection.addPropertyKeyValPair(*queryNode, std::make_pair(boundLhs, boundRhs));
     }
+    queryGraph.addQueryNode(queryNode);
     return queryNode;
 }
 

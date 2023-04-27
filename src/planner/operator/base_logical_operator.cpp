@@ -16,8 +16,8 @@ std::string LogicalOperatorUtils::logicalOperatorTypeToString(LogicalOperatorTyp
     case LogicalOperatorType::AGGREGATE: {
         return "AGGREGATE";
     }
-    case LogicalOperatorType::COPY_CSV: {
-        return "COPY_CSV";
+    case LogicalOperatorType::COPY: {
+        return "COPY";
     }
     case LogicalOperatorType::CREATE_NODE: {
         return "CREATE_NODE";
@@ -82,6 +82,9 @@ std::string LogicalOperatorUtils::logicalOperatorTypeToString(LogicalOperatorTyp
     case LogicalOperatorType::PROJECTION: {
         return "PROJECTION";
     }
+    case LogicalOperatorType::RECURSIVE_EXTEND: {
+        return "RECURSIVE_EXTEND";
+    }
     case LogicalOperatorType::RENAME_TABLE: {
         return "RENAME_TABLE";
     }
@@ -114,15 +117,6 @@ std::string LogicalOperatorUtils::logicalOperatorTypeToString(LogicalOperatorTyp
     }
     case LogicalOperatorType::UNWIND: {
         return "UNWIND";
-    }
-    case LogicalOperatorType::SHORTEST_PATH: {
-        return "SHORTEST_PATH";
-    }
-    case LogicalOperatorType::SCAN_BFS_LEVEL: {
-        return "SCAN_BFS_LEVEL";
-    }
-    case LogicalOperatorType::SIMPLE_RECURSIVE_JOIN: {
-        return "SIMPLE_RECURSIVE_JOIN";
     }
     default:
         throw common::NotImplementedException("LogicalOperatorTypeToString()");

@@ -3,7 +3,7 @@
 #include "common/copier_config/copier_config.h"
 #include "common/exception.h"
 #include "common/string_utils.h"
-#include "parser/copy_csv/copy_csv.h"
+#include "parser/copy.h"
 #include "parser/ddl/add_property.h"
 #include "parser/ddl/create_node_clause.h"
 #include "parser/ddl/create_rel_clause.h"
@@ -236,11 +236,7 @@ std::vector<std::unique_ptr<PatternElement>> Transformer::transformPattern(
 
 std::unique_ptr<PatternElement> Transformer::transformPatternPart(
     CypherParser::OC_PatternPartContext& ctx) {
-    auto patternElement = transformAnonymousPatternPart(*ctx.oC_AnonymousPatternPart());
-    if (ctx.oC_Variable()) {
-        patternElement->setPathVariable(transformVariable(*ctx.oC_Variable()));
-    }
-    return patternElement;
+    return transformAnonymousPatternPart(*ctx.oC_AnonymousPatternPart());
 }
 
 std::unique_ptr<PatternElement> Transformer::transformAnonymousPatternPart(
@@ -291,34 +287,21 @@ std::unique_ptr<RelPattern> Transformer::transformRelationshipPattern(
     auto relTypes = relDetail->oC_RelationshipTypes() ?
                         transformRelTypes(*relDetail->oC_RelationshipTypes()) :
                         std::vector<std::string>{};
+    auto relType = common::QueryRelType::NON_RECURSIVE;
     std::string lowerBound = "1";
     std::string upperBound = "1";
-    bool isShortestPath = false;
-    if (relDetail->oC_RangePattern()) {
-        if (relDetail->oC_RangePattern()->oC_RangeLiteral()) {
-            if (relDetail->oC_RangePattern()->oC_RangeLiteral()->oC_IntegerLiteral()[0]) {
-                lowerBound = relDetail->oC_RangePattern()
-                                 ->oC_RangeLiteral()
-                                 ->oC_IntegerLiteral()[0]
-                                 ->getText();
-            }
-            if (relDetail->oC_RangePattern()->oC_RangeLiteral()->oC_IntegerLiteral()[1]) {
-                upperBound = relDetail->oC_RangePattern()
-                                 ->oC_RangeLiteral()
-                                 ->oC_IntegerLiteral()[1]
-                                 ->getText();
-            }
-        }
-        if (relDetail->oC_RangePattern()->SHORTEST()) {
-            isShortestPath = true;
-        }
+    if (relDetail->oC_RangeLiteral()) {
+        lowerBound = relDetail->oC_RangeLiteral()->oC_IntegerLiteral()[0]->getText();
+        upperBound = relDetail->oC_RangeLiteral()->oC_IntegerLiteral()[1]->getText();
+        relType = relDetail->oC_RangeLiteral()->SHORTEST() ? common::QueryRelType::SHORTEST :
+                                                             common::QueryRelType::VARIABLE_LENGTH;
     }
     auto arrowHead = ctx.oC_LeftArrowHead() ? ArrowDirection::LEFT : ArrowDirection::RIGHT;
     auto properties = relDetail->kU_Properties() ?
                           transformProperties(*relDetail->kU_Properties()) :
                           std::vector<std::pair<std::string, std::unique_ptr<ParsedExpression>>>{};
-    return std::make_unique<RelPattern>(variable, relTypes, lowerBound, upperBound, isShortestPath,
-        arrowHead, std::move(properties));
+    return std::make_unique<RelPattern>(
+        variable, relTypes, relType, lowerBound, upperBound, arrowHead, std::move(properties));
 }
 
 std::vector<std::pair<std::string, std::unique_ptr<ParsedExpression>>>
@@ -748,6 +731,8 @@ std::unique_ptr<ParsedExpression> Transformer::transformLiteral(
     } else if (ctx.NULL_()) {
         return std::make_unique<ParsedLiteralExpression>(
             std::make_unique<common::Value>(common::Value::createNullValue()), ctx.getText());
+    } else if (ctx.kU_StructLiteral()) {
+        return transformStructLiteral(*ctx.kU_StructLiteral());
     } else {
         assert(ctx.oC_ListLiteral());
         return transformListLiteral(*ctx.oC_ListLiteral());
@@ -774,6 +759,18 @@ std::unique_ptr<ParsedExpression> Transformer::transformListLiteral(
         listCreation->addChild(transformExpression(*childExpr));
     }
     return listCreation;
+}
+
+std::unique_ptr<ParsedExpression> Transformer::transformStructLiteral(
+    CypherParser::KU_StructLiteralContext& ctx) {
+    auto structPack =
+        std::make_unique<ParsedFunctionExpression>(common::STRUCT_PACK_FUNC_NAME, ctx.getText());
+    for (auto& structField : ctx.kU_StructField()) {
+        auto structExpr = transformExpression(*structField->oC_Expression());
+        structExpr->setAlias(transformSymbolicName(*structField->oC_SymbolicName()));
+        structPack->addChild(std::move(structExpr));
+    }
+    return structPack;
 }
 
 std::unique_ptr<ParsedExpression> Transformer::transformParameterExpression(
@@ -942,7 +939,7 @@ std::unique_ptr<Statement> Transformer::transformCreateNodeClause(
     auto propertyDefinitions = transformPropertyDefinitions(*ctx.kU_PropertyDefinitions());
     auto pkColName =
         ctx.kU_CreateNodeConstraint() ? transformPrimaryKey(*ctx.kU_CreateNodeConstraint()) : "";
-    return std::make_unique<CreateNodeClause>(
+    return std::make_unique<CreateNodeTableClause>(
         std::move(schemaName), std::move(propertyDefinitions), pkColName);
 }
 
@@ -1028,7 +1025,7 @@ std::unique_ptr<Statement> Transformer::transformCopyCSV(CypherParser::KU_CopyCS
     auto parsingOptions = ctx.kU_ParsingOptions() ?
                               transformParsingOptions(*ctx.kU_ParsingOptions()) :
                               std::unordered_map<std::string, std::unique_ptr<ParsedExpression>>();
-    return std::make_unique<CopyCSV>(std::move(filePaths), std::move(tableName),
+    return std::make_unique<Copy>(std::move(filePaths), std::move(tableName),
         std::move(parsingOptions), common::CopyDescription::FileType::UNKNOWN);
 }
 
@@ -1036,7 +1033,7 @@ std::unique_ptr<Statement> Transformer::transformCopyNPY(CypherParser::KU_CopyNP
     auto filePaths = transformFilePaths(ctx.StringLiteral());
     auto tableName = transformSchemaName(*ctx.oC_SchemaName());
     auto parsingOptions = std::unordered_map<std::string, std::unique_ptr<ParsedExpression>>();
-    return std::make_unique<CopyCSV>(std::move(filePaths), std::move(tableName),
+    return std::make_unique<Copy>(std::move(filePaths), std::move(tableName),
         std::move(parsingOptions), common::CopyDescription::FileType::NPY);
 }
 

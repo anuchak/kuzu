@@ -272,7 +272,7 @@ oC_Pattern
     : oC_PatternPart ( SP? ',' SP? oC_PatternPart )* ;
 
 oC_PatternPart
-    : ( oC_Variable SP? '=' SP? oC_AnonymousPatternPart ) | oC_AnonymousPatternPart ;
+    : oC_AnonymousPatternPart ;
 
 oC_AnonymousPatternPart
     : oC_PatternElement ;
@@ -296,7 +296,7 @@ oC_RelationshipPattern
         ;
 
 oC_RelationshipDetail
-    : '[' SP? ( oC_Variable SP? )? ( oC_RelationshipTypes SP? )? ( oC_RangePattern SP? ) ? ( kU_Properties SP? ) ? ']' ;
+    : '[' SP? ( oC_Variable SP? )? ( oC_RelationshipTypes SP? )? ( oC_RangeLiteral SP? ) ? ( kU_Properties SP? ) ? ']' ;
 
 // The original oC_Properties definition is  oC_MapLiteral | oC_Parameter.
 // We choose to not support parameter as properties which will be the decision for a long time.
@@ -313,14 +313,10 @@ oC_NodeLabels
 oC_NodeLabel
     : ':' SP? oC_LabelName ;
 
-oC_RangePattern
-    :  '*' SP? (SHORTEST)? SP? (oC_RangeLiteral)? ;
-
 oC_RangeLiteral
-    :   ((oC_IntegerLiteral SP? '..') | (oC_IntegerLiteral SP? '..' SP? oC_IntegerLiteral)) ;
+    :  '*' SP? SHORTEST? SP? oC_IntegerLiteral SP? '..' SP? oC_IntegerLiteral ;
 
-SHORTEST
-    : ( 'S' | 's' ) ( 'H' | 'h' ) ( 'O' | 'o' ) ( 'R' | 'r' ) ( 'T' | 't' ) ( 'E' | 'e' ) ( 'S' | 's' ) ( 'T' | 't' ) ;
+SHORTEST : ( 'S' | 's' ) ( 'H' | 'h' ) ( 'O' | 'o' ) ( 'R' | 'r' ) ( 'T' | 't' ) ( 'E' | 'e' ) ( 'S' | 's' ) ( 'T' | 't' ) ;
 
 oC_LabelName
     : oC_SchemaName ;
@@ -443,6 +439,7 @@ oC_Literal
         | oC_BooleanLiteral
         | NULL_
         | oC_ListLiteral
+        | kU_StructLiteral
         ;
 
 oC_BooleanLiteral
@@ -456,6 +453,12 @@ FALSE : ( 'F' | 'f' ) ( 'A' | 'a' ) ( 'L' | 'l' ) ( 'S' | 's' ) ( 'E' | 'e' ) ;
 
 oC_ListLiteral
     :  '[' SP? ( oC_Expression SP? ( ',' SP? oC_Expression SP? )* )? ']' ;
+
+kU_StructLiteral
+    :  '{' SP? kU_StructField SP? ( ',' SP? kU_StructField SP? )* '}' ;
+
+kU_StructField
+    :   oC_SymbolicName SP? ':' SP? oC_Expression ;
 
 oC_ParenthesizedExpression
     : '(' SP? oC_Expression SP? ')' ;

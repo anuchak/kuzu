@@ -32,13 +32,13 @@ std::unique_ptr<LogicalPlan> Planner::getBestPlan(const Catalog& catalog,
     case StatementType::QUERY: {
         plan = QueryPlanner(catalog, nodesStatistics, relsStatistics).getBestPlan(statement);
     } break;
-    case StatementType::CREATE_NODE_CLAUSE: {
+    case StatementType::CREATE_NODE_TABLE_CLAUSE: {
         plan = planCreateNodeTable(statement);
     } break;
-    case StatementType::CREATE_REL_CLAUSE: {
+    case StatementType::CREATE_REL_TABLE_CLAUSE: {
         plan = planCreateRelTable(statement);
     } break;
-    case StatementType::COPY_CSV: {
+    case StatementType::COPY: {
         plan = planCopy(statement);
     } break;
     case StatementType::DROP_TABLE: {
@@ -67,7 +67,7 @@ std::vector<std::unique_ptr<LogicalPlan>> Planner::getAllPlans(const Catalog& ca
     const NodesStatisticsAndDeletedIDs& nodesStatistics, const RelsStatistics& relsStatistics,
     const BoundStatement& statement) {
     // We enumerate all plans for our testing framework. This API should only be used for QUERY
-    // but not DDL or COPY_CSV.
+    // but not DDL or COPY.
     assert(statement.getStatementType() == StatementType::QUERY);
     auto planner = QueryPlanner(catalog, nodesStatistics, relsStatistics);
     std::vector<std::unique_ptr<LogicalPlan>> plans;
@@ -82,7 +82,7 @@ std::unique_ptr<LogicalPlan> Planner::planCreateNodeTable(const BoundStatement& 
     auto& createNodeClause = (BoundCreateNodeClause&)statement;
     auto plan = std::make_unique<LogicalPlan>();
     auto createNodeTable = make_shared<LogicalCreateNodeTable>(createNodeClause.getTableName(),
-        createNodeClause.getPropertyNameDataTypes(), createNodeClause.getPrimaryKeyIdx(),
+        createNodeClause.getProperties(), createNodeClause.getPrimaryKeyIdx(),
         statement.getStatementResult()->getSingleExpressionToCollect());
     plan->setLastOperator(std::move(createNodeTable));
     return plan;
@@ -92,7 +92,7 @@ std::unique_ptr<LogicalPlan> Planner::planCreateRelTable(const BoundStatement& s
     auto& createRelClause = (BoundCreateRelClause&)statement;
     auto plan = std::make_unique<LogicalPlan>();
     auto createRelTable = make_shared<LogicalCreateRelTable>(createRelClause.getTableName(),
-        createRelClause.getPropertyNameDataTypes(), createRelClause.getRelMultiplicity(),
+        createRelClause.getProperties(), createRelClause.getRelMultiplicity(),
         createRelClause.getSrcTableID(), createRelClause.getDstTableID(),
         statement.getStatementResult()->getSingleExpressionToCollect());
     plan->setLastOperator(std::move(createRelTable));

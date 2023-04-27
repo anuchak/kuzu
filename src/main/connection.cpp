@@ -267,10 +267,6 @@ std::string Connection::getRelPropertyNames(const std::string& relTableName) {
     return result;
 }
 
-std::unique_ptr<QueryResult> Connection::kuzu_query(const char* queryString) {
-    return query(queryString);
-}
-
 void Connection::interrupt() {
     clientContext->activeQuery->interrupted = true;
 }
@@ -316,8 +312,8 @@ std::unique_ptr<QueryResult> Connection::executeAndAutoCommitIfNecessaryNoLock(
     PreparedStatement* preparedStatement, uint32_t planIdx) {
     clientContext->activeQuery = std::make_unique<ActiveQuery>();
     clientContext->startTimingIfEnabled();
-    auto mapper = PlanMapper(*database->storageManager, database->memoryManager.get(),
-        database->catalog.get(), clientContext->numThreadsForExecution);
+    auto mapper = PlanMapper(
+        *database->storageManager, database->memoryManager.get(), database->catalog.get());
     std::unique_ptr<PhysicalPlan> physicalPlan;
     if (preparedStatement->isSuccess()) {
         try {

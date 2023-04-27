@@ -120,3 +120,42 @@ TEST_F(TinySnbReadTest, VarLengthExtendTests) {
 TEST_F(OneDimNpyReadTest, Match) {
     runTest(TestHelper::appendKuzuRootPath("test/test_files/npy-1d/match.test"));
 }
+
+class SingleSourceShortestPathTest : public DBTest {
+public:
+    std::string getInputDir() override {
+        return TestHelper::appendKuzuRootPath("dataset/shortest-path-tests/");
+    }
+};
+
+TEST_F(SingleSourceShortestPathTest, BFS_SSSP) {
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/shortest_path/bfs_sssp.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/shortest_path/bfs_sssp_large.test"));
+}
+
+class TinySnbSerialReadTest : public DBTest {
+public:
+    std::string getInputDir() override {
+        return TestHelper::appendKuzuRootPath("dataset/tinysnb-serial/");
+    }
+};
+
+TEST_F(TinySnbSerialReadTest, Match) {
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/node.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/one_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/two_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/three_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/four_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/multi_query_part.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/multi_label.test"));
+}
+
+TEST_F(TinySnbSerialReadTest, Filter) {
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/node.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/one_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/two_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/four_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/five_hop.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/multi_query_part.test"));
+    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/multi_label.test"));
+}

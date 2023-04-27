@@ -19,8 +19,6 @@ add_library(kuzu_processor_mapper
         map_multiplicity_reducer.cpp
         map_order_by.cpp
         map_projection.cpp
-        map_scan_bfs_level.cpp
-        map_simple_recursive_join.cpp
         map_scan_node.cpp
         map_scan_node_property.cpp
         map_set.cpp

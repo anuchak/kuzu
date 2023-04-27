@@ -2,7 +2,6 @@
 
 #include <set>
 
-#include "planner/logical_plan/logical_operator/logical_cross_product.h"
 #include "processor/mapper/expression_mapper.h"
 #include "processor/operator/result_collector.h"
 
@@ -38,6 +37,9 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     } break;
     case LogicalOperatorType::EXTEND: {
         physicalOperator = mapLogicalExtendToPhysical(logicalOperator.get());
+    } break;
+    case LogicalOperatorType::RECURSIVE_EXTEND: {
+        physicalOperator = mapLogicalRecursiveExtendToPhysical(logicalOperator.get());
     } break;
     case LogicalOperatorType::FLATTEN: {
         physicalOperator = mapLogicalFlattenToPhysical(logicalOperator.get());
@@ -117,7 +119,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     case LogicalOperatorType::CREATE_REL_TABLE: {
         physicalOperator = mapLogicalCreateRelTableToPhysical(logicalOperator.get());
     } break;
-    case LogicalOperatorType::COPY_CSV: {
+    case LogicalOperatorType::COPY: {
         physicalOperator = mapLogicalCopyToPhysical(logicalOperator.get());
     } break;
     case LogicalOperatorType::DROP_TABLE: {
@@ -134,12 +136,6 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalOperatorToPhysical(
     } break;
     case LogicalOperatorType::RENAME_PROPERTY: {
         physicalOperator = mapLogicalRenamePropertyToPhysical(logicalOperator.get());
-    } break;
-    case LogicalOperatorType::SCAN_BFS_LEVEL: {
-        physicalOperator = mapLogicalScanBFSLevelToPhysical(logicalOperator.get());
-    } break;
-    case LogicalOperatorType::SIMPLE_RECURSIVE_JOIN: {
-        physicalOperator = mapLogicalSimpleRecursiveJoinToPhysical(logicalOperator.get());
     } break;
     default:
         throw common::NotImplementedException("PlanMapper::mapLogicalOperatorToPhysical()");

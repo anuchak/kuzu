@@ -12,29 +12,29 @@ namespace binder {
 
 std::unique_ptr<BoundStatement> Binder::bind(const Statement& statement) {
     switch (statement.getStatementType()) {
-    case StatementType::CREATE_NODE_CLAUSE: {
-        return bindCreateNodeClause(statement);
+    case StatementType::CREATE_NODE_TABLE_CLAUSE: {
+        return bindCreateNodeTableClause(statement);
     }
-    case StatementType::CREATE_REL_CLAUSE: {
-        return bindCreateRelClause(statement);
+    case StatementType::CREATE_REL_TABLE_CLAUSE: {
+        return bindCreateRelTableClause(statement);
     }
-    case StatementType::COPY_CSV: {
-        return bindCopy(statement);
+    case StatementType::COPY: {
+        return bindCopyClause(statement);
     }
     case StatementType::DROP_TABLE: {
-        return bindDropTable(statement);
+        return bindDropTableClause(statement);
     }
     case StatementType::RENAME_TABLE: {
-        return bindRenameTable(statement);
+        return bindRenameTableClause(statement);
     }
     case StatementType::ADD_PROPERTY: {
-        return bindAddProperty(statement);
+        return bindAddPropertyClause(statement);
     }
     case StatementType::DROP_PROPERTY: {
-        return bindDropProperty(statement);
+        return bindDropPropertyClause(statement);
     }
     case StatementType::RENAME_PROPERTY: {
-        return bindRenameProperty(statement);
+        return bindRenamePropertyClause(statement);
     }
     case StatementType::QUERY: {
         return bindQuery((const RegularQuery&)statement);

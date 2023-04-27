@@ -362,7 +362,7 @@ public:
         auto preparedStatement = conn->prepare(query);
         conn->beginWriteTransaction();
         auto mapper = PlanMapper(
-            *getStorageManager(*database), getMemoryManager(*database), getCatalog(*database), clientContext->numThreadsForExecution);
+            *getStorageManager(*database), getMemoryManager(*database), getCatalog(*database));
         auto physicalPlan =
             mapper.mapLogicalPlanToPhysical(preparedStatement->logicalPlans[0].get(),
                 preparedStatement->getExpressionsToCollect(), preparedStatement->statementType);

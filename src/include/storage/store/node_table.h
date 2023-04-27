@@ -43,11 +43,11 @@ public:
     inline void removeProperty(common::property_id_t propertyID) {
         propertyColumns.erase(propertyID);
     }
-    inline void addProperty(catalog::Property property) {
+    inline void addProperty(const catalog::Property& property) {
         propertyColumns.emplace(property.propertyID,
             ColumnFactory::getColumn(StorageUtils::getNodePropertyColumnStructureIDAndFName(
                                          wal->getDirectory(), property),
-                property.dataType, bufferManager, wal));
+                property.dataType, &bufferManager, wal));
     }
 
     common::offset_t addNodeAndResetProperties(common::ValueVector* primaryKeyVector);

@@ -5,15 +5,14 @@ namespace processor {
 
 void BaseTableScan::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
     for (auto& dataPos : outVecPositions) {
-        auto valueVector = resultSet->getValueVector(dataPos);
-        vectorsToScan.push_back(valueVector.get());
+        vectorsToScan.push_back(resultSet->getValueVector(dataPos).get());
     }
     setMaxMorselSize();
 }
 
 bool BaseTableScan::getNextTuplesInternal(ExecutionContext* context) {
     auto morsel = getMorsel();
-    if (morsel->isEmpty()) {
+    if (morsel->numTuples == 0) {
         return false;
     }
     morsel->table->scan(vectorsToScan, morsel->startTupleIdx, morsel->numTuples, colIndicesToScan);

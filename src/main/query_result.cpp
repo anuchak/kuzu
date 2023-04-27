@@ -169,13 +169,6 @@ void QueryResult::initResultTableAndIterator(
                 relVal->addProperty(property->getPropertyName(), std::move(propertyValue));
             }
             value = std::make_unique<Value>(std::move(relVal));
-        } else if (columnType.typeID == common::PATH) {
-            assert(expressionsToCollect.size() == 1);
-            auto pathLengthExpression = expressionsToCollect[0];
-            assert(pathLengthExpression->dataType.typeID == common::INT64);
-            value =
-                std::make_unique<Value>(Value::createDefaultValue(pathLengthExpression->dataType));
-            valuesToCollect.push_back(value.get());
         } else {
             value = std::make_unique<Value>(Value::createDefaultValue(columnType));
             assert(expressionsToCollect.size() == 1);

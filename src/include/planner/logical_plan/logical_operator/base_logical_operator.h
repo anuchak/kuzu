@@ -43,9 +43,6 @@ enum class LogicalOperatorType : uint8_t {
     SKIP,
     UNION_ALL,
     UNWIND,
-    SHORTEST_PATH,
-    SCAN_BFS_LEVEL,
-    SIMPLE_RECURSIVE_JOIN
 };
 
 class LogicalOperatorUtils {

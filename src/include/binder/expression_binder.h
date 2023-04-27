@@ -1,7 +1,6 @@
 #pragma once
 
 #include "binder/expression/expression.h"
-#include "binder/expression/path_expression.h"
 #include "catalog/catalog.h"
 #include "common/types/value.h"
 #include "parser/expression/parsed_expression.h"
@@ -40,8 +39,6 @@ private:
         const Expression& expression, const std::string& propertyName);
     std::shared_ptr<Expression> bindRelPropertyExpression(
         const Expression& expression, const std::string& propertyName);
-    std::shared_ptr<Expression> bindPathPropertyExpression(
-        PathExpression& pathExpression, const std::string& propertyName);
     std::unique_ptr<Expression> createPropertyExpression(const Expression& nodeOrRel,
         const std::vector<catalog::Property>& propertyName, bool isPrimaryKey);
 

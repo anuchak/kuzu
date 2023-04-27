@@ -33,8 +33,6 @@ protected:
         return op;
     }
 
-    virtual void visitScanBFSLevel(planner::LogicalOperator* op) {}
-
     virtual void visitExtend(planner::LogicalOperator* op) {}
     virtual std::shared_ptr<planner::LogicalOperator> visitExtendReplace(
         std::shared_ptr<planner::LogicalOperator> op) {

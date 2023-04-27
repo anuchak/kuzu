@@ -13,8 +13,6 @@ public:
         : NodeOrRelExpression{
               common::NODE, std::move(uniqueName), std::move(variableName), std::move(tableIDs)} {}
 
-    inline std::string getVariableName() { return variableName; }
-
     inline void setInternalIDProperty(std::unique_ptr<Expression> expression) {
         internalIDExpression = std::move(expression);
     }

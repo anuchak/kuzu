@@ -364,7 +364,6 @@ std::string Types::dataTypeToString(const DataType& dataType) {
     case ANY:
     case NODE:
     case REL:
-    case PATH:
     case INTERNAL_ID:
     case BOOL:
     case INT64:
@@ -390,8 +389,6 @@ std::string Types::dataTypeToString(DataTypeID dataTypeID) {
         return "NODE";
     case REL:
         return "REL";
-    case PATH:
-        return "PATH";
     case INTERNAL_ID:
         return "INTERNAL_ID";
     case BOOL:

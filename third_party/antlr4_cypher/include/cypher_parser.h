@@ -1,5 +1,5 @@
 
-// Generated from /home/a8chakra/Repos/shortestpath_kuzu_copy/kuzu/src/antlr4/Cypher.g4 by ANTLR 4.9
+// Generated from Cypher.g4 by ANTLR 4.9
 
 #pragma once
 
@@ -966,10 +966,7 @@ public:
   public:
     OC_PatternPartContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    OC_VariableContext *oC_Variable();
     OC_AnonymousPatternPartContext *oC_AnonymousPatternPart();
-    std::vector<antlr4::tree::TerminalNode *> SP();
-    antlr4::tree::TerminalNode* SP(size_t i);
 
    
   };

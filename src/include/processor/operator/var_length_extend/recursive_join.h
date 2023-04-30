@@ -7,9 +7,9 @@
 namespace kuzu {
 namespace processor {
 
-class ScanFrontier : public PhysicalOperator {
+class ScanBFSLevel : public PhysicalOperator {
 public:
-    ScanFrontier(DataPos nodeIDVectorPos, uint32_t id, const std::string& paramsString)
+    ScanBFSLevel(const DataPos& nodeIDVectorPos, uint32_t id, const std::string& paramsString)
         : PhysicalOperator{PhysicalOperatorType::SCAN_NODE_ID, id, paramsString},
           nodeIDVectorPos{nodeIDVectorPos} {}
 
@@ -27,7 +27,7 @@ public:
     }
 
     std::unique_ptr<PhysicalOperator> clone() override {
-        return std::make_unique<ScanFrontier>(nodeIDVectorPos, id, paramsString);
+        return std::make_unique<ScanBFSLevel>(nodeIDVectorPos, id, paramsString);
     }
 
 private:
@@ -52,16 +52,17 @@ public:
         std::shared_ptr<FTableSharedState> inputFTableSharedState,
         std::vector<DataPos> vectorsToScanPos, std::vector<ft_col_idx_t> colIndicesToScan,
         const DataPos& srcNodeIDVectorPos, const DataPos& dstNodeIDVectorPos,
-        const DataPos& distanceVectorPos, std::unique_ptr<PhysicalOperator> child, uint32_t id,
-        const std::string& paramsString, std::unique_ptr<PhysicalOperator> root)
+        const DataPos& distanceVectorPos, std::shared_ptr<MorselDispatcher> morselDispatcher,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString,
+        std::unique_ptr<PhysicalOperator> root)
         : PhysicalOperator{PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id,
               paramsString},
-          upperBound{upperBound}, nodeTable{nodeTable}, inputFTableSharedState{std::move(
-                                                            inputFTableSharedState)},
-          vectorsToScanPos{std::move(vectorsToScanPos)}, colIndicesToScan{std::move(
-                                                             colIndicesToScan)},
-          srcNodeIDVectorPos{srcNodeIDVectorPos}, dstNodeIDVectorPos{dstNodeIDVectorPos},
-          distanceVectorPos{distanceVectorPos}, root{std::move(root)}, bfsScanState{} {}
+          upperBound{upperBound}, nodeTable{nodeTable},
+          inputFTableSharedState{std::move(inputFTableSharedState)}, vectorsToScanPos{std::move(
+                                                                         vectorsToScanPos)},
+          colIndicesToScan{std::move(colIndicesToScan)}, srcNodeIDVectorPos{srcNodeIDVectorPos},
+          dstNodeIDVectorPos{dstNodeIDVectorPos}, distanceVectorPos{distanceVectorPos},
+          root{std::move(root)}, bfsScanState{}, morselDispatcher{std::move(morselDispatcher)} {}
 
     static inline DataPos getTmpSrcNodeVectorPos() { return DataPos{0, 0}; }
     static inline DataPos getTmpDstNodeVectorPos() { return DataPos{1, 0}; }
@@ -73,7 +74,8 @@ public:
     std::unique_ptr<PhysicalOperator> clone() override {
         return std::make_unique<RecursiveJoin>(upperBound, nodeTable, inputFTableSharedState,
             vectorsToScanPos, colIndicesToScan, srcNodeIDVectorPos, dstNodeIDVectorPos,
-            distanceVectorPos, children[0]->clone(), id, paramsString, root->clone());
+            distanceVectorPos, morselDispatcher, children[0]->clone(), id, paramsString,
+            root->clone());
     }
 
 private:
@@ -82,8 +84,6 @@ private:
     void initLocalRecursivePlan(ExecutionContext* context);
     // Compute BFS for a given src node.
     bool computeBFS(ExecutionContext* context);
-    // Mark un-visited node as visited.
-    void updateVisitedState();
 
     void scanDstNodes(size_t sizeToScan);
 
@@ -100,9 +100,9 @@ private:
     // Local recursive plan
     std::unique_ptr<ResultSet> localResultSet;
     std::unique_ptr<PhysicalOperator> root;
-    ScanFrontier* scanBFSLevel;
+    ScanBFSLevel* scanBFSLevel;
 
-    std::unique_ptr<BFSMorsel> bfsMorsel;
+    BFSMorsel* bfsMorsel;
 
     common::offset_t maxNodeOffset;
     std::vector<common::ValueVector*> vectorsToScan;
@@ -113,6 +113,7 @@ private:
     std::shared_ptr<common::ValueVector> tmpDstNodeIDVector;
 
     BFSScanState bfsScanState;
+    std::shared_ptr<MorselDispatcher> morselDispatcher;
 };
 
 } // namespace processor

@@ -3,7 +3,7 @@
 namespace kuzu {
 namespace processor {
 
-bool ScanFrontier::getNextTuplesInternal(ExecutionContext* context) {
+bool ScanBFSLevel::getNextTuplesInternal(ExecutionContext* context) {
     if (!hasExecuted) {
         hasExecuted = true;
         return true;
@@ -19,7 +19,6 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
     srcNodeIDVector = resultSet->getValueVector(srcNodeIDVectorPos);
     dstNodeIDVector = resultSet->getValueVector(dstNodeIDVectorPos);
     distanceVector = resultSet->getValueVector(distanceVectorPos);
-    bfsMorsel = std::make_unique<BFSMorsel>(maxNodeOffset, upperBound);
     initLocalRecursivePlan(context);
     bfsScanState.resetState();
 }
@@ -44,6 +43,7 @@ bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
             bfsScanState.numScanned += numToScan;
             return true;
         }
+        morselDispatcher->resetSSSPComputationState();
         if (!computeBFS(context)) { // Phase 1
             return false;
         }
@@ -51,41 +51,29 @@ bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
 }
 
 bool RecursiveJoin::computeBFS(ExecutionContext* context) {
-    auto inputFTableMorsel = inputFTableSharedState->getMorsel(1);
-    if (inputFTableMorsel->numTuples == 0) {
-        return false;
-    }
-    inputFTableSharedState->getTable()->scan(vectorsToScan, inputFTableMorsel->startTupleIdx,
-        inputFTableMorsel->numTuples, colIndicesToScan);
-    bfsMorsel->resetState();
-    auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(
-        srcNodeIDVector->state->selVector->selectedPositions[0]);
-    bfsMorsel->markSrc(nodeID.offset);
-    while (!bfsMorsel->isComplete()) {
-        auto nodeOffset = bfsMorsel->getNextNodeOffset();
-        if (nodeOffset != common::INVALID_NODE_OFFSET) {
-            // Found a starting node from current frontier.
+    while (true) {
+        auto bfsMorselAndState = morselDispatcher->getBFSMorsel(
+            inputFTableSharedState, vectorsToScan, colIndicesToScan, srcNodeIDVector, bfsMorsel);
+        switch (bfsMorselAndState.first) {
+        case SSSP_MORSEL_INCOMPLETE:
+            continue;
+        case SSSP_MORSEL_COMPLETE:
+            return true;
+        case SSSP_COMPUTATION_COMPLETE:
+            return false;
+        default:
+            assert(false);
+        }
+        common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
+        while (nodeOffset != common::INVALID_NODE_OFFSET) {
             scanBFSLevel->setNodeID(common::nodeID_t{nodeOffset, nodeTable->getTableID()});
             while (root->getNextTuple(context)) { // Exhaust recursive plan.
-                updateVisitedState();
+                bfsMorsel->addToLocalNextBFSLevel(tmpDstNodeIDVector);
             }
-        } else {
-            // Otherwise move to the next frontier.
-            bfsMorsel->moveNextLevelAsCurrentLevel();
+            nodeOffset = bfsMorsel->getNextNodeOffset();
         }
-    }
-    bfsMorsel->unmarkSrc();
-    bfsScanState.resetState();
-    return true;
-}
-
-void RecursiveJoin::updateVisitedState() {
-    auto visitedNodes = bfsMorsel->visitedNodes;
-    for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; ++i) {
-        auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
-        auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
-        if (visitedNodes[nodeID.offset] == VisitedState::NOT_VISITED) {
-            bfsMorsel->markVisited(nodeID.offset);
+        if (morselDispatcher->finishBFSMorsel(bfsMorsel)) {
+            return true;
         }
     }
 }
@@ -112,7 +100,7 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
         assert(op->getNumChildren() == 1);
         op = op->getChild(0);
     }
-    scanBFSLevel = (ScanFrontier*)op;
+    scanBFSLevel = (ScanBFSLevel*)op;
     localResultSet = getLocalResultSet();
     tmpDstNodeIDVector = localResultSet->getValueVector(getTmpDstNodeVectorPos());
     root->initLocalState(localResultSet.get(), context);

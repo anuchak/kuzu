@@ -156,24 +156,25 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalRecursiveExtendToPhysica
         // state for recursive join. Though ideally we should construct them from schema.
         auto tmpSrcNodePos = RecursiveJoin::getTmpSrcNodeVectorPos();
         auto tmpDstNodePos = RecursiveJoin::getTmpDstNodeVectorPos();
-        auto scanFrontier =
-            std::make_unique<ScanFrontier>(tmpSrcNodePos, getOperatorID(), emptyParamString);
+        auto scanBFSLevel =
+            std::make_unique<ScanBFSLevel>(tmpSrcNodePos, getOperatorID(), emptyParamString);
         std::unique_ptr<PhysicalOperator> scanRelTable;
         std::vector<property_id_t> emptyPropertyIDs;
         if (relsStore.isSingleMultiplicityInDirection(direction, relTableID)) {
             scanRelTable = make_unique<ScanRelTableColumns>(
                 relsStore.getRelTable(relTableID)->getDirectedTableData(direction),
                 emptyPropertyIDs, tmpSrcNodePos, std::vector<DataPos>{tmpDstNodePos},
-                std::move(scanFrontier), getOperatorID(), emptyParamString);
+                std::move(scanBFSLevel), getOperatorID(), emptyParamString);
         } else {
             scanRelTable = make_unique<ScanRelTableLists>(
                 relsStore.getRelTable(relTableID)->getDirectedTableData(direction),
                 emptyPropertyIDs, tmpSrcNodePos, std::vector<DataPos>{tmpDstNodePos},
-                std::move(scanFrontier), getOperatorID(), emptyParamString);
+                std::move(scanBFSLevel), getOperatorID(), emptyParamString);
         }
+        auto morselDispatcher = std::make_shared<MorselDispatcher>();
         return std::make_unique<RecursiveJoin>(upperBound, nodeTable, sharedInputFTable,
             outDataPoses, colIndicesToScan, inNodeIDVectorPos, outNodeIDVectorPos,
-            distanceVectorPos, std::move(resultCollector), getOperatorID(),
+            distanceVectorPos, morselDispatcher, std::move(resultCollector), getOperatorID(),
             extend->getExpressionsForPrinting(), std::move(scanRelTable));
     }
 }

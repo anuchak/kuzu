@@ -110,7 +110,7 @@ public:
         const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID);
 
 private:
-    void resetSSSPComputationState();
+    inline void resetSSSPComputationState() { state = SSSP_MORSEL_INCOMPLETE; }
 
 private:
     SSSPComputationState state;

@@ -74,10 +74,6 @@ void BFSMorsel::addToLocalNextBFSLevel(
     }
 }
 
-void MorselDispatcher::resetSSSPComputationState() {
-    state = SSSP_MORSEL_INCOMPLETE;
-}
-
 bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
     if (ssspMorsel->isComplete()) {

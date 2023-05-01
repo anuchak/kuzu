@@ -29,12 +29,14 @@ public:
 
 struct SSSPMorsel {
 public:
-    SSSPMorsel(common::offset_t maxOffset_, uint8_t upperBound_)
-        : currentLevel{0u}, nextScanStartIdx{0u}, curBFSLevel{std::shared_ptr<BFSLevel>()},
-          nextBFSLevel{std::shared_ptr<BFSLevel>()}, numVisitedNodes{0u},
+    SSSPMorsel(common::offset_t maxOffset_, uint64_t upperBound_, uint64_t lowerBound_)
+        : currentLevel{0u}, nextScanStartIdx{0u}, curBFSLevel{std::make_shared<BFSLevel>()},
+          nextBFSLevel{std::make_shared<BFSLevel>()}, numVisitedNodes{0u},
           visitedNodes{std::vector<uint8_t>(maxOffset_ + 1, NOT_VISITED)},
           distance{std::unordered_map<common::offset_t, uint16_t>()}, srcOffset{0u},
-          maxOffset{maxOffset_}, upperBound{upperBound_}, numThreadsActiveOnMorsel{0u} {}
+          maxOffset{maxOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
+          numThreadsActiveOnMorsel{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
+          threadsWritingDstDistances{std::unordered_set<std::thread::id>()} {}
 
     void reset();
 
@@ -42,9 +44,7 @@ public:
     bool isComplete();
     // Mark src as visited.
     void markSrc();
-    // UnMark src as NOT visited to avoid outputting src which has length 0 path and thus should be
-    // omitted.
-    void unmarkSrc();
+
     // Mark node as visited.
     void markVisited(common::offset_t offset);
     void moveNextLevelAsCurrentLevel();
@@ -63,15 +63,19 @@ public:
     common::offset_t srcOffset;
     // Maximum offset of dst nodes.
     common::offset_t maxOffset;
-    uint8_t upperBound;
+    uint64_t upperBound;
+    uint64_t lowerBound;
     uint32_t numThreadsActiveOnMorsel;
+    uint64_t nextDstScanStartIdx;
+    uint64_t inputFTableTupleIdx;
+    std::unordered_set<std::thread::id> threadsWritingDstDistances;
 };
 
 struct BFSMorsel {
 public:
-    BFSMorsel(uint64_t startScanIdx, uint64_t endScanIdx)
+    BFSMorsel(uint64_t startScanIdx, uint64_t endScanIdx, std::shared_ptr<BFSLevel>& curBFSLevel)
         : startScanIdx{startScanIdx}, endScanIdx{endScanIdx},
-          localBFSVisitedNodes{std::unordered_set<common::offset_t>()} {}
+          localBFSVisitedNodes{std::unordered_set<common::offset_t>()}, curBFSLevel{curBFSLevel} {}
 
     common::offset_t getNextNodeOffset();
 
@@ -86,23 +90,27 @@ public:
 
 struct MorselDispatcher {
 public:
-    MorselDispatcher(uint8_t upperBound, common::offset_t maxNodeOffset)
+    MorselDispatcher(uint64_t lowerBound, uint64_t upperBound, common::offset_t maxNodeOffset)
         : state{SSSP_MORSEL_INCOMPLETE}, ssspMorsel{std::make_unique<SSSPMorsel>(
-                                             upperBound, maxNodeOffset)} {}
+                                             maxNodeOffset, upperBound, lowerBound)} {}
 
-    inline void resetSSSPComputationState() {
-        std::unique_lock lck{mutex};
-        if (state != SSSP_MORSEL_INCOMPLETE) {
-            state = SSSP_MORSEL_INCOMPLETE;
-        }
-    }
+    bool finishBFSMorsel(std::unique_ptr<BFSMorsel>& bfsMorsel);
 
-    bool finishBFSMorsel(BFSMorsel* bfsMorsel);
+    SSSPComputationState getBFSMorsel(
+        const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
+        const std::vector<common::ValueVector*> vectorsToScan,
+        const std::vector<ft_col_idx_t> colIndicesToScan,
+        const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
+        std::unique_ptr<BFSMorsel>& bfsMorsel);
 
-    std::pair<SSSPComputationState, BFSMorsel*> getBFSMorsel(
+    int64_t writeDstNodeIDAndDistance(
         const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-        const std::shared_ptr<common::ValueVector>& srcNodeIDVector, BFSMorsel* bfsMorsel);
+        const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
+        const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID);
+
+private:
+    void resetSSSPComputationState();
 
 private:
     SSSPComputationState state;

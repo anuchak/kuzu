@@ -12,7 +12,6 @@ bool ScanBFSLevel::getNextTuplesInternal(ExecutionContext* context) {
 }
 
 void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionContext* context) {
-    maxNodeOffset = nodeTable->getMaxNodeOffset(transaction);
     for (auto& dataPos : vectorsToScanPos) {
         vectorsToScan.push_back(resultSet->getValueVector(dataPos).get());
     }
@@ -20,7 +19,6 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
     dstNodeIDVector = resultSet->getValueVector(dstNodeIDVectorPos);
     distanceVector = resultSet->getValueVector(distanceVectorPos);
     initLocalRecursivePlan(context);
-    bfsScanState.resetState();
 }
 
 // There are two high level steps.
@@ -36,44 +34,48 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
 // vector to output and returns true. Otherwise, we compute a new BFS.
 bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
     while (true) {
-        if (bfsScanState.numScanned < bfsMorsel->numVisitedNodes) { // Phase 2
-            auto numToScan = std::min<uint64_t>(common::DEFAULT_VECTOR_CAPACITY,
-                bfsMorsel->numVisitedNodes - bfsScanState.numScanned);
-            scanDstNodes(numToScan);
-            bfsScanState.numScanned += numToScan;
+        auto ret =
+            morselDispatcher->writeDstNodeIDAndDistance(inputFTableSharedState, vectorsToScan,
+                colIndicesToScan, dstNodeIDVector, distanceVector, nodeTable->getTableID());
+        if (ret > 0) {
             return true;
-        }
-        morselDispatcher->resetSSSPComputationState();
-        if (!computeBFS(context)) { // Phase 1
-            return false;
+        } else if (ret == 0) {
+            continue;
+        } else {
+            if (!computeBFS(context)) { // Phase 1
+                return false;
+            }
         }
     }
 }
 
 bool RecursiveJoin::computeBFS(ExecutionContext* context) {
     while (true) {
-        auto bfsMorselAndState = morselDispatcher->getBFSMorsel(
+        auto bfsComputationState = morselDispatcher->getBFSMorsel(
             inputFTableSharedState, vectorsToScan, colIndicesToScan, srcNodeIDVector, bfsMorsel);
-        switch (bfsMorselAndState.first) {
-        case SSSP_MORSEL_INCOMPLETE:
-            continue;
-        case SSSP_MORSEL_COMPLETE:
-            return true;
-        case SSSP_COMPUTATION_COMPLETE:
-            return false;
-        default:
-            assert(false);
-        }
-        common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
-        while (nodeOffset != common::INVALID_NODE_OFFSET) {
-            scanBFSLevel->setNodeID(common::nodeID_t{nodeOffset, nodeTable->getTableID()});
-            while (root->getNextTuple(context)) { // Exhaust recursive plan.
-                bfsMorsel->addToLocalNextBFSLevel(tmpDstNodeIDVector);
+        if (!bfsMorsel) {
+            switch (bfsComputationState) {
+            case SSSP_MORSEL_INCOMPLETE:
+                continue;
+            case SSSP_MORSEL_COMPLETE:
+                return true;
+            case SSSP_COMPUTATION_COMPLETE:
+                return false;
+            default:
+                assert(false);
             }
-            nodeOffset = bfsMorsel->getNextNodeOffset();
-        }
-        if (morselDispatcher->finishBFSMorsel(bfsMorsel)) {
-            return true;
+        } else {
+            common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
+            while (nodeOffset != common::INVALID_NODE_OFFSET) {
+                scanBFSLevel->setNodeID(common::nodeID_t{nodeOffset, nodeTable->getTableID()});
+                while (root->getNextTuple(context)) { // Exhaust recursive plan.
+                    bfsMorsel->addToLocalNextBFSLevel(tmpDstNodeIDVector);
+                }
+                nodeOffset = bfsMorsel->getNextNodeOffset();
+            }
+            if (morselDispatcher->finishBFSMorsel(bfsMorsel)) {
+                return true;
+            }
         }
     }
 }
@@ -104,22 +106,6 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
     localResultSet = getLocalResultSet();
     tmpDstNodeIDVector = localResultSet->getValueVector(getTmpDstNodeVectorPos());
     root->initLocalState(localResultSet.get(), context);
-}
-
-void RecursiveJoin::scanDstNodes(size_t sizeToScan) {
-    auto size = 0;
-    while (sizeToScan != size) {
-        if (bfsMorsel->visitedNodes[bfsScanState.currentOffset] == NOT_VISITED) {
-            bfsScanState.currentOffset++;
-            continue;
-        }
-        dstNodeIDVector->setValue<common::nodeID_t>(
-            size, common::nodeID_t{bfsScanState.currentOffset, nodeTable->getTableID()});
-        distanceVector->setValue<int64_t>(size, bfsMorsel->distance[bfsScanState.currentOffset]);
-        size++;
-        bfsScanState.currentOffset++;
-    }
-    dstNodeIDVector->state->initOriginalAndSelectedSize(sizeToScan);
 }
 
 } // namespace processor

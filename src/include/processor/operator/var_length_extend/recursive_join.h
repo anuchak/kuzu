@@ -48,7 +48,7 @@ struct BFSScanState {
 
 class RecursiveJoin : public PhysicalOperator {
 public:
-    RecursiveJoin(uint8_t upperBound, storage::NodeTable* nodeTable,
+    RecursiveJoin(uint64_t lowerBound, uint64_t upperBound, storage::NodeTable* nodeTable,
         std::shared_ptr<FTableSharedState> inputFTableSharedState,
         std::vector<DataPos> vectorsToScanPos, std::vector<ft_col_idx_t> colIndicesToScan,
         const DataPos& srcNodeIDVectorPos, const DataPos& dstNodeIDVectorPos,
@@ -57,12 +57,12 @@ public:
         std::unique_ptr<PhysicalOperator> root)
         : PhysicalOperator{PhysicalOperatorType::SCAN_BFS_LEVEL, std::move(child), id,
               paramsString},
-          upperBound{upperBound}, nodeTable{nodeTable},
-          inputFTableSharedState{std::move(inputFTableSharedState)}, vectorsToScanPos{std::move(
-                                                                         vectorsToScanPos)},
+          lowerBound{lowerBound}, upperBound{upperBound}, nodeTable{nodeTable},
+          inputFTableSharedState{std::move(inputFTableSharedState)},
+          vectorsToScanPos{std::move(vectorsToScanPos)}, bfsMorsel{nullptr},
           colIndicesToScan{std::move(colIndicesToScan)}, srcNodeIDVectorPos{srcNodeIDVectorPos},
           dstNodeIDVectorPos{dstNodeIDVectorPos}, distanceVectorPos{distanceVectorPos},
-          root{std::move(root)}, bfsScanState{}, morselDispatcher{std::move(morselDispatcher)} {}
+          root{std::move(root)}, morselDispatcher{std::move(morselDispatcher)} {}
 
     static inline DataPos getTmpSrcNodeVectorPos() { return DataPos{0, 0}; }
     static inline DataPos getTmpDstNodeVectorPos() { return DataPos{1, 0}; }
@@ -72,10 +72,10 @@ public:
     bool getNextTuplesInternal(ExecutionContext* context) override;
 
     std::unique_ptr<PhysicalOperator> clone() override {
-        return std::make_unique<RecursiveJoin>(upperBound, nodeTable, inputFTableSharedState,
-            vectorsToScanPos, colIndicesToScan, srcNodeIDVectorPos, dstNodeIDVectorPos,
-            distanceVectorPos, morselDispatcher, children[0]->clone(), id, paramsString,
-            root->clone());
+        return std::make_unique<RecursiveJoin>(lowerBound, upperBound, nodeTable,
+            inputFTableSharedState, vectorsToScanPos, colIndicesToScan, srcNodeIDVectorPos,
+            dstNodeIDVectorPos, distanceVectorPos, morselDispatcher, children[0]->clone(), id,
+            paramsString, root->clone());
     }
 
 private:
@@ -85,10 +85,9 @@ private:
     // Compute BFS for a given src node.
     bool computeBFS(ExecutionContext* context);
 
-    void scanDstNodes(size_t sizeToScan);
-
 private:
-    uint8_t upperBound;
+    uint64_t lowerBound;
+    uint64_t upperBound;
     storage::NodeTable* nodeTable;
     std::shared_ptr<FTableSharedState> inputFTableSharedState;
     std::vector<DataPos> vectorsToScanPos;
@@ -96,23 +95,17 @@ private:
     DataPos srcNodeIDVectorPos;
     DataPos dstNodeIDVectorPos;
     DataPos distanceVectorPos;
-
     // Local recursive plan
     std::unique_ptr<ResultSet> localResultSet;
     std::unique_ptr<PhysicalOperator> root;
     ScanBFSLevel* scanBFSLevel;
-
-    BFSMorsel* bfsMorsel;
-
-    common::offset_t maxNodeOffset;
+    std::unique_ptr<BFSMorsel> bfsMorsel;
     std::vector<common::ValueVector*> vectorsToScan;
     std::shared_ptr<common::ValueVector> srcNodeIDVector;
     std::shared_ptr<common::ValueVector> dstNodeIDVector;
     std::shared_ptr<common::ValueVector> distanceVector;
     // vector for temporary recursive join result.
     std::shared_ptr<common::ValueVector> tmpDstNodeIDVector;
-
-    BFSScanState bfsScanState;
     std::shared_ptr<MorselDispatcher> morselDispatcher;
 };
 

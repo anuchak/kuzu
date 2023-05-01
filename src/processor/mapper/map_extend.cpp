@@ -147,6 +147,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalRecursiveExtendToPhysica
             colIndicesToScan.push_back(i);
         }
         auto upperBound = rel->getUpperBound();
+        auto lowerBound = rel->getLowerBound();
         auto& nodeStore = storageManager.getNodesStore();
         auto nodeTable = nodeStore.getNodeTable(boundNode->getSingleTableID());
         auto distanceVectorPos =
@@ -171,8 +172,13 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalRecursiveExtendToPhysica
                 emptyPropertyIDs, tmpSrcNodePos, std::vector<DataPos>{tmpDstNodePos},
                 std::move(scanBFSLevel), getOperatorID(), emptyParamString);
         }
-        auto morselDispatcher = std::make_shared<MorselDispatcher>();
-        return std::make_unique<RecursiveJoin>(upperBound, nodeTable, sharedInputFTable,
+        auto maxNodeOffsetsPerTable = storageManager.getNodesStore()
+                                          .getNodesStatisticsAndDeletedIDs()
+                                          .getMaxNodeOffsetPerTable();
+        auto maxNodeOffset = maxNodeOffsetsPerTable.at(nbrNode->getSingleTableID());
+        auto morselDispatcher =
+            std::make_shared<MorselDispatcher>(lowerBound, upperBound, maxNodeOffset);
+        return std::make_unique<RecursiveJoin>(lowerBound, upperBound, nodeTable, sharedInputFTable,
             outDataPoses, colIndicesToScan, inNodeIDVectorPos, outNodeIDVectorPos,
             distanceVectorPos, morselDispatcher, std::move(resultCollector), getOperatorID(),
             extend->getExpressionsForPrinting(), std::move(scanRelTable));

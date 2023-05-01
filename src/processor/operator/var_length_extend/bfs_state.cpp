@@ -6,13 +6,16 @@ namespace processor {
 void SSSPMorsel::reset() {
     currentLevel = 0u;
     nextScanStartIdx = 0u;
-    curBFSLevel.reset();
-    nextBFSLevel.reset();
+    curBFSLevel->resetState();
+    nextBFSLevel->resetState();
     numVisitedNodes = 0u;
     visitedNodes = std::vector<uint8_t>(maxOffset + 1, NOT_VISITED);
-    distance = std::unordered_map<common::offset_t, uint16_t>();
+    distance.clear();
     srcOffset = 0u;
     numThreadsActiveOnMorsel = 0u;
+    nextDstScanStartIdx = 0u;
+    inputFTableTupleIdx = 0u;
+    threadsWritingDstDistances.clear();
 }
 
 bool SSSPMorsel::isComplete() {
@@ -35,11 +38,6 @@ void SSSPMorsel::markSrc() {
     curBFSLevel->bfsLevelNodes.push_back(srcOffset);
 }
 
-void SSSPMorsel::unmarkSrc() {
-    visitedNodes[srcOffset] = NOT_VISITED;
-    numVisitedNodes--;
-}
-
 void SSSPMorsel::markVisited(common::offset_t offset) {
     assert(visitedNodes[offset] == NOT_VISITED);
     visitedNodes[offset] = VISITED;
@@ -55,6 +53,7 @@ void SSSPMorsel::moveNextLevelAsCurrentLevel() {
     if (currentLevel == upperBound) { // No need to sort if we are not extending further.
         std::sort(curBFSLevel->bfsLevelNodes.begin(), curBFSLevel->bfsLevelNodes.end());
     }
+    nextScanStartIdx = 0u;
 }
 
 common::offset_t BFSMorsel::getNextNodeOffset() {
@@ -75,9 +74,14 @@ void BFSMorsel::addToLocalNextBFSLevel(
     }
 }
 
-bool MorselDispatcher::finishBFSMorsel(BFSMorsel* bfsMorsel) {
+void MorselDispatcher::resetSSSPComputationState() {
+    state = SSSP_MORSEL_INCOMPLETE;
+}
+
+bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
     if (ssspMorsel->isComplete()) {
+        ssspMorsel->numThreadsActiveOnMorsel--;
         return true;
     }
     for (auto offset : bfsMorsel->localBFSVisitedNodes) {
@@ -97,24 +101,27 @@ bool MorselDispatcher::finishBFSMorsel(BFSMorsel* bfsMorsel) {
     return false;
 }
 
-std::pair<SSSPComputationState, BFSMorsel*> MorselDispatcher::getBFSMorsel(
+SSSPComputationState MorselDispatcher::getBFSMorsel(
     const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    const std::shared_ptr<common::ValueVector>& srcNodeIDVector, BFSMorsel* bfsMorsel) {
+    const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
+    std::unique_ptr<BFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
     if (state == SSSP_COMPUTATION_COMPLETE || state == SSSP_MORSEL_COMPLETE) {
-        return {state, nullptr};
+        bfsMorsel.reset();
+        return state;
     }
-    if (ssspMorsel->isComplete()) {
+    if (ssspMorsel->isComplete() && ssspMorsel->numThreadsActiveOnMorsel == 0) {
         auto inputFTableMorsel = inputFTableSharedState->getMorsel(1);
         // Marks end of SSSP Computation, no more source tuples to trigger SSSP.
         if (inputFTableMorsel->numTuples == 0) {
             state = SSSP_COMPUTATION_COMPLETE;
-            return {state, nullptr};
+            return state;
         }
         inputFTableSharedState->getTable()->scan(vectorsToScan, inputFTableMorsel->startTupleIdx,
             inputFTableMorsel->numTuples, colIndicesToScan);
         ssspMorsel->reset();
+        ssspMorsel->inputFTableTupleIdx = inputFTableMorsel->startTupleIdx;
         auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(
             srcNodeIDVector->state->selVector->selectedPositions[0]);
         ssspMorsel->srcOffset = nodeID.offset;
@@ -123,15 +130,65 @@ std::pair<SSSPComputationState, BFSMorsel*> MorselDispatcher::getBFSMorsel(
     // We don't swap here, because we want the last thread to complete its BFSMorsel and only then
     // swap the curBFSLevel and nextBFSLevel (happens in Line 93 in finishBFSMorsel function).
     if (ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
-        return {state, nullptr};
+        bfsMorsel.reset();
+        return state;
     }
     ssspMorsel->numThreadsActiveOnMorsel++;
     auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,
         ssspMorsel->curBFSLevel->size() - ssspMorsel->nextScanStartIdx);
     auto morselScanEndIdx = ssspMorsel->nextScanStartIdx + bfsMorselSize;
-    bfsMorsel = std::make_unique<BFSMorsel>(ssspMorsel->nextScanStartIdx, morselScanEndIdx).get();
+    bfsMorsel = std::move(std::make_unique<BFSMorsel>(
+        ssspMorsel->nextScanStartIdx, morselScanEndIdx, ssspMorsel->curBFSLevel));
     ssspMorsel->nextScanStartIdx += bfsMorselSize;
-    return {state, bfsMorsel};
+    return state;
+}
+
+int64_t MorselDispatcher::writeDstNodeIDAndDistance(
+    const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
+    std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
+    const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
+    const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID) {
+    std::unique_lock lck{mutex};
+    if (state != SSSP_MORSEL_COMPLETE) {
+        return -1;
+    }
+    if (ssspMorsel->nextDstScanStartIdx == ssspMorsel->visitedNodes.size() &&
+        !ssspMorsel->threadsWritingDstDistances.contains(std::this_thread::get_id())) {
+        if (ssspMorsel->threadsWritingDstDistances.empty()) {
+            resetSSSPComputationState();
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+    auto sizeToScan = std::min(common::DEFAULT_VECTOR_CAPACITY,
+        ssspMorsel->visitedNodes.size() - ssspMorsel->nextDstScanStartIdx);
+    auto size = 0u;
+    while (size < sizeToScan && ssspMorsel->nextDstScanStartIdx < ssspMorsel->visitedNodes.size()) {
+        if (ssspMorsel->visitedNodes[ssspMorsel->nextDstScanStartIdx] == VISITED &&
+            ssspMorsel->distance[ssspMorsel->nextDstScanStartIdx] >= ssspMorsel->lowerBound) {
+            dstNodeIDVector->setValue<common::nodeID_t>(
+                size, common::nodeID_t{ssspMorsel->nextDstScanStartIdx, tableID});
+            distanceVector->setValue<int64_t>(
+                size, ssspMorsel->distance[ssspMorsel->nextDstScanStartIdx]);
+            size++;
+        }
+        ssspMorsel->nextDstScanStartIdx++;
+    }
+    if (size > 0) {
+        dstNodeIDVector->state->initOriginalAndSelectedSize(size);
+        inputFTableSharedState->getTable()->scan(
+            vectorsToScan, ssspMorsel->inputFTableTupleIdx, 1 /* numTuples */, colIndicesToScan);
+        ssspMorsel->threadsWritingDstDistances.insert(std::this_thread::get_id());
+        return size;
+    }
+    ssspMorsel->threadsWritingDstDistances.erase(std::this_thread::get_id());
+    if (ssspMorsel->threadsWritingDstDistances.empty()) {
+        resetSSSPComputationState();
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 } // namespace processor

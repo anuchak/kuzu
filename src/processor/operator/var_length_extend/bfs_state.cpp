@@ -89,6 +89,9 @@ bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BFSMorsel>& bfsMorsel) {
     if (ssspMorsel->numThreadsActiveOnMorsel == 0 &&
         ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
         ssspMorsel->moveNextLevelAsCurrentLevel();
+        morselSize = std::max(common::DEFAULT_VECTOR_CAPACITY,
+            (uint64_t)std::ceil(
+                (double)ssspMorsel->curBFSLevel->bfsLevelNodes.size() / (double)numThreads));
         if (ssspMorsel->isComplete()) {
             state = SSSP_MORSEL_COMPLETE;
             return true;
@@ -122,6 +125,7 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
             srcNodeIDVector->state->selVector->selectedPositions[0]);
         ssspMorsel->srcOffset = nodeID.offset;
         ssspMorsel->markSrc();
+        morselSize = common::DEFAULT_VECTOR_CAPACITY;
     }
     // We don't swap here, because we want the last thread to complete its BFSMorsel and only then
     // swap the curBFSLevel and nextBFSLevel (happens in Line 93 in finishBFSMorsel function).
@@ -131,8 +135,8 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
         return state;
     }
     ssspMorsel->numThreadsActiveOnMorsel++;
-    auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,
-        ssspMorsel->curBFSLevel->size() - ssspMorsel->nextScanStartIdx);
+    auto bfsMorselSize =
+        std::min(morselSize, ssspMorsel->curBFSLevel->size() - ssspMorsel->nextScanStartIdx);
     auto morselScanEndIdx = ssspMorsel->nextScanStartIdx + bfsMorselSize;
     bfsMorsel = std::move(std::make_unique<BFSMorsel>(
         ssspMorsel->nextScanStartIdx, morselScanEndIdx, ssspMorsel->curBFSLevel));

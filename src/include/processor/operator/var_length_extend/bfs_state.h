@@ -91,8 +91,11 @@ public:
 struct MorselDispatcher {
 public:
     MorselDispatcher(uint64_t lowerBound, uint64_t upperBound, common::offset_t maxNodeOffset)
-        : state{SSSP_MORSEL_INCOMPLETE}, ssspMorsel{std::make_unique<SSSPMorsel>(
-                                             maxNodeOffset, upperBound, lowerBound)} {}
+        : state{SSSP_MORSEL_INCOMPLETE}, morselSize{common::DEFAULT_VECTOR_CAPACITY},
+          numThreads{0u}, ssspMorsel{std::make_unique<SSSPMorsel>(
+                              maxNodeOffset, upperBound, lowerBound)} {}
+
+    inline void setNumThreads(uint64_t numThreads_) { numThreads = numThreads_; }
 
     bool finishBFSMorsel(std::unique_ptr<BFSMorsel>& bfsMorsel);
 
@@ -114,6 +117,8 @@ private:
 
 private:
     SSSPComputationState state;
+    uint64_t morselSize;
+    uint64_t numThreads;
     std::shared_mutex mutex;
     std::unique_ptr<SSSPMorsel> ssspMorsel;
 };

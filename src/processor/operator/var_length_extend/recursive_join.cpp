@@ -12,6 +12,7 @@ bool ScanBFSLevel::getNextTuplesInternal(ExecutionContext* context) {
 }
 
 void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionContext* context) {
+    morselDispatcher->setNumThreads(context->numThreads);
     for (auto& dataPos : vectorsToScanPos) {
         vectorsToScan.push_back(resultSet->getValueVector(dataPos).get());
     }

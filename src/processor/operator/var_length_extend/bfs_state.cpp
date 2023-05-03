@@ -50,10 +50,10 @@ void SSSPMorsel::moveNextLevelAsCurrentLevel() {
     curBFSLevel = std::move(nextBFSLevel);
     currentLevel++;
     nextBFSLevel = std::make_unique<BFSLevel>();
-    if (currentLevel == upperBound) { // No need to sort if we are not extending further.
+    nextScanStartIdx = 0u;
+    if (currentLevel < upperBound) { // No need to sort if we are not extending further.
         std::sort(curBFSLevel->bfsLevelNodes.begin(), curBFSLevel->bfsLevelNodes.end());
     }
-    nextScanStartIdx = 0u;
 }
 
 common::offset_t BFSMorsel::getNextNodeOffset() {
@@ -127,6 +127,7 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
     // swap the curBFSLevel and nextBFSLevel (happens in Line 93 in finishBFSMorsel function).
     if (ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
         bfsMorsel.reset();
+        // exit and sleep for some time
         return state;
     }
     ssspMorsel->numThreadsActiveOnMorsel++;

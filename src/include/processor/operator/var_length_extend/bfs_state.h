@@ -32,7 +32,7 @@ public:
     SSSPMorsel(common::offset_t maxOffset_, uint64_t upperBound_, uint64_t lowerBound_)
         : currentLevel{0u}, nextScanStartIdx{0u}, curBFSLevel{std::make_shared<BFSLevel>()},
           nextBFSLevel{std::make_shared<BFSLevel>()}, numVisitedNodes{0u},
-          visitedNodes{std::make_shared<std::vector<uint8_t>>(maxOffset_ + 1, NOT_VISITED)},
+          visitedNodes{std::vector<uint8_t>(maxOffset_ + 1, NOT_VISITED)},
           distance{std::unordered_map<common::offset_t, uint16_t>()}, srcOffset{0u},
           maxOffset{maxOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsActiveOnMorsel{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
@@ -57,7 +57,7 @@ public:
     std::shared_ptr<BFSLevel> nextBFSLevel;
     // Visited state
     uint64_t numVisitedNodes;
-    std::shared_ptr<std::vector<uint8_t>> visitedNodes;
+    std::vector<uint8_t> visitedNodes;
     std::unordered_map<common::offset_t, uint16_t> distance;
     // Offset of src node.
     common::offset_t srcOffset;
@@ -73,11 +73,8 @@ public:
 
 struct BFSMorsel {
 public:
-    BFSMorsel(uint64_t startScanIdx, uint64_t endScanIdx,
-        std::shared_ptr<std::vector<uint8_t>>& visitedNodes, std::shared_ptr<BFSLevel>& curBFSLevel)
-        : startScanIdx{startScanIdx}, endScanIdx{endScanIdx},
-          localBFSVisitedNodes{std::unordered_set<common::offset_t>()}, visitedNodes{visitedNodes},
-          curBFSLevel{curBFSLevel} {}
+    BFSMorsel(uint64_t startScanIdx, uint64_t endScanIdx, SSSPMorsel* ssspMorsel)
+        : startScanIdx{startScanIdx}, endScanIdx{endScanIdx}, ssspMorsel{ssspMorsel} {}
 
     common::offset_t getNextNodeOffset();
 
@@ -86,9 +83,7 @@ public:
 public:
     uint64_t startScanIdx;
     uint64_t endScanIdx;
-    std::unordered_set<common::offset_t> localBFSVisitedNodes;
-    std::shared_ptr<std::vector<uint8_t>> visitedNodes;
-    std::shared_ptr<BFSLevel> curBFSLevel;
+    SSSPMorsel* ssspMorsel;
 };
 
 struct MorselDispatcher {

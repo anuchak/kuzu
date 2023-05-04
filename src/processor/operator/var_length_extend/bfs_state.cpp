@@ -9,7 +9,7 @@ void SSSPMorsel::reset() {
     curBFSLevel->resetState();
     nextBFSLevel->resetState();
     numVisitedNodes = 0u;
-    visitedNodes = std::make_shared<std::vector<uint8_t>>(maxOffset + 1, NOT_VISITED);
+    visitedNodes = std::vector<uint8_t>(maxOffset + 1, NOT_VISITED);
     distance.clear();
     srcOffset = 0u;
     numThreadsActiveOnMorsel = 0u;
@@ -32,15 +32,15 @@ bool SSSPMorsel::isComplete() {
 }
 
 void SSSPMorsel::markSrc() {
-    visitedNodes->operator[](srcOffset) = VISITED;
+    visitedNodes[srcOffset] = VISITED;
     distance[srcOffset] = 0;
     numVisitedNodes++;
     curBFSLevel->bfsLevelNodes.push_back(srcOffset);
 }
 
 void SSSPMorsel::markVisited(common::offset_t offset) {
-    assert(visitedNodes[offset] == NOT_VISITED);
-    visitedNodes->operator[](offset) = VISITED;
+    assert(visitedNodes[srcOffset] == NOT_VISITED);
+    visitedNodes[srcOffset] = VISITED;
     distance[offset] = currentLevel + 1;
     numVisitedNodes++;
     nextBFSLevel->bfsLevelNodes.push_back(offset);
@@ -60,7 +60,7 @@ common::offset_t BFSMorsel::getNextNodeOffset() {
     if (startScanIdx == endScanIdx) {
         return common::INVALID_NODE_OFFSET;
     }
-    return curBFSLevel->bfsLevelNodes[startScanIdx++];
+    return ssspMorsel->curBFSLevel->bfsLevelNodes[startScanIdx++];
 }
 
 void BFSMorsel::addToLocalNextBFSLevel(
@@ -68,20 +68,20 @@ void BFSMorsel::addToLocalNextBFSLevel(
     for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; ++i) {
         auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
-        if (visitedNodes->operator[](nodeID.offset) == NOT_VISITED &&
-            !localBFSVisitedNodes.contains(nodeID.offset)) {
-            localBFSVisitedNodes.insert(nodeID.offset);
+        auto state = ssspMorsel->visitedNodes[nodeID.offset];
+        if (state == NOT_VISITED) {
+            if (__sync_bool_compare_and_swap(
+                    &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED)) {
+                ssspMorsel->distance[nodeID.offset] = ssspMorsel->currentLevel + 1;
+                ssspMorsel->nextBFSLevel->bfsLevelNodes.push_back(nodeID.offset);
+                ssspMorsel->numVisitedNodes++;
+            }
         }
     }
 }
 
 bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
-    for (auto offset : bfsMorsel->localBFSVisitedNodes) {
-        if (ssspMorsel->visitedNodes->operator[](offset) == NOT_VISITED) {
-            ssspMorsel->markVisited(offset);
-        }
-    }
     ssspMorsel->numThreadsActiveOnMorsel--;
     if (ssspMorsel->numThreadsActiveOnMorsel == 0 &&
         ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
@@ -128,12 +128,11 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
         return state;
     }
     ssspMorsel->numThreadsActiveOnMorsel++;
-    auto bfsMorselSize =
-        std::min(common::DEFAULT_VECTOR_CAPACITY,
-            ssspMorsel->curBFSLevel->size() - ssspMorsel->nextScanStartIdx);
+    auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,
+        ssspMorsel->curBFSLevel->size() - ssspMorsel->nextScanStartIdx);
     auto morselScanEndIdx = ssspMorsel->nextScanStartIdx + bfsMorselSize;
-    bfsMorsel = std::move(std::make_unique<BFSMorsel>(ssspMorsel->nextScanStartIdx,
-        morselScanEndIdx, ssspMorsel->visitedNodes, ssspMorsel->curBFSLevel));
+    bfsMorsel = std::move(std::make_unique<BFSMorsel>(
+        ssspMorsel->nextScanStartIdx, morselScanEndIdx, ssspMorsel.get()));
     ssspMorsel->nextScanStartIdx += bfsMorselSize;
     return state;
 }
@@ -147,7 +146,7 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     if (state != SSSP_MORSEL_COMPLETE) {
         return -1;
     }
-    if (ssspMorsel->nextDstScanStartIdx == ssspMorsel->visitedNodes->size() &&
+    if (ssspMorsel->nextDstScanStartIdx == ssspMorsel->visitedNodes.size() &&
         !ssspMorsel->threadsWritingDstDistances.contains(std::this_thread::get_id())) {
         if (ssspMorsel->threadsWritingDstDistances.empty()) {
             resetSSSPComputationState();
@@ -157,11 +156,10 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
         }
     }
     auto sizeToScan = std::min(common::DEFAULT_VECTOR_CAPACITY,
-        ssspMorsel->visitedNodes->size() - ssspMorsel->nextDstScanStartIdx);
+        ssspMorsel->visitedNodes.size() - ssspMorsel->nextDstScanStartIdx);
     auto size = 0u;
-    while (
-        size < sizeToScan && ssspMorsel->nextDstScanStartIdx < ssspMorsel->visitedNodes->size()) {
-        if (ssspMorsel->visitedNodes->operator[](ssspMorsel->nextDstScanStartIdx) == VISITED &&
+    while (size < sizeToScan && ssspMorsel->nextDstScanStartIdx < ssspMorsel->visitedNodes.size()) {
+        if (ssspMorsel->visitedNodes[ssspMorsel->nextDstScanStartIdx] == VISITED &&
             ssspMorsel->distance[ssspMorsel->nextDstScanStartIdx] >= ssspMorsel->lowerBound) {
             dstNodeIDVector->setValue<common::nodeID_t>(
                 size, common::nodeID_t{ssspMorsel->nextDstScanStartIdx, tableID});

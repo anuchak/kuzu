@@ -9,8 +9,8 @@ void SSSPMorsel::reset() {
     curBFSLevel->resetState();
     nextBFSLevel->resetState();
     numVisitedNodes = 0u;
-    visitedNodes = std::vector<uint8_t>(maxOffset + 1, NOT_VISITED);
-    distance.clear();
+    std::fill(visitedNodes.begin(), visitedNodes.end(), NOT_VISITED);
+    std::fill(distance.begin(), distance.end(), 0u);
     srcOffset = 0u;
     numThreadsActiveOnMorsel = 0u;
     nextDstScanStartIdx = 0u;
@@ -73,7 +73,7 @@ void BFSMorsel::addToLocalNextBFSLevel(
             if (__sync_bool_compare_and_swap(
                     &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED)) {
                 ssspMorsel->distance[nodeID.offset] = ssspMorsel->currentLevel + 1;
-                ssspMorsel->nextBFSLevel->bfsLevelNodes.push_back(nodeID.offset);
+                localNextBFSLevel->bfsLevelNodes.push_back(nodeID.offset);
                 ssspMorsel->numVisitedNodes++;
             }
         }
@@ -83,6 +83,9 @@ void BFSMorsel::addToLocalNextBFSLevel(
 bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
     ssspMorsel->numThreadsActiveOnMorsel--;
+    ssspMorsel->nextBFSLevel->bfsLevelNodes.insert(ssspMorsel->nextBFSLevel->bfsLevelNodes.end(),
+        bfsMorsel->localNextBFSLevel->bfsLevelNodes.begin(),
+        bfsMorsel->localNextBFSLevel->bfsLevelNodes.end());
     if (ssspMorsel->numThreadsActiveOnMorsel == 0 &&
         ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
         ssspMorsel->moveNextLevelAsCurrentLevel();

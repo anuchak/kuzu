@@ -178,18 +178,6 @@ private:
     std::vector<std::unique_ptr<Column>> structFieldColumns;
 };
 
-class StructPropertyColumn : public Column {
-public:
-    StructPropertyColumn(const StorageStructureIDAndFName& structureIDAndFName,
-        const common::DataType& dataType, BufferManager* bufferManager, WAL* wal);
-
-    void read(transaction::Transaction* transaction, common::ValueVector* nodeIDVector,
-        common::ValueVector* resultVector) override;
-
-private:
-    std::vector<std::unique_ptr<Column>> structFieldColumns;
-};
-
 class RelIDColumn : public Column {
 
 public:

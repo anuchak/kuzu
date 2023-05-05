@@ -236,11 +236,7 @@ std::vector<std::unique_ptr<PatternElement>> Transformer::transformPattern(
 
 std::unique_ptr<PatternElement> Transformer::transformPatternPart(
     CypherParser::OC_PatternPartContext& ctx) {
-    auto patternElement = transformAnonymousPatternPart(*ctx.oC_AnonymousPatternPart());
-    if(ctx.oC_Variable()) {
-        patternElement->setPathVariable(transformVariable(*ctx.oC_Variable()));
-    }
-    return patternElement;
+    return transformAnonymousPatternPart(*ctx.oC_AnonymousPatternPart());
 }
 
 std::unique_ptr<PatternElement> Transformer::transformAnonymousPatternPart(

@@ -8,7 +8,6 @@
 #include "planner/logical_plan/logical_operator/logical_filter.h"
 #include "planner/logical_plan/logical_operator/logical_flatten.h"
 #include "planner/logical_plan/logical_operator/logical_scan_node_property.h"
-#include "planner/logical_plan/logical_operator/logical_shortest_path.h"
 #include "planner/logical_plan/logical_operator/logical_union.h"
 #include "planner/logical_plan/logical_operator/logical_unwind.h"
 #include "planner/logical_plan/logical_operator/sink_util.h"
@@ -23,7 +22,7 @@ std::vector<std::unique_ptr<LogicalPlan>> QueryPlanner::getAllPlans(
     std::vector<std::unique_ptr<LogicalPlan>> resultPlans;
     auto& regularQuery = (BoundRegularQuery&)boundStatement;
     if (regularQuery.getNumSingleQueries() == 1) {
-        resultPlans.push_back(getShortestPathPlan(boundStatement));
+        resultPlans = planSingleQuery(*regularQuery.getSingleQuery(0));
     } else {
         std::vector<std::vector<std::unique_ptr<LogicalPlan>>> childrenLogicalPlans(
             regularQuery.getNumSingleQueries());
@@ -47,49 +46,6 @@ std::unique_ptr<LogicalPlan> QueryPlanner::getBestPlan(
         }
     }
     return bestPlan;
-}
-
-unique_ptr<LogicalPlan> QueryPlanner::getShortestPathPlan(const BoundStatement& boundStatement) {
-    auto& boundRegularQuery = (BoundRegularQuery&)boundStatement;
-    auto singleQuery = boundRegularQuery.getSingleQuery(0);
-    propertiesToScan.clear();
-    for (auto& expression : singleQuery->getPropertiesToRead()) {
-        assert(expression->expressionType == PROPERTY);
-        propertiesToScan.push_back(expression);
-    }
-    auto nquery = singleQuery->getQueryPart(0);
-    auto matchClause = (BoundMatchClause*)nquery->getReadingClause(0);
-    expression_vector wherePredicate = matchClause->getWhereExpression()->splitOnAND();
-    assert(wherePredicate.size() == 2);
-    expression_vector srcPredicate;
-    srcPredicate.push_back(wherePredicate[0]);
-    expression_vector destPredicate;
-    destPredicate.push_back(wherePredicate[1]);
-    auto queryGraph = matchClause->getQueryGraphCollection()->getQueryGraph(0);
-    auto sourceNode = queryGraph->getQueryNode(0);
-    auto destNode = queryGraph->getQueryNode(1);
-    auto rel = queryGraph->getQueryRel(0);
-    auto dataType = make_unique<DataType>(DataTypeID::REL);
-    auto relTableToProperty = unordered_map<table_id_t, property_id_t>();
-    relTableToProperty[rel->getSingleTableID()] = 0;
-    shared_ptr<Expression> relPropertyExpr =
-        make_shared<PropertyExpression>(*dataType, "_id", relTableToProperty, rel);
-    auto leftPlan = make_unique<LogicalPlan>();
-    joinOrderEnumerator.appendScanNode(sourceNode, *leftPlan);
-    joinOrderEnumerator.planFiltersForNode(srcPredicate, sourceNode, *leftPlan);
-    joinOrderEnumerator.planPropertyScansForNode(sourceNode, *leftPlan);
-    auto rightPlan = make_unique<LogicalPlan>();
-    joinOrderEnumerator.appendScanNode(destNode, *rightPlan);
-    joinOrderEnumerator.planFiltersForNode(destPredicate, destNode, *rightPlan);
-    joinOrderEnumerator.planPropertyScansForNode(destNode, *rightPlan);
-    JoinOrderEnumerator::appendCrossProduct(*leftPlan, *rightPlan);
-    appendFlattenIfNecessary(sourceNode->getInternalIDProperty(), *leftPlan);
-    appendFlattenIfNecessary(destNode->getInternalIDProperty(), *leftPlan);
-    auto logicalShortestPath = make_shared<LogicalShortestPath>(
-        sourceNode, destNode, rel, relPropertyExpr, leftPlan->getLastOperator());
-    leftPlan->setLastOperator(logicalShortestPath);
-    logicalShortestPath->computeSchema();
-    return leftPlan;
 }
 
 // Note: we cannot append ResultCollector for plans enumerated for single query before there could
@@ -175,19 +131,6 @@ void QueryPlanner::planMatchClause(
             }
         }
     }
-    /*for (auto i = 0u; i < queryGraphCollection->getNumQueryGraphs(); i++) {
-        if (queryGraphCollection->getQueryGraph(i)->hasPathExpression()) {
-            for (auto& plan : plans) {
-                auto& pathExpression = queryGraphCollection->getQueryGraph(i)->getPathExpression();
-                auto dependentGroupPos = plan->getSchema()->getDependentGroupsPos(pathExpression);
-                if (!dependentGroupPos.empty()) {
-                    appendFlattens(dependentGroupPos, *plan);
-                }
-                auto groupPos = plan->getSchema()->createGroup();
-                plan->getSchema()->insertToGroupAndScope(pathExpression, groupPos);
-            }
-        }
-    }*/
 }
 
 void QueryPlanner::planUnwindClause(

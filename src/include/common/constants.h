@@ -22,14 +22,10 @@ constexpr uint64_t DEFAULT_CHECKPOINT_WAIT_TIMEOUT_FOR_TRANSACTIONS_TO_LEAVE_IN_
 const std::string INTERNAL_ID_SUFFIX = "_id";
 const std::string INTERNAL_LENGTH_SUFFIX = "_length";
 
-const std::string PATH_TYPE_LENGTH_PROPERTY = "length";
-
 enum PageSizeClass : uint8_t {
     PAGE_4KB = 0,
     PAGE_256KB = 1,
 };
-
-const std::string PATH_TYPE_LENGTH_PROPERTY = "length";
 
 // Currently the system supports files with 2 different pages size, which we refer to as
 // PAGE_4KB_SIZE and PAGE_256KB_SIZE. PAGE_4KB_SIZE is the default size of the page which is the

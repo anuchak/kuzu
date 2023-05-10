@@ -110,6 +110,9 @@ bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel
             state = SSSP_MORSEL_COMPLETE;
             return true;
         }
+    } else if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets())) {
+        state = SSSP_MORSEL_COMPLETE;
+        return true;
     }
     return false;
 }
@@ -121,7 +124,7 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
     std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
     if (state == SSSP_COMPUTATION_COMPLETE || state == SSSP_MORSEL_COMPLETE) {
-        bfsMorsel->resetFlag = false;
+        bfsMorsel->threadCheckSSSPState = true;
         return state;
     }
     if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets()) &&
@@ -130,6 +133,7 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
         // Marks end of SSSP Computation, no more source tuples to trigger SSSP.
         if (inputFTableMorsel->numTuples == 0) {
             state = SSSP_COMPUTATION_COMPLETE;
+            bfsMorsel->threadCheckSSSPState = true;
             return state;
         }
         inputFTableSharedState->getTable()->scan(vectorsToScan, inputFTableMorsel->startTupleIdx,
@@ -144,7 +148,7 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
     // We don't swap here, because we want the last thread to complete its BFSMorsel and only then
     // swap the curBFSLevel and nextBFSLevel (happens in Line 93 in finishBFSMorsel function).
     if (ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
-        bfsMorsel->resetFlag = false;
+        bfsMorsel->threadCheckSSSPState = true;
         // exit and sleep for some time
         return state;
     }

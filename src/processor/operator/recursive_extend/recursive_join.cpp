@@ -33,7 +33,6 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
                 std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
             continue;
         } else {
-            bfsMorsel->resetFlag = false;
             if (!computeBFS(context)) { // Phase 1
                 return false;
             }
@@ -46,7 +45,7 @@ bool BaseRecursiveJoin::computeBFS(ExecutionContext* context) {
         auto bfsComputationState =
             morselDispatcher->getBFSMorsel(sharedState->inputFTableSharedState, vectorsToScan,
                 colIndicesToScan, srcNodeIDVector, bfsMorsel);
-        if (!bfsMorsel->resetFlag) {
+        if (bfsMorsel->threadCheckSSSPState) {
             switch (bfsComputationState) {
             case SSSP_MORSEL_INCOMPLETE:
                 std::this_thread::sleep_for(

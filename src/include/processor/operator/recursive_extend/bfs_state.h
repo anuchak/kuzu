@@ -79,7 +79,7 @@ struct BaseBFSMorsel {
 public:
     explicit BaseBFSMorsel(
         common::offset_t maxOffset, NodeOffsetSemiMask* semiMask, SSSPMorsel* ssspMorsel)
-        : startScanIdx{0u}, endScanIdx{0u}, resetFlag{false}, ssspMorsel{ssspMorsel},
+        : startScanIdx{0u}, endScanIdx{0u}, threadCheckSSSPState{true}, ssspMorsel{ssspMorsel},
           localNextBFSLevel{std::make_unique<Frontier>()} {
         if (semiMask->isEnabled()) {
             for (auto offset = 0u; offset < maxOffset + 1; ++offset) {
@@ -96,7 +96,7 @@ public:
         startScanIdx = startScanIdx_;
         endScanIdx = endScanIdx_;
         ssspMorsel = ssspMorsel_;
-        resetFlag = true;
+        threadCheckSSSPState = false;
         localNextBFSLevel->resetState();
     }
 
@@ -115,7 +115,7 @@ public:
 
 public:
     std::vector<common::offset_t> targetDstNodeOffsets;
-    bool resetFlag;
+    bool threadCheckSSSPState;
     uint64_t startScanIdx;
     uint64_t endScanIdx;
     SSSPMorsel* ssspMorsel;

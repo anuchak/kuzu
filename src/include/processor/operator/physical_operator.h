@@ -39,12 +39,13 @@ enum class PhysicalOperatorType : uint8_t {
     RENAME_PROPERTY,
     RENAME_TABLE,
     RESULT_COLLECTOR,
-    SCAN_BFS_LEVEL,
+    SCAN_FRONTIER,
     SCAN_NODE_ID,
     SCAN_NODE_PROPERTY,
     SCAN_REL_PROPERTY,
     SCAN_REL_TABLE_COLUMNS,
     SCAN_REL_TABLE_LISTS,
+    SCAN_BFS_LEVEL,
     SEMI_MASKER,
     SET_NODE_PROPERTY,
     SET_REL_PROPERTY,
@@ -57,6 +58,8 @@ enum class PhysicalOperatorType : uint8_t {
     UNWIND,
     VAR_LENGTH_ADJ_LIST_EXTEND,
     VAR_LENGTH_COLUMN_EXTEND,
+    SHORTEST_PATH_ADJ_COL,
+    SHORTEST_PATH_ADJ_LIST
 };
 
 class PhysicalOperatorUtils {

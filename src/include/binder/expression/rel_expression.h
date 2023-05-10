@@ -18,6 +18,8 @@ public:
           srcNode{std::move(srcNode)}, dstNode{std::move(dstNode)}, relType{relType},
           lowerBound{lowerBound}, upperBound{upperBound} {}
 
+    inline std::string getVariableName() { return variableName; }
+
     inline bool isBoundByMultiLabeledNode() const {
         return srcNode->isMultiLabeled() || dstNode->isMultiLabeled();
     }

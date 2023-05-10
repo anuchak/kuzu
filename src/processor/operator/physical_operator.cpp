@@ -101,8 +101,8 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::RESULT_COLLECTOR: {
         return "RESULT_COLLECTOR";
     }
-    case PhysicalOperatorType::SCAN_BFS_LEVEL: {
-        return "SCAN_BFS_LEVEL";
+    case PhysicalOperatorType::SCAN_FRONTIER: {
+        return "SCAN_FRONTIER";
     }
     case PhysicalOperatorType::SCAN_NODE_ID: {
         return "SCAN_NODE_ID";
@@ -118,6 +118,9 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     }
     case PhysicalOperatorType::SCAN_REL_TABLE_LISTS: {
         return "SCAN_REL_TABLE_LISTS";
+    }
+    case PhysicalOperatorType::SCAN_BFS_LEVEL: {
+        return "SCAN_BFS_LEVEL";
     }
     case PhysicalOperatorType::SEMI_MASKER: {
         return "SEMI_MASKER";
@@ -154,6 +157,12 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     }
     case PhysicalOperatorType::VAR_LENGTH_COLUMN_EXTEND: {
         return "VAR_LENGTH_COL_EXTEND";
+    }
+    case PhysicalOperatorType::SHORTEST_PATH_ADJ_LIST: {
+        return "SHORTEST_PATH_ADJ_LIST";
+    }
+    case PhysicalOperatorType::SHORTEST_PATH_ADJ_COL: {
+        return "SHORTEST_PATH_ADJ_COL";
     }
     default:
         throw common::NotImplementedException("physicalOperatorTypeToString()");

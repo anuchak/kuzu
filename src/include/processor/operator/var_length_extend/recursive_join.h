@@ -1,15 +1,16 @@
 #pragma once
 
 #include "bfs_state.h"
+#include "processor/operator/mask.h"
 #include "processor/operator/physical_operator.h"
 #include "storage/store/node_table.h"
 
 namespace kuzu {
 namespace processor {
 
-class ScanBFSLevel : public PhysicalOperator {
+class ScanFrontier : public PhysicalOperator {
 public:
-    ScanBFSLevel(const DataPos& nodeIDVectorPos, uint32_t id, const std::string& paramsString)
+    ScanFrontier(const DataPos& nodeIDVectorPos, uint32_t id, const std::string& paramsString)
         : PhysicalOperator{PhysicalOperatorType::SCAN_NODE_ID, id, paramsString},
           nodeIDVectorPos{nodeIDVectorPos} {}
 
@@ -27,7 +28,7 @@ public:
     }
 
     std::unique_ptr<PhysicalOperator> clone() override {
-        return std::make_unique<ScanBFSLevel>(nodeIDVectorPos, id, paramsString);
+        return std::make_unique<ScanFrontier>(nodeIDVectorPos, id, paramsString);
     }
 
 private:
@@ -36,13 +37,14 @@ private:
     bool hasExecuted;
 };
 
-struct BFSScanState {
-    common::offset_t currentOffset;
-    size_t numScanned;
+struct RecursiveJoinSharedState {
+    std::shared_ptr<FTableSharedState> inputFTableSharedState;
+    std::unique_ptr<NodeOffsetSemiMask> semiMask;
 
-    inline void resetState() {
-        currentOffset = 0;
-        numScanned = 0;
+    RecursiveJoinSharedState(
+        std::shared_ptr<FTableSharedState> inputFTableSharedState, storage::NodeTable* nodeTable)
+        : inputFTableSharedState{std::move(inputFTableSharedState)} {
+        semiMask = std::make_unique<NodeOffsetSemiMask>(nodeTable);
     }
 };
 
@@ -98,7 +100,7 @@ private:
     // Local recursive plan
     std::unique_ptr<ResultSet> localResultSet;
     std::unique_ptr<PhysicalOperator> root;
-    ScanBFSLevel* scanBFSLevel;
+    ScanFrontier* scanFrontier;
     std::unique_ptr<BFSMorsel> bfsMorsel;
     std::vector<common::ValueVector*> vectorsToScan;
     std::shared_ptr<common::ValueVector> srcNodeIDVector;

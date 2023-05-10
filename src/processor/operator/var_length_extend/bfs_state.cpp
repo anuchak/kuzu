@@ -58,7 +58,7 @@ void SSSPMorsel::moveNextLevelAsCurrentLevel() {
 
 common::offset_t BFSMorsel::getNextNodeOffset() {
     if (startScanIdx == endScanIdx) {
-        return common::INVALID_NODE_OFFSET;
+        return common::INVALID_OFFSET;
     }
     return ssspMorsel->curBFSLevel->bfsLevelNodes[startScanIdx++];
 }

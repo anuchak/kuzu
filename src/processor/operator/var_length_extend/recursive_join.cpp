@@ -3,7 +3,7 @@
 namespace kuzu {
 namespace processor {
 
-bool ScanBFSLevel::getNextTuplesInternal(ExecutionContext* context) {
+bool ScanFrontier::getNextTuplesInternal(ExecutionContext* context) {
     if (!hasExecuted) {
         hasExecuted = true;
         return true;
@@ -71,8 +71,8 @@ bool RecursiveJoin::computeBFS(ExecutionContext* context) {
             }
         } else {
             common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
-            while (nodeOffset != common::INVALID_NODE_OFFSET) {
-                scanBFSLevel->setNodeID(common::nodeID_t{nodeOffset, nodeTable->getTableID()});
+            while (nodeOffset != common::INVALID_OFFSET) {
+                scanFrontier->setNodeID(common::nodeID_t{nodeOffset, nodeTable->getTableID()});
                 while (root->getNextTuple(context)) { // Exhaust recursive plan.
                     bfsMorsel->addToLocalNextBFSLevel(tmpDstNodeIDVector);
                 }
@@ -107,7 +107,7 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
         assert(op->getNumChildren() == 1);
         op = op->getChild(0);
     }
-    scanBFSLevel = (ScanBFSLevel*)op;
+    scanFrontier = (ScanFrontier*)op;
     localResultSet = getLocalResultSet();
     tmpDstNodeIDVector = localResultSet->getValueVector(getTmpDstNodeVectorPos());
     root->initLocalState(localResultSet.get(), context);

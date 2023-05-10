@@ -48,7 +48,10 @@ public:
         appendCrossProduct(probePlan, buildPlan);
     }
 
-private:
+    // private:
+    std::vector<std::unique_ptr<LogicalPlan>> planShortestPath(
+        QueryGraph* queryGraph, binder::expression_vector& predicates);
+
     std::vector<std::unique_ptr<LogicalPlan>> planCrossProduct(
         std::vector<std::unique_ptr<LogicalPlan>> leftPlans,
         std::vector<std::unique_ptr<LogicalPlan>> rightPlans);
@@ -86,10 +89,7 @@ private:
         std::shared_ptr<NodeExpression> nbrNode, std::shared_ptr<RelExpression> rel,
         common::RelDirection direction, const binder::expression_vector& properties,
         LogicalPlan& plan);
-    void appendVariableLengthExtend(std::shared_ptr<NodeExpression> boundNode,
-        std::shared_ptr<NodeExpression> nbrNode, std::shared_ptr<RelExpression> rel,
-        common::RelDirection direction, LogicalPlan& plan);
-    void appendShortestPathExtend(std::shared_ptr<NodeExpression> boundNode,
+    void appendRecursiveExtend(std::shared_ptr<NodeExpression> boundNode,
         std::shared_ptr<NodeExpression> nbrNode, std::shared_ptr<RelExpression> rel,
         common::RelDirection direction, LogicalPlan& plan);
 

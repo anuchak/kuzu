@@ -14,6 +14,7 @@ void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
     } else {
         std::fill(visitedNodes.begin(), visitedNodes.end(), NOT_VISITED);
         for (auto& dstOffset : targetDstNodeOffsets) {
+            printf("dst is: %llu\n", dstOffset);
             visitedNodes[dstOffset] = NOT_VISITED_DST;
         }
     }

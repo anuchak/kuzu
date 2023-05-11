@@ -338,7 +338,7 @@ void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
         }
         uint32_t lineSeparatorLen = 1u + colsWidth.size();
         std::string lineSeparator;
-        while (queryResult.hasNext()) {
+        /*while (queryResult.hasNext()) {
             auto tuple = queryResult.getNext();
             for (auto i = 0u; i < colsWidth.size(); i++) {
                 if (tuple->getValue(i)->isNull()) {
@@ -379,7 +379,7 @@ void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
             auto tuple = queryResult.getNext();
             printf("|%s|\n", tuple->toString(colsWidth, "|", maxWidth).c_str());
             printf("%s\n", lineSeparator.c_str());
-        }
+        }*/
 
         // print query result (numFlatTuples & tuples)
         if (numTuples == 1) {

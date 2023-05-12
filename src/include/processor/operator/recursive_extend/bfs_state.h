@@ -33,13 +33,14 @@ struct Frontier {
 struct SSSPMorsel {
 public:
     SSSPMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
-        : currentLevel{0u}, nextScanStartIdx{0u}, curBFSLevel{std::make_shared<Frontier>()},
-          nextBFSLevel{std::make_shared<Frontier>()}, numVisitedNodes{0u},
+        : currentLevel{0u}, nextScanStartIdx{0u}, curBFSLevel{std::make_unique<Frontier>()},
+          nextBFSLevel{std::make_unique<Frontier>()}, numVisitedNodes{0u},
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
           distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsActiveOnMorsel{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
-          threadsWritingDstDistances{std::unordered_set<std::thread::id>()}, lvlStartTimeInMillis{0u} {}
+          threadsWritingDstDistances{std::unordered_set<std::thread::id>()},
+          lvlStartTimeInMillis{0u}, startTimeInMillis{0u}, distWriteStartTimeInMillis{0u} {}
 
     void reset(std::vector<common::offset_t>& targetDstNodeOffsets);
 
@@ -54,10 +55,10 @@ public:
     // Level state
     uint8_t currentLevel;
     uint64_t nextScanStartIdx;
-    std::shared_ptr<Frontier> curBFSLevel;
-    std::shared_ptr<Frontier> nextBFSLevel;
+    std::unique_ptr<Frontier> curBFSLevel;
+    std::unique_ptr<Frontier> nextBFSLevel;
     // Visited state
-    std::atomic<uint64_t> numVisitedNodes;
+    uint64_t numVisitedNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<uint16_t> distance;
     // Offset of src node.
@@ -71,6 +72,8 @@ public:
     uint64_t inputFTableTupleIdx;
     std::unordered_set<std::thread::id> threadsWritingDstDistances;
     uint64_t lvlStartTimeInMillis;
+    uint64_t startTimeInMillis;
+    uint64_t distWriteStartTimeInMillis;
 };
 
 struct BaseBFSMorsel {

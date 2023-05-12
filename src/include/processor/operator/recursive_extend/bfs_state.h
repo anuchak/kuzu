@@ -48,8 +48,6 @@ public:
     // Mark src as visited.
     void markSrc(const std::vector<common::offset_t>& targetDstNodeOffsets);
 
-    // Mark node as visited.
-    void markVisited(common::offset_t offset);
     void moveNextLevelAsCurrentLevel();
 
 public:

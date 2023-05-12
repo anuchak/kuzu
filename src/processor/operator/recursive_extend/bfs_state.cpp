@@ -51,14 +51,6 @@ void SSSPMorsel::markSrc(const std::vector<common::offset_t>& targetDstNodeOffse
     curBFSLevel->nodeOffsets.push_back(srcOffset);
 }
 
-void SSSPMorsel::markVisited(common::offset_t offset) {
-    assert(visitedNodes[srcOffset] == NOT_VISITED);
-    visitedNodes[srcOffset] = VISITED;
-    distance[offset] = currentLevel + 1;
-    numVisitedNodes++;
-    nextBFSLevel->nodeOffsets.push_back(offset);
-}
-
 void SSSPMorsel::moveNextLevelAsCurrentLevel() {
     curBFSLevel = std::move(nextBFSLevel);
     currentLevel++;

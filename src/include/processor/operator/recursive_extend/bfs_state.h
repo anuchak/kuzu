@@ -39,7 +39,7 @@ public:
           distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsActiveOnMorsel{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
-          threadsWritingDstDistances{std::unordered_set<std::thread::id>()} {}
+          threadsWritingDstDistances{std::unordered_set<std::thread::id>()}, lvlStartTimeInMillis{0u} {}
 
     void reset(std::vector<common::offset_t>& targetDstNodeOffsets);
 
@@ -48,8 +48,6 @@ public:
     // Mark src as visited.
     void markSrc(const std::vector<common::offset_t>& targetDstNodeOffsets);
 
-    // Mark node as visited.
-    void markVisited(common::offset_t offset);
     void moveNextLevelAsCurrentLevel();
 
 public:
@@ -72,6 +70,7 @@ public:
     uint64_t nextDstScanStartIdx;
     uint64_t inputFTableTupleIdx;
     std::unordered_set<std::thread::id> threadsWritingDstDistances;
+    uint64_t lvlStartTimeInMillis;
 };
 
 struct BaseBFSMorsel {

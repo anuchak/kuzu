@@ -1,4 +1,5 @@
 #include "processor/operator/recursive_extend/bfs_state.h"
+#include "chrono"
 
 namespace kuzu {
 namespace processor {
@@ -50,14 +51,6 @@ void SSSPMorsel::markSrc(const std::vector<common::offset_t>& targetDstNodeOffse
     curBFSLevel->nodeOffsets.push_back(srcOffset);
 }
 
-void SSSPMorsel::markVisited(common::offset_t offset) {
-    assert(visitedNodes[srcOffset] == NOT_VISITED);
-    visitedNodes[srcOffset] = VISITED;
-    distance[offset] = currentLevel + 1;
-    numVisitedNodes++;
-    nextBFSLevel->nodeOffsets.push_back(offset);
-}
-
 void SSSPMorsel::moveNextLevelAsCurrentLevel() {
     curBFSLevel = std::move(nextBFSLevel);
     currentLevel++;
@@ -105,6 +98,12 @@ bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel
         bfsMorsel->localNextBFSLevel->nodeOffsets.end());
     if (ssspMorsel->numThreadsActiveOnMorsel == 0 &&
         ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        printf("%lu total nodes in level: %d finished in %lu ms\n",
+            ssspMorsel->curBFSLevel->nodeOffsets.size(),  ssspMorsel->currentLevel,
+            millis - ssspMorsel->lvlStartTimeInMillis);
+        ssspMorsel->lvlStartTimeInMillis = millis;
         ssspMorsel->moveNextLevelAsCurrentLevel();
         if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets())) {
             state = SSSP_MORSEL_COMPLETE;
@@ -151,6 +150,11 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
         bfsMorsel->threadCheckSSSPState = true;
         // exit and sleep for some time
         return state;
+    }
+    if(ssspMorsel->nextScanStartIdx == 0u) {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        ssspMorsel->lvlStartTimeInMillis = millis;
     }
     ssspMorsel->numThreadsActiveOnMorsel++;
     auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,

@@ -16,6 +16,7 @@ enum VisitedState : uint8_t {
 enum SSSPComputationState {
     SSSP_MORSEL_INCOMPLETE,
     SSSP_MORSEL_COMPLETE,
+    SSSP_MORSEL_WRITING_COMPLETE,
     SSSP_COMPUTATION_COMPLETE
 };
 

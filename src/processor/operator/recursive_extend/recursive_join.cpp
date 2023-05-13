@@ -47,6 +47,7 @@ bool BaseRecursiveJoin::computeBFS(ExecutionContext* context) {
                 colIndicesToScan, srcNodeIDVector, bfsMorsel);
         if (bfsMorsel->threadCheckSSSPState) {
             switch (bfsComputationState) {
+            case SSSP_MORSEL_WRITING_COMPLETE:
             case SSSP_MORSEL_INCOMPLETE:
                 std::this_thread::sleep_for(
                     std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));

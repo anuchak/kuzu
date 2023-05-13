@@ -101,7 +101,7 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
 bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
     ssspMorsel->numThreadsActiveOnMorsel--;
-    if(state == SSSP_MORSEL_COMPLETE || state == SSSP_COMPUTATION_COMPLETE) {
+    if(state != SSSP_MORSEL_INCOMPLETE) {
         return true;
     }
     ssspMorsel->nextBFSLevel->nodeOffsets.insert(ssspMorsel->nextBFSLevel->nodeOffsets.end(),
@@ -155,6 +155,7 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
             bfsMorsel->threadCheckSSSPState = true;
             return state;
         }
+        state = SSSP_MORSEL_INCOMPLETE;
         inputFTableSharedState->getTable()->scan(vectorsToScan, inputFTableMorsel->startTupleIdx,
             inputFTableMorsel->numTuples, colIndicesToScan);
         if (ssspMorsel->startTimeInMillis != 0u) {
@@ -239,7 +240,7 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
         printf("SSSP with source: %lu took: %lu ms to write distances\n", ssspMorsel->srcOffset,
             millis - ssspMorsel->distWriteStartTimeInMillis);
-        resetSSSPComputationState();
+        state = SSSP_MORSEL_WRITING_COMPLETE;
         return -1;
     } else {
         return 0;

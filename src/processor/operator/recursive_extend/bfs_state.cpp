@@ -106,16 +106,21 @@ bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel
         ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
         auto duration = std::chrono::system_clock::now().time_since_epoch();
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        printf("%lu total nodes in level: %d finished in %lu ms\n",
-            ssspMorsel->curBFSLevel->nodeOffsets.size(), ssspMorsel->currentLevel,
-            millis - ssspMorsel->lvlStartTimeInMillis);
-        ssspMorsel->lvlStartTimeInMillis = millis;
+        auto size = ssspMorsel->curBFSLevel->nodeOffsets.size();
         ssspMorsel->moveNextLevelAsCurrentLevel();
+        printf("%lu total nodes in level: %d finished in %lu ms\n", size,
+            ssspMorsel->currentLevel - 1, millis - ssspMorsel->lvlStartTimeInMillis);
+        ssspMorsel->lvlStartTimeInMillis = millis;
         if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets())) {
             state = SSSP_MORSEL_COMPLETE;
             return true;
         }
     } else if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets())) {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        printf("%lu total nodes in level: %d | early finish in %lu ms\n",
+            ssspMorsel->curBFSLevel->nodeOffsets.size(), ssspMorsel->currentLevel,
+            millis - ssspMorsel->lvlStartTimeInMillis);
         state = SSSP_MORSEL_COMPLETE;
         return true;
     }

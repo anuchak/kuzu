@@ -74,7 +74,11 @@ common::offset_t BaseBFSMorsel::getNextNodeOffset() {
 
 void BaseBFSMorsel::addToLocalNextBFSLevel(
     const std::shared_ptr<common::ValueVector>& tmpDstNodeIDVector) {
+    auto targetDestinations = getNumDstNodeOffsets();
     for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; ++i) {
+        if(ssspMorsel->numVisitedNodes == targetDestinations) {
+            return;
+        }
         auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = ssspMorsel->visitedNodes[nodeID.offset];
@@ -96,10 +100,10 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
 
 bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
-    if(state == SSSP_MORSEL_COMPLETE) {
+    ssspMorsel->numThreadsActiveOnMorsel--;
+    if(state == SSSP_MORSEL_COMPLETE || state == SSSP_COMPUTATION_COMPLETE) {
         return true;
     }
-    ssspMorsel->numThreadsActiveOnMorsel--;
     ssspMorsel->nextBFSLevel->nodeOffsets.insert(ssspMorsel->nextBFSLevel->nodeOffsets.end(),
         bfsMorsel->localNextBFSLevel->nodeOffsets.begin(),
         bfsMorsel->localNextBFSLevel->nodeOffsets.end());
@@ -198,7 +202,6 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     if (ssspMorsel->nextDstScanStartIdx == ssspMorsel->visitedNodes.size() &&
         !ssspMorsel->threadsWritingDstDistances.contains(std::this_thread::get_id())) {
         if (ssspMorsel->threadsWritingDstDistances.empty()) {
-            resetSSSPComputationState();
             return -1;
         } else {
             return 0;

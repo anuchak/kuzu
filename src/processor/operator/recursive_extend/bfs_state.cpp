@@ -83,6 +83,7 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
                     &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED_DST)) {
                 ssspMorsel->distance[nodeID.offset] = ssspMorsel->currentLevel + 1;
                 localNextBFSLevel->nodeOffsets.push_back(nodeID.offset);
+                ssspMorsel->numVisitedNodes++;
             }
         } else if (state == NOT_VISITED) {
             if (__sync_bool_compare_and_swap(
@@ -95,10 +96,10 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
 
 bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
     std::unique_lock lck{mutex};
-    ssspMorsel->numThreadsActiveOnMorsel--;
-    if (ssspMorsel->currentLevel > 0) {
-        ssspMorsel->numVisitedNodes += bfsMorsel->localNextBFSLevel->nodeOffsets.size();
+    if(state == SSSP_MORSEL_COMPLETE) {
+        return true;
     }
+    ssspMorsel->numThreadsActiveOnMorsel--;
     ssspMorsel->nextBFSLevel->nodeOffsets.insert(ssspMorsel->nextBFSLevel->nodeOffsets.end(),
         bfsMorsel->localNextBFSLevel->nodeOffsets.begin(),
         bfsMorsel->localNextBFSLevel->nodeOffsets.end());

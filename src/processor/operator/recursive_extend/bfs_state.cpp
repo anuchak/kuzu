@@ -74,11 +74,7 @@ common::offset_t BaseBFSMorsel::getNextNodeOffset() {
 
 void BaseBFSMorsel::addToLocalNextBFSLevel(
     const std::shared_ptr<common::ValueVector>& tmpDstNodeIDVector) {
-    auto targetDestinations = getNumDstNodeOffsets();
     for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; ++i) {
-        if(ssspMorsel->numVisitedNodes == targetDestinations) {
-            return;
-        }
         auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = ssspMorsel->visitedNodes[nodeID.offset];
@@ -87,7 +83,7 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
                     &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED_DST)) {
                 ssspMorsel->distance[nodeID.offset] = ssspMorsel->currentLevel + 1;
                 localNextBFSLevel->nodeOffsets.push_back(nodeID.offset);
-                ssspMorsel->numVisitedNodes++;
+                localNumVisitedNodes++;
             }
         } else if (state == NOT_VISITED) {
             if (__sync_bool_compare_and_swap(
@@ -107,6 +103,7 @@ bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel
     ssspMorsel->nextBFSLevel->nodeOffsets.insert(ssspMorsel->nextBFSLevel->nodeOffsets.end(),
         bfsMorsel->localNextBFSLevel->nodeOffsets.begin(),
         bfsMorsel->localNextBFSLevel->nodeOffsets.end());
+    ssspMorsel->numVisitedNodes += bfsMorsel->localNumVisitedNodes;
     if (ssspMorsel->numThreadsActiveOnMorsel == 0 &&
         ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
         auto duration = std::chrono::system_clock::now().time_since_epoch();

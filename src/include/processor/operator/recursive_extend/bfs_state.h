@@ -83,7 +83,7 @@ public:
     explicit BaseBFSMorsel(
         common::offset_t maxOffset, NodeOffsetSemiMask* semiMask, SSSPMorsel* ssspMorsel)
         : startScanIdx{0u}, endScanIdx{0u}, threadCheckSSSPState{true}, ssspMorsel{ssspMorsel},
-          localNextBFSLevel{std::make_unique<Frontier>()} {
+          localNextBFSLevel{std::make_unique<Frontier>()}, localNumVisitedNodes{0u} {
         if (semiMask->isEnabled()) {
             for (auto offset = 0u; offset < maxOffset + 1; ++offset) {
                 if (semiMask->isNodeMasked(offset)) {
@@ -101,6 +101,7 @@ public:
         ssspMorsel = ssspMorsel_;
         threadCheckSSSPState = false;
         localNextBFSLevel->resetState();
+        localNumVisitedNodes = 0u;
     }
 
     inline uint64_t getNumDstNodeOffsets() {
@@ -123,6 +124,7 @@ public:
     uint64_t endScanIdx;
     SSSPMorsel* ssspMorsel;
     std::unique_ptr<Frontier> localNextBFSLevel;
+    uint64_t localNumVisitedNodes;
 };
 
 struct ShortestPathBFSMorsel : public BaseBFSMorsel {

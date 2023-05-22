@@ -8,8 +8,6 @@ namespace processor {
 void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
     currentLevel = 0u;
     nextScanStartIdx = 0u;
-    curBFSLevel->resetState();
-    nextBFSLevel->resetState();
     numVisitedNodes = 0u;
     if (targetDstNodeOffsets.size() == maxOffset || targetDstNodeOffsets.empty()) {
         std::fill(visitedNodes.begin(), visitedNodes.end(), NOT_VISITED_DST);
@@ -20,6 +18,8 @@ void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
         }
     }
     std::fill(distance.begin(), distance.end(), 0u);
+    std::fill(nodeMask.begin(), nodeMask.end(), false);
+    bfsLevelNodeOffsets.clear();
     srcOffset = 0u;
     numThreadsActiveOnMorsel = 0u;
     nextDstScanStartIdx = 0u;
@@ -31,7 +31,7 @@ void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
 }
 
 bool SSSPMorsel::isComplete(uint64_t numDstNodesToVisit) {
-    if (curBFSLevel->nodeOffsets.empty()) { // no more to extend.
+    if (bfsLevelNodeOffsets.empty()) { // no more to extend.
         return true;
     }
     if (currentLevel == upperBound) { // upper limit reached.
@@ -52,29 +52,33 @@ void SSSPMorsel::markSrc(const std::vector<common::offset_t>& targetDstNodeOffse
     } else {
         visitedNodes[srcOffset] = VISITED;
     }
-    curBFSLevel->nodeOffsets.push_back(srcOffset);
+    bfsLevelNodeOffsets.push_back(srcOffset);
 }
 
 void SSSPMorsel::moveNextLevelAsCurrentLevel() {
-    curBFSLevel = std::move(nextBFSLevel);
     currentLevel++;
-    nextBFSLevel = std::make_unique<Frontier>();
     nextScanStartIdx = 0u;
     auto duration2 = std::chrono::system_clock::now().time_since_epoch();
     auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
-    if (currentLevel < upperBound) { // No need to sort if we are not extending further.
-        std::sort(curBFSLevel->nodeOffsets.begin(), curBFSLevel->nodeOffsets.end());
+    bfsLevelNodeOffsets.clear();
+    if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
+        for(auto i = 0u; i < nodeMask.size(); i++) {
+            if(nodeMask[i]) {
+                bfsLevelNodeOffsets.push_back(i);
+            }
+        }
     }
+    std::fill(nodeMask.begin(), nodeMask.end(), false);
     auto duration3 = std::chrono::system_clock::now().time_since_epoch();
     auto millis3 = std::chrono::duration_cast<std::chrono::milliseconds>(duration3).count();
-    printf("Time taken to sort: %lu nodes is: %lu\n", curBFSLevel->nodeOffsets.size(), millis3 - millis2);
+    printf("Time taken to prepare: %lu nodes is: %lu\n", bfsLevelNodeOffsets.size(), millis3 - millis2);
 }
 
 common::offset_t BaseBFSMorsel::getNextNodeOffset() {
     if (startScanIdx == endScanIdx) {
         return common::INVALID_OFFSET;
     }
-    return ssspMorsel->curBFSLevel->nodeOffsets[startScanIdx++];
+    return ssspMorsel->bfsLevelNodeOffsets[startScanIdx++];
 }
 
 void BaseBFSMorsel::addToLocalNextBFSLevel(
@@ -87,13 +91,13 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
             if (__sync_bool_compare_and_swap(
                     &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED_DST)) {
                 ssspMorsel->distance[nodeID.offset] = ssspMorsel->currentLevel + 1;
-                localNextBFSLevel->nodeOffsets.push_back(nodeID.offset);
-                localNumVisitedNodes++;
+                ssspMorsel->nodeMask[nodeID.offset] = true;
+                localVisitedDstNodes++;
             }
         } else if (state == NOT_VISITED) {
             if (__sync_bool_compare_and_swap(
                     &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED)) {
-                localNextBFSLevel->nodeOffsets.push_back(nodeID.offset);
+                ssspMorsel->nodeMask[nodeID.offset] = true;
             }
         }
     }
@@ -105,15 +109,13 @@ bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel
     if(state != SSSP_MORSEL_INCOMPLETE) {
         return true;
     }
-    ssspMorsel->nextBFSLevel->nodeOffsets.insert(ssspMorsel->nextBFSLevel->nodeOffsets.end(),
-        bfsMorsel->localNextBFSLevel->nodeOffsets.begin(),
-        bfsMorsel->localNextBFSLevel->nodeOffsets.end());
-    ssspMorsel->numVisitedNodes += bfsMorsel->localNumVisitedNodes;
+    // Update the destinations visited, used to check for termination condition.
+    ssspMorsel->numVisitedNodes += bfsMorsel->localVisitedDstNodes;
     if (ssspMorsel->numThreadsActiveOnMorsel == 0 &&
-        ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
+        ssspMorsel->nextScanStartIdx == ssspMorsel->bfsLevelNodeOffsets.size()) {
         auto duration = std::chrono::system_clock::now().time_since_epoch();
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        auto size = ssspMorsel->curBFSLevel->nodeOffsets.size();
+        auto size = ssspMorsel->bfsLevelNodeOffsets.size();
         ssspMorsel->moveNextLevelAsCurrentLevel();
         printf("%lu total nodes in level: %d finished in %lu ms\n", size,
             ssspMorsel->currentLevel - 1, millis - ssspMorsel->lvlStartTimeInMillis);
@@ -126,7 +128,7 @@ bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel
         auto duration = std::chrono::system_clock::now().time_since_epoch();
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
         printf("%lu total nodes in level: %d | early finish in %lu ms\n",
-            ssspMorsel->curBFSLevel->nodeOffsets.size(), ssspMorsel->currentLevel,
+            ssspMorsel->bfsLevelNodeOffsets.size(), ssspMorsel->currentLevel,
             millis - ssspMorsel->lvlStartTimeInMillis);
         state = SSSP_MORSEL_COMPLETE;
         return true;
@@ -175,14 +177,14 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
     }
     // We don't swap here, because we want the last thread to complete its BFSMorsel and only then
     // swap the curBFSLevel and nextBFSLevel (happens in Line 93 in finishBFSMorsel function).
-    if (ssspMorsel->nextScanStartIdx == ssspMorsel->curBFSLevel->size()) {
+    if (ssspMorsel->nextScanStartIdx == ssspMorsel->bfsLevelNodeOffsets.size()) {
         bfsMorsel->threadCheckSSSPState = true;
         // exit and sleep for some time
         return state;
     }
     ssspMorsel->numThreadsActiveOnMorsel++;
     auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,
-        ssspMorsel->curBFSLevel->size() - ssspMorsel->nextScanStartIdx);
+        ssspMorsel->bfsLevelNodeOffsets.size() - ssspMorsel->nextScanStartIdx);
     auto morselScanEndIdx = ssspMorsel->nextScanStartIdx + bfsMorselSize;
     bfsMorsel->reset(ssspMorsel->nextScanStartIdx, morselScanEndIdx, ssspMorsel.get());
     ssspMorsel->nextScanStartIdx += bfsMorselSize;

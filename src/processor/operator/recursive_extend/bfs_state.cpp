@@ -60,9 +60,14 @@ void SSSPMorsel::moveNextLevelAsCurrentLevel() {
     currentLevel++;
     nextBFSLevel = std::make_unique<Frontier>();
     nextScanStartIdx = 0u;
+    auto duration2 = std::chrono::system_clock::now().time_since_epoch();
+    auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
     if (currentLevel < upperBound) { // No need to sort if we are not extending further.
         std::sort(curBFSLevel->nodeOffsets.begin(), curBFSLevel->nodeOffsets.end());
     }
+    auto duration3 = std::chrono::system_clock::now().time_since_epoch();
+    auto millis3 = std::chrono::duration_cast<std::chrono::milliseconds>(duration3).count();
+    printf("Time taken to sort: %lu nodes is: %lu\n", curBFSLevel->nodeOffsets.size(), millis3 - millis2);
 }
 
 common::offset_t BaseBFSMorsel::getNextNodeOffset() {
@@ -161,6 +166,7 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
         }
         ssspMorsel->reset(bfsMorsel->targetDstNodeOffsets);
         ssspMorsel->startTimeInMillis = millis;
+        ssspMorsel->lvlStartTimeInMillis = millis;
         ssspMorsel->inputFTableTupleIdx = inputFTableMorsel->startTupleIdx;
         auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(
             srcNodeIDVector->state->selVector->selectedPositions[0]);
@@ -173,11 +179,6 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
         bfsMorsel->threadCheckSSSPState = true;
         // exit and sleep for some time
         return state;
-    }
-    if (ssspMorsel->nextScanStartIdx == 0u) {
-        auto duration = std::chrono::system_clock::now().time_since_epoch();
-        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        ssspMorsel->lvlStartTimeInMillis = millis;
     }
     ssspMorsel->numThreadsActiveOnMorsel++;
     auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,

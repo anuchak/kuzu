@@ -20,27 +20,13 @@ enum SSSPComputationState {
     SSSP_COMPUTATION_COMPLETE
 };
 
-struct Frontier {
-
-    explicit Frontier(uint64_t maxNodeOffset) : nodeMask{std::vector<bool>(maxNodeOffset + 1, false)} {}
-
-    std::vector<bool> nodeMask;
-
-    inline void markNode(common::offset_t nodeOffset) {
-        nodeMask[nodeOffset] = true;
-    }
-    virtual ~Frontier() = default;
-    inline virtual void resetState() { std::fill(nodeMask.begin(), nodeMask.end(), false); }
-    inline virtual uint64_t getMultiplicity(common::offset_t offset) { return 1; }
-};
-
 struct SSSPMorsel {
 public:
     SSSPMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
         : currentLevel{0u}, nextScanStartIdx{0u}, numVisitedNodes{0u},
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
-          distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)},
-          nodeMask{std::vector<bool>(maxNodeOffset_ + 1)},
+          distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)}, nodeMask{std::vector<uint8_t>(
+                                                                       maxNodeOffset_ + 1, 0u)},
           bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsActiveOnMorsel{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
@@ -64,7 +50,7 @@ public:
     uint64_t numVisitedNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<uint16_t> distance;
-    std::vector<bool> nodeMask;
+    std::vector<uint8_t> nodeMask;
     std::vector<common::offset_t> bfsLevelNodeOffsets;
     // Offset of src node.
     common::offset_t srcOffset;
@@ -153,14 +139,13 @@ public:
         const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
         std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
 
+    std::pair<uint64_t, uint32_t> prepareDistanceVector();
+
     int64_t writeDstNodeIDAndDistance(
         const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
         const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
         const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID);
-
-private:
-    inline void resetSSSPComputationState() { state = SSSP_MORSEL_INCOMPLETE; }
 
 private:
     SSSPComputationState state;

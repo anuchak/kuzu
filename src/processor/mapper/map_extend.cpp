@@ -164,7 +164,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapLogicalRecursiveExtendToPhysica
                                           .getMaxNodeOffsetPerTable();
         auto maxNodeOffset = maxNodeOffsetsPerTable.at(nbrNode->getSingleTableID());
         auto morselDispatcher = std::make_shared<MorselDispatcher>(
-            rel->getLowerBound(), rel->getUpperBound(), maxNodeOffset);
+            rel->getLowerBound(), rel->getUpperBound(), maxNodeOffset, numThreadsForExecution);
         return std::make_unique<ShortestPathRecursiveJoin>(rel->getLowerBound(),
             rel->getUpperBound(), nodeTable, sharedState, outDataPoses, colIndicesToScan,
             inNodeIDVectorPos, outNodeIDVectorPos, distanceVectorPos, tmpDstNodePos,

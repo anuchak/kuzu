@@ -9,7 +9,7 @@ void ShortestPathRecursiveJoin::initLocalStateInternal(
     distanceVector = resultSet->getValueVector(distanceVectorPos);
     auto maxNodeOffset = nodeTable->getMaxNodeOffset(transaction);
     bfsMorsel = std::make_unique<ShortestPathBFSMorsel>(
-        maxNodeOffset, sharedState->semiMask.get(), morselDispatcher->getSSSPMorsel());
+        maxNodeOffset, sharedState->semiMask.get(), morselDispatcher->getSSSPMorsel(threadIdx));
 }
 
 bool ShortestPathRecursiveJoin::scanOutput() {

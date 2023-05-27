@@ -1,3 +1,4 @@
+/*
 #include "processor/operator/recursive_extend/bfs_state.h"
 
 #include "chrono"
@@ -227,11 +228,13 @@ std::pair<uint64_t, uint32_t> MorselDispatcher::prepareDistanceVector() {
     return startScanIdxAndSize;
 }
 
+*/
 /*
  * If return value = -1, it indicates new SSSPMorsel can be started.
  * If return value = 0, indicates no more distances to write BUT cannot start new SSSPMorsel.
  * If return value > 0, indicates distances were written to distanceVector.
- */
+ *//*
+
 int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
@@ -259,11 +262,14 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     if (size > 0) {
         dstNodeIDVector->state->initOriginalAndSelectedSize(size);
         inputFTableSharedState->getTable()->scan(
-            vectorsToScan, ssspMorsel->inputFTableTupleIdx, 1 /* numTuples */, colIndicesToScan);
-        return size;
-    }
-    return 0;
-}
+            vectorsToScan, ssspMorsel->inputFTableTupleIdx, 1 */
+/* numTuples */ /*
+ , colIndicesToScan);
+         return size;
+     }
+     return 0;
+ }
 
-} // namespace processor
-} // namespace kuzu
+ } // namespace processor
+ } // namespace kuzu
+ */

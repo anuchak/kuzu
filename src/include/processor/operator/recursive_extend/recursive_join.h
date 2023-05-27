@@ -1,6 +1,6 @@
 #pragma once
 
-#include "bfs_state.h"
+#include "bfs_state_temp.h"
 #include "processor/operator/physical_operator.h"
 #include "processor/operator/result_collector.h"
 #include "storage/store/node_table.h"
@@ -104,7 +104,10 @@ private:
     // Compute BFS for a given src node.
     bool computeBFS(ExecutionContext* context);
 
+    void extend(ExecutionContext* context);
+
 protected:
+    uint32_t threadIdx;
     uint8_t lowerBound;
     uint8_t upperBound;
     storage::NodeTable* nodeTable;

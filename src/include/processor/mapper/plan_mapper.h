@@ -19,9 +19,9 @@ class PlanMapper {
 public:
     // Create plan mapper with default mapper context.
     PlanMapper(storage::StorageManager& storageManager, storage::MemoryManager* memoryManager,
-        catalog::Catalog* catalog)
-        : storageManager{storageManager}, memoryManager{memoryManager},
-          expressionMapper{}, catalog{catalog}, physicalOperatorID{0} {}
+        catalog::Catalog* catalog, uint64_t numThreadsForExecution)
+        : storageManager{storageManager}, memoryManager{memoryManager}, expressionMapper{},
+          catalog{catalog}, physicalOperatorID{0}, numThreadsForExecution{numThreadsForExecution} {}
 
     std::unique_ptr<PhysicalPlan> mapLogicalPlanToPhysical(planner::LogicalPlan* logicalPlan,
         const binder::expression_vector& expressionsToCollect, common::StatementType statementType);
@@ -132,6 +132,7 @@ public:
     storage::MemoryManager* memoryManager;
     ExpressionMapper expressionMapper;
     catalog::Catalog* catalog;
+    uint64_t numThreadsForExecution;
 
 private:
     std::unordered_map<planner::LogicalOperator*, PhysicalOperator*> logicalOpToPhysicalOpMap;

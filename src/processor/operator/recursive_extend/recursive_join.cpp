@@ -12,6 +12,7 @@ bool ScanFrontier::getNextTuplesInternal(ExecutionContext* context) {
 }
 
 void BaseRecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionContext* context) {
+    threadIdx = morselDispatcher->getThreadIdx();
     for (auto& dataPos : vectorsToScanPos) {
         vectorsToScan.push_back(resultSet->getValueVector(dataPos).get());
     }
@@ -25,7 +26,7 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
     while (true) {
         auto ret = morselDispatcher->writeDstNodeIDAndDistance(sharedState->inputFTableSharedState,
             vectorsToScan, colIndicesToScan, dstNodeIDVector, distanceVector,
-            nodeTable->getTableID());
+            nodeTable->getTableID(), threadIdx);
         if (ret > 0) {
             return true;
         } else if (ret == 0) {
@@ -34,6 +35,7 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
             continue;
         } else {
             if (!computeBFS(context)) { // Phase 1
+                printf("Exiting from here, means STATE is COMPLETE: %d\n", threadIdx);
                 return false;
             }
         }
@@ -42,36 +44,45 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
 
 bool BaseRecursiveJoin::computeBFS(ExecutionContext* context) {
     while (true) {
-        auto bfsComputationState =
-            morselDispatcher->getBFSMorsel(sharedState->inputFTableSharedState, vectorsToScan,
-                colIndicesToScan, srcNodeIDVector, bfsMorsel);
-        if (bfsMorsel->threadCheckSSSPState) {
-            switch (bfsComputationState) {
-            case SSSP_MORSEL_WRITING_COMPLETE:
-            case SSSP_MORSEL_INCOMPLETE:
-                std::this_thread::sleep_for(
-                    std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
-                continue;
-            case SSSP_MORSEL_COMPLETE:
+        bfsMorsel->ssspMorsel->getBFSMorsel(bfsMorsel);
+        if (!bfsMorsel->threadCheckSSSPState) {
+            extend(context);
+            if (bfsMorsel->ssspMorsel->finishBFSMorsel(bfsMorsel)) {
                 return true;
-            case SSSP_COMPUTATION_COMPLETE:
-                return false;
-            default:
-                assert(false);
             }
         } else {
-            common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
-            while (nodeOffset != common::INVALID_OFFSET) {
-                scanFrontier->setNodeID(common::nodeID_t{nodeOffset, nodeTable->getTableID()});
-                while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
-                    bfsMorsel->addToLocalNextBFSLevel(tmpDstNodeIDVector);
+            auto bfsComputationState =
+                morselDispatcher->getBFSMorsel(sharedState->inputFTableSharedState, vectorsToScan,
+                    colIndicesToScan, srcNodeIDVector, bfsMorsel, threadIdx);
+            if (bfsMorsel->threadCheckSSSPState) {
+                switch (bfsComputationState) {
+                case IN_PROGRESS:
+                case IN_PROGRESS_ALL_SRC_SCANNED:
+                    std::this_thread::sleep_for(std::chrono::microseconds(
+                        common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+                    continue;
+                case COMPLETE:
+                    return false;
+                default:
+                    assert(false);
                 }
-                nodeOffset = bfsMorsel->getNextNodeOffset();
             }
-            if (morselDispatcher->finishBFSMorsel(bfsMorsel)) {
+            extend(context);
+            if (bfsMorsel->ssspMorsel->finishBFSMorsel(bfsMorsel)) {
                 return true;
             }
         }
+    }
+}
+
+void BaseRecursiveJoin::extend(ExecutionContext* context) {
+    common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
+    while (nodeOffset != common::INVALID_OFFSET) {
+        scanFrontier->setNodeID(common::nodeID_t{nodeOffset, nodeTable->getTableID()});
+        while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
+            bfsMorsel->addToLocalNextBFSLevel(tmpDstNodeIDVector);
+        }
+        nodeOffset = bfsMorsel->getNextNodeOffset();
     }
 }
 

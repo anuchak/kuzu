@@ -43,34 +43,53 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
 
 bool BaseRecursiveJoin::computeBFS(ExecutionContext* context) {
     while (true) {
-        bfsMorsel->ssspMorsel->getBFSMorsel(bfsMorsel);
-        if (!bfsMorsel->threadCheckSSSPState) {
-            extend(context);
-            if (bfsMorsel->ssspMorsel->finishBFSMorsel(bfsMorsel)) {
-                return true;
-            }
-        } else {
-            auto bfsComputationState =
-                morselDispatcher->getBFSMorsel(sharedState->inputFTableSharedState, vectorsToScan,
-                    colIndicesToScan, srcNodeIDVector, bfsMorsel, threadIdx);
-            if (bfsMorsel->threadCheckSSSPState) {
-                switch (bfsComputationState) {
-                case IN_PROGRESS:
-                case IN_PROGRESS_ALL_SRC_SCANNED:
-                    std::this_thread::sleep_for(std::chrono::microseconds(
-                        common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
-                    continue;
-                case COMPLETE:
-                    return false;
-                default:
-                    assert(false);
+        if (bfsMorsel->ssspMorsel) {
+            bfsMorsel->ssspMorsel->getBFSMorsel(bfsMorsel);
+            if (!bfsMorsel->threadCheckSSSPState) {
+                extend(context);
+                if (bfsMorsel->ssspMorsel->finishBFSMorsel(bfsMorsel)) {
+                    return true;
                 }
-            }
-            extend(context);
-            if (bfsMorsel->ssspMorsel->finishBFSMorsel(bfsMorsel)) {
-                return true;
+                continue;
             }
         }
+        auto status = fetchBFSMorselFromDispatcher(context);
+        if (status == -1) {
+            return false;
+        } else if (status == 0) {
+            continue;
+        } else {
+            return true;
+        }
+    }
+}
+
+/*
+ * returns -1 = exit, return false from operator, all work done
+ * returns 0 = keep asking for work
+ * returns 1 = SSSP extend is complete, can return to writing distances
+ */
+int BaseRecursiveJoin::fetchBFSMorselFromDispatcher(ExecutionContext* context) {
+    auto bfsComputationState = morselDispatcher->getBFSMorsel(sharedState->inputFTableSharedState,
+        vectorsToScan, colIndicesToScan, srcNodeIDVector, bfsMorsel, threadIdx);
+    if (bfsMorsel->threadCheckSSSPState) {
+        switch (bfsComputationState) {
+        case IN_PROGRESS:
+        case IN_PROGRESS_ALL_SRC_SCANNED:
+            std::this_thread::sleep_for(
+                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+            return 0;
+        case COMPLETE:
+            return -1;
+        default:
+            assert(false);
+        }
+    }
+    extend(context);
+    if (bfsMorsel->ssspMorsel->finishBFSMorsel(bfsMorsel)) {
+        return 1;
+    } else {
+        return 0;
     }
 }
 

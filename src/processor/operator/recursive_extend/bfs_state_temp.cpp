@@ -199,10 +199,13 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
     }
 }
 
+/*
+ * Populate the active SSSP tracker for each thread, and return a unique thread ID.
+ * activeSSSPMorsel already has size equal to total threads.
+ */
 uint32_t MorselDispatcher::getThreadIdx() {
     std::unique_lock lck{mutex};
-    activeSSSPMorsel[threadIdxCounter] =
-        std::make_shared<SSSPMorsel>(upperBound, lowerBound, maxOffset);
+    activeSSSPMorsel[threadIdxCounter] = nullptr;
     return threadIdxCounter++;
 }
 
@@ -227,7 +230,13 @@ GlobalSSSPState MorselDispatcher::getBFSMorsel(
     }
     case IN_PROGRESS_ALL_SRC_SCANNED: {
         auto ssspMorsel = activeSSSPMorsel[threadIdx];
-        auto ret = ssspMorsel->getBFSMorsel(bfsMorsel);
+        SSSPLocalState ret;
+        if (!ssspMorsel) {
+            bfsMorsel->threadCheckSSSPState = true;
+            ret = MORSEL_EXTEND_IN_PROGRESS;
+        } else {
+            ret = ssspMorsel->getBFSMorsel(bfsMorsel);
+        }
         if (bfsMorsel->threadCheckSSSPState) {
             switch (ret) {
                 // try to get the next available SSSPMorsel for work
@@ -262,7 +271,13 @@ GlobalSSSPState MorselDispatcher::getBFSMorsel(
     }
     case IN_PROGRESS: {
         auto ssspMorsel = activeSSSPMorsel[threadIdx];
-        auto ret = ssspMorsel->getBFSMorsel(bfsMorsel);
+        SSSPLocalState ret;
+        if (!ssspMorsel) {
+            bfsMorsel->threadCheckSSSPState = true;
+            ret = MORSEL_EXTEND_IN_PROGRESS;
+        } else {
+            ret = ssspMorsel->getBFSMorsel(bfsMorsel);
+        }
         if (bfsMorsel->threadCheckSSSPState) {
             switch (ret) {
                 // try to get the next available SSSPMorsel for work
@@ -294,9 +309,13 @@ GlobalSSSPState MorselDispatcher::getBFSMorsel(
                     newSSSPMorsel->srcOffset = nodeID.offset;
                     newSSSPMorsel->markSrc(bfsMorsel->targetDstNodeOffsets);
                     newSSSPMorsel->getBFSMorsel(bfsMorsel);
-                    ssspMorsel->mutex.lock();
-                    activeSSSPMorsel[threadIdx] = newSSSPMorsel;
-                    ssspMorsel->mutex.unlock();
+                    if (ssspMorsel) {
+                        ssspMorsel->mutex.lock();
+                        activeSSSPMorsel[threadIdx] = newSSSPMorsel;
+                        ssspMorsel->mutex.unlock();
+                    } else {
+                        activeSSSPMorsel[threadIdx] = newSSSPMorsel;
+                    }
                     return globalState;
                 } else {
                     auto nextAvailableSSSPIdx = getNextAvailableSSSPWork(threadIdx);
@@ -305,7 +324,13 @@ GlobalSSSPState MorselDispatcher::getBFSMorsel(
                         return globalState;
                     }
                     if (activeSSSPMorsel[nextAvailableSSSPIdx]->getBFSMorsel(bfsMorsel)) {
-                        activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
+                        if (ssspMorsel) {
+                            ssspMorsel->mutex.lock();
+                            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
+                            ssspMorsel->mutex.unlock();
+                        } else {
+                            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
+                        }
                         return globalState;
                     }
                     bfsMorsel->threadCheckSSSPState = true;
@@ -360,6 +385,10 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     uint32_t threadIdx) {
     mutex.lock();
     auto& ssspMorsel = activeSSSPMorsel[threadIdx];
+    if (!ssspMorsel) {
+        mutex.unlock();
+        return -1;
+    }
     auto startScanIdxAndSize = ssspMorsel->getDstDistanceMorsel();
     if (startScanIdxAndSize.first == UINT64_MAX && startScanIdxAndSize.second == INT64_MAX) {
         mutex.unlock();

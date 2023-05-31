@@ -104,6 +104,8 @@ private:
     // Compute BFS for a given src node.
     bool computeBFS(ExecutionContext* context);
 
+    int fetchBFSMorselFromDispatcher(ExecutionContext* context);
+
     void extend(ExecutionContext* context);
 
 protected:

@@ -21,11 +21,7 @@ enum SSSPLocalState {
 };
 
 // Global States for MorselDispatcher
-enum GlobalSSSPState {
-    IN_PROGRESS,
-    IN_PROGRESS_ALL_SRC_SCANNED,
-    COMPLETE
-};
+enum GlobalSSSPState { IN_PROGRESS, IN_PROGRESS_ALL_SRC_SCANNED, COMPLETE };
 
 struct BaseBFSMorsel;
 
@@ -152,8 +148,7 @@ public:
     // Not thread safe, called only for initialization of BFSMorsel. ThreadIdx position is fixed.
     SSSPMorsel* getSSSPMorsel(uint32_t threadIdx);
 
-    GlobalSSSPState getBFSMorsel(
-        const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
+    GlobalSSSPState getBFSMorsel(const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
         const std::vector<common::ValueVector*> vectorsToScan,
         const std::vector<ft_col_idx_t> colIndicesToScan,
         const std::shared_ptr<common::ValueVector>& srcNodeIDVector,

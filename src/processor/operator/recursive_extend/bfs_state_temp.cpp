@@ -77,8 +77,6 @@ bool SSSPMorsel::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
         if (isComplete(bfsMorsel->getNumDstNodeOffsets())) {
             ssspLocalState = MORSEL_DISTANCE_WRITE_IN_PROGRESS;
             mutex.unlock();
-            printf(
-                "SSSP with src: %lu completed in: %lu ms\n", srcOffset, millis - startTimeInMillis);
             return true;
         }
     } else if (isComplete(bfsMorsel->getNumDstNodeOffsets())) {
@@ -88,7 +86,6 @@ bool SSSPMorsel::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
             bfsLevelNodeOffsets.size(), currentLevel, millis - lvlStartTimeInMillis);
         ssspLocalState = MORSEL_DISTANCE_WRITE_IN_PROGRESS;
         mutex.unlock();
-        printf("SSSP with src: %lu completed in: %lu ms\n", srcOffset, millis - startTimeInMillis);
         return true;
     }
     mutex.unlock();
@@ -144,6 +141,12 @@ std::pair<uint64_t, int64_t> SSSPMorsel::getDstDistanceMorsel() {
     mutex.lock();
     if (ssspLocalState != MORSEL_DISTANCE_WRITE_IN_PROGRESS) {
         mutex.unlock();
+        if (startTimeInMillis != 0) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            printf(
+                "SSSP with src: %lu completed in: %lu ms\n", srcOffset, millis - startTimeInMillis);
+        }
         return {UINT64_MAX, INT64_MAX};
     } else if (nextDstScanStartIdx == visitedNodes.size()) {
         auto duration = std::chrono::system_clock::now().time_since_epoch();

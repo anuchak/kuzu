@@ -35,7 +35,6 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
             continue;
         } else {
             if (!computeBFS(context)) { // Phase 1
-                printf("Exiting from here, means STATE is COMPLETE: %d\n", threadIdx);
                 return false;
             }
         }

@@ -71,17 +71,24 @@ bool SSSPMorsel::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
         auto size = bfsLevelNodeOffsets.size();
         moveNextLevelAsCurrentLevel();
+        printf("%lu total nodes in level: %d finished in %lu ms\n", size, currentLevel - 1,
+            millis - lvlStartTimeInMillis);
         lvlStartTimeInMillis = millis;
         if (isComplete(bfsMorsel->getNumDstNodeOffsets())) {
             ssspLocalState = MORSEL_DISTANCE_WRITE_IN_PROGRESS;
             mutex.unlock();
+            printf(
+                "SSSP with src: %lu completed in: %lu ms\n", srcOffset, millis - startTimeInMillis);
             return true;
         }
     } else if (isComplete(bfsMorsel->getNumDstNodeOffsets())) {
         auto duration = std::chrono::system_clock::now().time_since_epoch();
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        printf("%lu total nodes in level: %d | early finish in %lu ms\n",
+            bfsLevelNodeOffsets.size(), currentLevel, millis - lvlStartTimeInMillis);
         ssspLocalState = MORSEL_DISTANCE_WRITE_IN_PROGRESS;
         mutex.unlock();
+        printf("SSSP with src: %lu completed in: %lu ms\n", srcOffset, millis - startTimeInMillis);
         return true;
     }
     mutex.unlock();
@@ -229,7 +236,6 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
                 if (activeSSSPMorsel[nextAvailableSSSPIdx]->getBFSMorsel(bfsMorsel)) {
                     ssspMorsel->mutex.lock();
                     activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
-                    printf("thread: %d working on SSSP src %lu now \n", threadIdx, ssspMorsel->srcOffset);
                     ssspMorsel->mutex.unlock();
                     return globalState;
                 }
@@ -261,7 +267,6 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
                     if (inputFTableMorsel->numTuples == 0) {
                         globalState = (numActiveSSSP == 0) ? COMPLETE : IN_PROGRESS_ALL_SRC_SCANNED;
                         bfsMorsel->threadCheckSSSPState = true;
-                        printf("changed state to: %d\n", globalState);
                         return globalState;
                     }
                     numActiveSSSP++;
@@ -282,7 +287,6 @@ SSSPComputationState MorselDispatcher::getBFSMorsel(
                     newSSSPMorsel->srcOffset = nodeID.offset;
                     newSSSPMorsel->markSrc(bfsMorsel->targetDstNodeOffsets);
                     newSSSPMorsel->getBFSMorsel(bfsMorsel);
-                    printf("no. of SSSP increased by 1: %lu, src offset: %lu started by thread: %d\n", numActiveSSSP, nodeID.offset, threadIdx);
                     ssspMorsel->mutex.lock();
                     activeSSSPMorsel[threadIdx] = newSSSPMorsel;
                     ssspMorsel->mutex.unlock();

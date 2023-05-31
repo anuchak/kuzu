@@ -148,7 +148,8 @@ public:
     // Not thread safe, called only for initialization of BFSMorsel. ThreadIdx position is fixed.
     SSSPMorsel* getSSSPMorsel(uint32_t threadIdx);
 
-    GlobalSSSPState getBFSMorsel(const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
+    std::pair<GlobalSSSPState, SSSPLocalState> getBFSMorsel(
+        const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
         const std::vector<common::ValueVector*> vectorsToScan,
         const std::vector<ft_col_idx_t> colIndicesToScan,
         const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
@@ -156,7 +157,9 @@ public:
 
     int64_t getNextAvailableSSSPWork(uint32_t threadIdx);
 
-    void funcB();
+    std::pair<GlobalSSSPState, SSSPLocalState> findAvailableSSSPMorsel(
+        std::unique_ptr<BaseBFSMorsel>& bfsMorsel, SSSPLocalState& ssspLocalState,
+        uint32_t threadIdx);
 
     int64_t writeDstNodeIDAndDistance(
         const std::shared_ptr<FTableSharedState>& inputFTableSharedState,

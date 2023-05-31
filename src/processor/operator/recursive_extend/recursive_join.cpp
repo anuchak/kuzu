@@ -72,13 +72,19 @@ bool BaseRecursiveJoin::computeBFS(ExecutionContext* context) {
 int BaseRecursiveJoin::fetchBFSMorselFromDispatcher(ExecutionContext* context) {
     auto bfsComputationState = morselDispatcher->getBFSMorsel(sharedState->inputFTableSharedState,
         vectorsToScan, colIndicesToScan, srcNodeIDVector, bfsMorsel, threadIdx);
+    auto globalSSSPState = bfsComputationState.first;
+    auto ssspLocalState = bfsComputationState.second;
     if (bfsMorsel->threadCheckSSSPState) {
-        switch (bfsComputationState) {
+        switch (globalSSSPState) {
         case IN_PROGRESS:
         case IN_PROGRESS_ALL_SRC_SCANNED:
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
-            return 0;
+            if (ssspLocalState == MORSEL_COMPLETE || ssspLocalState == MORSEL_EXTEND_IN_PROGRESS) {
+                std::this_thread::sleep_for(
+                    std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+                return 0;
+            } else {
+                return 1;
+            }
         case COMPLETE:
             return -1;
         default:

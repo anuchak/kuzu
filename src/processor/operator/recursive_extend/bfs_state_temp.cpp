@@ -214,7 +214,7 @@ SSSPMorsel* MorselDispatcher::getSSSPMorsel(uint32_t threadIdx) {
     return activeSSSPMorsel[threadIdx].get();
 }
 
-GlobalSSSPState MorselDispatcher::getBFSMorsel(
+std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
     const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
     const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
@@ -226,60 +226,46 @@ GlobalSSSPState MorselDispatcher::getBFSMorsel(
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
         bfsMorsel->threadCheckSSSPState = true;
         printf("Thread: %d EXITING here, time: %lu", threadIdx, millis);
-        return globalState;
+        return {globalState, MORSEL_COMPLETE};
     }
     case IN_PROGRESS_ALL_SRC_SCANNED: {
         auto ssspMorsel = activeSSSPMorsel[threadIdx];
-        SSSPLocalState ret;
+        SSSPLocalState ssspLocalState;
         if (!ssspMorsel) {
             bfsMorsel->threadCheckSSSPState = true;
-            ret = MORSEL_EXTEND_IN_PROGRESS;
+            ssspLocalState = MORSEL_EXTEND_IN_PROGRESS;
         } else {
-            ret = ssspMorsel->getBFSMorsel(bfsMorsel);
+            ssspLocalState = ssspMorsel->getBFSMorsel(bfsMorsel);
         }
         if (bfsMorsel->threadCheckSSSPState) {
-            switch (ret) {
+            switch (ssspLocalState) {
                 // try to get the next available SSSPMorsel for work
                 // same for both states, try to get next available SSSPMorsel for work
             case MORSEL_COMPLETE:
             case MORSEL_EXTEND_IN_PROGRESS: {
-                auto nextAvailableSSSPIdx = getNextAvailableSSSPWork(threadIdx);
-                if (nextAvailableSSSPIdx == -1) {
-                    globalState = (numActiveSSSP == 0) ? COMPLETE : IN_PROGRESS_ALL_SRC_SCANNED;
-                    bfsMorsel->threadCheckSSSPState = true;
-                    return globalState;
-                }
-                if (activeSSSPMorsel[nextAvailableSSSPIdx]->getBFSMorsel(bfsMorsel)) {
-                    ssspMorsel->mutex.lock();
-                    activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
-                    ssspMorsel->mutex.unlock();
-                    return globalState;
-                }
-                bfsMorsel->threadCheckSSSPState = true;
-                return globalState;
+                return findAvailableSSSPMorsel(bfsMorsel, ssspLocalState, threadIdx);
             }
             case MORSEL_DISTANCE_WRITE_IN_PROGRESS:
-                // TODO: try to help the distance writing for SSSPMorsel (need to check this state)
                 bfsMorsel->threadCheckSSSPState = true;
-                return globalState;
+                return {globalState, ssspLocalState};
             default:
                 assert(false);
             }
         } else {
-            return globalState;
+            return {globalState, ssspLocalState};
         }
     }
     case IN_PROGRESS: {
         auto ssspMorsel = activeSSSPMorsel[threadIdx];
-        SSSPLocalState ret;
+        SSSPLocalState ssspLocalState;
         if (!ssspMorsel) {
             bfsMorsel->threadCheckSSSPState = true;
-            ret = MORSEL_EXTEND_IN_PROGRESS;
+            ssspLocalState = MORSEL_EXTEND_IN_PROGRESS;
         } else {
-            ret = ssspMorsel->getBFSMorsel(bfsMorsel);
+            ssspLocalState = ssspMorsel->getBFSMorsel(bfsMorsel);
         }
         if (bfsMorsel->threadCheckSSSPState) {
-            switch (ret) {
+            switch (ssspLocalState) {
                 // try to get the next available SSSPMorsel for work
                 // same for both states, try to get next available SSSPMorsel for work
             case MORSEL_COMPLETE:
@@ -289,7 +275,7 @@ GlobalSSSPState MorselDispatcher::getBFSMorsel(
                     if (inputFTableMorsel->numTuples == 0) {
                         globalState = (numActiveSSSP == 0) ? COMPLETE : IN_PROGRESS_ALL_SRC_SCANNED;
                         bfsMorsel->threadCheckSSSPState = true;
-                        return globalState;
+                        return {globalState, ssspLocalState};
                     }
                     numActiveSSSP++;
                     auto newSSSPMorsel =
@@ -316,42 +302,24 @@ GlobalSSSPState MorselDispatcher::getBFSMorsel(
                     } else {
                         activeSSSPMorsel[threadIdx] = newSSSPMorsel;
                     }
-                    return globalState;
+                    return {globalState, ssspLocalState};
                 } else {
-                    auto nextAvailableSSSPIdx = getNextAvailableSSSPWork(threadIdx);
-                    if (nextAvailableSSSPIdx == -1) {
-                        bfsMorsel->threadCheckSSSPState = true;
-                        return globalState;
-                    }
-                    if (activeSSSPMorsel[nextAvailableSSSPIdx]->getBFSMorsel(bfsMorsel)) {
-                        if (ssspMorsel) {
-                            ssspMorsel->mutex.lock();
-                            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
-                            ssspMorsel->mutex.unlock();
-                        } else {
-                            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
-                        }
-                        return globalState;
-                    }
-                    bfsMorsel->threadCheckSSSPState = true;
-                    return globalState;
+                    return findAvailableSSSPMorsel(bfsMorsel, ssspLocalState, threadIdx);
                 }
             }
             case MORSEL_DISTANCE_WRITE_IN_PROGRESS:
-                // TODO: try to help the distance writing for SSSPMorsel (need to check this state)
                 bfsMorsel->threadCheckSSSPState = true;
-                return globalState;
+                return {globalState, ssspLocalState};
             default:
                 assert(false);
             }
         } else {
-            return globalState;
+            return {globalState, ssspLocalState};
         }
     }
     default:
         assert(false);
     }
-    return globalState;
 }
 
 int64_t MorselDispatcher::getNextAvailableSSSPWork(uint32_t threadIdx) {
@@ -361,7 +329,8 @@ int64_t MorselDispatcher::getNextAvailableSSSPWork(uint32_t threadIdx) {
             activeSSSPMorsel[i]->mutex.lock();
             if (activeSSSPMorsel[i]->nextScanStartIdx <
                     activeSSSPMorsel[i]->bfsLevelNodeOffsets.size() &&
-                activeSSSPMorsel[i]->ssspLocalState == MORSEL_EXTEND_IN_PROGRESS) {
+                (activeSSSPMorsel[i]->ssspLocalState == MORSEL_EXTEND_IN_PROGRESS ||
+                    activeSSSPMorsel[i]->ssspLocalState == MORSEL_DISTANCE_WRITE_IN_PROGRESS)) {
                 nextAvailableSSSPIdx = i;
                 activeSSSPMorsel[i]->mutex.unlock();
                 break;
@@ -370,6 +339,29 @@ int64_t MorselDispatcher::getNextAvailableSSSPWork(uint32_t threadIdx) {
         }
     }
     return nextAvailableSSSPIdx;
+}
+
+std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::findAvailableSSSPMorsel(
+    std::unique_ptr<BaseBFSMorsel>& bfsMorsel, SSSPLocalState& ssspLocalState, uint32_t threadIdx) {
+    auto nextAvailableSSSPIdx = getNextAvailableSSSPWork(threadIdx);
+    if (nextAvailableSSSPIdx == -1) {
+        bfsMorsel->threadCheckSSSPState = true;
+        return {globalState, ssspLocalState};
+    }
+    ssspLocalState = activeSSSPMorsel[nextAvailableSSSPIdx]->getBFSMorsel(bfsMorsel);
+    if (bfsMorsel->threadCheckSSSPState) {
+        bfsMorsel->threadCheckSSSPState = true;
+        return {globalState, ssspLocalState};
+    } else {
+        if (bfsMorsel->ssspMorsel) {
+            bfsMorsel->ssspMorsel->mutex.lock();
+            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
+            bfsMorsel->ssspMorsel->mutex.unlock();
+        } else {
+            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
+        }
+        return {globalState, ssspLocalState};
+    }
 }
 
 /*

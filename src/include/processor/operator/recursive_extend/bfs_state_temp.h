@@ -13,16 +13,18 @@ enum VisitedState : uint8_t {
     VISITED = 3,
 };
 
-enum SSSPComputationState {
-    // Global States for MorselDispatcher
-    IN_PROGRESS,
-    IN_PROGRESS_ALL_SRC_SCANNED,
-    COMPLETE,
-
-    // SSSPMorsel States
+// SSSPMorsel States
+enum SSSPLocalState {
     MORSEL_EXTEND_IN_PROGRESS,
     MORSEL_DISTANCE_WRITE_IN_PROGRESS,
     MORSEL_COMPLETE
+};
+
+// Global States for MorselDispatcher
+enum GlobalSSSPState {
+    IN_PROGRESS,
+    IN_PROGRESS_ALL_SRC_SCANNED,
+    COMPLETE
 };
 
 struct BaseBFSMorsel;
@@ -42,7 +44,7 @@ public:
 
     void reset(std::vector<common::offset_t>& targetDstNodeOffsets);
 
-    SSSPComputationState getBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
+    SSSPLocalState getBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
 
     bool finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
 
@@ -57,7 +59,7 @@ public:
 
 public:
     std::mutex mutex;
-    SSSPComputationState ssspLocalState;
+    SSSPLocalState ssspLocalState;
     // Level state
     uint8_t currentLevel;
     uint64_t nextScanStartIdx;
@@ -150,7 +152,7 @@ public:
     // Not thread safe, called only for initialization of BFSMorsel. ThreadIdx position is fixed.
     SSSPMorsel* getSSSPMorsel(uint32_t threadIdx);
 
-    SSSPComputationState getBFSMorsel(
+    GlobalSSSPState getBFSMorsel(
         const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
         const std::vector<common::ValueVector*> vectorsToScan,
         const std::vector<ft_col_idx_t> colIndicesToScan,
@@ -175,7 +177,7 @@ private:
     uint32_t threadIdxCounter;
     std::vector<std::shared_ptr<SSSPMorsel>> activeSSSPMorsel;
     uint32_t numActiveSSSP;
-    SSSPComputationState globalState;
+    GlobalSSSPState globalState;
     std::mutex mutex;
 };
 

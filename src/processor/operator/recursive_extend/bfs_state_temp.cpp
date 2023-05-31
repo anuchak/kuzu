@@ -35,7 +35,7 @@ void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
  * depending on state we need to take next step. If MORSEL_COMPLETE then proceed to get a
  * new SSSPMorsel & if MORSEL_DISTANCE_WRITING_IN_PROGRESS then help in this task.
  */
-SSSPComputationState SSSPMorsel::getBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
+SSSPLocalState SSSPMorsel::getBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
     mutex.lock();
     if (ssspLocalState == MORSEL_COMPLETE || ssspLocalState == MORSEL_DISTANCE_WRITE_IN_PROGRESS) {
         bfsMorsel->threadCheckSSSPState = true;
@@ -211,16 +211,20 @@ SSSPMorsel* MorselDispatcher::getSSSPMorsel(uint32_t threadIdx) {
     return activeSSSPMorsel[threadIdx].get();
 }
 
-SSSPComputationState MorselDispatcher::getBFSMorsel(
+GlobalSSSPState MorselDispatcher::getBFSMorsel(
     const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
     const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
     std::unique_ptr<BaseBFSMorsel>& bfsMorsel, uint32_t threadIdx) {
     std::unique_lock lck{mutex};
     switch (globalState) {
-    case COMPLETE:
+    case COMPLETE: {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
         bfsMorsel->threadCheckSSSPState = true;
+        printf("Thread: %d EXITING here, time: %lu", threadIdx, millis);
         return globalState;
+    }
     case IN_PROGRESS_ALL_SRC_SCANNED: {
         auto ssspMorsel = activeSSSPMorsel[threadIdx];
         auto ret = ssspMorsel->getBFSMorsel(bfsMorsel);
@@ -366,7 +370,7 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
             globalState = COMPLETE;
         }
         mutex.unlock();
-        return 0;
+        return -1;
     }
     mutex.unlock();
     auto size = 0u;

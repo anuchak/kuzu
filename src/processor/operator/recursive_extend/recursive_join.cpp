@@ -27,11 +27,14 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
         auto ret = morselDispatcher->writeDstNodeIDAndDistance(sharedState->inputFTableSharedState,
             vectorsToScan, colIndicesToScan, dstNodeIDVector, distanceVector,
             nodeTable->getTableID(), threadIdx);
+        /*
+         * -1 = Writing distances stage is complete, try to fetch a new morsel to extend.
+         * 0 = The distance morsel was empty, go back to get a new one to write to the ValueVector.
+         * > 0 = Values were written to distanceVector, return true to go back to parent operator.
+         */
         if (ret > 0) {
             return true;
         } else if (ret == 0) {
-            /*std::this_thread::sleep_for(
-                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));*/
             continue;
         } else {
             if (!computeBFS(context)) { // Phase 1

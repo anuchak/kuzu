@@ -393,9 +393,7 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     auto size = 0u;
     auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
     while (startScanIdxAndSize.first < endIdx) {
-        if ((ssspMorsel->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
-                ssspMorsel->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
-            ssspMorsel->distance[startScanIdxAndSize.first] >= ssspMorsel->lowerBound) {
+        if (ssspMorsel->distance[startScanIdxAndSize.first] >= ssspMorsel->lowerBound) {
             dstNodeIDVector->setValue<common::nodeID_t>(
                 size, common::nodeID_t{startScanIdxAndSize.first, tableID});
             distanceVector->setValue<int64_t>(

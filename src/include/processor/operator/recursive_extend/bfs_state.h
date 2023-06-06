@@ -1,4 +1,3 @@
-/*
 #pragma once
 
 #include "processor/operator/mask.h"
@@ -12,29 +11,39 @@ enum VisitedState : uint8_t {
     VISITED_DST = 1,
     NOT_VISITED = 2,
     VISITED = 3,
+    VISITED_NEW = 4,
+    VISITED_DST_NEW = 5,
 };
 
-enum SSSPComputationState {
-    SSSP_MORSEL_INCOMPLETE,
-    SSSP_MORSEL_COMPLETE,
-    SSSP_MORSEL_WRITING_COMPLETE,
-    SSSP_COMPUTATION_COMPLETE
+// SSSPMorsel States
+enum SSSPLocalState {
+    MORSEL_EXTEND_IN_PROGRESS,
+    MORSEL_DISTANCE_WRITE_IN_PROGRESS,
+    MORSEL_COMPLETE
 };
+
+// Global States for MorselDispatcher
+enum GlobalSSSPState { IN_PROGRESS, IN_PROGRESS_ALL_SRC_SCANNED, COMPLETE };
+
+struct BaseBFSMorsel;
 
 struct SSSPMorsel {
 public:
     SSSPMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
-        : currentLevel{0u}, nextScanStartIdx{0u}, numVisitedNodes{0u},
-          visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
-          distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)}, nodeMask{std::vector<uint8_t>(
-                                                                       maxNodeOffset_ + 1, 0u)},
+        : mutex{std::mutex()}, ssspLocalState{MORSEL_EXTEND_IN_PROGRESS}, currentLevel{0u},
+          nextScanStartIdx{0u}, numVisitedNodes{0u}, visitedNodes{std::vector<uint8_t>(
+                                                         maxNodeOffset_ + 1, NOT_VISITED)},
+          distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)},
           bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsActiveOnMorsel{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
-          threadsWritingDstDistances{std::unordered_set<std::thread::id>()},
           lvlStartTimeInMillis{0u}, startTimeInMillis{0u}, distWriteStartTimeInMillis{0u} {}
 
     void reset(std::vector<common::offset_t>& targetDstNodeOffsets);
+
+    SSSPLocalState getBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
+
+    bool finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
 
     // If BFS has completed.
     bool isComplete(uint64_t numDstNodesToVisit);
@@ -43,7 +52,11 @@ public:
 
     void moveNextLevelAsCurrentLevel();
 
+    std::pair<uint64_t, int64_t> getDstDistanceMorsel();
+
 public:
+    std::mutex mutex;
+    SSSPLocalState ssspLocalState;
     // Level state
     uint8_t currentLevel;
     uint64_t nextScanStartIdx;
@@ -51,7 +64,6 @@ public:
     uint64_t numVisitedNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<uint16_t> distance;
-    std::vector<uint8_t> nodeMask;
     std::vector<common::offset_t> bfsLevelNodeOffsets;
     // Offset of src node.
     common::offset_t srcOffset;
@@ -62,7 +74,6 @@ public:
     uint32_t numThreadsActiveOnMorsel;
     uint64_t nextDstScanStartIdx;
     uint64_t inputFTableTupleIdx;
-    std::unordered_set<std::thread::id> threadsWritingDstDistances;
     uint64_t lvlStartTimeInMillis;
     uint64_t startTimeInMillis;
     uint64_t distWriteStartTimeInMillis;
@@ -125,35 +136,48 @@ struct ShortestPathBFSMorsel : public BaseBFSMorsel {
 
 struct MorselDispatcher {
 public:
-    MorselDispatcher(uint64_t lowerBound, uint64_t upperBound, uint64_t maxNodeOffset)
-        : state{SSSP_MORSEL_INCOMPLETE}, ssspMorsel{std::make_unique<SSSPMorsel>(
-                                             upperBound, lowerBound, maxNodeOffset)} {}
+    MorselDispatcher(uint64_t lowerBound, uint64_t upperBound, uint64_t maxOffset,
+        uint64_t numThreadsForExecution)
+        : threadIdxCounter{0u}, numActiveSSSP{0u},
+          activeSSSPMorsel{std::vector<std::shared_ptr<SSSPMorsel>>(numThreadsForExecution)},
+          globalState{IN_PROGRESS}, maxOffset{maxOffset}, lowerBound{lowerBound}, upperBound{
+                                                                                      upperBound} {}
 
-    inline SSSPMorsel* getSSSPMorsel() { return ssspMorsel.get(); }
+    uint32_t getThreadIdx();
 
-    bool finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
+    // Not thread safe, called only for initialization of BFSMorsel. ThreadIdx position is fixed.
+    SSSPMorsel* getSSSPMorsel(uint32_t threadIdx);
 
-    SSSPComputationState getBFSMorsel(
+    std::pair<GlobalSSSPState, SSSPLocalState> getBFSMorsel(
         const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
         const std::vector<common::ValueVector*> vectorsToScan,
         const std::vector<ft_col_idx_t> colIndicesToScan,
         const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
-        std::unique_ptr<BaseBFSMorsel>& bfsMorsel);
+        std::unique_ptr<BaseBFSMorsel>& bfsMorsel, uint32_t threadIdx);
 
-    std::pair<uint64_t, uint32_t> prepareDistanceVector();
+    int64_t getNextAvailableSSSPWork(uint32_t threadIdx);
+
+    std::pair<GlobalSSSPState, SSSPLocalState> findAvailableSSSPMorsel(
+        std::unique_ptr<BaseBFSMorsel>& bfsMorsel, SSSPLocalState& ssspLocalState,
+        uint32_t threadIdx);
 
     int64_t writeDstNodeIDAndDistance(
         const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
         const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
-        const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID);
+        const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID,
+        uint32_t threadIdx);
 
 private:
-    SSSPComputationState state;
-    std::shared_mutex mutex;
-    std::unique_ptr<SSSPMorsel> ssspMorsel;
+    common::offset_t maxOffset;
+    uint64_t upperBound;
+    uint64_t lowerBound;
+    uint32_t threadIdxCounter;
+    std::vector<std::shared_ptr<SSSPMorsel>> activeSSSPMorsel;
+    uint32_t numActiveSSSP;
+    GlobalSSSPState globalState;
+    std::mutex mutex;
 };
 
 } // namespace processor
 } // namespace kuzu
-*/

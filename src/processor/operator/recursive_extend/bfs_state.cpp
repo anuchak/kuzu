@@ -1,4 +1,3 @@
-/*
 #include "processor/operator/recursive_extend/bfs_state.h"
 
 #include "chrono"
@@ -7,6 +6,7 @@ namespace kuzu {
 namespace processor {
 
 void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
+    ssspLocalState = MORSEL_EXTEND_IN_PROGRESS;
     currentLevel = 0u;
     nextScanStartIdx = 0u;
     numVisitedNodes = 0u;
@@ -19,7 +19,6 @@ void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
         }
     }
     std::fill(distance.begin(), distance.end(), 0u);
-    std::fill(nodeMask.begin(), nodeMask.end(), 0u);
     bfsLevelNodeOffsets.clear();
     srcOffset = 0u;
     numThreadsActiveOnMorsel = 0u;
@@ -28,7 +27,68 @@ void SSSPMorsel::reset(std::vector<common::offset_t>& targetDstNodeOffsets) {
     lvlStartTimeInMillis = 0u;
     startTimeInMillis = 0u;
     distWriteStartTimeInMillis = 0u;
-    threadsWritingDstDistances.clear();
+}
+
+/*
+ * Returning the state here because if SSSPMorsel is complete / in distance writing stage then
+ * depending on state we need to take next step. If MORSEL_COMPLETE then proceed to get a
+ * new SSSPMorsel & if MORSEL_DISTANCE_WRITING_IN_PROGRESS then help in this task.
+ */
+SSSPLocalState SSSPMorsel::getBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
+    mutex.lock();
+    if (ssspLocalState == MORSEL_COMPLETE || ssspLocalState == MORSEL_DISTANCE_WRITE_IN_PROGRESS) {
+        bfsMorsel->threadCheckSSSPState = true;
+        mutex.unlock();
+        return ssspLocalState;
+    }
+    if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
+        numThreadsActiveOnMorsel++;
+        auto bfsMorselSize = std::min(
+            common::DEFAULT_VECTOR_CAPACITY, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+        auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
+        bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
+        nextScanStartIdx += bfsMorselSize;
+        mutex.unlock();
+        return ssspLocalState;
+    }
+    bfsMorsel->threadCheckSSSPState = true;
+    mutex.unlock();
+    return ssspLocalState;
+}
+
+bool SSSPMorsel::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
+    mutex.lock();
+    numThreadsActiveOnMorsel--;
+    if (ssspLocalState != MORSEL_EXTEND_IN_PROGRESS) {
+        mutex.unlock();
+        return true;
+    }
+    // Update the destinations visited, used to check for termination condition.
+    numVisitedNodes += bfsMorsel->localVisitedDstNodes;
+    if (numThreadsActiveOnMorsel == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        auto size = bfsLevelNodeOffsets.size();
+        moveNextLevelAsCurrentLevel();
+        printf("%lu total nodes in level: %d finished in %lu ms\n", size, currentLevel - 1,
+            millis - lvlStartTimeInMillis);
+        lvlStartTimeInMillis = millis;
+        if (isComplete(bfsMorsel->getNumDstNodeOffsets())) {
+            ssspLocalState = MORSEL_DISTANCE_WRITE_IN_PROGRESS;
+            mutex.unlock();
+            return true;
+        }
+    } else if (isComplete(bfsMorsel->getNumDstNodeOffsets())) {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        printf("%lu total nodes in level: %d | early finish in %lu ms\n",
+            bfsLevelNodeOffsets.size(), currentLevel, millis - lvlStartTimeInMillis);
+        ssspLocalState = MORSEL_DISTANCE_WRITE_IN_PROGRESS;
+        mutex.unlock();
+        return true;
+    }
+    mutex.unlock();
+    return false;
 }
 
 bool SSSPMorsel::isComplete(uint64_t numDstNodesToVisit) {
@@ -63,17 +123,53 @@ void SSSPMorsel::moveNextLevelAsCurrentLevel() {
     auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
     bfsLevelNodeOffsets.clear();
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
-        for (auto i = 0u; i < nodeMask.size(); i++) {
-            if (nodeMask[i]) {
+        for (auto i = 0u; i < visitedNodes.size(); i++) {
+            if (visitedNodes[i] == VISITED_NEW) {
+                visitedNodes[i] = VISITED;
+                bfsLevelNodeOffsets.push_back(i);
+            } else if (visitedNodes[i] == VISITED_DST_NEW) {
+                visitedNodes[i] = VISITED_DST;
                 bfsLevelNodeOffsets.push_back(i);
             }
         }
     }
-    std::fill(nodeMask.begin(), nodeMask.end(), 0u);
     auto duration3 = std::chrono::system_clock::now().time_since_epoch();
     auto millis3 = std::chrono::duration_cast<std::chrono::milliseconds>(duration3).count();
     printf("Time taken to prepare: %lu nodes is: %lu\n", bfsLevelNodeOffsets.size(),
         millis3 - millis2);
+}
+
+std::pair<uint64_t, int64_t> SSSPMorsel::getDstDistanceMorsel() {
+    mutex.lock();
+    if (ssspLocalState != MORSEL_DISTANCE_WRITE_IN_PROGRESS) {
+        mutex.unlock();
+        if (startTimeInMillis != 0) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            printf(
+                "SSSP with src: %lu completed in: %lu ms\n", srcOffset, millis - startTimeInMillis);
+        }
+        return {UINT64_MAX, INT64_MAX};
+    } else if (nextDstScanStartIdx == visitedNodes.size()) {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        printf("SSSP with source: %lu took: %lu ms to write distances\n", srcOffset,
+            millis - distWriteStartTimeInMillis);
+        ssspLocalState = MORSEL_COMPLETE;
+        mutex.unlock();
+        return {0, -1};
+    }
+    if (nextDstScanStartIdx == 0u) {
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        distWriteStartTimeInMillis =
+            std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    }
+    auto sizeToScan =
+        std::min(common::DEFAULT_VECTOR_CAPACITY, visitedNodes.size() - nextDstScanStartIdx);
+    std::pair<uint64_t, uint32_t> startScanIdxAndSize = {nextDstScanStartIdx, sizeToScan};
+    nextDstScanStartIdx += sizeToScan;
+    mutex.unlock();
+    return startScanIdxAndSize;
 }
 
 common::offset_t BaseBFSMorsel::getNextNodeOffset() {
@@ -91,165 +187,214 @@ void BaseBFSMorsel::addToLocalNextBFSLevel(
         auto state = ssspMorsel->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
-                    &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED_DST)) {
+                    &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
                 ssspMorsel->distance[nodeID.offset] = ssspMorsel->currentLevel + 1;
-                ssspMorsel->nodeMask[nodeID.offset] = 1;
                 localVisitedDstNodes++;
             }
         } else if (state == NOT_VISITED) {
-            if (__sync_bool_compare_and_swap(
-                    &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED)) {
-                ssspMorsel->nodeMask[nodeID.offset] = 1;
-            }
+            __sync_bool_compare_and_swap(
+                &ssspMorsel->visitedNodes[nodeID.offset], state, VISITED_NEW);
         }
     }
 }
 
-bool MorselDispatcher::finishBFSMorsel(std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
+/*
+ * Populate the active SSSP tracker for each thread, and return a unique thread ID.
+ * activeSSSPMorsel already has size equal to total threads.
+ */
+uint32_t MorselDispatcher::getThreadIdx() {
     std::unique_lock lck{mutex};
-    ssspMorsel->numThreadsActiveOnMorsel--;
-    if (state != SSSP_MORSEL_INCOMPLETE) {
-        return true;
-    }
-    // Update the destinations visited, used to check for termination condition.
-    ssspMorsel->numVisitedNodes += bfsMorsel->localVisitedDstNodes;
-    if (ssspMorsel->numThreadsActiveOnMorsel == 0 &&
-        ssspMorsel->nextScanStartIdx == ssspMorsel->bfsLevelNodeOffsets.size()) {
-        auto duration = std::chrono::system_clock::now().time_since_epoch();
-        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        auto size = ssspMorsel->bfsLevelNodeOffsets.size();
-        ssspMorsel->moveNextLevelAsCurrentLevel();
-        printf("%lu total nodes in level: %d finished in %lu ms\n", size,
-            ssspMorsel->currentLevel - 1, millis - ssspMorsel->lvlStartTimeInMillis);
-        ssspMorsel->lvlStartTimeInMillis = millis;
-        if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets())) {
-            state = SSSP_MORSEL_COMPLETE;
-            return true;
-        }
-    } else if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets())) {
-        auto duration = std::chrono::system_clock::now().time_since_epoch();
-        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        printf("%lu total nodes in level: %d | early finish in %lu ms\n",
-            ssspMorsel->bfsLevelNodeOffsets.size(), ssspMorsel->currentLevel,
-            millis - ssspMorsel->lvlStartTimeInMillis);
-        state = SSSP_MORSEL_COMPLETE;
-        return true;
-    }
-    return false;
+    activeSSSPMorsel[threadIdxCounter] = nullptr;
+    return threadIdxCounter++;
 }
 
-SSSPComputationState MorselDispatcher::getBFSMorsel(
+// Not thread safe, called only for initialization of BFSMorsel. ThreadIdx position is fixed.
+SSSPMorsel* MorselDispatcher::getSSSPMorsel(uint32_t threadIdx) {
+    return activeSSSPMorsel[threadIdx].get();
+}
+
+std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
     const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
     const std::shared_ptr<common::ValueVector>& srcNodeIDVector,
-    std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
+    std::unique_ptr<BaseBFSMorsel>& bfsMorsel, uint32_t threadIdx) {
     std::unique_lock lck{mutex};
-    if (state == SSSP_COMPUTATION_COMPLETE || state == SSSP_MORSEL_COMPLETE) {
+    switch (globalState) {
+    case COMPLETE: {
         bfsMorsel->threadCheckSSSPState = true;
-        return state;
+        return {globalState, MORSEL_COMPLETE};
     }
-    if (ssspMorsel->isComplete(bfsMorsel->getNumDstNodeOffsets()) &&
-        ssspMorsel->numThreadsActiveOnMorsel == 0) {
-        auto duration = std::chrono::system_clock::now().time_since_epoch();
-        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        auto inputFTableMorsel = inputFTableSharedState->getMorsel(1);
-        // Marks end of SSSP Computation, no more source tuples to trigger SSSP.
-        if (inputFTableMorsel->numTuples == 0) {
-            printf("SSSP with src: %lu completed in: %lu ms\n", ssspMorsel->srcOffset,
-                millis - ssspMorsel->startTimeInMillis);
-            state = SSSP_COMPUTATION_COMPLETE;
+    case IN_PROGRESS_ALL_SRC_SCANNED: {
+        auto ssspMorsel = activeSSSPMorsel[threadIdx];
+        SSSPLocalState ssspLocalState;
+        if (!ssspMorsel) {
             bfsMorsel->threadCheckSSSPState = true;
-            return state;
-        }
-        state = SSSP_MORSEL_INCOMPLETE;
-        inputFTableSharedState->getTable()->scan(vectorsToScan, inputFTableMorsel->startTupleIdx,
-            inputFTableMorsel->numTuples, colIndicesToScan);
-        if (ssspMorsel->startTimeInMillis != 0u) {
-            printf("SSSP with src: %lu completed in: %lu ms\n", ssspMorsel->srcOffset,
-                millis - ssspMorsel->startTimeInMillis);
-        }
-        ssspMorsel->reset(bfsMorsel->targetDstNodeOffsets);
-        ssspMorsel->startTimeInMillis = millis;
-        ssspMorsel->lvlStartTimeInMillis = millis;
-        ssspMorsel->inputFTableTupleIdx = inputFTableMorsel->startTupleIdx;
-        auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(
-            srcNodeIDVector->state->selVector->selectedPositions[0]);
-        ssspMorsel->srcOffset = nodeID.offset;
-        ssspMorsel->markSrc(bfsMorsel->targetDstNodeOffsets);
-    }
-    // We don't swap here, because we want the last thread to complete its BFSMorsel and only then
-    // swap the curBFSLevel and nextBFSLevel (happens in Line 93 in finishBFSMorsel function).
-    if (ssspMorsel->nextScanStartIdx == ssspMorsel->bfsLevelNodeOffsets.size()) {
-        bfsMorsel->threadCheckSSSPState = true;
-        // exit and sleep for some time
-        return state;
-    }
-    ssspMorsel->numThreadsActiveOnMorsel++;
-    auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,
-        ssspMorsel->bfsLevelNodeOffsets.size() - ssspMorsel->nextScanStartIdx);
-    auto morselScanEndIdx = ssspMorsel->nextScanStartIdx + bfsMorselSize;
-    bfsMorsel->reset(ssspMorsel->nextScanStartIdx, morselScanEndIdx, ssspMorsel.get());
-    ssspMorsel->nextScanStartIdx += bfsMorselSize;
-    return state;
-}
-
-std::pair<uint64_t, uint32_t> MorselDispatcher::prepareDistanceVector() {
-    std::unique_lock lck{mutex};
-    if (state != SSSP_MORSEL_COMPLETE) {
-        return {UINT64_MAX, UINT16_MAX};
-    } else if (ssspMorsel->nextDstScanStartIdx == ssspMorsel->visitedNodes.size()) {
-        if (ssspMorsel->threadsWritingDstDistances.empty()) {
-            return {UINT64_MAX, UINT16_MAX};
+            ssspLocalState = MORSEL_EXTEND_IN_PROGRESS;
         } else {
-            ssspMorsel->threadsWritingDstDistances.erase(std::this_thread::get_id());
-            if (ssspMorsel->threadsWritingDstDistances.empty()) {
-                auto duration = std::chrono::system_clock::now().time_since_epoch();
-                auto millis =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                printf("SSSP with source: %lu took: %lu ms to write distances\n",
-                    ssspMorsel->srcOffset, millis - ssspMorsel->distWriteStartTimeInMillis);
-                state = SSSP_MORSEL_WRITING_COMPLETE;
-                return {UINT64_MAX, UINT16_MAX};
-            }
+            ssspLocalState = ssspMorsel->getBFSMorsel(bfsMorsel);
         }
-        return {0u, 0u};
+        if (bfsMorsel->threadCheckSSSPState) {
+            switch (ssspLocalState) {
+                // try to get the next available SSSPMorsel for work
+                // same for both states, try to get next available SSSPMorsel for work
+            case MORSEL_COMPLETE:
+            case MORSEL_EXTEND_IN_PROGRESS: {
+                return findAvailableSSSPMorsel(bfsMorsel, ssspLocalState, threadIdx);
+            }
+            case MORSEL_DISTANCE_WRITE_IN_PROGRESS:
+                bfsMorsel->threadCheckSSSPState = true;
+                return {globalState, ssspLocalState};
+            default:
+                assert(false);
+            }
+        } else {
+            return {globalState, ssspLocalState};
+        }
     }
-    if (ssspMorsel->nextDstScanStartIdx == 0u) {
-        auto duration = std::chrono::system_clock::now().time_since_epoch();
-        ssspMorsel->distWriteStartTimeInMillis =
-            std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    case IN_PROGRESS: {
+        auto ssspMorsel = activeSSSPMorsel[threadIdx];
+        SSSPLocalState ssspLocalState;
+        if (!ssspMorsel) {
+            bfsMorsel->threadCheckSSSPState = true;
+            ssspLocalState = MORSEL_EXTEND_IN_PROGRESS;
+        } else {
+            ssspLocalState = ssspMorsel->getBFSMorsel(bfsMorsel);
+        }
+        if (bfsMorsel->threadCheckSSSPState) {
+            switch (ssspLocalState) {
+                // try to get the next available SSSPMorsel for work
+                // same for both states, try to get next available SSSPMorsel for work
+            case MORSEL_COMPLETE:
+            case MORSEL_EXTEND_IN_PROGRESS: {
+                if (numActiveSSSP < activeSSSPMorsel.size()) {
+                    auto inputFTableMorsel = inputFTableSharedState->getMorsel(1);
+                    if (inputFTableMorsel->numTuples == 0) {
+                        globalState = (numActiveSSSP == 0) ? COMPLETE : IN_PROGRESS_ALL_SRC_SCANNED;
+                        bfsMorsel->threadCheckSSSPState = true;
+                        return {globalState, ssspLocalState};
+                    }
+                    numActiveSSSP++;
+                    auto newSSSPMorsel =
+                        std::make_shared<SSSPMorsel>(upperBound, lowerBound, maxOffset);
+                    auto duration = std::chrono::system_clock::now().time_since_epoch();
+                    auto millis =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                    inputFTableSharedState->getTable()->scan(vectorsToScan,
+                        inputFTableMorsel->startTupleIdx, inputFTableMorsel->numTuples,
+                        colIndicesToScan);
+                    newSSSPMorsel->reset(bfsMorsel->targetDstNodeOffsets);
+                    newSSSPMorsel->startTimeInMillis = millis;
+                    newSSSPMorsel->lvlStartTimeInMillis = millis;
+                    newSSSPMorsel->inputFTableTupleIdx = inputFTableMorsel->startTupleIdx;
+                    auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(
+                        srcNodeIDVector->state->selVector->selectedPositions[0]);
+                    newSSSPMorsel->srcOffset = nodeID.offset;
+                    newSSSPMorsel->markSrc(bfsMorsel->targetDstNodeOffsets);
+                    newSSSPMorsel->getBFSMorsel(bfsMorsel);
+                    if (ssspMorsel) {
+                        ssspMorsel->mutex.lock();
+                        activeSSSPMorsel[threadIdx] = newSSSPMorsel;
+                        ssspMorsel->mutex.unlock();
+                    } else {
+                        activeSSSPMorsel[threadIdx] = newSSSPMorsel;
+                    }
+                    return {globalState, ssspLocalState};
+                } else {
+                    return findAvailableSSSPMorsel(bfsMorsel, ssspLocalState, threadIdx);
+                }
+            }
+            case MORSEL_DISTANCE_WRITE_IN_PROGRESS:
+                bfsMorsel->threadCheckSSSPState = true;
+                return {globalState, ssspLocalState};
+            default:
+                assert(false);
+            }
+        } else {
+            return {globalState, ssspLocalState};
+        }
     }
-    auto sizeToScan = std::min(common::DEFAULT_VECTOR_CAPACITY,
-        ssspMorsel->visitedNodes.size() - ssspMorsel->nextDstScanStartIdx);
-    ssspMorsel->threadsWritingDstDistances.insert(std::this_thread::get_id());
-    std::pair<uint64_t, uint32_t> startScanIdxAndSize = {
-        ssspMorsel->nextDstScanStartIdx, sizeToScan};
-    ssspMorsel->nextDstScanStartIdx += sizeToScan;
-    return startScanIdxAndSize;
+    default:
+        assert(false);
+    }
 }
 
-*/
+int64_t MorselDispatcher::getNextAvailableSSSPWork(uint32_t threadIdx) {
+    auto nextAvailableSSSPIdx = -1;
+    for (int i = 0; i < activeSSSPMorsel.size(); i++) {
+        if (activeSSSPMorsel[i]) {
+            activeSSSPMorsel[i]->mutex.lock();
+            if (activeSSSPMorsel[i]->nextScanStartIdx <
+                    activeSSSPMorsel[i]->bfsLevelNodeOffsets.size() &&
+                (activeSSSPMorsel[i]->ssspLocalState == MORSEL_EXTEND_IN_PROGRESS ||
+                    activeSSSPMorsel[i]->ssspLocalState == MORSEL_DISTANCE_WRITE_IN_PROGRESS)) {
+                nextAvailableSSSPIdx = i;
+                activeSSSPMorsel[i]->mutex.unlock();
+                break;
+            }
+            activeSSSPMorsel[i]->mutex.unlock();
+        }
+    }
+    return nextAvailableSSSPIdx;
+}
+
+std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::findAvailableSSSPMorsel(
+    std::unique_ptr<BaseBFSMorsel>& bfsMorsel, SSSPLocalState& ssspLocalState, uint32_t threadIdx) {
+    auto nextAvailableSSSPIdx = getNextAvailableSSSPWork(threadIdx);
+    if (nextAvailableSSSPIdx == -1) {
+        bfsMorsel->threadCheckSSSPState = true;
+        return {globalState, ssspLocalState};
+    }
+    ssspLocalState = activeSSSPMorsel[nextAvailableSSSPIdx]->getBFSMorsel(bfsMorsel);
+    if (bfsMorsel->threadCheckSSSPState) {
+        bfsMorsel->threadCheckSSSPState = true;
+        return {globalState, ssspLocalState};
+    } else {
+        if (bfsMorsel->ssspMorsel) {
+            bfsMorsel->ssspMorsel->mutex.lock();
+            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
+            bfsMorsel->ssspMorsel->mutex.unlock();
+        } else {
+            activeSSSPMorsel[threadIdx] = activeSSSPMorsel[nextAvailableSSSPIdx];
+        }
+        return {globalState, ssspLocalState};
+    }
+}
+
 /*
  * If return value = -1, it indicates new SSSPMorsel can be started.
  * If return value = 0, indicates no more distances to write BUT cannot start new SSSPMorsel.
  * If return value > 0, indicates distances were written to distanceVector.
- *//*
-
+ */
 int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     const std::shared_ptr<FTableSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
     const std::shared_ptr<common::ValueVector>& dstNodeIDVector,
-    const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID) {
-    auto startScanIdxAndSize = prepareDistanceVector();
-    if (startScanIdxAndSize.first == UINT64_MAX && startScanIdxAndSize.second == UINT16_MAX) {
+    const std::shared_ptr<common::ValueVector>& distanceVector, common::table_id_t tableID,
+    uint32_t threadIdx) {
+    mutex.lock();
+    auto ssspMorsel = activeSSSPMorsel[threadIdx];
+    if (!ssspMorsel) {
+        mutex.unlock();
         return -1;
-    } else if (startScanIdxAndSize.first == 0u && startScanIdxAndSize.second == 0u) {
-        return 0;
     }
+    auto startScanIdxAndSize = ssspMorsel->getDstDistanceMorsel();
+    if (startScanIdxAndSize.first == UINT64_MAX && startScanIdxAndSize.second == INT64_MAX) {
+        mutex.unlock();
+        return -1;
+    } else if (startScanIdxAndSize.second == -1) {
+        numActiveSSSP--;
+        if (numActiveSSSP == 0 && globalState == IN_PROGRESS_ALL_SRC_SCANNED) {
+            globalState = COMPLETE;
+        }
+        mutex.unlock();
+        return -1;
+    }
+    mutex.unlock();
     auto size = 0u;
     auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
     while (startScanIdxAndSize.first < endIdx) {
-        if (ssspMorsel->visitedNodes[startScanIdxAndSize.first] == VISITED_DST &&
+        if ((ssspMorsel->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
+                ssspMorsel->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
             ssspMorsel->distance[startScanIdxAndSize.first] >= ssspMorsel->lowerBound) {
             dstNodeIDVector->setValue<common::nodeID_t>(
                 size, common::nodeID_t{startScanIdxAndSize.first, tableID});
@@ -262,14 +407,11 @@ int64_t MorselDispatcher::writeDstNodeIDAndDistance(
     if (size > 0) {
         dstNodeIDVector->state->initOriginalAndSelectedSize(size);
         inputFTableSharedState->getTable()->scan(
-            vectorsToScan, ssspMorsel->inputFTableTupleIdx, 1 */
-/* numTuples */ /*
- , colIndicesToScan);
-         return size;
-     }
-     return 0;
- }
+            vectorsToScan, ssspMorsel->inputFTableTupleIdx, 1 /* numTuples */, colIndicesToScan);
+        return size;
+    }
+    return 0;
+}
 
- } // namespace processor
- } // namespace kuzu
- */
+} // namespace processor
+} // namespace kuzu

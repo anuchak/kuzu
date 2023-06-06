@@ -1,6 +1,6 @@
 #pragma once
 
-#include "bfs_state_temp.h"
+#include "bfs_state.h"
 #include "processor/operator/physical_operator.h"
 #include "processor/operator/result_collector.h"
 #include "storage/store/node_table.h"

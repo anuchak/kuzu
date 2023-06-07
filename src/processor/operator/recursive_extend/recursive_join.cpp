@@ -29,8 +29,6 @@ bool BaseRecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
         if (ret > 0) {
             return true;
         } else if (ret == 0) {
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
             continue;
         } else {
             if (!computeBFS(context)) { // Phase 1

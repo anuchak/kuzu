@@ -11,6 +11,8 @@ enum VisitedState : uint8_t {
     VISITED_DST = 1,
     NOT_VISITED = 2,
     VISITED = 3,
+    VISITED_DST_NEW = 4,
+    VISITED_NEW = 5
 };
 
 enum SSSPComputationState {
@@ -25,8 +27,7 @@ public:
     SSSPMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
         : currentLevel{0u}, nextScanStartIdx{0u}, numVisitedNodes{0u},
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
-          distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)}, nodeMask{std::vector<uint8_t>(
-                                                                       maxNodeOffset_ + 1, 0u)},
+          distance{std::vector<uint16_t>(maxNodeOffset_ + 1, 0u)},
           bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsActiveOnMorsel{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
@@ -50,7 +51,6 @@ public:
     uint64_t numVisitedNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<uint16_t> distance;
-    std::vector<uint8_t> nodeMask;
     std::vector<common::offset_t> bfsLevelNodeOffsets;
     // Offset of src node.
     common::offset_t srcOffset;

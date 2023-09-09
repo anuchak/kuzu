@@ -151,11 +151,11 @@ bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
     // if statement checks if we are in the outputting phase and if so, scans a vector to output and
     // returns true. Otherwise, we compute a new BFS.
     while (true) {
-        if (!computeBFS(context)) {
-            return false;
-        }
         if (scanOutput()) { // Phase 2
             return true;
+        }
+        if (!computeBFS(context)) {
+            return false;
         }
         frontiersScanner->resetState(*bfsMorsel);
     }

@@ -88,7 +88,7 @@ bool BFSSharedState::hasWork() const {
         return true;
     }
     if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
-        nextDstScanStartIdx < visitedNodes.size()) {
+        nextDstScanStartIdx <= visitedNodes.size()) {
         return true;
     }
     return false;

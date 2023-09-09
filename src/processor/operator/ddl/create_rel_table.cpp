@@ -8,8 +8,17 @@ namespace kuzu {
 namespace processor {
 
 void CreateRelTable::executeDDLInternal() {
-    auto newRelTableID =
-        catalog->addRelTableSchema(tableName, relMultiplicity, properties, srcTableID, dstTableID);
+    auto srcPKDataType = catalog->getReadOnlyVersion()
+                             ->getNodeTableSchema(srcTableID)
+                             ->getPrimaryKey()
+                             ->getDataType();
+    auto dstPKDataType = catalog->getReadOnlyVersion()
+                             ->getNodeTableSchema(dstTableID)
+                             ->getPrimaryKey()
+                             ->getDataType();
+    auto newRelTableID = catalog->addRelTableSchema(tableName, relMultiplicity,
+        catalog::Property::copyProperties(properties), srcTableID, dstTableID,
+        srcPKDataType->copy(), dstPKDataType->copy());
     relsStatistics->addTableStatistic(catalog->getWriteVersion()->getRelTableSchema(newRelTableID));
 }
 

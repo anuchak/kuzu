@@ -1,7 +1,7 @@
 #pragma once
 
 #include "aggregate_function.h"
-#include "function/comparison/comparison_operations.h"
+#include "function/comparison/comparison_functions.h"
 
 namespace kuzu {
 namespace function {
@@ -12,8 +12,8 @@ struct MinMaxFunction {
     struct MinMaxState : public AggregateState {
         inline uint32_t getStateSize() const override { return sizeof(*this); }
         inline void moveResultToVector(common::ValueVector* outputVector, uint64_t pos) override {
-            memcpy(outputVector->getData() + pos * outputVector->getNumBytesPerValue(),
-                reinterpret_cast<uint8_t*>(&val), outputVector->getNumBytesPerValue());
+            outputVector->setValue(pos, val);
+            overflowBuffer.reset();
         }
         inline void setVal(T& val_, storage::MemoryManager* memoryManager) { val = val_; }
 
@@ -58,7 +58,8 @@ struct MinMaxFunction {
             state->isNull = false;
         } else {
             uint8_t compare_result;
-            OP::template operation<T, T>(val, state->val, compare_result);
+            OP::template operation<T, T>(val, state->val, compare_result, nullptr /* leftVector */,
+                nullptr /* rightVector */);
             if (compare_result) {
                 state->setVal(val, memoryManager);
             }
@@ -78,11 +79,13 @@ struct MinMaxFunction {
             state->isNull = false;
         } else {
             uint8_t compareResult;
-            OP::template operation<T, T>(otherState->val, state->val, compareResult);
+            OP::template operation<T, T>(otherState->val, state->val, compareResult,
+                nullptr /* leftVector */, nullptr /* rightVector */);
             if (compareResult) {
                 state->setVal(otherState->val, memoryManager);
             }
         }
+        otherState->overflowBuffer.reset();
     }
 
     static void finalize(uint8_t* state_) {}

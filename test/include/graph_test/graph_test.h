@@ -9,6 +9,7 @@
 #include "planner/logical_plan/logical_plan_util.h"
 #include "planner/planner.h"
 #include "test_helper/test_helper.h"
+#include "test_runner/test_runner.h"
 
 using ::testing::Test;
 
@@ -25,15 +26,15 @@ public:
     void SetUp() override {
         systemConfig = std::make_unique<main::SystemConfig>(
             common::BufferPoolConstants::DEFAULT_BUFFER_POOL_SIZE_FOR_TESTING);
-        if (common::FileUtils::fileOrPathExists(TestHelper::getTmpTestDir())) {
-            common::FileUtils::removeDir(TestHelper::getTmpTestDir());
+        setDatabasePath();
+        if (common::FileUtils::fileOrPathExists(databasePath)) {
+            common::FileUtils::removeDir(databasePath);
         }
-        databasePath = TestHelper::getTmpTestDir();
     }
 
     virtual std::string getInputDir() = 0;
 
-    void TearDown() override { common::FileUtils::removeDir(TestHelper::getTmpTestDir()); }
+    void TearDown() override { common::FileUtils::removeDir(databasePath); }
 
     void createDBAndConn();
 
@@ -65,8 +66,11 @@ protected:
     static inline void commitAndCheckpointOrRollback(main::Database& database,
         transaction::Transaction* writeTransaction, bool isCommit,
         bool skipCheckpointForTestingRecovery = false) {
-        database.commitAndCheckpointOrRollback(
-            writeTransaction, isCommit, skipCheckpointForTestingRecovery);
+        if (isCommit) {
+            database.commit(writeTransaction, skipCheckpointForTestingRecovery);
+        } else {
+            database.rollback(writeTransaction, skipCheckpointForTestingRecovery);
+        }
     }
     static inline processor::QueryProcessor* getQueryProcessor(main::Database& database) {
         return database.queryProcessor.get();
@@ -109,8 +113,8 @@ protected:
         sort(expectedResult.begin(), expectedResult.end());
         ASSERT_EQ(actualResult, expectedResult);
     }
-    static inline bool containsOverflowFile(common::DataTypeID typeID) {
-        return typeID == common::STRING || typeID == common::VAR_LIST;
+    static inline bool containsOverflowFile(common::LogicalTypeID typeID) {
+        return typeID == common::LogicalTypeID::STRING || typeID == common::LogicalTypeID::VAR_LIST;
     }
 
     void validateColumnFilesExistence(std::string fileName, bool existence, bool hasOverflow);
@@ -129,9 +133,22 @@ protected:
     void commitOrRollbackConnectionAndInitDBIfNecessary(
         bool isCommit, TransactionTestType transactionTestType);
 
+    inline std::string getTestGroupAndName() {
+        const ::testing::TestInfo* const testInfo =
+            ::testing::UnitTest::GetInstance()->current_test_info();
+        return std::string(testInfo->test_case_name()) + "." + std::string(testInfo->name());
+    }
+
 private:
+    void setDatabasePath() {
+        const ::testing::TestInfo* const testInfo =
+            ::testing::UnitTest::GetInstance()->current_test_info();
+        databasePath = TestHelper::appendKuzuRootPath(
+            TestHelper::TMP_TEST_DIR + getTestGroupAndName() + TestHelper::getMillisecondsSuffix());
+    }
+
     void validateRelPropertyFiles(catalog::RelTableSchema* relTableSchema,
-        common::RelDirection relDirection, bool isColumnProperty, common::DBFileType dbFileType,
+        common::RelDataDirection relDirection, bool isColumnProperty, common::DBFileType dbFileType,
         bool existence);
 
 public:
@@ -155,17 +172,8 @@ public:
         initGraph();
     }
 
-    inline void runTest(const std::string& queryFile) {
-        auto queryConfigs = TestHelper::parseTestFile(queryFile);
-        ASSERT_TRUE(TestHelper::testQueries(queryConfigs, *conn));
-    }
-
-    inline void runTestAndCheckOrder(const std::string& queryFile) {
-        auto queryConfigs = TestHelper::parseTestFile(queryFile, true /* checkOutputOrder */);
-        for (auto& queryConfig : queryConfigs) {
-            queryConfig->checkOutputOrder = true;
-        }
-        ASSERT_TRUE(TestHelper::testQueries(queryConfigs, *conn));
+    inline void runTest(const std::vector<std::unique_ptr<TestStatement>>& statements) {
+        TestRunner::runTest(statements, *conn, databasePath);
     }
 };
 

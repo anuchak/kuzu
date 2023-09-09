@@ -8,7 +8,7 @@ namespace binder {
 
 class PropertyExpression : public Expression {
 public:
-    PropertyExpression(common::DataType dataType, const std::string& propertyName,
+    PropertyExpression(common::LogicalType dataType, const std::string& propertyName,
         const Expression& nodeOrRel,
         std::unordered_map<common::table_id_t, common::property_id_t> propertyIDPerTable,
         bool isPrimaryKey_)
@@ -38,7 +38,7 @@ public:
         return propertyIDPerTable.at(tableID);
     }
 
-    inline bool isInternalID() const { return getPropertyName() == common::INTERNAL_ID_SUFFIX; }
+    inline bool isInternalID() const { return getPropertyName() == common::InternalKeyword::ID; }
 
     inline std::unique_ptr<Expression> copy() const override {
         return make_unique<PropertyExpression>(*this);

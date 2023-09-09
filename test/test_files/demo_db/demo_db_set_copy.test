@@ -1,0 +1,47 @@
+-GROUP DemoDBSetAndCopyTest
+-DATASET CSV demo-db/csv
+
+--
+
+-CASE SetNodeTest
+
+-LOG SetAge
+-STATEMENT MATCH (u:User) WHERE u.name = 'Adam' SET u.age = 50
+---- ok
+
+-LOG ReturnAge
+-STATEMENT MATCH (u:User) WHERE u.name='Adam' RETURN u.age
+---- 1
+50
+
+-LOG SetAgeNull
+-STATEMENT MATCH (u:User) WHERE u.name = 'Adam' SET u.age = NULL
+---- ok
+
+-LOG ReturnNullAge 
+-STATEMENT MATCH (u:User) WHERE u.name='Adam' RETURN u.age
+---- 1
+
+
+-CASE SetRelTest
+
+-LOG SetRelSince
+-STATEMENT MATCH (u:User)-[f:Follows]->(u1:User) WHERE u.name = 'Adam' AND u1.name = 'Karissa' SET f.since=2012
+---- ok
+
+-LOG CheckRelSince
+-STATEMENT MATCH (u:User)-[f:Follows]->(u1:User) WHERE u.name='Adam' RETURN f.since, u1.name
+---- 2
+2012|Karissa
+2020|Zhang
+
+-LOG CopyRelToNonEmptyTableErrorTest
+-STATEMENT MATCH (:User)-[f:Follows]->(:User) DELETE f
+---- ok
+
+
+-CASE CopyRelToNonEmptyTableErrorTest
+
+-STATEMENT COPY Follows FROM "${KUZU_ROOT_DIRECTORY}/dataset/demo-db/csv/follows.csv"
+---- error
+Copy exception: COPY commands can only be executed once on a table.

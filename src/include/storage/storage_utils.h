@@ -3,7 +3,7 @@
 #include <string>
 #include <utility>
 
-#include "catalog/catalog_structs.h"
+#include "catalog/table_schema.h"
 #include "common/constants.h"
 #include "common/file_utils.h"
 #include "common/null_mask.h"
@@ -28,12 +28,16 @@ struct PageByteCursor {
         : pageIdx{pageIdx}, offsetInPage{offsetInPage} {};
     PageByteCursor() : PageByteCursor{UINT32_MAX, UINT16_MAX} {};
 
+    inline void resetValue() {
+        pageIdx = UINT32_MAX;
+        offsetInPage = UINT16_MAX;
+    }
+
     common::page_idx_t pageIdx;
     uint16_t offsetInPage;
 };
 
 struct PageElementCursor {
-
     PageElementCursor(common::page_idx_t pageIdx, uint16_t posInPage)
         : pageIdx{pageIdx}, elemPosInPage{posInPage} {};
     PageElementCursor() : PageElementCursor{UINT32_MAX, UINT16_MAX} {};
@@ -47,49 +51,77 @@ struct PageElementCursor {
     uint16_t elemPosInPage;
 };
 
-struct CursorUtils {
-    inline static common::page_idx_t getPageIdx(common::offset_t offset, uint64_t numBytesInAPage) {
-        return (common::page_idx_t)(offset / numBytesInAPage);
-    }
-
-    inline static PageElementCursor getPageElementCursor(
-        common::offset_t offset, uint64_t numElementsInAPage) {
-        return PageElementCursor{
-            getPageIdx(offset, numElementsInAPage), (uint16_t)(offset % numElementsInAPage)};
-    }
-};
-
 struct PageUtils {
-
-    static uint32_t getNumElementsInAPage(uint32_t elementSize, bool hasNull);
+    static constexpr uint32_t getNumElementsInAPage(uint32_t elementSize, bool hasNull) {
+        assert(elementSize > 0);
+        auto numBytesPerNullEntry = common::NullMask::NUM_BITS_PER_NULL_ENTRY >> 3;
+        auto numNullEntries =
+            hasNull ?
+                (uint32_t)ceil((double)common::BufferPoolConstants::PAGE_4KB_SIZE /
+                               (double)(((uint64_t)elementSize
+                                            << common::NullMask::NUM_BITS_PER_NULL_ENTRY_LOG2) +
+                                        numBytesPerNullEntry)) :
+                0;
+        return (common::BufferPoolConstants::PAGE_4KB_SIZE -
+                   (numNullEntries * numBytesPerNullEntry)) /
+               elementSize;
+    }
 
     // This function returns the page pageIdx of the page where element will be found and the pos of
     // the element in the page as the offset.
     static inline PageElementCursor getPageElementCursorForPos(
-        const uint64_t& elementPos, const uint32_t numElementsPerPage) {
+        uint64_t elementPos, uint32_t numElementsPerPage) {
         assert((elementPos / numElementsPerPage) < UINT32_MAX);
         return PageElementCursor{(common::page_idx_t)(elementPos / numElementsPerPage),
             (uint16_t)(elementPos % numElementsPerPage)};
     }
+
+    static inline PageByteCursor getPageByteCursorForPos(
+        uint64_t elementPos, uint32_t numElementsPerPage, uint64_t elementSize) {
+        assert((elementPos / numElementsPerPage) < UINT32_MAX);
+        return PageByteCursor{(common::page_idx_t)(elementPos / numElementsPerPage),
+            (uint16_t)(elementPos % numElementsPerPage * elementSize)};
+    }
 };
 
 class StorageUtils {
-
 public:
+    static inline common::offset_t getStartOffsetForNodeGroup(
+        common::node_group_idx_t nodeGroupIdx) {
+        return nodeGroupIdx << common::StorageConstants::NODE_GROUP_SIZE_LOG2;
+    }
+
+    static inline common::node_group_idx_t getNodeGroupIdxFromNodeOffset(
+        common::offset_t nodeOffset) {
+        return nodeOffset >> common::StorageConstants::NODE_GROUP_SIZE_LOG2;
+    }
+
     static std::string getNodeIndexFName(const std::string& directory,
         const common::table_id_t& tableID, common::DBFileType dbFileType);
 
+    static inline std::string getDataFName(const std::string& directory) {
+        return common::FileUtils::joinPath(directory, common::StorageConstants::DATA_FILE_NAME);
+    }
+
+    static inline std::string getMetadataFName(const std::string& directory) {
+        return common::FileUtils::joinPath(directory, common::StorageConstants::METADATA_FILE_NAME);
+    }
+
+    // TODO: This function should be removed after the refactoring of rel tables into node groups.
     static std::string getNodePropertyColumnFName(const std::string& directory,
         const common::table_id_t& tableID, uint32_t propertyID, common::DBFileType dbFileType);
 
-    static std::string appendStructFieldName(std::string filePath, std::string structFieldName);
+    static std::string appendStructFieldName(
+        std::string filePath, common::struct_field_idx_t structFieldIdx);
+    static std::string getPropertyNullFName(const std::string& filePath);
 
-    static inline StorageStructureIDAndFName getNodePropertyColumnStructureIDAndFName(
-        const std::string& directory, const catalog::Property& property) {
-        auto fName = getNodePropertyColumnFName(
-            directory, property.tableID, property.propertyID, common::DBFileType::ORIGINAL);
-        return {StorageStructureID::newNodePropertyColumnID(property.tableID, property.propertyID),
-            fName};
+    static inline StorageStructureIDAndFName getNodeNullColumnStructureIDAndFName(
+        StorageStructureIDAndFName propertyColumnIDAndFName) {
+        auto nullColumnStructureIDAndFName = propertyColumnIDAndFName;
+        nullColumnStructureIDAndFName.fName =
+            StorageUtils::getPropertyNullFName(propertyColumnIDAndFName.fName);
+        nullColumnStructureIDAndFName.storageStructureID.isNullBits = true;
+        return nullColumnStructureIDAndFName;
     }
 
     static inline StorageStructureIDAndFName getNodeIndexIDAndFName(
@@ -101,57 +133,55 @@ public:
     // Returns the StorageStructureIDAndFName for the "base" lists structure/file. Callers need to
     // modify it to obtain versions for METADATA and HEADERS structures/files.
     static inline StorageStructureIDAndFName getAdjListsStructureIDAndFName(
-        const std::string& directory, common::table_id_t relTableID, common::RelDirection dir) {
+        const std::string& directory, common::table_id_t relTableID, common::RelDataDirection dir) {
         auto fName = getAdjListsFName(directory, relTableID, dir, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(
-            StorageStructureID::newAdjListsID(relTableID, dir, ListFileType::BASE_LISTS), fName);
+        return {
+            StorageStructureID::newAdjListsID(relTableID, dir, ListFileType::BASE_LISTS), fName};
     }
 
     // Returns the StorageStructureIDAndFName for the "base" lists structure/file. Callers need to
     // modify it to obtain versions for METADATA and HEADERS structures/files.
     static inline StorageStructureIDAndFName getRelPropertyListsStructureIDAndFName(
-        const std::string& directory, common::table_id_t relTableID, common::RelDirection dir,
+        const std::string& directory, common::table_id_t relTableID, common::RelDataDirection dir,
         const catalog::Property& property) {
         auto fName = getRelPropertyListsFName(
-            directory, relTableID, dir, property.propertyID, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(StorageStructureID::newRelPropertyListsID(relTableID, dir,
-                                              property.propertyID, ListFileType::BASE_LISTS),
-            fName);
+            directory, relTableID, dir, property.getPropertyID(), common::DBFileType::ORIGINAL);
+        return {StorageStructureID::newRelPropertyListsID(
+                    relTableID, dir, property.getPropertyID(), ListFileType::BASE_LISTS),
+            fName};
     }
 
     static std::string getAdjColumnFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
+        const common::table_id_t& relTableID, const common::RelDataDirection& relDirection,
         common::DBFileType dbFileType);
 
     static inline StorageStructureIDAndFName getAdjColumnStructureIDAndFName(
         const std::string& directory, const common::table_id_t& relTableID,
-        const common::RelDirection& relDirection) {
+        const common::RelDataDirection& relDirection) {
         auto fName =
             getAdjColumnFName(directory, relTableID, relDirection, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(
-            StorageStructureID::newAdjColumnID(relTableID, relDirection), fName);
+        return {StorageStructureID::newAdjColumnID(relTableID, relDirection), fName};
     }
 
     static std::string getAdjListsFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
+        const common::table_id_t& relTableID, const common::RelDataDirection& relDirection,
         common::DBFileType dbFileType);
 
     static std::string getRelPropertyColumnFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
+        const common::table_id_t& relTableID, const common::RelDataDirection& relDirection,
         uint32_t propertyID, common::DBFileType dbFileType);
 
     static inline StorageStructureIDAndFName getRelPropertyColumnStructureIDAndFName(
         const std::string& directory, const common::table_id_t& relTableID,
-        const common::RelDirection& relDirection, uint32_t propertyID) {
+        const common::RelDataDirection& relDirection, uint32_t propertyID) {
         auto fName = getRelPropertyColumnFName(
             directory, relTableID, relDirection, propertyID, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(
-            StorageStructureID::newRelPropertyColumnID(relTableID, relDirection, propertyID),
-            fName);
+        return {StorageStructureID::newRelPropertyColumnID(relTableID, relDirection, propertyID),
+            fName};
     }
 
     static std::string getRelPropertyListsFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
+        const common::table_id_t& relTableID, const common::RelDataDirection& relDirection,
         uint32_t propertyID, common::DBFileType dbFileType);
 
     static inline std::string getListHeadersFName(std::string baseListFName) {
@@ -264,28 +294,26 @@ public:
     static std::string getListFName(
         const std::string& directory, StorageStructureID storageStructureID);
 
-    static void createFileForNodePropertyWithDefaultVal(common::table_id_t tableID,
-        const std::string& directory, const catalog::Property& property, uint8_t* defaultVal,
-        bool isDefaultValNull, uint64_t numNodes);
-
     static void createFileForRelPropertyWithDefaultVal(catalog::RelTableSchema* tableSchema,
         const catalog::Property& property, uint8_t* defaultVal, bool isDefaultValNull,
         StorageManager& storageManager);
 
-    static void initializeListsHeaders(const catalog::RelTableSchema* relTableSchema,
-        uint64_t numNodesInTable, const std::string& directory, common::RelDirection relDirection);
+    static void initializeListsHeaders(common::table_id_t relTableID, uint64_t numNodesInTable,
+        const std::string& directory, common::RelDataDirection relDirection);
+
+    static uint32_t getDataTypeSize(const common::LogicalType& type);
 
 private:
     static std::string appendSuffixOrInsertBeforeWALSuffix(
         std::string fileName, std::string suffix);
 
     static void createFileForRelColumnPropertyWithDefaultVal(common::table_id_t relTableID,
-        common::table_id_t boundTableID, common::RelDirection direction,
+        common::table_id_t boundTableID, common::RelDataDirection direction,
         const catalog::Property& property, uint8_t* defaultVal, bool isDefaultValNull,
         StorageManager& storageManager);
 
     static void createFileForRelListsPropertyWithDefaultVal(common::table_id_t relTableID,
-        common::table_id_t boundTableID, common::RelDirection direction,
+        common::table_id_t boundTableID, common::RelDataDirection direction,
         const catalog::Property& property, uint8_t* defaultVal, bool isDefaultValNull,
         StorageManager& storageManager);
 };

@@ -40,7 +40,7 @@ void TransactionManager::commitButKeepActiveWriteTransaction(Transaction* transa
 
 void TransactionManager::manuallyClearActiveWriteTransaction(Transaction* transaction) {
     lock_t lck{mtxForSerializingPublicFunctionCalls};
-    assertActiveWriteTransationIsCorrectNoLock(transaction);
+    assertActiveWriteTransactionIsCorrectNoLock(transaction);
     clearActiveWriteTransactionIfWriteTransactionNoLock(transaction);
 }
 
@@ -49,14 +49,14 @@ void TransactionManager::commitOrRollbackNoLock(Transaction* transaction, bool i
         activeReadOnlyTransactionIDs.erase(transaction->getID());
         return;
     }
-    assertActiveWriteTransationIsCorrectNoLock(transaction);
+    assertActiveWriteTransactionIsCorrectNoLock(transaction);
     if (isCommit) {
         wal.logCommit(transaction->getID());
         lastCommitID++;
     }
 }
 
-void TransactionManager::assertActiveWriteTransationIsCorrectNoLock(
+void TransactionManager::assertActiveWriteTransactionIsCorrectNoLock(
     Transaction* transaction) const {
     if (activeWriteTransactionID != transaction->getID()) {
         throw TransactionManagerException(
@@ -91,6 +91,7 @@ void TransactionManager::stopNewTransactionsAndWaitUntilAllReadTransactionsLeave
             numTimesWaited++;
             if (numTimesWaited * THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS >
                 checkPointWaitTimeoutForTransactionsToLeaveInMicros) {
+                mtxForStartingNewTransactions.unlock();
                 throw TransactionManagerException(
                     "Timeout waiting for read transactions to leave the system before committing "
                     "and checkpointing a write transaction. If you have an open read transaction "

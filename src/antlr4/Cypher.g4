@@ -14,13 +14,32 @@ grammar Cypher;
 }
 
 oC_Cypher
-    : SP ? oC_AnyCypherOption? SP? ( oC_Statement | kU_DDL | kU_CopyNPY | kU_CopyCSV ) ( SP? ';' )? SP? EOF ;
+    : SP ? oC_AnyCypherOption? SP? ( oC_Statement ) ( SP? ';' )? SP? EOF ;
 
-kU_CopyCSV
+kU_CopyFromCSV
     : COPY SP oC_SchemaName SP FROM SP kU_FilePaths ( SP? '(' SP? kU_ParsingOptions SP? ')' )? ;
 
-kU_CopyNPY
+kU_CopyFromNPY
     : COPY SP oC_SchemaName SP FROM SP '(' SP? StringLiteral ( SP? ',' SP? StringLiteral )* ')' SP BY SP COLUMN ;
+
+kU_CopyTO
+    : COPY SP '(' oC_Query ')' SP TO SP StringLiteral ;
+
+kU_StandaloneCall
+    : CALL SP oC_SymbolicName SP? '=' SP? oC_Literal ;
+
+CALL : ( 'C' | 'c' ) ( 'A' | 'a' ) ( 'L' | 'l' ) ( 'L' | 'l' ) ;
+
+kU_CreateMacro
+    : CREATE SP MACRO SP oC_FunctionName SP? '(' SP? kU_PositionalArgs? SP? kU_DefaultArg? ( SP? ',' SP? kU_DefaultArg )* SP? ')' SP AS SP oC_Expression ;
+
+kU_PositionalArgs
+    : oC_SymbolicName ( SP? ',' SP? oC_SymbolicName )* ;
+
+kU_DefaultArg
+    : oC_SymbolicName SP? ':' '=' SP? oC_Literal ;
+
+MACRO : ( 'M' | 'm' ) ( 'A' | 'a' ) ( 'C' | 'c' ) ( 'R' | 'r' ) ( 'O' | 'o' ) ;
 
 kU_FilePaths
     : '[' SP? StringLiteral ( SP? ',' SP? StringLiteral )* ']'
@@ -37,7 +56,7 @@ kU_ParsingOption
 
 COPY : ( 'C' | 'c' ) ( 'O' | 'o' ) ( 'P' | 'p') ( 'Y' | 'y' ) ;
 
-FROM : ( 'F' | 'f' ) ( 'R' | 'r' ) ( 'O' | 'o' ) ( 'M' | 'm' );
+FROM : ( 'F' | 'f' ) ( 'R' | 'r' ) ( 'O' | 'o' ) ( 'M' | 'm' ) ;
 
 NPY : ( 'N' | 'n' ) ( 'P' | 'p' ) ( 'Y' | 'y' ) ;
 
@@ -110,7 +129,9 @@ TO: ( 'T' | 't' ) ( 'O' | 'o' ) ;
 kU_DataType
     : oC_SymbolicName
         | ( oC_SymbolicName kU_ListIdentifiers )
-        | oC_SymbolicName SP? '(' SP? kU_PropertyDefinitions SP? ')' ;
+        | UNION SP? '(' SP? kU_PropertyDefinitions SP? ')'
+        | oC_SymbolicName SP? '(' SP? kU_PropertyDefinitions SP? ')'
+        | oC_SymbolicName SP? '(' SP? kU_DataType SP? ',' SP? kU_DataType SP? ')' ;
 
 kU_ListIdentifiers : kU_ListIdentifier ( kU_ListIdentifier )* ;
 
@@ -131,7 +152,13 @@ oC_Profile
 PROFILE : ( 'P' | 'p' ) ( 'R' | 'r' ) ( 'O' | 'o' ) ( 'F' | 'f' ) ( 'I' | 'i' ) ( 'L' | 'l' ) ( 'E' | 'e' ) ;
 
 oC_Statement
-    : oC_Query ;
+    : oC_Query
+        | kU_DDL
+        | kU_CopyFromNPY
+        | kU_CopyFromCSV
+        | kU_CopyTO
+        | kU_StandaloneCall
+        | kU_CreateMacro ;
 
 oC_Query
     : oC_RegularQuery ;
@@ -168,6 +195,7 @@ kU_QueryPart
 
 oC_UpdatingClause
     : oC_Create
+        | oC_Merge
         | oC_Set
         | oC_Delete
         ;
@@ -175,7 +203,11 @@ oC_UpdatingClause
 oC_ReadingClause
     : oC_Match
         | oC_Unwind
+        | kU_InQueryCall
         ;
+
+kU_InQueryCall
+    : CALL SP oC_FunctionName SP? '(' oC_Literal* ')' ;
 
 oC_Match
     : ( OPTIONAL SP )? MATCH SP? oC_Pattern (SP? oC_Where)? ;
@@ -192,6 +224,19 @@ oC_Create
     : CREATE SP? oC_Pattern ;
 
 CREATE : ( 'C' | 'c' ) ( 'R' | 'r' ) ( 'E' | 'e' ) ( 'A' | 'a' ) ( 'T' | 't' ) ( 'E' | 'e' ) ;
+
+// For unknown reason, openCypher use oC_PatternPart instead of oC_Pattern. There should be no difference in terms of planning.
+// So we choose to be consistent with oC_Create and use oC_Pattern instead.
+oC_Merge : MERGE SP? oC_Pattern ( SP oC_MergeAction )* ;
+
+MERGE : ( 'M' | 'm' ) ( 'E' | 'e' ) ( 'R' | 'r' ) ( 'G' | 'g' ) ( 'E' | 'e' )  ;
+
+oC_MergeAction
+    :  ( ON SP MATCH SP oC_Set )
+        | ( ON SP CREATE SP oC_Set )
+        ;
+
+ON : ( 'O' | 'o' ) ( 'N' | 'n' ) ;
 
 oC_Set
     : SET SP? oC_SetItem ( SP? ',' SP? oC_SetItem )* ;
@@ -272,7 +317,8 @@ oC_Pattern
     : oC_PatternPart ( SP? ',' SP? oC_PatternPart )* ;
 
 oC_PatternPart
-    : oC_AnonymousPatternPart ;
+    :  ( oC_Variable SP? '=' SP? oC_AnonymousPatternPart )
+        | oC_AnonymousPatternPart ;
 
 oC_AnonymousPatternPart
     : oC_PatternElement ;
@@ -283,9 +329,7 @@ oC_PatternElement
         ;
 
 oC_NodePattern
-    : '(' SP? ( oC_Variable SP? )? ( oC_NodeLabels SP? )? ( kU_Properties SP? )? ')'
-        | SP? ( oC_Variable SP? )? ( oC_NodeLabels SP? )? ( kU_Properties SP? )? { notifyNodePatternWithoutParentheses($oC_Variable.text, $oC_Variable.start); }
-        ;
+    : '(' SP? ( oC_Variable SP? )? ( oC_NodeLabels SP? )? ( kU_Properties SP? )? ')' ;
 
 oC_PatternElementChain
     : oC_RelationshipPattern SP? oC_NodePattern ;
@@ -293,10 +337,11 @@ oC_PatternElementChain
 oC_RelationshipPattern
     : ( oC_LeftArrowHead SP? oC_Dash SP? oC_RelationshipDetail? SP? oC_Dash )
         | ( oC_Dash SP? oC_RelationshipDetail? SP? oC_Dash SP? oC_RightArrowHead )
+        | ( oC_Dash SP? oC_RelationshipDetail? SP? oC_Dash )
         ;
 
 oC_RelationshipDetail
-    : '[' SP? ( oC_Variable SP? )? ( oC_RelationshipTypes SP? )? ( oC_RangeLiteral SP? ) ? ( kU_Properties SP? ) ? ']' ;
+    : '[' SP? ( oC_Variable SP? )? ( oC_RelationshipTypes SP? )? ( oC_RangeLiteral SP? )? ( kU_Properties SP? )? ']' ;
 
 // The original oC_Properties definition is  oC_MapLiteral | oC_Parameter.
 // We choose to not support parameter as properties which will be the decision for a long time.
@@ -314,7 +359,7 @@ oC_NodeLabel
     : ':' SP? oC_LabelName ;
 
 oC_RangeLiteral
-    :  '*' SP? SHORTEST? SP? oC_IntegerLiteral SP? '..' SP? oC_IntegerLiteral ;
+    :  '*' SP? ( SHORTEST | ALL SP SHORTEST )? SP? oC_IntegerLiteral SP? '..' SP? oC_IntegerLiteral (SP? '(' SP? oC_Variable SP? ',' SP? '_' SP? '|' SP? oC_Where SP? ')')? ;
 
 SHORTEST : ( 'S' | 's' ) ( 'H' | 'h' ) ( 'O' | 'o' ) ( 'R' | 'r' ) ( 'T' | 't' ) ( 'E' | 'e' ) ( 'S' | 's' ) ( 'T' | 't' ) ;
 
@@ -389,16 +434,16 @@ MINUS : '-' ;
 FACTORIAL : '!' ;
 
 oC_StringListNullOperatorExpression
-    : oC_PropertyOrLabelsExpression ( oC_StringOperatorExpression | oC_ListOperatorExpression | oC_NullOperatorExpression )? ;
+    : oC_PropertyOrLabelsExpression ( oC_StringOperatorExpression | oC_ListOperatorExpression+ | oC_NullOperatorExpression )? ;
 
 oC_ListOperatorExpression
-    : ( kU_ListExtractOperatorExpression | kU_ListSliceOperatorExpression ) oC_ListOperatorExpression ? ;
+    : kU_ListExtractOperatorExpression | kU_ListSliceOperatorExpression  ;
 
 kU_ListExtractOperatorExpression
-    : SP ? '[' oC_Expression ']' ;
+    : '[' oC_Expression ']' ;
 
 kU_ListSliceOperatorExpression
-    : SP ? '[' oC_Expression? ':' oC_Expression? ']' ;
+    : '[' oC_Expression? ':' oC_Expression? ']' ;
 
 oC_StringOperatorExpression
     :  ( oC_RegularExpression | ( SP STARTS SP WITH ) | ( SP ENDS SP WITH ) | ( SP CONTAINS ) ) SP? oC_PropertyOrLabelsExpression ;
@@ -421,7 +466,7 @@ IS : ( 'I' | 'i' ) ( 'S' | 's' ) ;
 NULL_ : ( 'N' | 'n' ) ( 'U' | 'u' ) ( 'L' | 'l' ) ( 'L' | 'l' ) ;
 
 oC_PropertyOrLabelsExpression
-    : oC_Atom ( SP? oC_PropertyLookup )? ;
+    : oC_Atom ( SP? oC_PropertyLookup )* ;
 
 oC_Atom
     : oC_Literal
@@ -458,17 +503,20 @@ kU_StructLiteral
     :  '{' SP? kU_StructField SP? ( ',' SP? kU_StructField SP? )* '}' ;
 
 kU_StructField
-    :   oC_SymbolicName SP? ':' SP? oC_Expression ;
+    :   ( oC_SymbolicName | StringLiteral ) SP? ':' SP? oC_Expression ;
 
 oC_ParenthesizedExpression
     : '(' SP? oC_Expression SP? ')' ;
 
 oC_FunctionInvocation
     : oC_FunctionName SP? '(' SP? '*' SP? ')'
-        | oC_FunctionName SP? '(' SP? ( DISTINCT SP? )? ( oC_Expression SP? ( ',' SP? oC_Expression SP? )* )? ')' ;
+        | oC_FunctionName SP? '(' SP? ( DISTINCT SP? )? ( kU_FunctionParameter SP? ( ',' SP? kU_FunctionParameter SP? )* )? ')' ;
 
 oC_FunctionName
     : oC_SymbolicName ;
+
+kU_FunctionParameter
+    : ( oC_SymbolicName SP? ':' '=' SP? )? oC_Expression ;
 
 oC_ExistentialSubquery
     :  EXISTS SP? '{' SP? MATCH SP? oC_Pattern ( SP? oC_Where )? SP? '}' ;
@@ -476,7 +524,7 @@ oC_ExistentialSubquery
 EXISTS : ( 'E' | 'e' ) ( 'X' | 'x' ) ( 'I' | 'i' ) ( 'S' | 's' ) ( 'T' | 't' ) ( 'S' | 's' ) ;
 
 oC_PropertyLookup
-    : '.' SP? ( oC_PropertyKeyName ) ;
+    : '.' SP? ( oC_PropertyKeyName | STAR ) ;
 
 oC_CaseExpression
     :  ( ( CASE ( SP? oC_CaseAlternative )+ ) | ( CASE SP? oC_Expression ( SP? oC_CaseAlternative )+ ) ) ( SP? ELSE SP? oC_Expression )? SP? END ;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/api.h"
+#include "common/arrow/arrow.h"
 #include "common/types/types.h"
 #include "kuzu_fwd.h"
 #include "processor/result/flat_tuple.h"
@@ -11,15 +12,15 @@ namespace main {
 
 struct DataTypeInfo {
 public:
-    DataTypeInfo(common::DataTypeID typeID, std::string name)
+    DataTypeInfo(common::LogicalTypeID typeID, std::string name)
         : typeID{typeID}, name{std::move(name)} {}
 
-    common::DataTypeID typeID;
+    common::LogicalTypeID typeID;
     std::string name;
     std::vector<std::unique_ptr<DataTypeInfo>> childrenTypesInfo;
 
     static std::unique_ptr<DataTypeInfo> getInfoForDataType(
-        const common::DataType& type, const std::string& name);
+        const common::LogicalType& type, const std::string& name);
 };
 
 /**
@@ -54,26 +55,26 @@ public:
     /**
      * @return name of each column in query result.
      */
-    KUZU_API std::vector<std::string> getColumnNames();
+    KUZU_API std::vector<std::string> getColumnNames() const;
     /**
      * @return dataType of each column in query result.
      */
-    KUZU_API std::vector<common::DataType> getColumnDataTypes();
+    KUZU_API std::vector<common::LogicalType> getColumnDataTypes() const;
     /**
      * @return num of tuples in query result.
      */
-    KUZU_API uint64_t getNumTuples();
+    KUZU_API uint64_t getNumTuples() const;
     /**
      * @return query summary which stores the execution time, compiling time, plan and query
      * options.
      */
     KUZU_API QuerySummary* getQuerySummary() const;
 
-    std::vector<std::unique_ptr<DataTypeInfo>> getColumnTypesInfo();
+    std::vector<std::unique_ptr<DataTypeInfo>> getColumnTypesInfo() const;
     /**
      * @return whether there are more tuples to read.
      */
-    KUZU_API bool hasNext();
+    KUZU_API bool hasNext() const;
     /**
      * @return next flat tuple in the query result.
      */
@@ -96,12 +97,29 @@ public:
 
     processor::FactorizedTable* getTable() { return factorizedTable.get(); }
 
+    /**
+     * @return datatypes of the columns as an arrow schema
+     *
+     * It is the caller's responsibility to call the release function to release the underlying data
+     * If converting to another arrow type, this this is usually handled automatically.
+     */
+    std::unique_ptr<ArrowSchema> getArrowSchema() const;
+
+    /**
+     * @return An arrow array representation of the next chunkSize tuples of the query result.
+     *
+     * The ArrowArray internally stores an arrow struct with fields for each of the columns.
+     * This can be converted to a RecordBatch with arrow's ImportRecordBatch function
+     *
+     * It is the caller's responsibility to call the release function to release the underlying data
+     * If converting to another arrow type, this this is usually handled automatically.
+     */
+    std::unique_ptr<ArrowArray> getNextArrowChunk(int64_t chunkSize);
+
 private:
     void initResultTableAndIterator(std::shared_ptr<processor::FactorizedTable> factorizedTable_,
-        const std::vector<std::shared_ptr<binder::Expression>>& columns,
-        const std::vector<std::vector<std::shared_ptr<binder::Expression>>>&
-            expressionToCollectPerColumn);
-    void validateQuerySucceed();
+        const std::vector<std::shared_ptr<binder::Expression>>& columns);
+    void validateQuerySucceed() const;
 
 private:
     // execution status
@@ -110,7 +128,7 @@ private:
 
     // header information
     std::vector<std::string> columnNames;
-    std::vector<common::DataType> columnDataTypes;
+    std::vector<common::LogicalType> columnDataTypes;
     // data
     std::shared_ptr<processor::FactorizedTable> factorizedTable;
     std::unique_ptr<processor::FlatTupleIterator> iterator;

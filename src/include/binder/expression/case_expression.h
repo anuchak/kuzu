@@ -16,7 +16,7 @@ struct CaseAlternative {
 
 class CaseExpression : public Expression {
 public:
-    CaseExpression(common::DataType dataType, std::shared_ptr<Expression> elseExpression,
+    CaseExpression(common::LogicalType dataType, std::shared_ptr<Expression> elseExpression,
         const std::string& name)
         : Expression{common::CASE_ELSE, std::move(dataType), name}, elseExpression{std::move(
                                                                         elseExpression)} {}
@@ -31,8 +31,6 @@ public:
     }
 
     inline std::shared_ptr<Expression> getElseExpression() const { return elseExpression; }
-
-    expression_vector getChildren() const override;
 
     std::string toString() const override;
 

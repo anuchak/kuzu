@@ -1,7 +1,10 @@
 #pragma once
 
+#include <mutex>
+
 #include "client_context.h"
 #include "database.h"
+#include "function/udf_function.h"
 #include "prepared_statement.h"
 #include "query_result.h"
 
@@ -16,7 +19,9 @@ class Connection {
     friend class kuzu::testing::ApiTest;
     friend class kuzu::testing::BaseGraphTest;
     friend class kuzu::testing::TestHelper;
+    friend class kuzu::testing::TestRunner;
     friend class kuzu::benchmark::Benchmark;
+    friend class kuzu::testing::TinySnbDDLTest;
 
 public:
     /**
@@ -73,6 +78,21 @@ public:
      * @return the maximum number of threads to use for execution in the current connection.
      */
     KUZU_API uint64_t getMaxNumThreadForExec();
+    /**
+     * @brief Sets the BFS Policy for Recursive Join (Shortest Path, All Shortest Path,
+     * Variable Length) queries in the current connection.
+     * @param schedulerType The scheduling policy to be used for recursive join queries.
+     */
+    KUZU_API void setRecursiveJoinBFSPolicy(common::SchedulerType schedulerType);
+    /**
+     * Returns the scheduling policy to be used for recursive join queries (Shortest Path,
+     * All Shortest Path, Variable Length).
+     * @return The scheduling policy to be used for recursive join queries.
+     */
+    KUZU_API common::SchedulerType getRecursiveJoinBFSPolicy();
+
+    /// ADDING THIS HERE FOR TESTING PURPOSE ONLY
+    void setMaxActiveBFSSharedState(uint64_t maxActiveBFS);
 
     /**
      * @brief Executes the given query and returns the result.
@@ -128,7 +148,7 @@ public:
     KUZU_API std::string getRelPropertyNames(const std::string& relTableName);
 
     /**
-     * @brief interrupts all queries currently executed within this connection.
+     * @brief interrupts all queries currently executing within this connection.
      */
     KUZU_API void interrupt();
 
@@ -137,6 +157,42 @@ public:
      * disables the timeout.
      */
     KUZU_API void setQueryTimeOut(uint64_t timeoutInMS);
+
+    /**
+     * @brief gets the query timeout value of the current connection. A value of zero (the default)
+     * disables the timeout.
+     */
+    KUZU_API uint64_t getQueryTimeOut();
+
+    template<typename TR, typename... Args>
+    void createScalarFunction(const std::string& name, TR (*udfFunc)(Args...)) {
+        auto definitions = function::UDF::getFunctionDefinition<TR, Args...>(name, udfFunc);
+        addScalarFunction(name, std::move(definitions));
+    }
+
+    template<typename TR, typename... Args>
+    void createScalarFunction(const std::string& name,
+        std::vector<common::LogicalTypeID> parameterTypes, common::LogicalTypeID returnType,
+        TR (*udfFunc)(Args...)) {
+        auto definitions = function::UDF::getFunctionDefinition<TR, Args...>(
+            name, udfFunc, std::move(parameterTypes), returnType);
+        addScalarFunction(name, std::move(definitions));
+    }
+
+    template<typename TR, typename... Args>
+    void createVectorizedFunction(const std::string& name, function::scalar_exec_func scalarFunc) {
+        auto definitions = function::UDF::getVectorizedFunctionDefinition<TR, Args...>(
+            name, std::move(scalarFunc));
+        addScalarFunction(name, std::move(definitions));
+    }
+
+    void createVectorizedFunction(const std::string& name,
+        std::vector<common::LogicalTypeID> parameterTypes, common::LogicalTypeID returnType,
+        function::scalar_exec_func scalarFunc) {
+        auto definitions = function::UDF::getVectorizedFunctionDefinition(
+            name, std::move(scalarFunc), std::move(parameterTypes), returnType);
+        addScalarFunction(name, std::move(definitions));
+    }
 
 protected:
     ConnectionTransactionMode getTransactionMode();
@@ -161,7 +217,8 @@ protected:
 
     void beginTransactionNoLock(transaction::TransactionType type);
 
-    void commitOrRollbackNoLock(bool isCommit, bool skipCheckpointForTesting = false);
+    void commitOrRollbackNoLock(
+        transaction::TransactionAction action, bool skipCheckpointForTesting = false);
 
     std::unique_ptr<QueryResult> queryResultWithError(std::string& errMsg);
 
@@ -191,6 +248,8 @@ private:
         rollbackIfNecessaryNoLock();
         return queryResultWithError(exceptionMessage);
     }
+
+    void addScalarFunction(std::string name, function::vector_function_definitions definitions);
 
 protected:
     Database* database;

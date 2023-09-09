@@ -1,8 +1,11 @@
 .idea/
 .vscode
+.vs
 bazel-*
 .clwb
+.cache
 .bazelrc
+test/test_files/test_list
 
 test_temp/
 build/
@@ -13,7 +16,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 cmake-build-debug/
-test/unittest_temp/
+cmake-build-release/
+test/unittest_temp_*
+dataset/parquet_temp_*
 tools/python_api/test/test_PYTHON_CSV.csv
 
 # antlr4 jar
@@ -26,7 +31,7 @@ scripts/antlr4/antlr4.jar
 tools/nodejs_api/node_modules/
 tools/nodejs_api/cmake_install.cmake
 tools/nodejs_api/package-lock.json
-tools/nodejs_api/testDb/
+tools/nodejs_api/prebuilt/
 
 # Archive files
 *.zip
@@ -34,3 +39,10 @@ tools/nodejs_api/testDb/
 scripts/pre-compiled-bins/headers
 scripts/pre-compiled-bins/lib*
 scripts/pre-compiled-bins/kuzu*
+
+# Java API
+tools/java_api/build
+tools/java_api/test_db/
+tools/java_api/*.jar
+tools/java_api/*.class
+tools/java_api/*.log

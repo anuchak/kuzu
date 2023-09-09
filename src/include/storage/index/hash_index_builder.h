@@ -50,8 +50,8 @@ struct SlotInfo {
 
 class BaseHashIndex {
 public:
-    explicit BaseHashIndex(const common::DataType& keyDataType) {
-        keyHashFunc = HashIndexUtils::initializeHashFunc(keyDataType.typeID);
+    explicit BaseHashIndex(const common::LogicalType& keyDataType) {
+        keyHashFunc = HashIndexUtils::initializeHashFunc(keyDataType.getLogicalTypeID());
     }
 
     virtual ~BaseHashIndex() = default;
@@ -74,7 +74,7 @@ template<typename T>
 class HashIndexBuilder : public BaseHashIndex {
 
 public:
-    HashIndexBuilder(const std::string& fName, const common::DataType& keyDataType);
+    HashIndexBuilder(const std::string& fName, const common::LogicalType& keyDataType);
 
 public:
     // Reserves space for at least the specified number of elements.
@@ -107,17 +107,6 @@ private:
     uint32_t allocatePSlots(uint32_t numSlotsToAllocate);
     uint32_t allocateAOSlot();
 
-    inline void lockSlot(SlotInfo& slotInfo) {
-        assert(slotInfo.slotType == SlotType::PRIMARY);
-        std::shared_lock sLck{pSlotSharedMutex};
-        pSlotsMutexes[slotInfo.slotId]->lock();
-    }
-    inline void unlockSlot(const SlotInfo& slotInfo) {
-        assert(slotInfo.slotType == SlotType::PRIMARY);
-        std::shared_lock sLck{pSlotSharedMutex};
-        pSlotsMutexes[slotInfo.slotId]->unlock();
-    }
-
 private:
     std::unique_ptr<FileHandle> fileHandle;
     std::unique_ptr<InMemDiskArrayBuilder<HashIndexHeader>> headerArray;
@@ -133,61 +122,60 @@ private:
 
 class PrimaryKeyIndexBuilder {
 public:
-    PrimaryKeyIndexBuilder(const std::string& fName, const common::DataType& keyDataType)
-        : keyDataTypeID{keyDataType.typeID} {
+    PrimaryKeyIndexBuilder(const std::string& fName, const common::LogicalType& keyDataType)
+        : keyDataTypeID{keyDataType.getLogicalTypeID()} {
         switch (keyDataTypeID) {
-        case common::INT64: {
+        case common::LogicalTypeID::INT64: {
             hashIndexBuilderForInt64 =
                 std::make_unique<HashIndexBuilder<int64_t>>(fName, keyDataType);
         } break;
-        case common::STRING: {
+        case common::LogicalTypeID::STRING: {
             hashIndexBuilderForString =
                 std::make_unique<HashIndexBuilder<common::ku_string_t>>(fName, keyDataType);
         } break;
         default: {
-            throw common::Exception(
-                "Unsupported data type for primary key index: " + std::to_string(keyDataTypeID));
+            throw common::CopyException("Unsupported data type for primary key index: " +
+                                        common::LogicalTypeUtils::dataTypeToString(keyDataTypeID));
         }
         }
     }
 
+    inline void lock() { mtx.lock(); }
+
+    inline void unlock() { mtx.unlock(); }
+
     inline void bulkReserve(uint32_t numEntries) {
-        keyDataTypeID == common::INT64 ? hashIndexBuilderForInt64->bulkReserve(numEntries) :
-                                         hashIndexBuilderForString->bulkReserve(numEntries);
+        keyDataTypeID == common::LogicalTypeID::INT64 ?
+            hashIndexBuilderForInt64->bulkReserve(numEntries) :
+            hashIndexBuilderForString->bulkReserve(numEntries);
     }
     // Note: append assumes that bulkRserve has been called before it and the index has reserved
     // enough space already.
-    inline void append(int64_t key, common::offset_t value) {
-        auto retVal = keyDataTypeID == common::INT64 ?
-                          hashIndexBuilderForInt64->append(key, value) :
-                          hashIndexBuilderForString->append(key, value);
-        if (!retVal) {
-            throw common::HashIndexException(
-                common::Exception::getExistedPKExceptionMsg(std::to_string(key)));
-        }
+    inline bool append(int64_t key, common::offset_t value) {
+        return keyDataTypeID == common::LogicalTypeID::INT64 ?
+                   hashIndexBuilderForInt64->append(key, value) :
+                   hashIndexBuilderForString->append(key, value);
     }
-    inline void append(const char* key, common::offset_t value) {
-        auto retVal = keyDataTypeID == common::INT64 ?
-                          hashIndexBuilderForInt64->append(key, value) :
-                          hashIndexBuilderForString->append(key, value);
-        if (!retVal) {
-            throw common::HashIndexException(
-                common::Exception::getExistedPKExceptionMsg(std::string(key)));
-        }
+    inline bool append(const char* key, common::offset_t value) {
+        return keyDataTypeID == common::LogicalTypeID::INT64 ?
+                   hashIndexBuilderForInt64->append(key, value) :
+                   hashIndexBuilderForString->append(key, value);
     }
     inline bool lookup(int64_t key, common::offset_t& result) {
-        return keyDataTypeID == common::INT64 ? hashIndexBuilderForInt64->lookup(key, result) :
-                                                hashIndexBuilderForString->lookup(key, result);
+        return keyDataTypeID == common::LogicalTypeID::INT64 ?
+                   hashIndexBuilderForInt64->lookup(key, result) :
+                   hashIndexBuilderForString->lookup(key, result);
     }
 
     // Non-thread safe. This should only be called in the copyCSV and never be called in parallel.
     inline void flush() {
-        keyDataTypeID == common::INT64 ? hashIndexBuilderForInt64->flush() :
-                                         hashIndexBuilderForString->flush();
+        keyDataTypeID == common::LogicalTypeID::INT64 ? hashIndexBuilderForInt64->flush() :
+                                                        hashIndexBuilderForString->flush();
     }
 
 private:
-    common::DataTypeID keyDataTypeID;
+    std::mutex mtx;
+    common::LogicalTypeID keyDataTypeID;
     std::unique_ptr<HashIndexBuilder<int64_t>> hashIndexBuilderForInt64;
     std::unique_ptr<HashIndexBuilder<common::ku_string_t>> hashIndexBuilderForString;
 };

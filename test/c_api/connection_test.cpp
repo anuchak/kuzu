@@ -144,8 +144,8 @@ TEST_F(CApiConnectionTest, GetNodeTableNames) {
     auto resultString = std::string(result);
     ASSERT_EQ(resultString, "Node tables: \n"
                             "\tmovies\n"
-                            "\tperson\n"
-                            "\torganisation\n");
+                            "\torganisation\n"
+                            "\tperson\n");
     free(result);
 }
 
@@ -155,11 +155,11 @@ TEST_F(CApiConnectionTest, GetRelTableNames) {
     ASSERT_NE(result, nullptr);
     auto resultString = std::string(result);
     ASSERT_EQ(resultString, "Rel tables: \n"
+                            "\tknows\n"
+                            "\tmarries\n"
                             "\tmeets\n"
                             "\tstudyAt\n"
-                            "\tknows\n"
-                            "\tworkAt\n"
-                            "\tmarries\n");
+                            "\tworkAt\n");
     free(result);
 }
 
@@ -168,11 +168,15 @@ TEST_F(CApiConnectionTest, GetNodePropertyNames) {
     auto result = kuzu_connection_get_node_property_names(connection, "movies");
     ASSERT_NE(result, nullptr);
     auto resultString = std::string(result);
-    ASSERT_EQ(resultString, "movies properties: \n"
-                            "\tname STRING(PRIMARY KEY)\n"
-                            "\tlength INT32\n"
-                            "\tnote STRING\n"
-                            "\tdescription STRUCT(DOUBLE,INT64,TIMESTAMP,DATE)\n");
+    ASSERT_EQ(resultString,
+        "movies properties: \n"
+        "\tname STRING(PRIMARY KEY)\n"
+        "\tlength INT32\n"
+        "\tnote STRING\n"
+        "\tdescription STRUCT(rating:DOUBLE, views:INT64, release:TIMESTAMP, film:DATE)\n"
+        "\tcontent BLOB\n"
+        "\taudience MAP(STRING: INT64)\n"
+        "\tgrade UNION(credit:BOOL, grade1:DOUBLE, grade2:INT64)\n");
     free(result);
 }
 
@@ -185,7 +189,8 @@ TEST_F(CApiConnectionTest, GetRelPropertyNames) {
                             "meets dst node: person\n"
                             "meets properties: \n"
                             "\tlocation FLOAT[2]\n"
-                            "\ttimes INT32\n");
+                            "\ttimes INT32\n"
+                            "\tdata BLOB\n");
     free(result);
 }
 
@@ -205,14 +210,19 @@ TEST_F(CApiConnectionTest, QueryTimeout) {
 
 TEST_F(CApiConnectionTest, Interrupt) {
     auto connection = getConnection();
+    bool finished = false;
+
     // Interrupt the query after 100ms
-    std::thread t([&connection]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        kuzu_connection_interrupt(connection);
+    // This may happen too early, so try again until the query function finishes.
+    std::thread t([&connection, &finished]() {
+        do {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            kuzu_connection_interrupt(connection);
+        } while (!finished);
     });
-    t.detach();
     auto result = kuzu_connection_query(
         connection, "MATCH (a:person)-[:knows*1..28]->(b:person) RETURN COUNT(*);");
+    finished = true;
     ASSERT_NE(result, nullptr);
     ASSERT_NE(result->_query_result, nullptr);
     auto resultCpp = static_cast<QueryResult*>(result->_query_result);
@@ -220,4 +230,5 @@ TEST_F(CApiConnectionTest, Interrupt) {
     ASSERT_FALSE(resultCpp->isSuccess());
     ASSERT_EQ(resultCpp->getErrorMessage(), "Interrupted.");
     kuzu_query_result_destroy(result);
+    t.join();
 }

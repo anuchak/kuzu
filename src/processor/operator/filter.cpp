@@ -1,5 +1,7 @@
 #include "processor/operator/filter.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace processor {
 
@@ -24,6 +26,33 @@ bool Filter::getNextTuplesInternal(ExecutionContext* context) {
         }
     } while (!hasAtLeastOneSelectedValue);
     metrics->numOutputTuple.increase(dataChunkToSelect->state->selVector->selectedSize);
+    return true;
+}
+
+void NodeLabelFiler::initLocalStateInternal(ResultSet* resultSet_, ExecutionContext* context) {
+    nodeIDVector = resultSet->getValueVector(info->nodeVectorPos).get();
+}
+
+bool NodeLabelFiler::getNextTuplesInternal(ExecutionContext* context) {
+    sel_t numSelectValue;
+    do {
+        restoreSelVector(nodeIDVector->state->selVector);
+        if (!children[0]->getNextTuple(context)) {
+            return false;
+        }
+        saveSelVector(nodeIDVector->state->selVector);
+        numSelectValue = 0;
+        auto buffer = nodeIDVector->state->selVector->getSelectedPositionsBuffer();
+        for (auto i = 0; i < nodeIDVector->state->selVector->selectedSize; ++i) {
+            auto pos = nodeIDVector->state->selVector->selectedPositions[i];
+            buffer[numSelectValue] = pos;
+            numSelectValue +=
+                info->nodeLabelSet.contains(nodeIDVector->getValue<nodeID_t>(pos).tableID);
+        }
+        nodeIDVector->state->selVector->resetSelectorToValuePosBuffer();
+    } while (numSelectValue == 0);
+    nodeIDVector->state->selVector->selectedSize = numSelectValue;
+    metrics->numOutputTuple.increase(nodeIDVector->state->selVector->selectedSize);
     return true;
 }
 

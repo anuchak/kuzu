@@ -1,9 +1,8 @@
 #include "processor/operator/hash_join/hash_join_probe.h"
 
-#include "function/hash/hash_operations.h"
+#include "function/hash/hash_functions.h"
 
 using namespace kuzu::common;
-using namespace kuzu::function::operation;
 
 namespace kuzu {
 namespace processor {
@@ -26,10 +25,9 @@ void HashJoinProbe::initLocalStateInternal(ResultSet* resultSet, ExecutionContex
     columnIdxsToReadFrom.resize(probeDataInfo.getNumPayloads());
     iota(
         columnIdxsToReadFrom.begin(), columnIdxsToReadFrom.end(), probeDataInfo.keysDataPos.size());
-    hashVector = std::make_unique<common::ValueVector>(common::INT64, context->memoryManager);
+    hashVector = std::make_unique<ValueVector>(LogicalTypeID::INT64, context->memoryManager);
     if (keyVectors.size() > 1) {
-        tmpHashVector =
-            std::make_unique<common::ValueVector>(common::INT64, context->memoryManager);
+        tmpHashVector = std::make_unique<ValueVector>(LogicalTypeID::INT64, context->memoryManager);
     }
 }
 
@@ -50,24 +48,8 @@ bool HashJoinProbe::getMatchedTuplesForFlatKey(ExecutionContext* context) {
         sharedState->getHashTable()->probe(
             keyVectors, hashVector.get(), tmpHashVector.get(), probeState->probedTuples.get());
     }
-    auto numMatchedTuples = 0;
-    while (probeState->probedTuples[0]) {
-        if (numMatchedTuples == DEFAULT_VECTOR_CAPACITY) {
-            break;
-        }
-        auto currentTuple = probeState->probedTuples[0];
-        probeState->matchedTuples[numMatchedTuples] = currentTuple;
-        bool isKeysEqual = true;
-        for (auto i = 0u; i < keyVectors.size(); i++) {
-            auto pos = keyVectors[i]->state->selVector->selectedPositions[0];
-            if (((nodeID_t*)currentTuple)[i] != keyVectors[i]->getValue<nodeID_t>(pos)) {
-                isKeysEqual = false;
-                break;
-            }
-        }
-        numMatchedTuples += isKeysEqual;
-        probeState->probedTuples[0] = *sharedState->getHashTable()->getPrevTuple(currentTuple);
-    }
+    auto numMatchedTuples = sharedState->getHashTable()->matchFlatKeys(
+        keyVectors, probeState->probedTuples.get(), probeState->matchedTuples.get());
     probeState->matchedSelVector->selectedSize = numMatchedTuples;
     probeState->nextMatchedTupleIdx = 0;
     return true;
@@ -83,23 +65,9 @@ bool HashJoinProbe::getMatchedTuplesForUnFlatKey(ExecutionContext* context) {
     saveSelVector(keyVector->state->selVector);
     sharedState->getHashTable()->probe(
         keyVectors, hashVector.get(), tmpHashVector.get(), probeState->probedTuples.get());
-    auto numMatchedTuples = 0;
-    auto keySelVector = keyVector->state->selVector.get();
-    for (auto i = 0u; i < keySelVector->selectedSize; i++) {
-        auto pos = keySelVector->selectedPositions[i];
-        while (probeState->probedTuples[i]) {
-            assert(numMatchedTuples <= DEFAULT_VECTOR_CAPACITY);
-            auto currentTuple = probeState->probedTuples[i];
-            if (*(nodeID_t*)currentTuple == keyVectors[0]->getValue<nodeID_t>(pos)) {
-                // Break if a match has been found.
-                probeState->matchedTuples[numMatchedTuples] = currentTuple;
-                probeState->matchedSelVector->selectedPositions[numMatchedTuples] = pos;
-                numMatchedTuples++;
-                break;
-            }
-            probeState->probedTuples[i] = *sharedState->getHashTable()->getPrevTuple(currentTuple);
-        }
-    }
+    auto numMatchedTuples =
+        sharedState->getHashTable()->matchUnFlatKey(keyVector, probeState->probedTuples.get(),
+            probeState->matchedTuples.get(), probeState->matchedSelVector.get());
     probeState->matchedSelVector->selectedSize = numMatchedTuples;
     probeState->nextMatchedTupleIdx = 0;
     return true;
@@ -137,22 +105,12 @@ uint64_t HashJoinProbe::getInnerJoinResultForUnFlatKey() {
     return numTuplesToRead;
 }
 
-void HashJoinProbe::setVectorsToNull() {
-    for (auto& vector : vectorsToReadInto) {
-        if (vector->state->isFlat()) {
-            vector->setNull(vector->state->selVector->selectedPositions[0], true);
-        } else {
-            assert(vector->state != keyVectors[0]->state);
-            auto pos = vector->state->selVector->selectedPositions[0];
-            vector->setNull(pos, true);
-            vector->state->selVector->selectedSize = 1;
-        }
-    }
-}
-
 uint64_t HashJoinProbe::getLeftJoinResult() {
     if (getInnerJoinResult() == 0) {
-        setVectorsToNull();
+        for (auto& vector : vectorsToReadInto) {
+            vector->setAsSingleNullEntry();
+        }
+        probeState->probedTuples[0] = nullptr;
     }
     return 1;
 }
@@ -168,6 +126,7 @@ uint64_t HashJoinProbe::getMarkJoinResult() {
             markValues[probeState->matchedSelVector->selectedPositions[i]] = true;
         }
     }
+    probeState->probedTuples[0] = nullptr;
     probeState->nextMatchedTupleIdx = probeState->matchedSelVector->selectedSize;
     return 1;
 }
@@ -184,8 +143,7 @@ uint64_t HashJoinProbe::getJoinResult() {
         return getInnerJoinResult();
     }
     default:
-        throw common::InternalException(
-            "Unimplemented join type for HashJoinProbe::getJoinResult()");
+        throw InternalException("Unimplemented join type for HashJoinProbe::getJoinResult()");
     }
 }
 

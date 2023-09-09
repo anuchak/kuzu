@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "common/api.h"
+#include "common/constants.h"
 #include "common/timer.h"
 #include "main/kuzu_fwd.h"
 
@@ -13,9 +14,10 @@ namespace main {
 
 struct ActiveQuery {
     explicit ActiveQuery();
-
     std::atomic<bool> interrupted;
     common::Timer timer;
+
+    void reset();
 };
 
 /**
@@ -26,25 +28,40 @@ class ClientContext {
     friend class Connection;
     friend class testing::TinySnbDDLTest;
     friend class testing::TinySnbCopyCSVTransactionTest;
+    friend class ThreadsSetting;
+    friend class TimeoutSetting;
 
 public:
     explicit ClientContext();
 
     ~ClientContext() = default;
 
-    inline void interrupt() { activeQuery->interrupted = true; }
+    inline common::SchedulerType getBFSSchedulerType() { return bfsSchedulerType; }
 
-    bool isInterrupted() const { return activeQuery->interrupted; }
+    inline uint64_t getMaxActiveBFSSharedState() { return maxActiveBFSSharedState; }
 
-    inline bool isTimeOut() { return activeQuery->timer.getElapsedTimeInMS() > timeoutInMS; }
+    inline void interrupt() { activeQuery.interrupted = true; }
+
+    bool isInterrupted() const { return activeQuery.interrupted; }
+
+    inline bool isTimeOut() {
+        return isTimeOutEnabled() && activeQuery.timer.getElapsedTimeInMS() > timeoutInMS;
+    }
 
     inline bool isTimeOutEnabled() const { return timeoutInMS != 0; }
 
     void startTimingIfEnabled();
 
+    std::string getCurrentSetting(std::string optionName);
+
 private:
+    inline void resetActiveQuery() { activeQuery.reset(); }
+
     uint64_t numThreadsForExecution;
-    std::unique_ptr<ActiveQuery> activeQuery;
+    common::SchedulerType bfsSchedulerType;
+    /// ADDING THIS FOR EASIER TESTING ONLY
+    uint64_t maxActiveBFSSharedState;
+    ActiveQuery activeQuery;
     uint64_t timeoutInMS;
 };
 

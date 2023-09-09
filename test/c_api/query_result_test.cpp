@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "c_api_test/c_api_test.h"
 
 using namespace kuzu::main;
@@ -62,16 +64,16 @@ TEST_F(CApiQueryResultTest, GetColumnDataType) {
         kuzu_connection_query(connection, "MATCH (a:person) RETURN a.fName, a.age, a.height");
     ASSERT_TRUE(kuzu_query_result_is_success(result));
     auto type = kuzu_query_result_get_column_data_type(result, 0);
-    auto typeCpp = (DataType*)(type->_data_type);
-    ASSERT_EQ(typeCpp->getTypeID(), DataTypeID::STRING);
+    auto typeCpp = (LogicalType*)(type->_data_type);
+    ASSERT_EQ(typeCpp->getLogicalTypeID(), LogicalTypeID::STRING);
     kuzu_data_type_destroy(type);
     type = kuzu_query_result_get_column_data_type(result, 1);
-    typeCpp = (DataType*)(type->_data_type);
-    ASSERT_EQ(typeCpp->getTypeID(), DataTypeID::INT64);
+    typeCpp = (LogicalType*)(type->_data_type);
+    ASSERT_EQ(typeCpp->getLogicalTypeID(), LogicalTypeID::INT64);
     kuzu_data_type_destroy(type);
     type = kuzu_query_result_get_column_data_type(result, 2);
-    typeCpp = (DataType*)(type->_data_type);
-    ASSERT_EQ(typeCpp->getTypeID(), DataTypeID::FLOAT);
+    typeCpp = (LogicalType*)(type->_data_type);
+    ASSERT_EQ(typeCpp->getLogicalTypeID(), LogicalTypeID::FLOAT);
     kuzu_data_type_destroy(type);
     type = kuzu_query_result_get_column_data_type(result, 222);
     ASSERT_EQ(type, nullptr);
@@ -130,7 +132,7 @@ TEST_F(CApiQueryResultTest, WriteToCSV) {
     auto connection = getConnection();
     auto result = kuzu_connection_query(connection, query);
     ASSERT_TRUE(kuzu_query_result_is_success(result));
-    auto outputPath = TestHelper::getTmpTestDir() + "/output_CSV_CAPI.csv";
+    auto outputPath = databasePath + "/output_CSV_CAPI.csv";
     kuzu_query_result_write_to_csv(result, outputPath.c_str(), ',', '"', '\n');
     std::ifstream f(outputPath);
     std::ostringstream ss;

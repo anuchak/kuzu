@@ -1,16 +1,17 @@
 #pragma once
 
 #include "base_evaluator.h"
-#include "function/vector_operations.h"
+#include "function/vector_functions.h"
 
 namespace kuzu {
 namespace evaluator {
 
-class FunctionExpressionEvaluator : public BaseExpressionEvaluator {
+class FunctionExpressionEvaluator : public ExpressionEvaluator {
 public:
     FunctionExpressionEvaluator(std::shared_ptr<binder::Expression> expression,
-        std::vector<std::unique_ptr<BaseExpressionEvaluator>> children)
-        : BaseExpressionEvaluator{std::move(children)}, expression{std::move(expression)} {}
+        std::vector<std::unique_ptr<ExpressionEvaluator>> children)
+        : ExpressionEvaluator{std::move(children)},
+          expression{std::move(expression)}, execFunc{nullptr}, selectFunc{nullptr} {}
 
     void init(
         const processor::ResultSet& resultSet, storage::MemoryManager* memoryManager) override;
@@ -19,7 +20,7 @@ public:
 
     bool select(common::SelectionVector& selVector) override;
 
-    std::unique_ptr<BaseExpressionEvaluator> clone() override;
+    std::unique_ptr<ExpressionEvaluator> clone() override;
 
 protected:
     void resolveResultVector(

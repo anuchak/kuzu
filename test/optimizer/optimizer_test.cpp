@@ -1,4 +1,5 @@
 #include "graph_test/graph_test.h"
+#include "planner/logical_plan/extend/logical_recursive_extend.h"
 #include "planner/logical_plan/logical_plan_util.h"
 
 namespace kuzu {
@@ -68,28 +69,19 @@ TEST_F(OptimizerTest, ProjectionPushDownJoinTest) {
     ASSERT_EQ(op->getOperatorType(), planner::LogicalOperatorType::PROJECTION);
 }
 
-TEST_F(OptimizerTest, JoinOrderTest1) {
-    auto encodedPlan = getEncodedPlan("MATCH (a:person)-[e:knows]->(b:person) RETURN a.ID, b.ID;");
-    ASSERT_STREQ(encodedPlan.c_str(), "HJ(b._id){E(b)S(a)}{S(b)}");
-}
-
-TEST_F(OptimizerTest, JoinOrderTest2) {
-    auto encodedPlan = getEncodedPlan(
-        "MATCH (a:person)-[e:knows]->(b:person)-[:knows]->(c:person) RETURN a.ID, b.ID, c.ID;");
-    ASSERT_STREQ(encodedPlan.c_str(), "HJ(c._id){HJ(a._id){E(c)E(a)S(b)}{S(a)}}{S(c)}");
-}
-
-TEST_F(OptimizerTest, JoinOrderTest3) {
-    auto encodedPlan =
-        getEncodedPlan("MATCH (a:person)-[e:knows]->(b:person)-[:knows]->(c:person), "
-                       "(a)-[:knows]->(c) RETURN a.ID, b.ID;");
-    ASSERT_STREQ(encodedPlan.c_str(), "I(c._id){HJ(b._id){E(b)S(a)}{S(b)}}{E(c)S(a)}{E(c)S(b)}");
-}
-
 TEST_F(OptimizerTest, RecursiveJoinTest) {
     auto encodedPlan = getEncodedPlan(
         "MATCH (a:person)-[:knows* SHORTEST 1..5]->(b:person) WHERE b.ID < 0 RETURN a.fName;");
-    ASSERT_STREQ(encodedPlan.c_str(), "HJ(a._id){RE(a)S(b)}{S(a)}");
+    ASSERT_STREQ(encodedPlan.c_str(), "HJ(a._ID){RE(a)S(b)}{S(a)}");
+}
+
+TEST_F(OptimizerTest, RecursiveJoinNoTrackPathTest) {
+    auto op = getRoot("MATCH (a:person)-[e:knows* SHORTEST 1..3]->(b:person) RETURN length(e);");
+    while (op->getOperatorType() != planner::LogicalOperatorType::RECURSIVE_EXTEND) {
+        op = op->getChild(0);
+    }
+    auto recursiveExtend = (planner::LogicalRecursiveExtend*)op.get();
+    ASSERT_TRUE(recursiveExtend->getJoinType() == planner::RecursiveJoinType::TRACK_NONE);
 }
 
 } // namespace testing

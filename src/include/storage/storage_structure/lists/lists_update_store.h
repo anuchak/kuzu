@@ -2,8 +2,9 @@
 
 #include <map>
 
-#include "catalog/catalog_structs.h"
+#include "catalog/table_schema.h"
 #include "common/data_chunk/data_chunk.h"
+#include "common/rel_direction.h"
 #include "common/types/types.h"
 #include "processor/result/factorized_table.h"
 #include "storage/storage_structure/lists/list_handle.h"
@@ -61,7 +62,9 @@ public:
     list_offset_t bwdListOffset;
 };
 
-using ListsUpdatesPerNode = std::map<common::offset_t, std::unique_ptr<ListsUpdatesForNodeOffset>>;
+// Shouldn't need to be shared, except that MSVC doesn't allow maps inside vectors to have
+// non-copyable values.
+using ListsUpdatesPerNode = std::map<common::offset_t, std::shared_ptr<ListsUpdatesForNodeOffset>>;
 using ListsUpdatesPerChunk = std::map<chunk_idx_t, ListsUpdatesPerNode>;
 
 struct InMemList;
@@ -78,8 +81,9 @@ public:
         }
         initListsUpdatesPerTablePerDirection();
     }
-    inline ListsUpdatesPerChunk& getListsUpdatesPerChunk(common::RelDirection relDirection) {
-        return listsUpdatesPerDirection[relDirection];
+    inline ListsUpdatesPerChunk& getListsUpdatesPerChunk(
+        common::RelDataDirection relDataDirection) {
+        return listsUpdatesPerDirection[relDataDirection];
     }
 
     void updateSchema(catalog::RelTableSchema& relTableSchema);
@@ -96,7 +100,7 @@ public:
     void readInsertedRelsToList(ListFileID& listFileID,
         std::vector<processor::ft_tuple_idx_t> tupleIdxes, InMemList& inMemList,
         uint64_t numElementsInPersistentStore, DiskOverflowFile* diskOverflowFile,
-        common::DataType dataType);
+        common::LogicalType dataType);
 
     // If this is a one-to-one relTable, all properties are stored in columns.
     // In this case, the listsUpdatesStore should not store the insert rels in FT.
@@ -126,7 +130,7 @@ public:
         common::ValueVector* propertyVector, list_offset_t startListOffset);
 
     void readPropertyUpdateToInMemList(ListFileID& listFileID, processor::ft_tuple_idx_t ftTupleIdx,
-        InMemList& inMemList, uint64_t posToWriteToInMemList, const common::DataType& dataType,
+        InMemList& inMemList, uint64_t posToWriteToInMemList, const common::LogicalType& dataType,
         DiskOverflowFile* overflowFileOfInMemList);
 
     void initNewlyAddedNodes(common::nodeID_t& nodeID);
@@ -148,7 +152,7 @@ private:
     void initListsUpdatesPerTablePerDirection();
 
     ListsUpdatesForNodeOffset* getOrCreateListsUpdatesForNodeOffset(
-        common::RelDirection relDirection, common::nodeID_t nodeID);
+        common::RelDataDirection relDirection, common::nodeID_t nodeID);
 
     ListsUpdatesForNodeOffset* getListsUpdatesForNodeOffsetIfExists(
         ListFileID& listFileID, common::offset_t nodeOffset) const;
@@ -171,7 +175,7 @@ private:
         listsUpdates;
     std::vector<ListsUpdatesPerChunk> listsUpdatesPerDirection;
     std::unordered_map<common::property_id_t, processor::ft_col_idx_t> propertyIDToColIdxMap;
-    catalog::RelTableSchema relTableSchema;
+    std::unique_ptr<catalog::RelTableSchema> relTableSchema;
     MemoryManager& memoryManager;
 };
 

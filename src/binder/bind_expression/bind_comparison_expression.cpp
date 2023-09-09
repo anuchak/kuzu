@@ -2,6 +2,7 @@
 #include "binder/expression/function_expression.h"
 #include "binder/expression_binder.h"
 
+using namespace kuzu::common;
 using namespace kuzu::parser;
 
 namespace kuzu {
@@ -18,26 +19,31 @@ std::shared_ptr<Expression> ExpressionBinder::bindComparisonExpression(
 }
 
 std::shared_ptr<Expression> ExpressionBinder::bindComparisonExpression(
-    common::ExpressionType expressionType, const expression_vector& children) {
-    auto builtInFunctions = binder->catalog.getBuiltInScalarFunctions();
+    ExpressionType expressionType, const expression_vector& children) {
+    auto builtInFunctions = binder->catalog.getBuiltInVectorFunctions();
     auto functionName = expressionTypeToString(expressionType);
-    std::vector<common::DataType> childrenTypes;
+    std::vector<LogicalType> childrenTypes;
     for (auto& child : children) {
         childrenTypes.push_back(child->dataType);
     }
-    auto function = builtInFunctions->matchFunction(functionName, childrenTypes);
+    auto function = builtInFunctions->matchVectorFunction(functionName, childrenTypes);
     expression_vector childrenAfterCast;
     for (auto i = 0u; i < children.size(); ++i) {
         childrenAfterCast.push_back(
             implicitCastIfNecessary(children[i], function->parameterTypeIDs[i]));
     }
     auto bindData =
-        std::make_unique<function::FunctionBindData>(common::DataType(function->returnTypeID));
+        std::make_unique<function::FunctionBindData>(LogicalType(function->returnTypeID));
     auto uniqueExpressionName =
         ScalarFunctionExpression::getUniqueName(function->name, childrenAfterCast);
     return make_shared<ScalarFunctionExpression>(functionName, expressionType, std::move(bindData),
         std::move(childrenAfterCast), function->execFunc, function->selectFunc,
         uniqueExpressionName);
+}
+
+std::shared_ptr<Expression> ExpressionBinder::createEqualityComparisonExpression(
+    std::shared_ptr<Expression> left, std::shared_ptr<Expression> right) {
+    return bindComparisonExpression(EQUALS, expression_vector{std::move(left), std::move(right)});
 }
 
 } // namespace binder

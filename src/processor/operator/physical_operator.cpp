@@ -20,20 +20,38 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::AGGREGATE_SCAN: {
         return "AGGREGATE_SCAN";
     }
+    case PhysicalOperatorType::STANDALONE_CALL: {
+        return "STANDALONE_CALL";
+    }
+    case PhysicalOperatorType::COPY_TO: {
+        return "COPY_TO";
+    }
     case PhysicalOperatorType::COPY_NODE: {
         return "COPY_NODE";
     }
     case PhysicalOperatorType::COPY_REL: {
         return "COPY_REL";
     }
-    case PhysicalOperatorType::CREATE_NODE: {
-        return "CREATE_NODE";
+    case PhysicalOperatorType::CREATE_MACRO: {
+        return "CREATE_MACRO";
+    }
+    case PhysicalOperatorType::READ_CSV: {
+        return "READ_CSV";
+    }
+    case PhysicalOperatorType::READ_NPY: {
+        return "READ_NPY";
+    }
+    case PhysicalOperatorType::READ_PARQUET: {
+        return "READ_PARQUET";
+    }
+    case PhysicalOperatorType::INSERT_NODE: {
+        return "INSERT_NODE";
     }
     case PhysicalOperatorType::CREATE_NODE_TABLE: {
         return "CREATE_NODE_TABLE";
     }
-    case PhysicalOperatorType::CREATE_REL: {
-        return "CREATE_REL";
+    case PhysicalOperatorType::INSERT_REL: {
+        return "INSERT_REL";
     }
     case PhysicalOperatorType::CREATE_REL_TABLE: {
         return "CREATE_REL_TABLE";
@@ -83,8 +101,14 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::LIMIT: {
         return "LIMIT";
     }
+    case PhysicalOperatorType::MERGE: {
+        return "MERGE";
+    }
     case PhysicalOperatorType::MULTIPLICITY_REDUCER: {
         return "MULTIPLICITY_REDUCER";
+    }
+    case PhysicalOperatorType::PATH_PROPERTY_PROBE: {
+        return "PATH_PROPERTY_PROBE";
     }
     case PhysicalOperatorType::PROJECTION: {
         return "PROJECTION";
@@ -118,9 +142,6 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     }
     case PhysicalOperatorType::SCAN_REL_TABLE_LISTS: {
         return "SCAN_REL_TABLE_LISTS";
-    }
-    case PhysicalOperatorType::SCAN_BFS_LEVEL: {
-        return "SCAN_BFS_LEVEL";
     }
     case PhysicalOperatorType::SEMI_MASKER: {
         return "SEMI_MASKER";
@@ -158,14 +179,14 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::VAR_LENGTH_COLUMN_EXTEND: {
         return "VAR_LENGTH_COL_EXTEND";
     }
-    case PhysicalOperatorType::SHORTEST_PATH_ADJ_LIST: {
-        return "SHORTEST_PATH_ADJ_LIST";
+    case PhysicalOperatorType::IN_QUERY_CALL: {
+        return "IN_QUERY_CALL";
     }
-    case PhysicalOperatorType::SHORTEST_PATH_ADJ_COL: {
-        return "SHORTEST_PATH_ADJ_COL";
+    case PhysicalOperatorType::PROFILE: {
+        return "PROFILE";
     }
     default:
-        throw common::NotImplementedException("physicalOperatorTypeToString()");
+        throw NotImplementedException("physicalOperatorTypeToString()");
     }
 }
 
@@ -210,8 +231,7 @@ void PhysicalOperator::initGlobalState(ExecutionContext* context) {
 }
 
 void PhysicalOperator::initLocalState(ResultSet* resultSet_, ExecutionContext* context) {
-    if (!children.empty()) {
-        assert(children.size() == 1);
+    if (!isSource()) {
         children[0]->initLocalState(resultSet_, context);
     }
     transaction = context->transaction;

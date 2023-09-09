@@ -1,9 +1,11 @@
 #include "expression_evaluator/base_evaluator.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace evaluator {
 
-void BaseExpressionEvaluator::init(
+void ExpressionEvaluator::init(
     const processor::ResultSet& resultSet, storage::MemoryManager* memoryManager) {
     for (auto& child : children) {
         child->init(resultSet, memoryManager);
@@ -11,18 +13,21 @@ void BaseExpressionEvaluator::init(
     resolveResultVector(resultSet, memoryManager);
 }
 
-void BaseExpressionEvaluator::resolveResultStateFromChildren(
-    const std::vector<BaseExpressionEvaluator*>& inputEvaluators) {
+void ExpressionEvaluator::resolveResultStateFromChildren(
+    const std::vector<ExpressionEvaluator*>& inputEvaluators) {
+    if (resultVector->state != nullptr) {
+        return;
+    }
     for (auto& input : inputEvaluators) {
         if (!input->isResultFlat()) {
             isResultFlat_ = false;
-            resultVector->state = input->resultVector->state;
+            resultVector->setState(input->resultVector->state);
             return;
         }
     }
     // All children are flat.
     isResultFlat_ = true;
-    resultVector->state = common::DataChunkState::getSingleValueDataChunkState();
+    resultVector->setState(DataChunkState::getSingleValueDataChunkState());
 }
 
 } // namespace evaluator

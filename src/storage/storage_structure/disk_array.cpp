@@ -4,6 +4,7 @@
 #include "common/utils.h"
 #include "storage/index/hash_index_header.h"
 #include "storage/index/hash_index_slot.h"
+#include "storage/store/node_column.h"
 
 using namespace kuzu::common;
 using namespace kuzu::transaction;
@@ -39,10 +40,16 @@ BaseDiskArray<U>::BaseDiskArray(
 
 template<typename U>
 BaseDiskArray<U>::BaseDiskArray(FileHandle& fileHandle, StorageStructureID storageStructureID,
-    page_idx_t headerPageIdx, BufferManager* bufferManager, WAL* wal)
+    page_idx_t headerPageIdx, BufferManager* bufferManager, WAL* wal,
+    transaction::Transaction* transaction)
     : fileHandle{fileHandle}, storageStructureID{storageStructureID}, headerPageIdx{headerPageIdx},
       hasTransactionalUpdates{false}, bufferManager{bufferManager}, wal{wal} {
-    header.readFromFile(this->fileHandle, headerPageIdx);
+    auto [fileHandleToPin, pageIdxToPin] =
+        StorageStructureUtils::getFileHandleAndPhysicalPageIdxToPin(
+            reinterpret_cast<BMFileHandle&>(fileHandle), headerPageIdx, *wal,
+            transaction->getType());
+    bufferManager->optimisticRead(*fileHandleToPin, pageIdxToPin,
+        [&](uint8_t* frame) -> void { memcpy(&header, frame, sizeof(DiskArrayHeader)); });
     if (this->header.firstPIPPageIdx != StorageStructureUtils::NULL_PAGE_IDX) {
         pips.emplace_back(fileHandle, header.firstPIPPageIdx);
         while (pips[pips.size() - 1].pipContents.nextPipPageIdx !=
@@ -89,6 +96,7 @@ U BaseDiskArray<U>::get(uint64_t idx, TransactionType trxType) {
         return retVal;
     } else {
         U retVal;
+        ((BMFileHandle&)fileHandle).acquireWALPageIdxLock(apPageIdx);
         StorageStructureUtils::readWALVersionOfPage(bmFileHandle, apPageIdx, *bufferManager, *wal,
             [&retVal, &apCursor](
                 const uint8_t* frame) -> void { retVal = *(U*)(frame + apCursor.offsetInPage); });
@@ -121,6 +129,24 @@ template<typename U>
 uint64_t BaseDiskArray<U>::pushBack(U val) {
     std::unique_lock xLck{diskArraySharedMtx};
     hasTransactionalUpdates = true;
+    return pushBackNoLock(val);
+}
+
+template<typename U>
+uint64_t BaseDiskArray<U>::resize(uint64_t newNumElements) {
+    std::unique_lock xLck{diskArraySharedMtx};
+    hasTransactionalUpdates = true;
+    auto currentNumElements = getNumElementsNoLock(transaction::TransactionType::WRITE);
+    U val;
+    while (currentNumElements < newNumElements) {
+        pushBackNoLock(val);
+        currentNumElements++;
+    }
+    return currentNumElements;
+}
+
+template<typename U>
+uint64_t BaseDiskArray<U>::pushBackNoLock(U val) {
     uint64_t elementIdx;
     StorageStructureUtils::updatePage((BMFileHandle&)(fileHandle), storageStructureID,
         headerPageIdx, false /* not inserting a new page */, *bufferManager, *wal,
@@ -186,6 +212,7 @@ page_idx_t BaseDiskArray<U>::getAPPageIdxNoLock(page_idx_t apIdx, TransactionTyp
     } else {
         page_idx_t retVal;
         page_idx_t pageIdxOfUpdatedPip = getUpdatedPageIdxOfPipNoLock(pipIdx);
+        ((BMFileHandle&)fileHandle).acquireWALPageIdxLock(pageIdxOfUpdatedPip);
         StorageStructureUtils::readWALVersionOfPage((BMFileHandle&)fileHandle, pageIdxOfUpdatedPip,
             *bufferManager, *wal, [&retVal, &offsetInPIP](const uint8_t* frame) -> void {
                 retVal = ((PIP*)frame)->pageIdxs[offsetInPIP];
@@ -264,6 +291,7 @@ uint64_t BaseDiskArray<U>::readUInt64HeaderFieldNoLock(
         return readOp(&this->header);
     } else {
         uint64_t retVal;
+        ((BMFileHandle&)fileHandle).acquireWALPageIdxLock(headerPageIdx);
         StorageStructureUtils::readWALVersionOfPage((BMFileHandle&)fileHandle, headerPageIdx,
             *bufferManager, *wal, [&retVal, &readOp](uint8_t* frame) -> void {
                 retVal = readOp((DiskArrayHeader*)frame);
@@ -329,8 +357,9 @@ std::pair<page_idx_t, bool> BaseDiskArray<U>::getAPPageIdxAndAddAPToPIPIfNecessa
 template<typename U>
 BaseInMemDiskArray<U>::BaseInMemDiskArray(FileHandle& fileHandle,
     StorageStructureID storageStructureID, page_idx_t headerPageIdx, BufferManager* bufferManager,
-    WAL* wal)
-    : BaseDiskArray<U>(fileHandle, storageStructureID, headerPageIdx, bufferManager, wal) {
+    WAL* wal, transaction::Transaction* transaction)
+    : BaseDiskArray<U>(
+          fileHandle, storageStructureID, headerPageIdx, bufferManager, wal, transaction) {
     for (page_idx_t apIdx = 0; apIdx < this->header.numAPs; ++apIdx) {
         addInMemoryArrayPageAndReadFromFile(this->getAPPageIdxNoLock(apIdx));
     }
@@ -364,8 +393,10 @@ void BaseInMemDiskArray<U>::readArrayPageFromFile(uint64_t apIdx, page_idx_t apP
 
 template<typename T>
 InMemDiskArray<T>::InMemDiskArray(FileHandle& fileHandle, StorageStructureID storageStructureID,
-    page_idx_t headerPageIdx, BufferManager* bufferManager, WAL* wal)
-    : BaseInMemDiskArray<T>(fileHandle, storageStructureID, headerPageIdx, bufferManager, wal) {}
+    page_idx_t headerPageIdx, BufferManager* bufferManager, WAL* wal,
+    transaction::Transaction* transaction)
+    : BaseInMemDiskArray<T>(
+          fileHandle, storageStructureID, headerPageIdx, bufferManager, wal, transaction) {}
 
 template<typename T>
 void InMemDiskArray<T>::checkpointOrRollbackInMemoryIfNecessaryNoLock(bool isCheckpoint) {
@@ -500,18 +531,22 @@ template class BaseDiskArray<uint32_t>;
 template class BaseDiskArray<Slot<int64_t>>;
 template class BaseDiskArray<Slot<ku_string_t>>;
 template class BaseDiskArray<HashIndexHeader>;
+template class BaseDiskArray<ColumnChunkMetadata>;
 template class BaseInMemDiskArray<uint32_t>;
 template class BaseInMemDiskArray<Slot<int64_t>>;
 template class BaseInMemDiskArray<Slot<ku_string_t>>;
 template class BaseInMemDiskArray<HashIndexHeader>;
+template class BaseInMemDiskArray<ColumnChunkMetadata>;
 template class InMemDiskArrayBuilder<uint32_t>;
 template class InMemDiskArrayBuilder<Slot<int64_t>>;
 template class InMemDiskArrayBuilder<Slot<ku_string_t>>;
 template class InMemDiskArrayBuilder<HashIndexHeader>;
+template class InMemDiskArrayBuilder<ColumnChunkMetadata>;
 template class InMemDiskArray<uint32_t>;
 template class InMemDiskArray<Slot<int64_t>>;
 template class InMemDiskArray<Slot<ku_string_t>>;
 template class InMemDiskArray<HashIndexHeader>;
+template class InMemDiskArray<ColumnChunkMetadata>;
 
 } // namespace storage
 } // namespace kuzu

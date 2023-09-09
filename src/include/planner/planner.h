@@ -30,7 +30,30 @@ private:
 
     static std::unique_ptr<LogicalPlan> planRenameProperty(const BoundStatement& statement);
 
-    static std::unique_ptr<LogicalPlan> planCopy(const BoundStatement& statement);
+    static std::unique_ptr<LogicalPlan> planStandaloneCall(const BoundStatement& statement);
+
+    static std::unique_ptr<LogicalPlan> planExplain(const catalog::Catalog& catalog,
+        const storage::NodesStatisticsAndDeletedIDs& nodesStatistics,
+        const storage::RelsStatistics& relsStatistics, const BoundStatement& statement);
+
+    static std::unique_ptr<LogicalPlan> planCreateMacro(const BoundStatement& statement);
+
+    static std::vector<std::unique_ptr<LogicalPlan>> getAllQueryPlans(
+        const catalog::Catalog& catalog,
+        const storage::NodesStatisticsAndDeletedIDs& nodesStatistics,
+        const storage::RelsStatistics& relsStatistics, const BoundStatement& statement);
+
+    static std::vector<std::unique_ptr<LogicalPlan>> getAllExplainPlans(
+        const catalog::Catalog& catalog,
+        const storage::NodesStatisticsAndDeletedIDs& nodesStatistics,
+        const storage::RelsStatistics& relsStatistics, const BoundStatement& statement);
+
+    static std::unique_ptr<LogicalPlan> planCopyTo(const catalog::Catalog& catalog,
+        const storage::NodesStatisticsAndDeletedIDs& nodesStatistics,
+        const storage::RelsStatistics& relsStatistics, const BoundStatement& statement);
+
+    static std::unique_ptr<LogicalPlan> planCopyFrom(
+        const catalog::Catalog& catalog, const BoundStatement& statement);
 };
 
 } // namespace planner

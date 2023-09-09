@@ -48,11 +48,11 @@ template class TemplatedHashIndexLocalStorage<std::string>;
 
 HashIndexLocalLookupState HashIndexLocalStorage::lookup(const uint8_t* key, offset_t& result) {
     std::shared_lock sLck{localStorageSharedMutex};
-    if (keyDataType.typeID == INT64) {
+    if (keyDataType.getLogicalTypeID() == LogicalTypeID::INT64) {
         auto keyVal = *(int64_t*)key;
         return templatedLocalStorageForInt.lookup(keyVal, result);
     } else {
-        assert(keyDataType.typeID == STRING);
+        assert(keyDataType.getLogicalTypeID() == LogicalTypeID::STRING);
         auto keyVal = std::string((char*)key);
         return templatedLocalStorageForString.lookup(keyVal, result);
     }
@@ -60,11 +60,11 @@ HashIndexLocalLookupState HashIndexLocalStorage::lookup(const uint8_t* key, offs
 
 void HashIndexLocalStorage::deleteKey(const uint8_t* key) {
     std::unique_lock xLck{localStorageSharedMutex};
-    if (keyDataType.typeID == INT64) {
+    if (keyDataType.getLogicalTypeID() == LogicalTypeID::INT64) {
         auto keyVal = *(int64_t*)key;
         templatedLocalStorageForInt.deleteKey(keyVal);
     } else {
-        assert(keyDataType.typeID == STRING);
+        assert(keyDataType.getLogicalTypeID() == LogicalTypeID::STRING);
         auto keyVal = std::string((char*)key);
         templatedLocalStorageForString.deleteKey(keyVal);
     }
@@ -72,11 +72,11 @@ void HashIndexLocalStorage::deleteKey(const uint8_t* key) {
 
 bool HashIndexLocalStorage::insert(const uint8_t* key, offset_t value) {
     std::unique_lock xLck{localStorageSharedMutex};
-    if (keyDataType.typeID == INT64) {
+    if (keyDataType.getLogicalTypeID() == LogicalTypeID::INT64) {
         auto keyVal = *(int64_t*)key;
         return templatedLocalStorageForInt.insert(keyVal, value);
     } else {
-        assert(keyDataType.typeID == STRING);
+        assert(keyDataType.getLogicalTypeID() == LogicalTypeID::STRING);
         auto keyVal = std::string((char*)key);
         return templatedLocalStorageForString.insert(keyVal, value);
     }
@@ -84,7 +84,7 @@ bool HashIndexLocalStorage::insert(const uint8_t* key, offset_t value) {
 
 void HashIndexLocalStorage::applyLocalChanges(const std::function<void(const uint8_t*)>& deleteOp,
     const std::function<void(const uint8_t*, offset_t)>& insertOp) {
-    if (keyDataType.typeID == INT64) {
+    if (keyDataType.getLogicalTypeID() == LogicalTypeID::INT64) {
         for (auto& key : templatedLocalStorageForInt.localDeletions) {
             deleteOp((uint8_t*)&key);
         }
@@ -92,7 +92,7 @@ void HashIndexLocalStorage::applyLocalChanges(const std::function<void(const uin
             insertOp((uint8_t*)&key, val);
         }
     } else {
-        assert(keyDataType.typeID == STRING);
+        assert(keyDataType.getLogicalTypeID() == LogicalTypeID::STRING);
         for (auto& key : templatedLocalStorageForString.localDeletions) {
             deleteOp((uint8_t*)key.c_str());
         }
@@ -103,47 +103,49 @@ void HashIndexLocalStorage::applyLocalChanges(const std::function<void(const uin
 }
 
 bool HashIndexLocalStorage::hasUpdates() const {
-    if (keyDataType.typeID == INT64) {
+    if (keyDataType.getLogicalTypeID() == LogicalTypeID::INT64) {
         return templatedLocalStorageForInt.hasUpdates();
     } else {
-        assert(keyDataType.typeID == STRING);
+        assert(keyDataType.getLogicalTypeID() == LogicalTypeID::STRING);
         return templatedLocalStorageForString.hasUpdates();
     }
 }
 
 void HashIndexLocalStorage::clear() {
-    if (keyDataType.typeID == INT64) {
+    if (keyDataType.getLogicalTypeID() == LogicalTypeID::INT64) {
         templatedLocalStorageForInt.clear();
     } else {
-        assert(keyDataType.typeID == STRING);
+        assert(keyDataType.getLogicalTypeID() == LogicalTypeID::STRING);
         templatedLocalStorageForString.clear();
     }
 }
 
 template<typename T>
 HashIndex<T>::HashIndex(const StorageStructureIDAndFName& storageStructureIDAndFName,
-    const DataType& keyDataType, BufferManager& bufferManager, WAL* wal)
+    const LogicalType& keyDataType, BufferManager& bufferManager, WAL* wal)
     : BaseHashIndex{keyDataType},
       storageStructureIDAndFName{storageStructureIDAndFName}, bm{bufferManager}, wal{wal} {
     fileHandle = bufferManager.getBMFileHandle(storageStructureIDAndFName.fName,
         FileHandle::O_PERSISTENT_FILE_NO_CREATE, BMFileHandle::FileVersionedType::VERSIONED_FILE);
     headerArray = std::make_unique<BaseDiskArray<HashIndexHeader>>(*fileHandle,
-        storageStructureIDAndFName.storageStructureID, INDEX_HEADER_ARRAY_HEADER_PAGE_IDX, &bm,
-        wal);
+        storageStructureIDAndFName.storageStructureID, INDEX_HEADER_ARRAY_HEADER_PAGE_IDX, &bm, wal,
+        Transaction::getDummyReadOnlyTrx().get());
     // Read indexHeader from the headerArray, which contains only one element.
     indexHeader = std::make_unique<HashIndexHeader>(
         headerArray->get(INDEX_HEADER_IDX_IN_ARRAY, TransactionType::READ_ONLY));
-    assert(indexHeader->keyDataTypeID == keyDataType.typeID);
+    assert(indexHeader->keyDataTypeID == keyDataType.getLogicalTypeID());
     pSlots = std::make_unique<BaseDiskArray<Slot<T>>>(*fileHandle,
-        storageStructureIDAndFName.storageStructureID, P_SLOTS_HEADER_PAGE_IDX, &bm, wal);
+        storageStructureIDAndFName.storageStructureID, P_SLOTS_HEADER_PAGE_IDX, &bm, wal,
+        Transaction::getDummyReadOnlyTrx().get());
     oSlots = std::make_unique<BaseDiskArray<Slot<T>>>(*fileHandle,
-        storageStructureIDAndFName.storageStructureID, O_SLOTS_HEADER_PAGE_IDX, &bm, wal);
+        storageStructureIDAndFName.storageStructureID, O_SLOTS_HEADER_PAGE_IDX, &bm, wal,
+        Transaction::getDummyReadOnlyTrx().get());
     // Initialize functions.
     keyHashFunc = HashIndexUtils::initializeHashFunc(indexHeader->keyDataTypeID);
     keyInsertFunc = HashIndexUtils::initializeInsertFunc(indexHeader->keyDataTypeID);
     keyEqualsFunc = HashIndexUtils::initializeEqualsFunc(indexHeader->keyDataTypeID);
     localStorage = std::make_unique<HashIndexLocalStorage>(keyDataType);
-    if (keyDataType.typeID == STRING) {
+    if (keyDataType.getLogicalTypeID() == LogicalTypeID::STRING) {
         diskOverflowFile = std::make_unique<DiskOverflowFile>(storageStructureIDAndFName, &bm, wal);
     }
 }
@@ -308,7 +310,7 @@ void HashIndex<T>::rehashSlots(HashIndexHeader& header) {
             }
             auto key = slot.entries[entryPos].data;
             hash_t hash;
-            if (header.keyDataTypeID == STRING) {
+            if (header.keyDataTypeID == LogicalTypeID::STRING) {
                 auto str = diskOverflowFile->readString(TransactionType::WRITE, *(ku_string_t*)key);
                 hash = keyHashFunc((const uint8_t*)str.c_str());
             } else {
@@ -391,27 +393,29 @@ entry_pos_t HashIndex<T>::findMatchedEntryInSlot(
 
 template<typename T>
 void HashIndex<T>::prepareCommit() {
-    localStorage->applyLocalChanges(
-        [this](const uint8_t* key) -> void { this->deleteFromPersistentIndex(key); },
-        [this](const uint8_t* key, offset_t value) -> void {
-            this->insertIntoPersistentIndex(key, value);
-        });
-}
-
-template<typename T>
-void HashIndex<T>::prepareCommitOrRollbackIfNecessary(bool isCommit) {
     std::unique_lock xlock{localStorage->localStorageSharedMutex};
-    if (!localStorage->hasUpdates()) {
-        return;
-    }
-    wal->addToUpdatedNodeTables(storageStructureIDAndFName.storageStructureID.nodeIndexID.tableID);
-    if (isCommit) {
-        prepareCommit();
+    if (localStorage->hasUpdates()) {
+        wal->addToUpdatedNodeTables(
+            storageStructureIDAndFName.storageStructureID.nodeIndexID.tableID);
+        localStorage->applyLocalChanges(
+            [this](const uint8_t* key) -> void { this->deleteFromPersistentIndex(key); },
+            [this](const uint8_t* key, offset_t value) -> void {
+                this->insertIntoPersistentIndex(key, value);
+            });
     }
 }
 
 template<typename T>
-void HashIndex<T>::checkpointInMemoryIfNecessary() {
+void HashIndex<T>::prepareRollback() {
+    std::unique_lock xlock{localStorage->localStorageSharedMutex};
+    if (localStorage->hasUpdates()) {
+        wal->addToUpdatedNodeTables(
+            storageStructureIDAndFName.storageStructureID.nodeIndexID.tableID);
+    }
+}
+
+template<typename T>
+void HashIndex<T>::checkpointInMemory() {
     if (!localStorage->hasUpdates()) {
         return;
     }
@@ -424,7 +428,7 @@ void HashIndex<T>::checkpointInMemoryIfNecessary() {
 }
 
 template<typename T>
-void HashIndex<T>::rollbackInMemoryIfNecessary() const {
+void HashIndex<T>::rollbackInMemory() const {
     if (!localStorage->hasUpdates()) {
         return;
     }
@@ -440,7 +444,7 @@ template class HashIndex<ku_string_t>;
 bool PrimaryKeyIndex::lookup(
     Transaction* trx, ValueVector* keyVector, uint64_t vectorPos, offset_t& result) {
     assert(!keyVector->isNull(vectorPos));
-    if (keyDataTypeID == INT64) {
+    if (keyDataTypeID == LogicalTypeID::INT64) {
         auto key = keyVector->getValue<int64_t>(vectorPos);
         return hashIndexForInt64->lookupInternal(
             trx, reinterpret_cast<const uint8_t*>(&key), result);
@@ -451,20 +455,25 @@ bool PrimaryKeyIndex::lookup(
     }
 }
 
-void PrimaryKeyIndex::deleteKey(ValueVector* keyVector, uint64_t vectorPos) {
-    assert(!keyVector->isNull(vectorPos));
-    if (keyDataTypeID == INT64) {
-        auto key = keyVector->getValue<int64_t>(vectorPos);
-        hashIndexForInt64->deleteInternal(reinterpret_cast<const uint8_t*>(&key));
+void PrimaryKeyIndex::delete_(ValueVector* keyVector) {
+    if (keyDataTypeID == LogicalTypeID::INT64) {
+        for (auto i = 0u; i < keyVector->state->selVector->selectedSize; i++) {
+            auto pos = keyVector->state->selVector->selectedPositions[i];
+            auto key = keyVector->getValue<int64_t>(pos);
+            hashIndexForInt64->deleteInternal(reinterpret_cast<const uint8_t*>(&key));
+        }
     } else {
-        auto key = keyVector->getValue<ku_string_t>(vectorPos).getAsString();
-        hashIndexForString->deleteInternal(reinterpret_cast<const uint8_t*>(key.c_str()));
+        for (auto i = 0u; i < keyVector->state->selVector->selectedSize; i++) {
+            auto pos = keyVector->state->selVector->selectedPositions[i];
+            auto key = keyVector->getValue<ku_string_t>(pos).getAsString();
+            hashIndexForString->deleteInternal(reinterpret_cast<const uint8_t*>(key.c_str()));
+        }
     }
 }
 
 bool PrimaryKeyIndex::insert(ValueVector* keyVector, uint64_t vectorPos, offset_t value) {
     assert(!keyVector->isNull(vectorPos));
-    if (keyDataTypeID == INT64) {
+    if (keyDataTypeID == LogicalTypeID::INT64) {
         auto key = keyVector->getValue<int64_t>(vectorPos);
         return hashIndexForInt64->insertInternal(reinterpret_cast<const uint8_t*>(&key), value);
     } else {

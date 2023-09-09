@@ -2,6 +2,7 @@
 
 #include <shared_mutex>
 
+#include "arrow/array.h"
 #include "common/constants.h"
 #include "common/types/value.h"
 #include "storage/storage_structure/in_mem_page.h"
@@ -69,26 +70,29 @@ public:
 
     // Copy overflow data at srcOverflow into dstKUString.
     void copyStringOverflow(
-        PageByteCursor& overflowCursor, uint8_t* srcOverflow, common::ku_string_t* dstKUString);
+        PageByteCursor& dstOverflowCursor, uint8_t* srcOverflow, common::ku_string_t* dstKUString);
     void copyListOverflowFromFile(InMemOverflowFile* srcInMemOverflowFile,
         const PageByteCursor& srcOverflowCursor, PageByteCursor& dstOverflowCursor,
-        common::ku_list_t* dstKUList, common::DataType* listChildDataType);
+        common::ku_list_t* dstKUList, common::LogicalType* listChildDataType);
     void copyListOverflowToFile(PageByteCursor& pageByteCursor, common::ku_list_t* srcKUList,
-        common::DataType* childDataType);
+        common::LogicalType* childDataType);
 
     std::string readString(common::ku_string_t* strInInMemOvfFile);
+
+    common::ku_list_t appendList(common::LogicalType& type, arrow::ListArray& listArray,
+        uint64_t pos, PageByteCursor& overflowCursor);
 
 private:
     common::page_idx_t addANewOverflowPage();
 
     void copyFixedSizedValuesInList(const common::Value& listVal, PageByteCursor& overflowCursor,
         uint64_t numBytesOfListElement);
-    template<common::DataTypeID DT>
+    template<common::LogicalTypeID DT>
     void copyVarSizedValuesInList(common::ku_list_t& resultKUList, const common::Value& listVal,
         PageByteCursor& overflowCursor, uint64_t numBytesOfListElement);
 
     void resetElementsOverflowPtrIfNecessary(PageByteCursor& pageByteCursor,
-        common::DataType* elementType, uint64_t numElementsToReset, uint8_t* elementsToReset);
+        common::LogicalType* elementType, uint64_t numElementsToReset, uint8_t* elementsToReset);
 
 private:
     // These two fields (currentPageIdxToAppend, currentOffsetInPageToAppend) are used when

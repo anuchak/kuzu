@@ -32,7 +32,7 @@ OrderByKeyEncoder::OrderByKeyEncoder(std::vector<ValueVector*>& orderByVectors,
     }
     encodeFunctions.resize(orderByVectors.size());
     for (auto i = 0u; i < orderByVectors.size(); i++) {
-        encodeFunctions[i] = getEncodingFunction(orderByVectors[i]->dataType.typeID);
+        getEncodingFunction(orderByVectors[i]->dataType.getPhysicalType(), encodeFunctions[i]);
     }
 }
 
@@ -67,19 +67,19 @@ uint32_t OrderByKeyEncoder::getNumBytesPerTuple(const std::vector<ValueVector*>&
     return result;
 }
 
-uint32_t OrderByKeyEncoder::getEncodingSize(const DataType& dataType) {
+uint32_t OrderByKeyEncoder::getEncodingSize(const LogicalType& dataType) {
     // Add one more byte for null flag.
-    switch (dataType.typeID) {
-    case STRING:
+    switch (dataType.getPhysicalType()) {
+    case PhysicalTypeID::STRING:
         // 1 byte for null flag + 1 byte to indicate long/short string + 12 bytes for string prefix
         return 2 + ku_string_t::SHORT_STR_LENGTH;
     default:
-        return 1 + Types::getDataTypeSize(dataType);
+        return 1 + storage::StorageUtils::getDataTypeSize(dataType);
     }
 }
 
 void OrderByKeyEncoder::flipBytesIfNecessary(
-    uint32_t keyColIdx, uint8_t* tuplePtr, uint32_t numEntriesToEncode, DataType& type) {
+    uint32_t keyColIdx, uint8_t* tuplePtr, uint32_t numEntriesToEncode, LogicalType& type) {
     if (!isAscOrder[keyColIdx]) {
         auto encodingSize = getEncodingSize(type);
         // If the current column is in desc order, flip all bytes.
@@ -197,40 +197,43 @@ void OrderByKeyEncoder::allocateMemoryIfFull() {
     }
 }
 
-encode_function_t OrderByKeyEncoder::getEncodingFunction(DataTypeID typeId) {
-    switch (typeId) {
-    case BOOL: {
-        return encodeTemplate<bool>;
+void OrderByKeyEncoder::getEncodingFunction(PhysicalTypeID physicalType, encode_function_t& func) {
+    switch (physicalType) {
+    case PhysicalTypeID::BOOL: {
+        func = encodeTemplate<bool>;
+        return;
     }
-    case INT64: {
-        return encodeTemplate<int64_t>;
+    case PhysicalTypeID::INT64: {
+        func = encodeTemplate<int64_t>;
+        return;
     }
-    case INT32: {
-        return encodeTemplate<int32_t>;
+    case PhysicalTypeID::INT32: {
+        func = encodeTemplate<int32_t>;
+        return;
     }
-    case INT16: {
-        return encodeTemplate<int16_t>;
+    case PhysicalTypeID::INT16: {
+        func = encodeTemplate<int16_t>;
+        return;
     }
-    case DOUBLE: {
-        return encodeTemplate<double_t>;
+    case PhysicalTypeID::DOUBLE: {
+        func = encodeTemplate<double_t>;
+        return;
     }
-    case FLOAT: {
-        return encodeTemplate<float_t>;
+    case PhysicalTypeID::FLOAT: {
+        func = encodeTemplate<float_t>;
+        return;
     }
-    case STRING: {
-        return encodeTemplate<ku_string_t>;
+    case PhysicalTypeID::STRING: {
+        func = encodeTemplate<ku_string_t>;
+        return;
     }
-    case DATE: {
-        return encodeTemplate<date_t>;
-    }
-    case TIMESTAMP: {
-        return encodeTemplate<timestamp_t>;
-    }
-    case INTERVAL: {
-        return encodeTemplate<interval_t>;
+    case PhysicalTypeID::INTERVAL: {
+        func = encodeTemplate<interval_t>;
+        return;
     }
     default: {
-        throw RuntimeException("Cannot encode data type " + Types::dataTypeToString(typeId));
+        throw RuntimeException("Cannot encode data with physical type: " +
+                               PhysicalTypeUtils::physicalTypeToString(physicalType));
     }
     }
 }
@@ -295,7 +298,7 @@ void OrderByKeyEncoder::encodeData(timestamp_t data, uint8_t* resultPtr, bool sw
 template<>
 void OrderByKeyEncoder::encodeData(interval_t data, uint8_t* resultPtr, bool swapBytes) {
     int64_t months, days, micros;
-    Interval::NormalizeIntervalEntries(data, months, days, micros);
+    Interval::normalizeIntervalEntries(data, months, days, micros);
     encodeData((int32_t)months, resultPtr, swapBytes);
     resultPtr += sizeof(data.months);
     encodeData((int32_t)days, resultPtr, swapBytes);

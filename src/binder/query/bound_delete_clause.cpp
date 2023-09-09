@@ -1,28 +1,33 @@
 #include "binder/query/updating_clause/bound_delete_clause.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace binder {
 
-expression_vector BoundDeleteClause::getPropertiesToRead() const {
-    expression_vector result;
-    for (auto& deleteNode : deleteNodes) {
-        result.push_back(deleteNode->getPrimaryKeyExpression());
+BoundDeleteClause::BoundDeleteClause(const BoundDeleteClause& other)
+    : BoundUpdatingClause{ClauseType::DELETE_} {
+    for (auto& info : other.infos) {
+        infos.push_back(info->copy());
     }
-    for (auto& deleteRel : deleteRels) {
-        if (deleteRel->hasInternalIDProperty()) {
-            result.push_back(deleteRel->getInternalIDProperty());
-        }
-    }
-    return result;
 }
 
-std::unique_ptr<BoundUpdatingClause> BoundDeleteClause::copy() {
-    auto result = std::make_unique<BoundDeleteClause>();
-    for (auto& deleteNode : deleteNodes) {
-        result->addDeleteNode(deleteNode->copy());
+bool BoundDeleteClause::hasInfo(const std::function<bool(const BoundDeleteInfo&)>& check) const {
+    for (auto& info : infos) {
+        if (check(*info)) {
+            return true;
+        }
     }
-    for (auto& deleteRel : deleteRels) {
-        result->addDeleteRel(deleteRel);
+    return false;
+}
+
+std::vector<BoundDeleteInfo*> BoundDeleteClause::getInfos(
+    const std::function<bool(const BoundDeleteInfo&)>& check) const {
+    std::vector<BoundDeleteInfo*> result;
+    for (auto& info : infos) {
+        if (check(*info)) {
+            result.push_back(info.get());
+        }
     }
     return result;
 }

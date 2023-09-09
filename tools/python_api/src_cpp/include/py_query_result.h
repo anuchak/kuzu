@@ -40,11 +40,13 @@ public:
 
     bool isSuccess() const;
 
-private:
-    static py::dict getPyDictFromProperties(
-        const std::vector<std::pair<std::string, std::unique_ptr<kuzu::common::Value>>>&
-            properties);
+    double getExecutionTime();
 
+    double getCompilingTime();
+
+    size_t getNumTuples();
+
+private:
     static py::dict convertNodeIdToPyDict(const kuzu::common::nodeID_t& nodeId);
 
     bool getNextArrowChunk(const ArrowSchema& schema, py::list& batches, std::int64_t chunk_size);

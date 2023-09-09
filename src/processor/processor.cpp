@@ -1,7 +1,8 @@
 #include "processor/processor.h"
 
 #include "processor/operator/aggregate/base_aggregate.h"
-#include "processor/operator/copy/copy.h"
+#include "processor/operator/copy_from/copy.h"
+#include "processor/operator/copy_from/copy_node.h"
 #include "processor/operator/result_collector.h"
 #include "processor/operator/sink.h"
 #include "processor/processor_task.h"
@@ -18,10 +19,11 @@ QueryProcessor::QueryProcessor(uint64_t numThreads) {
 
 std::shared_ptr<FactorizedTable> QueryProcessor::execute(
     PhysicalPlan* physicalPlan, ExecutionContext* context) {
-    if (physicalPlan->isCopy()) {
+    if (physicalPlan->isCopyRel()) {
         auto copy = (Copy*)physicalPlan->lastOperator.get();
         auto outputMsg = copy->execute(taskScheduler.get(), context);
-        return getFactorizedTableForOutputMsg(outputMsg, context->memoryManager);
+        return FactorizedTableUtils::getFactorizedTableForOutputMsg(
+            outputMsg, context->memoryManager);
     } else {
         auto lastOperator = physicalPlan->lastOperator.get();
         // Init global state before decompose into pipelines. Otherwise, each pipeline will try to
@@ -72,36 +74,20 @@ void QueryProcessor::decomposePlanIntoTasks(
         // As a temporary solution, update is executed in single thread mode.
     case PhysicalOperatorType::SET_NODE_PROPERTY:
     case PhysicalOperatorType::SET_REL_PROPERTY:
-    case PhysicalOperatorType::CREATE_NODE:
-    case PhysicalOperatorType::CREATE_REL:
+    case PhysicalOperatorType::INSERT_NODE:
+    case PhysicalOperatorType::INSERT_REL:
     case PhysicalOperatorType::DELETE_NODE:
-    case PhysicalOperatorType::DELETE_REL: {
+    case PhysicalOperatorType::DELETE_REL:
+    case PhysicalOperatorType::MERGE:
+    case PhysicalOperatorType::COPY_TO:
+    case PhysicalOperatorType::STANDALONE_CALL:
+    case PhysicalOperatorType::PROFILE:
+    case PhysicalOperatorType::CREATE_MACRO: {
         parentTask->setSingleThreadedTask();
     } break;
     default:
         break;
     }
-}
-
-std::shared_ptr<FactorizedTable> QueryProcessor::getFactorizedTableForOutputMsg(
-    std::string& outputMsg, MemoryManager* memoryManager) {
-    auto ftTableSchema = std::make_unique<FactorizedTableSchema>();
-    ftTableSchema->appendColumn(std::make_unique<ColumnSchema>(
-        false /* flat */, 0 /* dataChunkPos */, Types::getDataTypeSize(STRING)));
-    auto factorizedTable =
-        std::make_shared<FactorizedTable>(memoryManager, std::move(ftTableSchema));
-    auto outputMsgVector = std::make_shared<ValueVector>(STRING, memoryManager);
-    auto outputMsgChunk = std::make_shared<DataChunk>(1 /* numValueVectors */);
-    outputMsgChunk->insert(0 /* pos */, outputMsgVector);
-    ku_string_t outputKUStr = ku_string_t();
-    outputKUStr.overflowPtr = reinterpret_cast<uint64_t>(
-        common::StringVector::getInMemOverflowBuffer(outputMsgVector.get())
-            ->allocateSpace(outputMsg.length()));
-    outputKUStr.set(outputMsg);
-    outputMsgVector->setValue(0, outputKUStr);
-    outputMsgVector->state->currIdx = 0;
-    factorizedTable->append(std::vector<ValueVector*>{outputMsgVector.get()});
-    return factorizedTable;
 }
 
 } // namespace processor

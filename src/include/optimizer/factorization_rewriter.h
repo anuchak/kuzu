@@ -8,13 +8,15 @@ class FactorizationRewriter : public LogicalOperatorVisitor {
 public:
     void rewrite(planner::LogicalPlan* plan);
 
-private:
     void visitOperator(planner::LogicalOperator* op);
+
+private:
     void visitExtend(planner::LogicalOperator* op) override;
     void visitRecursiveExtend(planner::LogicalOperator* op) override;
     void visitHashJoin(planner::LogicalOperator* op) override;
     void visitIntersect(planner::LogicalOperator* op) override;
     void visitProjection(planner::LogicalOperator* op) override;
+    void visitAccumulate(planner::LogicalOperator* op) override;
     void visitAggregate(planner::LogicalOperator* op) override;
     void visitOrderBy(planner::LogicalOperator* op) override;
     void visitSkip(planner::LogicalOperator* op) override;
@@ -25,9 +27,12 @@ private:
     void visitFilter(planner::LogicalOperator* op) override;
     void visitSetNodeProperty(planner::LogicalOperator* op) override;
     void visitSetRelProperty(planner::LogicalOperator* op) override;
+    void visitDeleteNode(planner::LogicalOperator* op) override;
     void visitDeleteRel(planner::LogicalOperator* op) override;
     void visitCreateNode(planner::LogicalOperator* op) override;
     void visitCreateRel(planner::LogicalOperator* op) override;
+    void visitMerge(planner::LogicalOperator* op) override;
+    void visitCopyTo(planner::LogicalOperator* op) override;
 
     std::shared_ptr<planner::LogicalOperator> appendFlattens(
         std::shared_ptr<planner::LogicalOperator> op,

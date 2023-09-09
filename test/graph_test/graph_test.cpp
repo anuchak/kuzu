@@ -2,7 +2,6 @@
 
 #include "binder/binder.h"
 #include "common/string_utils.h"
-#include "json.hpp"
 #include "parser/parser.h"
 #include "storage/storage_manager.h"
 
@@ -41,20 +40,17 @@ void BaseGraphTest::validateListFilesExistence(
 
 void BaseGraphTest::validateNodeColumnFilesExistence(
     NodeTableSchema* nodeTableSchema, DBFileType dbFileType, bool existence) {
-    for (auto& property : nodeTableSchema->properties) {
-        validateColumnFilesExistence(StorageUtils::getNodePropertyColumnFName(databasePath,
-                                         nodeTableSchema->tableID, property.propertyID, dbFileType),
-            existence, containsOverflowFile(property.dataType.typeID));
-    }
     validateColumnFilesExistence(
         StorageUtils::getNodeIndexFName(databasePath, nodeTableSchema->tableID, dbFileType),
-        existence, containsOverflowFile(nodeTableSchema->getPrimaryKey().dataType.typeID));
+        existence,
+        containsOverflowFile(nodeTableSchema->getPrimaryKey()->getDataType()->getLogicalTypeID()));
 }
 
 void BaseGraphTest::validateRelColumnAndListFilesExistence(
     RelTableSchema* relTableSchema, DBFileType dbFileType, bool existence) {
-    for (auto relDirection : REL_DIRECTIONS) {
-        if (relTableSchema->relMultiplicity) {
+    for (auto relDirection : RelDataDirectionUtils::getRelDataDirections()) {
+        if (relTableSchema->getRelMultiplicity() == RelMultiplicity::MANY_ONE ||
+            relTableSchema->getRelMultiplicity() == RelMultiplicity::ONE_ONE) {
             validateColumnFilesExistence(StorageUtils::getAdjColumnFName(databasePath,
                                              relTableSchema->tableID, relDirection, dbFileType),
                 existence, false /* hasOverflow */);
@@ -76,7 +72,7 @@ void BaseGraphTest::validateQueryBestPlanJoinOrder(
     auto catalog = getCatalog(*database);
     auto statement = parser::Parser::parseQuery(query);
     auto parsedQuery = (parser::RegularQuery*)statement.get();
-    auto boundQuery = Binder(*catalog).bind(*parsedQuery);
+    auto boundQuery = Binder(*catalog, conn->clientContext.get()).bind(*parsedQuery);
     auto plan = Planner::getBestPlan(*catalog,
         getStorageManager(*database)->getNodesStore().getNodesStatisticsAndDeletedIDs(),
         getStorageManager(*database)->getRelsStore().getRelsStatistics(), *boundQuery);
@@ -94,18 +90,18 @@ void BaseGraphTest::commitOrRollbackConnectionAndInitDBIfNecessary(
 }
 
 void BaseGraphTest::validateRelPropertyFiles(catalog::RelTableSchema* relTableSchema,
-    RelDirection relDirection, bool isColumnProperty, DBFileType dbFileType, bool existence) {
+    RelDataDirection relDirection, bool isColumnProperty, DBFileType dbFileType, bool existence) {
     for (auto& property : relTableSchema->properties) {
-        auto hasOverflow = containsOverflowFile(property.dataType.typeID);
+        auto hasOverflow = containsOverflowFile(property->getDataType()->getLogicalTypeID());
         if (isColumnProperty) {
             validateColumnFilesExistence(
                 StorageUtils::getRelPropertyColumnFName(databasePath, relTableSchema->tableID,
-                    relDirection, property.propertyID, dbFileType),
+                    relDirection, property->getPropertyID(), dbFileType),
                 existence, hasOverflow);
         } else {
             validateListFilesExistence(
                 StorageUtils::getRelPropertyListsFName(databasePath, relTableSchema->tableID,
-                    relDirection, property.propertyID, dbFileType),
+                    relDirection, property->getPropertyID(), dbFileType),
                 existence, hasOverflow, false /* hasHeader */);
         }
     }

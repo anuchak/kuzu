@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/rel_direction.h"
 #include "common/types/types_include.h"
 #include "common/utils.h"
 
@@ -25,11 +26,11 @@ enum class ColumnType : uint8_t {
 
 struct RelNodeTableAndDir {
     common::table_id_t relTableID;
-    common::RelDirection dir;
+    common::RelDataDirection dir;
 
     RelNodeTableAndDir() = default;
 
-    RelNodeTableAndDir(common::table_id_t relTableID, common::RelDirection dir)
+    RelNodeTableAndDir(common::table_id_t relTableID, common::RelDataDirection dir)
         : relTableID{relTableID}, dir{dir} {}
 
     inline bool operator==(const RelNodeTableAndDir& rhs) const {
@@ -91,6 +92,9 @@ struct ListFileID {
         }
         case ListType::REL_PROPERTY_LISTS: {
             return relPropertyListID == rhs.relPropertyListID;
+        }
+        default: {
+            throw common::NotImplementedException("ListFileID::operator()==");
         }
         }
     }
@@ -192,6 +196,8 @@ enum class StorageStructureType : uint8_t {
     COLUMN = 0,
     LISTS = 1,
     NODE_INDEX = 2,
+    DATA = 3,
+    METADATA = 4,
 };
 
 std::string storageStructureTypeToString(StorageStructureType storageStructureType);
@@ -202,6 +208,7 @@ std::string storageStructureTypeToString(StorageStructureType storageStructureTy
 struct StorageStructureID {
     StorageStructureType storageStructureType;
     bool isOverflow;
+    bool isNullBits;
     union {
         ColumnFileID columnFileID;
         ListFileID listFileID;
@@ -223,27 +230,30 @@ struct StorageStructureID {
             return nodeIndexID == rhs.nodeIndexID;
         }
         default: {
-            assert(false);
+            throw common::NotImplementedException("StorageStructureID::operator==");
         }
         }
     }
 
+    static StorageStructureID newDataID();
+    static StorageStructureID newMetadataID();
+
     static StorageStructureID newNodePropertyColumnID(
         common::table_id_t tableID, common::property_id_t propertyID);
 
-    static StorageStructureID newRelPropertyColumnID(
-        common::table_id_t relTableID, common::RelDirection dir, common::property_id_t propertyID);
+    static StorageStructureID newRelPropertyColumnID(common::table_id_t relTableID,
+        common::RelDataDirection dir, common::property_id_t propertyID);
 
     static StorageStructureID newAdjColumnID(
-        common::table_id_t relTableID, common::RelDirection dir);
+        common::table_id_t relTableID, common::RelDataDirection dir);
 
     static StorageStructureID newNodeIndexID(common::table_id_t tableID);
 
     static StorageStructureID newAdjListsID(
-        common::table_id_t relTableID, common::RelDirection dir, ListFileType listFileType);
+        common::table_id_t relTableID, common::RelDataDirection dir, ListFileType listFileType);
 
     static StorageStructureID newRelPropertyListsID(common::table_id_t relTableID,
-        common::RelDirection dir, common::property_id_t propertyID, ListFileType listFileType);
+        common::RelDataDirection dir, common::property_id_t propertyID, ListFileType listFileType);
 };
 
 enum class WALRecordType : uint8_t {
@@ -336,12 +346,16 @@ struct DiskOverflowFileNextBytePosRecord {
 
 struct CopyNodeRecord {
     common::table_id_t tableID;
+    common::page_idx_t startPageIdx;
 
     CopyNodeRecord() = default;
 
-    explicit CopyNodeRecord(common::table_id_t tableID) : tableID{tableID} {}
+    explicit CopyNodeRecord(common::table_id_t tableID, common::page_idx_t startPageIdx)
+        : tableID{tableID}, startPageIdx{startPageIdx} {}
 
-    inline bool operator==(const CopyNodeRecord& rhs) const { return tableID == rhs.tableID; }
+    inline bool operator==(const CopyNodeRecord& rhs) const {
+        return tableID == rhs.tableID && startPageIdx == rhs.startPageIdx;
+    }
 };
 
 struct CopyRelRecord {
@@ -355,6 +369,7 @@ struct CopyRelRecord {
 };
 
 struct TableStatisticsRecord {
+    // TODO(Guodong): Better to replace the bool with an enum.
     bool isNodeTable;
 
     TableStatisticsRecord() = default;
@@ -480,7 +495,7 @@ struct WALRecord {
     static WALRecord newRelTableRecord(common::table_id_t tableID);
     static WALRecord newOverflowFileNextBytePosRecord(
         StorageStructureID storageStructureID_, uint64_t prevNextByteToWriteTo_);
-    static WALRecord newCopyNodeRecord(common::table_id_t tableID);
+    static WALRecord newCopyNodeRecord(common::table_id_t tableID, common::page_idx_t startPageIdx);
     static WALRecord newCopyRelRecord(common::table_id_t tableID);
     static WALRecord newDropTableRecord(common::table_id_t tableID);
     static WALRecord newDropPropertyRecord(

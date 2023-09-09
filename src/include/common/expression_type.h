@@ -26,9 +26,11 @@ const std::string CAST_TO_INTERVAL_FUNC_NAME = "INTERVAL";
 const std::string CAST_TO_STRING_FUNC_NAME = "STRING";
 const std::string CAST_TO_DOUBLE_FUNC_NAME = "TO_DOUBLE";
 const std::string CAST_TO_FLOAT_FUNC_NAME = "TO_FLOAT";
+const std::string CAST_TO_SERIAL_FUNC_NAME = "TO_SERIAL";
 const std::string CAST_TO_INT64_FUNC_NAME = "TO_INT64";
 const std::string CAST_TO_INT32_FUNC_NAME = "TO_INT32";
 const std::string CAST_TO_INT16_FUNC_NAME = "TO_INT16";
+const std::string CAST_TO_BLOB_FUNC_NAME = "BLOB";
 
 // list
 const std::string LIST_CREATION_FUNC_NAME = "LIST_CREATION";
@@ -55,10 +57,29 @@ const std::string ARRAY_CONTAINS_FUNC_NAME = "ARRAY_CONTAINS";
 const std::string ARRAY_HAS_FUNC_NAME = "ARRAY_HAS";
 const std::string LIST_SLICE_FUNC_NAME = "LIST_SLICE";
 const std::string ARRAY_SLICE_FUNC_NAME = "ARRAY_SLICE";
+const std::string LIST_SUM_FUNC_NAME = "LIST_SUM";
+const std::string LIST_SORT_FUNC_NAME = "LIST_SORT";
+const std::string LIST_REVERSE_SORT_FUNC_NAME = "LIST_REVERSE_SORT";
+const std::string LIST_DISTINCT_FUNC_NAME = "LIST_DISTINCT";
+const std::string LIST_UNIQUE_FUNC_NAME = "LIST_UNIQUE";
+const std::string LIST_ANY_VALUE_FUNC_NAME = "LIST_ANY_VALUE";
 
 // struct
 const std::string STRUCT_PACK_FUNC_NAME = "STRUCT_PACK";
 const std::string STRUCT_EXTRACT_FUNC_NAME = "STRUCT_EXTRACT";
+
+// map
+const std::string MAP_CREATION_FUNC_NAME = "MAP";
+const std::string MAP_EXTRACT_FUNC_NAME = "MAP_EXTRACT";
+const std::string ELEMENT_AT_FUNC_NAME = "ELEMENT_AT"; // alias of MAP_EXTRACT
+const std::string CARDINALITY_FUNC_NAME = "CARDINALITY";
+const std::string MAP_KEYS_FUNC_NAME = "MAP_KEYS";
+const std::string MAP_VALUES_FUNC_NAME = "MAP_VALUES";
+
+// union
+const std::string UNION_VALUE_FUNC_NAME = "UNION_VALUE";
+const std::string UNION_TAG_FUNC_NAME = "UNION_TAG";
+const std::string UNION_EXTRACT_FUNC_NAME = "UNION_EXTRACT";
 
 // comparison
 const std::string EQUALS_FUNC_NAME = "EQUALS";
@@ -117,7 +138,6 @@ const std::string ARRAY_EXTRACT_FUNC_NAME = "ARRAY_EXTRACT";
 const std::string CONCAT_FUNC_NAME = "CONCAT";
 const std::string CONTAINS_FUNC_NAME = "CONTAINS";
 const std::string ENDS_WITH_FUNC_NAME = "ENDS_WITH";
-const std::string RE_MATCH_FUNC_NAME = "RE_MATCH";
 const std::string LCASE_FUNC_NAME = "LCASE";
 const std::string LEFT_FUNC_NAME = "LEFT";
 const std::string LENGTH_FUNC_NAME = "LENGTH";
@@ -137,6 +157,11 @@ const std::string SUFFIX_FUNC_NAME = "SUFFIX";
 const std::string TRIM_FUNC_NAME = "TRIM";
 const std::string UCASE_FUNC_NAME = "UCASE";
 const std::string UPPER_FUNC_NAME = "UPPER";
+const std::string REGEXP_FULL_MATCH_FUNC_NAME = "REGEXP_FULL_MATCH";
+const std::string REGEXP_MATCHES_FUNC_NAME = "REGEXP_MATCHES";
+const std::string REGEXP_REPLACE_FUNC_NAME = "REGEXP_REPLACE";
+const std::string REGEXP_EXTRACT_FUNC_NAME = "REGEXP_EXTRACT";
+const std::string REGEXP_EXTRACT_ALL_FUNC_NAME = "REGEXP_EXTRACT_ALL";
 
 // Date functions.
 const std::string DATE_PART_FUNC_NAME = "DATE_PART";
@@ -170,6 +195,23 @@ const std::string ID_FUNC_NAME = "ID";
 const std::string LABEL_FUNC_NAME = "LABEL";
 const std::string OFFSET_FUNC_NAME = "OFFSET";
 
+// Path functions
+const std::string NODES_FUNC_NAME = "NODES";
+const std::string RELS_FUNC_NAME = "RELS";
+const std::string PROPERTIES_FUNC_NAME = "PROPERTIES";
+const std::string IS_TRAIL_FUNC_NAME = "IS_TRAIL";
+const std::string IS_ACYCLIC_FUNC_NAME = "IS_ACYCLIC";
+
+// Blob functions
+const std::string OCTET_LENGTH_FUNC_NAME = "OCTET_LENGTH";
+const std::string ENCODE_FUNC_NAME = "ENCODE";
+const std::string DECODE_FUNC_NAME = "DECODE";
+
+// TABLE functions
+const std::string TABLE_INFO_FUNC_NAME = "TABLE_INFO";
+const std::string DB_VERSION_FUNC_NAME = "DB_VERSION";
+const std::string CURRENT_SETTING_FUNC_NAME = "CURRENT_SETTING";
+
 enum ExpressionType : uint8_t {
 
     // Boolean Connection Expressions
@@ -194,7 +236,10 @@ enum ExpressionType : uint8_t {
 
     LITERAL = 70,
 
+    STAR = 80,
+
     VARIABLE = 90,
+    PATH = 91,
 
     PARAMETER = 100,
 
@@ -205,6 +250,8 @@ enum ExpressionType : uint8_t {
     EXISTENTIAL_SUBQUERY = 190,
 
     CASE_ELSE = 200,
+
+    MACRO = 210,
 };
 
 bool isExpressionUnary(ExpressionType type);

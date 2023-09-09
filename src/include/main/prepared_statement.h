@@ -1,5 +1,10 @@
 #pragma once
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "common/api.h"
 #include "kuzu_fwd.h"
 #include "query_summary.h"
@@ -14,6 +19,7 @@ namespace main {
 class PreparedStatement {
     friend class Connection;
     friend class testing::TestHelper;
+    friend class testing::TestRunner;
     friend class testing::TinySnbDDLTest;
     friend class testing::TinySnbCopyCSVTransactionTest;
 
@@ -37,10 +43,16 @@ public:
      */
     KUZU_API bool isReadOnly() const;
 
-    std::vector<std::shared_ptr<binder::Expression>> getExpressionsToCollect();
+    inline std::unordered_map<std::string, std::shared_ptr<common::Value>> getParameterMap() {
+        return parameterMap;
+    }
+
+    ~PreparedStatement();
 
 private:
-    common::StatementType statementType;
+    bool isProfile();
+
+private:
     bool success = true;
     bool readOnly = false;
     std::string errMsg;

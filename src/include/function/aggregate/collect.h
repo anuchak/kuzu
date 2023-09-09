@@ -1,7 +1,5 @@
 #pragma once
 
-#include "common/in_mem_overflow_buffer_utils.h"
-#include "common/vector/value_vector_utils.h"
 #include "processor/result/factorized_table.h"
 
 namespace kuzu {
@@ -18,8 +16,8 @@ struct CollectFunction {
             outputVector->setValue<common::list_entry_t>(pos, listEntry);
             auto outputDataVector = common::ListVector::getDataVector(outputVector);
             for (auto i = 0u; i < listEntry.size; i++) {
-                common::ValueVectorUtils::copyNonNullDataWithSameTypeIntoPos(
-                    *outputDataVector, listEntry.offset + i, factorizedTable->getTuple(i));
+                outputDataVector->copyFromRowData(
+                    listEntry.offset + i, factorizedTable->getTuple(i));
             }
             // CollectStates are stored in factorizedTable entries. When the factorizedTable is
             // destructed, the destructor of CollectStates won't be called. Therefore, we need to
@@ -58,12 +56,12 @@ struct CollectFunction {
     }
 
     static void initCollectStateIfNecessary(
-        CollectState* state, storage::MemoryManager* memoryManager, common::DataType& dataType) {
+        CollectState* state, storage::MemoryManager* memoryManager, common::LogicalType& dataType) {
         if (state->factorizedTable == nullptr) {
             auto tableSchema = std::make_unique<processor::FactorizedTableSchema>();
             tableSchema->appendColumn(
                 std::make_unique<processor::ColumnSchema>(false /* isUnflat */,
-                    0 /* dataChunkPos */, common::Types::getDataTypeSize(dataType)));
+                    0 /* dataChunkPos */, storage::StorageUtils::getDataTypeSize(dataType)));
             state->factorizedTable =
                 std::make_unique<processor::FactorizedTable>(memoryManager, std::move(tableSchema));
         }
@@ -75,8 +73,7 @@ struct CollectFunction {
         for (auto i = 0u; i < multiplicity; ++i) {
             auto tuple = state->factorizedTable->appendEmptyTuple();
             state->isNull = false;
-            common::ValueVectorUtils::copyNonNullDataWithSameTypeOutFromPos(
-                *input, pos, tuple, *state->factorizedTable->getInMemOverflowBuffer());
+            input->copyToRowData(pos, tuple, state->factorizedTable->getInMemOverflowBuffer());
         }
     }
 
@@ -93,6 +90,7 @@ struct CollectFunction {
         } else {
             state->factorizedTable->merge(*otherState->factorizedTable);
         }
+        otherState->factorizedTable.reset();
     }
 
     static void finalize(uint8_t* state_) {}
@@ -102,8 +100,10 @@ struct CollectFunction {
         assert(arguments.size() == 1);
         auto aggFuncDefinition = reinterpret_cast<AggregateFunctionDefinition*>(definition);
         aggFuncDefinition->aggregateFunction->setInputDataType(arguments[0]->dataType);
+        auto varListTypeInfo = std::make_unique<common::VarListTypeInfo>(
+            std::make_unique<common::LogicalType>(arguments[0]->dataType));
         auto returnType =
-            common::DataType(std::make_unique<common::DataType>(arguments[0]->dataType));
+            common::LogicalType(common::LogicalTypeID::VAR_LIST, std::move(varListTypeInfo));
         return std::make_unique<FunctionBindData>(returnType);
     }
 };

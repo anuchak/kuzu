@@ -4,21 +4,22 @@ using namespace kuzu::common;
 using namespace kuzu::testing;
 using namespace kuzu::storage;
 
-class WALTests : public Test {
+class WALTests : public EmptyDBTest {
 
 protected:
     void SetUp() override {
-        FileUtils::createDir(TestHelper::getTmpTestDir());
+        EmptyDBTest::SetUp();
+        FileUtils::createDir(databasePath);
         LoggerUtils::createLogger(LoggerConstants::LoggerEnum::BUFFER_MANAGER);
         LoggerUtils::createLogger(LoggerConstants::LoggerEnum::WAL);
         LoggerUtils::createLogger(LoggerConstants::LoggerEnum::STORAGE);
         bufferManager = std::make_unique<BufferManager>(
             BufferPoolConstants::DEFAULT_BUFFER_POOL_SIZE_FOR_TESTING);
-        wal = make_unique<WAL>(TestHelper::getTmpTestDir(), *bufferManager);
+        wal = make_unique<WAL>(databasePath, *bufferManager);
     }
 
     void TearDown() override {
-        FileUtils::removeDir(TestHelper::getTmpTestDir());
+        EmptyDBTest::TearDown();
         LoggerUtils::dropLogger(LoggerConstants::LoggerEnum::BUFFER_MANAGER);
         LoggerUtils::dropLogger(LoggerConstants::LoggerEnum::WAL);
         LoggerUtils::dropLogger(LoggerConstants::LoggerEnum::STORAGE);
@@ -166,7 +167,7 @@ TEST_F(WALTests, TestOpeningExistingWAL) {
     addStructuredNodePropertyMainFilePageRecord(
         assignedPageIdxs, numStructuredNodePropertyMainFilePageRecords);
     wal.reset();
-    wal = make_unique<WAL>(TestHelper::getTmpTestDir(), *bufferManager);
+    wal = make_unique<WAL>(databasePath, *bufferManager);
 
     auto walIterator = wal->getIterator();
     readAndVerifyStructuredNodePropertyMainFilePageRecords(walIterator.get(), assignedPageIdxs,

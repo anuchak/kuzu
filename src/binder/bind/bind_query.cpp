@@ -10,7 +10,7 @@ std::unique_ptr<BoundRegularQuery> Binder::bindQuery(const RegularQuery& regular
     for (auto i = 0u; i < regularQuery.getNumSingleQueries(); i++) {
         // Don't clear scope within bindSingleQuery() yet because it is also used for subquery
         // binding.
-        variablesInScope.clear();
+        scope->clear();
         boundSingleQueries.push_back(bindSingleQuery(*regularQuery.getSingleQuery(i)));
     }
     validateUnionColumnsOfTheSameType(boundSingleQueries);
@@ -24,7 +24,6 @@ std::unique_ptr<BoundRegularQuery> Binder::bindQuery(const RegularQuery& regular
     for (auto& boundSingleQuery : boundSingleQueries) {
         auto normalizedSingleQuery = QueryNormalizer::normalizeQuery(*boundSingleQuery);
         validateReadNotFollowUpdate(*normalizedSingleQuery);
-        validateReturnNotFollowUpdate(*normalizedSingleQuery);
         boundRegularQuery->addSingleQuery(std::move(normalizedSingleQuery));
     }
     validateIsAllUnionOrUnionAll(*boundRegularQuery);
@@ -32,7 +31,6 @@ std::unique_ptr<BoundRegularQuery> Binder::bindQuery(const RegularQuery& regular
 }
 
 std::unique_ptr<BoundSingleQuery> Binder::bindSingleQuery(const SingleQuery& singleQuery) {
-    validateFirstMatchIsNotOptional(singleQuery);
     auto boundSingleQuery = std::make_unique<BoundSingleQuery>();
     for (auto i = 0u; i < singleQuery.getNumQueryParts(); ++i) {
         boundSingleQuery->addQueryPart(bindQueryPart(*singleQuery.getQueryPart(i)));

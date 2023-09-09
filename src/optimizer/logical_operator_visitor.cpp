@@ -10,6 +10,9 @@ void LogicalOperatorVisitor::visitOperatorSwitch(planner::LogicalOperator* op) {
     case LogicalOperatorType::FLATTEN: {
         visitFlatten(op);
     } break;
+    case LogicalOperatorType::EXPRESSIONS_SCAN: {
+        visitExpressionsScan(op);
+    } break;
     case LogicalOperatorType::SCAN_NODE: {
         visitScanNode(op);
     } break;
@@ -21,6 +24,9 @@ void LogicalOperatorVisitor::visitOperatorSwitch(planner::LogicalOperator* op) {
     } break;
     case LogicalOperatorType::RECURSIVE_EXTEND: {
         visitRecursiveExtend(op);
+    } break;
+    case LogicalOperatorType::PATH_PROPERTY_PROBE: {
+        visitPathPropertyProbe(op);
     } break;
     case LogicalOperatorType::HASH_JOIN: {
         visitHashJoin(op);
@@ -76,6 +82,12 @@ void LogicalOperatorVisitor::visitOperatorSwitch(planner::LogicalOperator* op) {
     case LogicalOperatorType::CREATE_REL: {
         visitCreateRel(op);
     } break;
+    case LogicalOperatorType::MERGE: {
+        visitMerge(op);
+    } break;
+    case LogicalOperatorType::COPY_TO: {
+        visitCopyTo(op);
+    } break;
     default:
         return;
     }
@@ -86,6 +98,9 @@ std::shared_ptr<planner::LogicalOperator> LogicalOperatorVisitor::visitOperatorR
     switch (op->getOperatorType()) {
     case LogicalOperatorType::FLATTEN: {
         return visitFlattenReplace(op);
+    }
+    case LogicalOperatorType::EXPRESSIONS_SCAN: {
+        return visitExpressionsScanReplace(op);
     }
     case LogicalOperatorType::SCAN_NODE: {
         return visitScanNodeReplace(op);
@@ -98,6 +113,9 @@ std::shared_ptr<planner::LogicalOperator> LogicalOperatorVisitor::visitOperatorR
     }
     case LogicalOperatorType::RECURSIVE_EXTEND: {
         return visitRecursiveExtendReplace(op);
+    }
+    case LogicalOperatorType::PATH_PROPERTY_PROBE: {
+        return visitPathPropertyProbeReplace(op);
     }
     case LogicalOperatorType::HASH_JOIN: {
         return visitHashJoinReplace(op);
@@ -152,6 +170,12 @@ std::shared_ptr<planner::LogicalOperator> LogicalOperatorVisitor::visitOperatorR
     }
     case LogicalOperatorType::CREATE_REL: {
         return visitCreateRelReplace(op);
+    }
+    case LogicalOperatorType::MERGE: {
+        return visitMergeReplace(op);
+    }
+    case LogicalOperatorType::COPY_TO: {
+        return visitCopyToReplace(op);
     }
     default:
         return op;

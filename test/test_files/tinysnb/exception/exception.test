@@ -1,0 +1,34 @@
+-GROUP TinySnbExceptionTest
+-DATASET CSV tinysnb
+
+--
+
+-CASE DivideBy0Error
+-STATEMENT RETURN 1 / 0
+---- error
+Runtime exception: Divide by zero.
+
+-CASE ModuloBy0Error
+-STATEMENT RETURN 1 % 0
+---- error
+Runtime exception: Modulo by zero.
+
+-CASE EmptyQuery
+-STATEMENT  
+---- error
+Connection Exception: Query is empty.
+
+-CASE Overflow
+-STATEMENT RETURN to_int16(10000000000)
+---- error
+Runtime exception: Cast failed. 10000000000 is not in INT16 range.
+
+-CASE Int32PrimaryKey
+-STATEMENT CREATE NODE TABLE play(a INT32, PRIMARY KEY (a))
+---- error
+Binder exception: Invalid primary key type: INT32. Expected STRING or INT64.
+
+-CASE UnalignedKeyAndValueList
+-STATEMENT RETURN MAP([4],[3,2])
+---- error
+Runtime exception: Unaligned key list and value list.

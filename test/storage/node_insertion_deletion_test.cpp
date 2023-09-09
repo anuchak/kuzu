@@ -29,7 +29,7 @@ public:
         uint32_t idPropertyID = getCatalog(*database)
                                     ->getReadOnlyVersion()
                                     ->getNodeProperty(personTableID, "ID")
-                                    .propertyID;
+                                    ->getPropertyID();
         idColumn = getStorageManager(*database)->getNodesStore().getNodePropertyColumn(
             personTableID, idPropertyID);
         conn->beginWriteTransaction();
@@ -47,20 +47,22 @@ public:
         auto dataChunk = std::make_shared<DataChunk>(2);
         // Flatten the data chunk
         dataChunk->state->currIdx = 0;
-        auto nodeIDVector = std::make_shared<ValueVector>(INTERNAL_ID, getMemoryManager(*database));
+        auto nodeIDVector =
+            std::make_shared<ValueVector>(LogicalTypeID::INTERNAL_ID, getMemoryManager(*database));
         dataChunk->insert(0, nodeIDVector);
-        auto idVector = std::make_shared<ValueVector>(INT64, getMemoryManager(*database));
+        auto idVector =
+            std::make_shared<ValueVector>(LogicalTypeID::INT64, getMemoryManager(*database));
         dataChunk->insert(1, idVector);
         ((nodeID_t*)nodeIDVector->getData())[0].offset = nodeOffset;
         idVector->setNull(0, true /* is null */);
-        idColumn->writeValues(nodeIDVector.get(), idVector.get());
+        idColumn->write(nodeIDVector.get(), idVector.get());
         return nodeOffset;
     }
 
 public:
     std::unique_ptr<Connection> readConn;
     NodeTable* personNodeTable;
-    Column* idColumn;
+    NodeColumn* idColumn;
 };
 
 TEST_F(NodeInsertionDeletionTests, DeletingSameNodeOffsetErrorsTest) {

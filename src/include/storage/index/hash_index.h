@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include "function/hash/hash_operations.h"
+#include "function/hash/hash_functions.h"
 #include "hash_index_builder.h"
 #include "storage/storage_structure/disk_overflow_file.h"
 
@@ -35,7 +35,7 @@ public:
 // and deletions are very small, thus they can be kept in memory.
 class HashIndexLocalStorage {
 public:
-    explicit HashIndexLocalStorage(common::DataType keyDataType)
+    explicit HashIndexLocalStorage(common::LogicalType keyDataType)
         : keyDataType{std::move(keyDataType)} {}
     // Currently, we assume that reads(lookup) and writes(delete/insert) of the local storage will
     // never happen concurrently. Thus, lookup requires no local storage lock. Writes are
@@ -54,7 +54,7 @@ public:
     std::shared_mutex localStorageSharedMutex;
 
 private:
-    common::DataType keyDataType;
+    common::LogicalType keyDataType;
     TemplatedHashIndexLocalStorage<int64_t> templatedLocalStorageForInt;
     TemplatedHashIndexLocalStorage<std::string> templatedLocalStorageForString;
 };
@@ -82,7 +82,7 @@ class HashIndex : public BaseHashIndex {
 
 public:
     HashIndex(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        const common::DataType& keyDataType, BufferManager& bufferManager, WAL* wal);
+        const common::LogicalType& keyDataType, BufferManager& bufferManager, WAL* wal);
 
 public:
     bool lookupInternal(
@@ -90,9 +90,10 @@ public:
     void deleteInternal(const uint8_t* key) const;
     bool insertInternal(const uint8_t* key, common::offset_t value);
 
-    void prepareCommitOrRollbackIfNecessary(bool isCommit);
-    void checkpointInMemoryIfNecessary();
-    void rollbackInMemoryIfNecessary() const;
+    void prepareCommit();
+    void prepareRollback();
+    void checkpointInMemory();
+    void rollbackInMemory() const;
     inline BMFileHandle* getFileHandle() const { return fileHandle.get(); }
 
 private:
@@ -113,8 +114,6 @@ private:
     void rehashSlots(HashIndexHeader& header);
     std::vector<std::pair<SlotInfo, Slot<T>>> getChainedSlots(slot_id_t pSlotId);
     void copyEntryToSlot(slot_id_t slotId, uint8_t* entry);
-
-    void prepareCommit();
 
     entry_pos_t findMatchedEntryInSlot(
         transaction::TransactionType trxType, const Slot<T>& slot, const uint8_t* key) const;
@@ -148,9 +147,9 @@ class PrimaryKeyIndex {
 
 public:
     PrimaryKeyIndex(const StorageStructureIDAndFName& storageStructureIDAndFName,
-        const common::DataType& keyDataType, BufferManager& bufferManager, WAL* wal)
-        : keyDataTypeID{keyDataType.typeID} {
-        if (keyDataTypeID == common::INT64) {
+        const common::LogicalType& keyDataType, BufferManager& bufferManager, WAL* wal)
+        : keyDataTypeID{keyDataType.getLogicalTypeID()} {
+        if (keyDataTypeID == common::LogicalTypeID::INT64) {
             hashIndexForInt64 = std::make_unique<HashIndex<int64_t>>(
                 storageStructureIDAndFName, keyDataType, bufferManager, wal);
         } else {
@@ -162,66 +161,70 @@ public:
     bool lookup(transaction::Transaction* trx, common::ValueVector* keyVector, uint64_t vectorPos,
         common::offset_t& result);
 
-    void deleteKey(common::ValueVector* keyVector, uint64_t vectorPos);
+    void delete_(common::ValueVector* keyVector);
 
     bool insert(common::ValueVector* keyVector, uint64_t vectorPos, common::offset_t value);
 
     // These two lookups are used by InMemRelCSVCopier.
     inline bool lookup(
         transaction::Transaction* transaction, int64_t key, common::offset_t& result) {
-        assert(keyDataTypeID == common::INT64);
+        assert(keyDataTypeID == common::LogicalTypeID::INT64);
         return hashIndexForInt64->lookupInternal(
             transaction, reinterpret_cast<const uint8_t*>(&key), result);
     }
     inline bool lookup(
         transaction::Transaction* transaction, const char* key, common::offset_t& result) {
-        assert(keyDataTypeID == common::STRING);
+        assert(keyDataTypeID == common::LogicalTypeID::STRING);
         return hashIndexForString->lookupInternal(
             transaction, reinterpret_cast<const uint8_t*>(key), result);
     }
 
-    inline void checkpointInMemoryIfNecessary() {
-        keyDataTypeID == common::INT64 ? hashIndexForInt64->checkpointInMemoryIfNecessary() :
-                                         hashIndexForString->checkpointInMemoryIfNecessary();
+    inline void checkpointInMemory() {
+        keyDataTypeID == common::LogicalTypeID::INT64 ? hashIndexForInt64->checkpointInMemory() :
+                                                        hashIndexForString->checkpointInMemory();
     }
-    inline void rollbackInMemoryIfNecessary() {
-        keyDataTypeID == common::INT64 ? hashIndexForInt64->rollbackInMemoryIfNecessary() :
-                                         hashIndexForString->rollbackInMemoryIfNecessary();
+    inline void rollbackInMemory() {
+        keyDataTypeID == common::LogicalTypeID::INT64 ? hashIndexForInt64->rollbackInMemory() :
+                                                        hashIndexForString->rollbackInMemory();
     }
-    inline void prepareCommitOrRollbackIfNecessary(bool isCommit) {
-        return keyDataTypeID == common::INT64 ?
-                   hashIndexForInt64->prepareCommitOrRollbackIfNecessary(isCommit) :
-                   hashIndexForString->prepareCommitOrRollbackIfNecessary(isCommit);
+    inline void prepareCommit() {
+        keyDataTypeID == common::LogicalTypeID::INT64 ? hashIndexForInt64->prepareCommit() :
+                                                        hashIndexForString->prepareCommit();
+    }
+    inline void prepareRollback() {
+        keyDataTypeID == common::LogicalTypeID::INT64 ? hashIndexForInt64->prepareRollback() :
+                                                        hashIndexForString->prepareRollback();
     }
     inline BMFileHandle* getFileHandle() {
-        return keyDataTypeID == common::INT64 ? hashIndexForInt64->getFileHandle() :
-                                                hashIndexForString->getFileHandle();
+        return keyDataTypeID == common::LogicalTypeID::INT64 ? hashIndexForInt64->getFileHandle() :
+                                                               hashIndexForString->getFileHandle();
     }
     inline DiskOverflowFile* getDiskOverflowFile() {
-        return keyDataTypeID == common::STRING ? hashIndexForString->diskOverflowFile.get() :
-                                                 nullptr;
+        return keyDataTypeID == common::LogicalTypeID::STRING ?
+                   hashIndexForString->diskOverflowFile.get() :
+                   nullptr;
     }
 
 private:
     inline void deleteKey(int64_t key) {
-        assert(keyDataTypeID == common::INT64);
+        assert(keyDataTypeID == common::LogicalTypeID::INT64);
         hashIndexForInt64->deleteInternal(reinterpret_cast<const uint8_t*>(&key));
     }
     inline void deleteKey(const char* key) {
-        assert(keyDataTypeID == common::STRING);
+        assert(keyDataTypeID == common::LogicalTypeID::STRING);
         hashIndexForString->deleteInternal(reinterpret_cast<const uint8_t*>(key));
     }
     inline bool insert(int64_t key, common::offset_t value) {
-        assert(keyDataTypeID == common::INT64);
+        assert(keyDataTypeID == common::LogicalTypeID::INT64);
         return hashIndexForInt64->insertInternal(reinterpret_cast<const uint8_t*>(&key), value);
     }
     inline bool insert(const char* key, common::offset_t value) {
-        assert(keyDataTypeID == common::STRING);
+        assert(keyDataTypeID == common::LogicalTypeID::STRING);
         return hashIndexForString->insertInternal(reinterpret_cast<const uint8_t*>(key), value);
     }
 
 private:
-    common::DataTypeID keyDataTypeID;
+    common::LogicalTypeID keyDataTypeID;
     std::unique_ptr<HashIndex<int64_t>> hashIndexForInt64;
     std::unique_ptr<HashIndex<common::ku_string_t>> hashIndexForString;
 };

@@ -7,6 +7,7 @@
 
 #include "catalog/catalog.h"
 #include "common/logging_level_utils.h"
+#include "common/string_utils.h"
 #include "common/type_utils.h"
 #include "json.hpp"
 #include "processor/result/factorized_table.h"
@@ -31,14 +32,17 @@ struct ShellCommand {
     const std::string CLEAR = ":clear";
     const std::string QUIT = ":quit";
     const std::string THREAD = ":thread";
+    const std::string BFS_POLICY = ":bfs_policy";
+    /// ADDING THIS HERE FOR TESTING PURPOSE ONLY
+    const std::string MAX_ACTIVE_BFS = ":max_active_bfs";
     const std::string LIST_NODES = ":list_nodes";
     const std::string LIST_RELS = ":list_rels";
     const std::string SHOW_NODE = ":show_node";
     const std::string SHOW_REL = ":show_rel";
     const std::string LOGGING_LEVEL = ":logging_level";
     const std::string QUERY_TIMEOUT = ":timeout";
-    const std::vector<std::string> commandList = {HELP, CLEAR, QUIT, THREAD, LIST_NODES, LIST_RELS,
-        SHOW_NODE, SHOW_REL, LOGGING_LEVEL, QUERY_TIMEOUT};
+    const std::vector<std::string> commandList = {HELP, CLEAR, QUIT, THREAD, BFS_POLICY,
+        MAX_ACTIVE_BFS, LIST_NODES, LIST_RELS, SHOW_NODE, SHOW_REL, LOGGING_LEVEL, QUERY_TIMEOUT};
 } shellCommand;
 
 const char* TAB = "    ";
@@ -70,10 +74,10 @@ void EmbeddedShell::updateTableNames() {
     nodeTableNames.clear();
     relTableNames.clear();
     for (auto& tableSchema : database->catalog->getReadOnlyVersion()->getNodeTableSchemas()) {
-        nodeTableNames.push_back(tableSchema.second->tableName);
+        nodeTableNames.push_back(tableSchema->tableName);
     }
     for (auto& tableSchema : database->catalog->getReadOnlyVersion()->getRelTableSchemas()) {
-        relTableNames.push_back(tableSchema.second->tableName);
+        relTableNames.push_back(tableSchema->tableName);
     }
 }
 
@@ -182,6 +186,7 @@ void highlight(char* buffer, char* resultBuf, uint32_t maxLen, uint32_t cursorPo
     }
     tokenList.emplace_back(word);
     for (std::string& token : tokenList) {
+#ifndef _WIN32
         if (token.find(' ') == std::string::npos) {
             for (const std::string& keyword : keywordList) {
                 if (regex_search(
@@ -195,6 +200,7 @@ void highlight(char* buffer, char* resultBuf, uint32_t maxLen, uint32_t cursorPo
                 }
             }
         }
+#endif
         highlightBuffer << token;
     }
     strcpy(resultBuf, highlightBuffer.str().c_str());
@@ -231,6 +237,10 @@ void EmbeddedShell::run() {
             break;
         } else if (lineStr.rfind(shellCommand.THREAD) == 0) {
             setNumThreads(lineStr.substr(shellCommand.THREAD.length()));
+        } else if(lineStr.rfind(shellCommand.BFS_POLICY) == 0) {
+            setRecursiveJoinBFSPolicy(lineStr.substr(shellCommand.BFS_POLICY.length()));
+        } else if(lineStr.rfind(shellCommand.MAX_ACTIVE_BFS) == 0) {
+            setMaxActiveBFSSharedState(lineStr.substr(shellCommand.MAX_ACTIVE_BFS.length()));
         } else if (lineStr.rfind(shellCommand.LIST_NODES) == 0) {
             printf("%s", conn->getNodeTableNames().c_str());
         } else if (lineStr.rfind(shellCommand.LIST_RELS) == 0) {
@@ -287,21 +297,34 @@ void EmbeddedShell::setNumThreads(const std::string& numThreadsString) {
     } catch (Exception& e) { printf("%s", e.what()); }
 }
 
-static inline std::string ltrim(const std::string& input) {
-    auto s = input;
-    s.erase(s.begin(), find_if(s.begin(), s.end(), [](unsigned char ch) { return !isspace(ch); }));
-    return s;
+void EmbeddedShell::setRecursiveJoinBFSPolicy(const std::string& bfsPolicy) {
+    auto policy = StringUtils::ltrim(bfsPolicy);
+    try {
+        if(policy.find("1T1S") != std::string::npos) {
+            conn->setRecursiveJoinBFSPolicy(SchedulerType::OneThreadOneMorsel);
+        } else if(policy.find("nTkS") != std::string::npos) {
+            conn->setRecursiveJoinBFSPolicy(SchedulerType::nThreadkMorsel);
+        } else {
+            printf("Unknown recursive join BFS policy provided, supported types: 1T1S & nTkS.\n");
+        }
+    } catch (Exception& e) { printf("%s", e.what()); }
+}
+
+void EmbeddedShell::setMaxActiveBFSSharedState(const std::string& maxActiveBFS) {
+    auto maxActiveBFS_ = stoi(maxActiveBFS);
+    conn->setMaxActiveBFSSharedState(maxActiveBFS_);
+    printf("Set Max Active BFS to: %d\n", maxActiveBFS_);
 }
 
 void EmbeddedShell::printNodeSchema(const std::string& tableName) {
-    auto name = ltrim(tableName);
+    auto name = StringUtils::ltrim(tableName);
     try {
         printf("%s\n", conn->getNodePropertyNames(name).c_str());
     } catch (Exception& e) { printf("%s\n", e.what()); }
 }
 
 void EmbeddedShell::printRelSchema(const std::string& tableName) {
-    auto name = ltrim(tableName);
+    auto name = StringUtils::ltrim(tableName);
     try {
         printf("%s\n", conn->getRelPropertyNames(name).c_str());
     } catch (Exception& e) { printf("%s\n", e.what()); }
@@ -313,6 +336,8 @@ void EmbeddedShell::printHelp() {
     printf("%s%s %sexit from shell\n", TAB, shellCommand.QUIT.c_str(), TAB);
     printf("%s%s [num_threads] %sset number of threads for query execution\n", TAB,
         shellCommand.THREAD.c_str(), TAB);
+    printf("%s%s [bfs_policy] %sset BFS policy for recursive join, available options: 1T1S, nTkS\n",
+        TAB, shellCommand.BFS_POLICY.c_str(), TAB);
     printf("%s%s [logging_level] %sset logging level of database, available options: debug, info, "
            "err\n",
         TAB, shellCommand.LOGGING_LEVEL.c_str(), TAB);
@@ -326,9 +351,8 @@ void EmbeddedShell::printHelp() {
 
 void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
     auto querySummary = queryResult.getQuerySummary();
-    if (querySummary->getIsExplain()) {
-        auto& oss = querySummary->getPlanAsOstream();
-        printf("%s", oss.str().c_str());
+    if (querySummary->isExplain()) {
+        printf("%s", queryResult.getNext()->toString().c_str());
     } else {
         const uint32_t maxWidth = 80;
         uint64_t numTuples = queryResult.getNumTuples();
@@ -338,7 +362,7 @@ void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
         }
         uint32_t lineSeparatorLen = 1u + colsWidth.size();
         std::string lineSeparator;
-        /*while (queryResult.hasNext()) {
+        while (queryResult.hasNext()) {
             auto tuple = queryResult.getNext();
             for (auto i = 0u; i < colsWidth.size(); i++) {
                 if (tuple->getValue(i)->isNull()) {
@@ -379,7 +403,7 @@ void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
             auto tuple = queryResult.getNext();
             printf("|%s|\n", tuple->toString(colsWidth, "|", maxWidth).c_str());
             printf("%s\n", lineSeparator.c_str());
-        }*/
+        }
 
         // print query result (numFlatTuples & tuples)
         if (numTuples == 1) {
@@ -389,20 +413,11 @@ void EmbeddedShell::printExecutionResult(QueryResult& queryResult) const {
         }
         printf("Time: %.2fms (compiling), %.2fms (executing)\n", querySummary->getCompilingTime(),
             querySummary->getExecutionTime());
-
-        if (querySummary->getIsProfile()) {
-            // print plan with profiling metrics
-            printf("==============================================\n");
-            printf("=============== Profiler Summary =============\n");
-            printf("==============================================\n");
-            printf(">> plan\n");
-            printf("%s", querySummary->getPlanAsOstream().str().c_str());
-        }
     }
 }
 
 void EmbeddedShell::setLoggingLevel(const std::string& loggingLevel) {
-    auto level = ltrim(loggingLevel);
+    auto level = StringUtils::ltrim(loggingLevel);
     try {
         database->setLoggingLevel(level);
         printf("logging level has been set to: %s.\n", level.c_str());
@@ -410,7 +425,7 @@ void EmbeddedShell::setLoggingLevel(const std::string& loggingLevel) {
 }
 
 void EmbeddedShell::setQueryTimeout(const std::string& timeoutInMS) {
-    auto queryTimeOutVal = std::stoull(ltrim(timeoutInMS));
+    auto queryTimeOutVal = std::stoull(StringUtils::ltrim(timeoutInMS));
     conn->setQueryTimeOut(queryTimeOutVal);
     printf("query timeout value has been set to: %llu ms.\n", queryTimeOutVal);
 }

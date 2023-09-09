@@ -7,6 +7,8 @@
 namespace kuzu {
 namespace common {
 
+constexpr char KUZU_VERSION[] = "v0.4.0";
+
 constexpr uint64_t DEFAULT_VECTOR_CAPACITY_LOG_2 = 11;
 constexpr uint64_t DEFAULT_VECTOR_CAPACITY = (uint64_t)1 << DEFAULT_VECTOR_CAPACITY_LOG_2;
 
@@ -19,8 +21,22 @@ constexpr uint64_t THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS = 500;
 
 constexpr uint64_t DEFAULT_CHECKPOINT_WAIT_TIMEOUT_FOR_TRANSACTIONS_TO_LEAVE_IN_MICROS = 5000000;
 
-const std::string INTERNAL_ID_SUFFIX = "_id";
-const std::string INTERNAL_LENGTH_SUFFIX = "_length";
+constexpr uint64_t VAR_LIST_RESIZE_RATIO = 2;
+
+struct InternalKeyword {
+    static constexpr char ANONYMOUS[] = "";
+    static constexpr char ID[] = "_ID";
+    static constexpr char LABEL[] = "_LABEL";
+    static constexpr char SRC[] = "_SRC";
+    static constexpr char DST[] = "_DST";
+    static constexpr char LENGTH[] = "_LENGTH";
+    static constexpr char NODES[] = "_NODES";
+    static constexpr char RELS[] = "_RELS";
+    static constexpr char STAR[] = "*";
+    static constexpr char PLACE_HOLDER[] = "_PLACE_HOLDER";
+    static constexpr char MAP_KEY[] = "KEY";
+    static constexpr char MAP_VALUE[] = "VALUE";
+};
 
 enum PageSizeClass : uint8_t {
     PAGE_4KB = 0,
@@ -67,13 +83,18 @@ struct StorageConstants {
         "nodes.statistics_and_deleted.ids.wal";
     static constexpr char RELS_METADATA_FILE_NAME[] = "rels.statistics";
     static constexpr char RELS_METADATA_FILE_NAME_FOR_WAL[] = "rels.statistics.wal";
-    static constexpr char CATALOG_FILE_NAME[] = "catalog.bin";
-    static constexpr char CATALOG_FILE_NAME_FOR_WAL[] = "catalog.bin.wal";
+    static constexpr char CATALOG_FILE_NAME[] = "catalog.kz";
+    static constexpr char CATALOG_FILE_NAME_FOR_WAL[] = "catalog.kz.wal";
+    static constexpr char DATA_FILE_NAME[] = "data.kz";
+    static constexpr char METADATA_FILE_NAME[] = "metadata.kz";
 
     // The number of pages that we add at one time when we need to grow a file.
     static constexpr uint64_t PAGE_GROUP_SIZE_LOG2 = 10;
     static constexpr uint64_t PAGE_GROUP_SIZE = (uint64_t)1 << PAGE_GROUP_SIZE_LOG2;
     static constexpr uint64_t PAGE_IDX_IN_GROUP_MASK = ((uint64_t)1 << PAGE_GROUP_SIZE_LOG2) - 1;
+
+    static constexpr uint64_t NODE_GROUP_SIZE_LOG2 = 17; // 64 * 2048 nodes per group
+    static constexpr uint64_t NODE_GROUP_SIZE = (uint64_t)1 << NODE_GROUP_SIZE_LOG2;
 };
 
 struct ListsMetadataConstants {
@@ -84,7 +105,7 @@ struct ListsMetadataConstants {
     // PAGE_LIST_GROUP_SIZE + 1 each and chained together. In each piece, there are
     // PAGE_LIST_GROUP_SIZE elements of that list and the offset to the next pageListGroups in the
     // blob that contains all pageListGroups of all lists.
-    static constexpr uint32_t PAGE_LIST_GROUP_SIZE = 3;
+    static constexpr uint32_t PAGE_LIST_GROUP_SIZE = 20;
     static constexpr uint32_t PAGE_LIST_GROUP_WITH_NEXT_PTR_SIZE = PAGE_LIST_GROUP_SIZE + 1;
 };
 
@@ -96,12 +117,6 @@ struct HashIndexConstants {
 struct CopyConstants {
     // Size (in bytes) of the chunks to be read in Node/Rel Copier
     static constexpr uint64_t CSV_READING_BLOCK_SIZE = 1 << 23;
-
-    // Number of tasks to be assigned in a batch when reading files.
-    static constexpr uint64_t NUM_COPIER_TASKS_TO_SCHEDULE_PER_BATCH = 200;
-
-    // Lower bound for number of incomplete tasks in copier to trigger scheduling a new batch.
-    static constexpr uint64_t MINIMUM_NUM_COPIER_TASKS_TO_SCHEDULE_MORE = 50;
 
     // Number of rows per block for npy files
     static constexpr uint64_t NUM_ROWS_PER_BLOCK_FOR_NPY = 2048;
@@ -115,6 +130,7 @@ struct CopyConstants {
     static constexpr char DEFAULT_CSV_LIST_BEGIN_CHAR = '[';
     static constexpr char DEFAULT_CSV_LIST_END_CHAR = ']';
     static constexpr bool DEFAULT_CSV_HAS_HEADER = false;
+    static constexpr char DEFAULT_CSV_LINE_BREAK = '\n';
 };
 
 struct LoggerConstants {
@@ -137,13 +153,35 @@ struct PlannerKnobs {
     static constexpr uint64_t BUILD_PENALTY = 2;
     // Avoid doing probe to build SIP if we have to accumulate a probe side that is much bigger than
     // build side. Also avoid doing build to probe SIP if probe side is not much bigger than build.
-    static constexpr uint64_t ACC_HJ_PROBE_BUILD_RATIO = 5;
+    static constexpr uint64_t SIP_RATIO = 5;
 };
 
 struct ClientContextConstants {
     // We disable query timeout by default.
     static constexpr uint64_t TIMEOUT_IN_MS = 0;
 };
+
+/**
+ * Describing the scheduling policies currently being supported -
+ *
+ * 1) OneThreadOneMorsel (1T1S): This policy will be used for all multi label and path tracking
+ *    queries. Each thread asking for work gets allotted its private morsel on which only that
+ *    thread will work. Once that work is finished, we look for another morsel and if there are
+ *    none the thread will exit.
+ *    Here 1 'morsel' refers to 1 source for which BFS is being performed.
+ *
+ * 2) nThreadkMorsel (nTkS): This policy will be used *ONLY* for single label - no path tracking
+ *    queries. Currently 'k' is the same as no. of threads active (or 'n').
+ *    This policy aims to support at any given point at most 'k' total active BFSSharedStates. Any
+ *    thread can be assigned to work any of the active BFSSharedState. A different BFSSharedState is
+ *    assigned only if the already assigned BFSSharedState does not have work or is completed. The
+ *    work can be either be scan extend or writing path length to vector.
+ *    Here 1 'BFSSharedState' refers to the data structure holding the state for the BFS of a single
+ *    source. 1 'morsel' refers to either a group of offsets for which BFS extension needs to be
+ *    performed OR a group of offsets for which path length needs to be written to the ValueVector.
+ *
+ */
+enum SchedulerType { OneThreadOneMorsel, nThreadkMorsel };
 
 } // namespace common
 } // namespace kuzu

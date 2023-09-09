@@ -64,7 +64,7 @@ public:
 
     template<typename T>
     void singleOrderByColTest(const std::vector<T>& sortingData, const std::vector<bool>& nullMasks,
-        const std::vector<uint64_t>& expectedBlockOffsetOrder, const DataTypeID dataTypeID,
+        const std::vector<uint64_t>& expectedBlockOffsetOrder, const LogicalTypeID dataTypeID,
         const bool isAsc, bool hasPayLoadCol) {
         KU_ASSERT(sortingData.size() == nullMasks.size());
         KU_ASSERT(sortingData.size() == expectedBlockOffsetOrder.size());
@@ -87,13 +87,14 @@ public:
 
         std::unique_ptr<FactorizedTableSchema> tableSchema =
             std::make_unique<FactorizedTableSchema>();
-        tableSchema->appendColumn(std::make_unique<ColumnSchema>(
-            false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(dataTypeID)));
+        tableSchema->appendColumn(std::make_unique<ColumnSchema>(false /* isUnflat */,
+            0 /* dataChunkPos */, LogicalTypeUtils::getRowLayoutSize(LogicalType{dataTypeID})));
         std::vector<StrKeyColInfo> strKeyColsInfo;
 
         if (hasPayLoadCol) {
             // Create a new payloadValueVector for the payload column.
-            auto payloadValueVector = std::make_shared<ValueVector>(STRING, memoryManager.get());
+            auto payloadValueVector =
+                std::make_shared<ValueVector>(LogicalTypeID::STRING, memoryManager.get());
             for (auto i = 0u; i < dataChunk->state->selVector->selectedSize; i++) {
                 payloadValueVector->setValue(i, std::to_string(i));
             }
@@ -101,8 +102,8 @@ public:
             // To test whether the orderByCol -> ftIdx works properly, we put the
             // payload column at index 0, and the orderByCol at index 1.
             allVectors.insert(allVectors.begin(), payloadValueVector.get());
-            tableSchema->appendColumn(std::make_unique<ColumnSchema>(
-                false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(dataTypeID)));
+            tableSchema->appendColumn(std::make_unique<ColumnSchema>(false /* isUnflat */,
+                0 /* dataChunkPos */, LogicalTypeUtils::getRowLayoutSize(LogicalType{dataTypeID})));
             strKeyColsInfo.emplace_back(
                 StrKeyColInfo(tableSchema->getColOffset(1) /* colOffsetInFT */,
                     0 /* colOffsetInEncodedKeyBlock */, isAsc));
@@ -140,7 +141,8 @@ public:
             std::make_unique<FactorizedTableSchema>();
         std::vector<StrKeyColInfo> strKeyColsInfo;
         for (auto i = 0; i < stringValues.size(); i++) {
-            auto stringValueVector = std::make_shared<ValueVector>(STRING, memoryManager.get());
+            auto stringValueVector =
+                std::make_shared<ValueVector>(LogicalTypeID::STRING, memoryManager.get());
             tableSchema->appendColumn(std::make_unique<ColumnSchema>(
                 false /* isUnflat */, 0 /* dataChunkPos */, sizeof(ku_string_t)));
             strKeyColsInfo.push_back(StrKeyColInfo(tableSchema->getColOffset(strKeyColsInfo.size()),
@@ -184,7 +186,7 @@ TEST_F(RadixSortTest, singleOrderByColInt64Test) {
         INT64_MIN, 210042 /* positive 2 bytes number */};
     std::vector<bool> nullMasks = {false, true, false, false, false, false, false};
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {5, 3, 2, 0, 6, 4, 1};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, INT64,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::INT64,
         true /* isAsc */, false /* hasPayLoadCol */);
 }
 
@@ -194,7 +196,7 @@ TEST_F(RadixSortTest, singleOrderByColNoNullInt64Test) {
         -819321 /* negative 2 bytes number */, INT64_MAX, INT64_MIN};
     std::vector<bool> nullMasks(6, false);
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {4, 1, 0, 2, 3, 5};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, INT64,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::INT64,
         false /* isAsc */, false /* hasPayLoadCol */);
 }
 
@@ -208,7 +210,7 @@ TEST_F(RadixSortTest, singleOrderByColLargeInputInt64Test) {
     std::vector<uint64_t> expectedFTBlockOffsetOrder(240);
     iota(expectedFTBlockOffsetOrder.begin(), expectedFTBlockOffsetOrder.end(), 0);
     reverse(expectedFTBlockOffsetOrder.begin(), expectedFTBlockOffsetOrder.end());
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, INT64,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::INT64,
         true /* isAsc */, false /* hasPayLoadCol */);
 }
 
@@ -216,50 +218,50 @@ TEST_F(RadixSortTest, singleOrderByColBoolTest) {
     std::vector<int64_t> sortingData = {true, false, false /* NULL */};
     std::vector<bool> nullMasks = {false, false, true};
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {2, 0, 1};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, BOOL,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::BOOL,
         false /* isAsc */, false /* hasPayLoadCol */);
 }
 
 TEST_F(RadixSortTest, singleOrderByColDateTest) {
     std::vector<date_t> sortingData = {
-        Date::FromCString("1970-01-01", strlen("1970-01-01")) /* days=0 */,
-        Date::FromCString("1970-01-02", strlen("1970-01-02")) /* positive days */,
-        Date::FromCString("2003-10-12", strlen("2003-10-12")) /* large positive days */,
-        Date::FromCString("1968-12-21", strlen("1968-12-21")) /* negative days */,
+        Date::fromCString("1970-01-01", strlen("1970-01-01")) /* days=0 */,
+        Date::fromCString("1970-01-02", strlen("1970-01-02")) /* positive days */,
+        Date::fromCString("2003-10-12", strlen("2003-10-12")) /* large positive days */,
+        Date::fromCString("1968-12-21", strlen("1968-12-21")) /* negative days */,
         date_t(0) /*NULL*/};
     std::vector<bool> nullMasks = {false, false, false, false, true};
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {3, 0, 1, 2, 4};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, DATE, true /* isAsc */,
-        false /* hasPayLoadCol */);
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::DATE,
+        true /* isAsc */, false /* hasPayLoadCol */);
 }
 
 TEST_F(RadixSortTest, singleOrderByColTimestampTest) {
     std::vector<timestamp_t> sortingData = {
-        Timestamp::FromCString("1970-01-01 00:00:00", strlen("1970-01-01 00:00:00")) /* micros=0 */,
-        Timestamp::FromCString(
+        Timestamp::fromCString("1970-01-01 00:00:00", strlen("1970-01-01 00:00:00")) /* micros=0 */,
+        Timestamp::fromCString(
             "1970-01-02 14:21:11", strlen("1970-01-02 14:21:11")) /* positive micros */,
         timestamp_t(0) /*NULL*/,
-        Timestamp::FromCString(
+        Timestamp::fromCString(
             "2003-10-12 08:21:10", strlen("2003-10-12 08:21:10")) /* large positive micros */,
-        Timestamp::FromCString(
+        Timestamp::fromCString(
             "1959-03-20 11:12:13.500", strlen("1959-03-20 11:12:13.500")) /* negative micros */
     };
 
     std::vector<bool> nullMasks = {false, false, true, false, false};
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {2, 3, 1, 0, 4};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, TIMESTAMP,
-        false /* isAsc */, false /* hasPayLoadCol */);
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder,
+        LogicalTypeID::TIMESTAMP, false /* isAsc */, false /* hasPayLoadCol */);
 }
 
 TEST_F(RadixSortTest, singleOrderByColIntervalTest) {
     // We need to normalize days and micros in intervals.
     std::vector<interval_t> sortingData = {
         interval_t(0, 0, 0) /* NULL */,
-        Interval::FromCString(
+        Interval::fromCString(
             "100 days 3 years 2 hours 178 minutes", strlen("100 days 3 years 2 hours 178 minutes")),
-        Interval::FromCString("2 years 466 days 20 minutes",
+        Interval::fromCString("2 years 466 days 20 minutes",
             strlen("2 years 466 days 20 minutes")) /* =3 years 106 days 20 minutes */,
-        Interval::FromCString("3 years 99 days 200 hours 100 minutes",
+        Interval::fromCString("3 years 99 days 200 hours 100 minutes",
             strlen("3 years 99 days 100 hours 100 minutes")) /* =3 years 107 days 8 hours 100
                                                                 minutes */
         ,
@@ -267,8 +269,8 @@ TEST_F(RadixSortTest, singleOrderByColIntervalTest) {
 
     std::vector<bool> nullMasks = {true, false, false, false};
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {0, 3, 2, 1};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, INTERVAL,
-        false /* isAsc */, false /* hasPayLoadCol */);
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder,
+        LogicalTypeID::INTERVAL, false /* isAsc */, false /* hasPayLoadCol */);
 }
 
 TEST_F(RadixSortTest, singleOrderByColDoubleTest) {
@@ -277,7 +279,7 @@ TEST_F(RadixSortTest, singleOrderByColDoubleTest) {
         -76123 /* large negative number */, 0, 0 /* NULL */};
     std::vector<bool> nullMasks = {false, false, false, false, false, true};
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {5, 2, 0, 4, 1, 3};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, DOUBLE,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::DOUBLE,
         false /* isAsc */, false /* hasPayLoadCol */);
 }
 
@@ -289,7 +291,7 @@ TEST_F(RadixSortTest, singleOrderByColStringTest) {
         "common prefix rank2", "another common prefix1", "another short string", "" /*NULL*/};
     std::vector<bool> nullMasks = {false, false, false, false, false, false, false, false, true};
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {0, 6, 2, 7, 3, 5, 4, 1, 8};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, STRING,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::STRING,
         true /* isAsc */, false /* hasPayLoadCol */);
 }
 
@@ -301,7 +303,7 @@ TEST_F(RadixSortTest, singleOrderByColNoNullStringTest) {
         "common prefix rank2", "other common prefix test3", "another short string"};
     std::vector<bool> nullMasks(8, false);
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {0, 6, 1, 4, 5, 3, 7, 2};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, STRING,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::STRING,
         false /* isAsc */, false /* hasPayLoadCol */);
 }
 
@@ -312,7 +314,7 @@ TEST_F(RadixSortTest, singleOrderByColAllTiesStringTest) {
     std::vector<std::string> sortingData(20, "same string for all tuples");
     std::vector<bool> nullMasks(20, false);
     std::vector<uint64_t> expectedFTBlockOffsetOrder(20, -1);
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, STRING,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::STRING,
         true /* isAsc */, false /* hasPayLoadCol */);
 }
 
@@ -324,17 +326,22 @@ TEST_F(RadixSortTest, singleOrderByColWithPayloadTest) {
         "string column with payload col long long", "very long long long string"};
     std::vector<bool> nullMasks(5, false);
     std::vector<uint64_t> expectedFTBlockOffsetOrder = {2, 3, 1, 0, 4};
-    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, STRING,
+    singleOrderByColTest(sortingData, nullMasks, expectedFTBlockOffsetOrder, LogicalTypeID::STRING,
         true /* isAsc */, true /* hasPayLoadCol */);
 }
 
 TEST_F(RadixSortTest, multipleOrderByColNoTieTest) {
     std::vector<bool> isAscOrder = {true, false, true, false, false};
-    auto intFlatValueVector = std::make_shared<ValueVector>(INT64, memoryManager.get());
-    auto doubleFlatValueVector = std::make_shared<ValueVector>(DOUBLE, memoryManager.get());
-    auto stringFlatValueVector = std::make_shared<ValueVector>(STRING, memoryManager.get());
-    auto timestampFlatValueVector = std::make_shared<ValueVector>(TIMESTAMP, memoryManager.get());
-    auto dateFlatValueVector = std::make_shared<ValueVector>(DATE, memoryManager.get());
+    auto intFlatValueVector =
+        std::make_shared<ValueVector>(LogicalTypeID::INT64, memoryManager.get());
+    auto doubleFlatValueVector =
+        std::make_shared<ValueVector>(LogicalTypeID::DOUBLE, memoryManager.get());
+    auto stringFlatValueVector =
+        std::make_shared<ValueVector>(LogicalTypeID::STRING, memoryManager.get());
+    auto timestampFlatValueVector =
+        std::make_shared<ValueVector>(LogicalTypeID::TIMESTAMP, memoryManager.get());
+    auto dateFlatValueVector =
+        std::make_shared<ValueVector>(LogicalTypeID::DATE, memoryManager.get());
 
     auto mockDataChunk = std::make_shared<DataChunk>(5);
     mockDataChunk->insert(0, intFlatValueVector);
@@ -367,36 +374,41 @@ TEST_F(RadixSortTest, multipleOrderByColNoTieTest) {
     stringFlatValueVector->setNull(3, true);
     stringFlatValueVector->setValue<std::string>(4, "short str");
     timestampFlatValueVector->setValue(
-        0, Timestamp::FromCString("1970-01-01 00:00:00", strlen("1970-01-01 00:00:00")));
+        0, Timestamp::fromCString("1970-01-01 00:00:00", strlen("1970-01-01 00:00:00")));
     timestampFlatValueVector->setValue(
-        1, Timestamp::FromCString("1962-04-07 14:11:23", strlen("1962-04-07 14:11:23")));
+        1, Timestamp::fromCString("1962-04-07 14:11:23", strlen("1962-04-07 14:11:23")));
     timestampFlatValueVector->setValue(
-        2, Timestamp::FromCString("1970-01-01 01:00:00", strlen("1970-01-01 01:00:00")));
+        2, Timestamp::fromCString("1970-01-01 01:00:00", strlen("1970-01-01 01:00:00")));
     timestampFlatValueVector->setValue(
-        3, Timestamp::FromCString("1953-01-12 21:12:00", strlen("2053-01-12 21:12:00")));
+        3, Timestamp::fromCString("1953-01-12 21:12:00", strlen("2053-01-12 21:12:00")));
     timestampFlatValueVector->setNull(4, true);
-    dateFlatValueVector->setValue(0, Date::FromCString("1978-09-12", strlen("1978-09-12")));
-    dateFlatValueVector->setValue(1, Date::FromCString("2035-07-04", strlen("2035-07-04")));
+    dateFlatValueVector->setValue(0, Date::fromCString("1978-09-12", strlen("1978-09-12")));
+    dateFlatValueVector->setValue(1, Date::fromCString("2035-07-04", strlen("2035-07-04")));
     dateFlatValueVector->setNull(2, true);
-    dateFlatValueVector->setValue(3, Date::FromCString("1964-01-21", strlen("1964-01-21")));
-    dateFlatValueVector->setValue(4, Date::FromCString("2000-11-13", strlen("2000-11-13")));
+    dateFlatValueVector->setValue(3, Date::fromCString("1964-01-21", strlen("1964-01-21")));
+    dateFlatValueVector->setValue(4, Date::fromCString("2000-11-13", strlen("2000-11-13")));
 
     std::unique_ptr<FactorizedTableSchema> tableSchema = std::make_unique<FactorizedTableSchema>();
-    tableSchema->appendColumn(std::make_unique<ColumnSchema>(
-        false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(INT64)));
-    tableSchema->appendColumn(std::make_unique<ColumnSchema>(
-        false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(DOUBLE)));
-    tableSchema->appendColumn(std::make_unique<ColumnSchema>(
-        false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(STRING)));
-    tableSchema->appendColumn(std::make_unique<ColumnSchema>(
-        false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(TIMESTAMP)));
-    tableSchema->appendColumn(std::make_unique<ColumnSchema>(
-        false /* isUnflat */, 0 /* dataChunkPos */, Types::getDataTypeSize(DATE)));
+    tableSchema->appendColumn(
+        std::make_unique<ColumnSchema>(false /* isUnflat */, 0 /* dataChunkPos */,
+            LogicalTypeUtils::getRowLayoutSize(LogicalType{LogicalTypeID::INT64})));
+    tableSchema->appendColumn(
+        std::make_unique<ColumnSchema>(false /* isUnflat */, 0 /* dataChunkPos */,
+            LogicalTypeUtils::getRowLayoutSize(LogicalType{LogicalTypeID::DOUBLE})));
+    tableSchema->appendColumn(
+        std::make_unique<ColumnSchema>(false /* isUnflat */, 0 /* dataChunkPos */,
+            LogicalTypeUtils::getRowLayoutSize(LogicalType{LogicalTypeID::STRING})));
+    tableSchema->appendColumn(
+        std::make_unique<ColumnSchema>(false /* isUnflat */, 0 /* dataChunkPos */,
+            LogicalTypeUtils::getRowLayoutSize(LogicalType{LogicalTypeID::TIMESTAMP})));
+    tableSchema->appendColumn(
+        std::make_unique<ColumnSchema>(false /* isUnflat */, 0 /* dataChunkPos */,
+            LogicalTypeUtils::getRowLayoutSize(LogicalType{LogicalTypeID::DATE})));
 
     FactorizedTable factorizedTable(memoryManager.get(), std::move(tableSchema));
     std::vector<StrKeyColInfo> strKeyColsInfo = {StrKeyColInfo(16 /* colOffsetInFT */,
-        OrderByKeyEncoder::getEncodingSize(DataType(INT64)) +
-            OrderByKeyEncoder::getEncodingSize(DataType(DOUBLE)),
+        OrderByKeyEncoder::getEncodingSize(LogicalType(LogicalTypeID::INT64)) +
+            OrderByKeyEncoder::getEncodingSize(LogicalType(LogicalTypeID::DOUBLE)),
         true /* isAscOrder */)};
 
     auto orderByKeyEncoder =

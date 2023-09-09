@@ -1,7 +1,7 @@
 #include <set>
 
 #include "graph_test/graph_test.h"
-#include "processor/mapper/plan_mapper.h"
+#include "processor/plan_mapper.h"
 #include "processor/processor.h"
 
 using namespace kuzu::catalog;
@@ -45,10 +45,6 @@ public:
     void validateDatabaseStateBeforeCheckPointCopyNode(table_id_t tableID) {
         auto nodeTableSchema =
             (NodeTableSchema*)catalog->getReadOnlyVersion()->getTableSchema(tableID);
-        // Before checkPointing, we should have two versions of node column and list files. The
-        // updates to maxNodeOffset should be invisible to read-only transactions.
-        validateNodeColumnFilesExistence(
-            nodeTableSchema, DBFileType::WAL_VERSION, true /* existence */);
         validateNodeColumnFilesExistence(
             nodeTableSchema, DBFileType::ORIGINAL, true /* existence */);
         ASSERT_EQ(std::make_unique<Connection>(database.get())
@@ -65,11 +61,6 @@ public:
     void validateDatabaseStateAfterCheckPointCopyNode(table_id_t tableID) {
         auto nodeTableSchema =
             (NodeTableSchema*)catalog->getReadOnlyVersion()->getTableSchema(tableID);
-        // After checkPointing, we should only have one version of node column and list
-        // files(original version). The updates to maxNodeOffset should be visible to read-only
-        // transaction;
-        validateNodeColumnFilesExistence(
-            nodeTableSchema, DBFileType::WAL_VERSION, false /* existence */);
         validateNodeColumnFilesExistence(
             nodeTableSchema, DBFileType::ORIGINAL, true /* existence */);
         validateTinysnbPersonAgeProperty();
@@ -85,18 +76,18 @@ public:
         auto preparedStatement = conn->prepare(copyPersonTableCMD);
         conn->beginWriteTransaction();
         auto mapper = PlanMapper(
-            *getStorageManager(*database), getMemoryManager(*database), getCatalog(*database),
-            clientContext->numThreadsForExecution);
+            *getStorageManager(*database), getMemoryManager(*database), getCatalog(*database));
         auto physicalPlan =
             mapper.mapLogicalPlanToPhysical(preparedStatement->logicalPlans[0].get(),
-                preparedStatement->getExpressionsToCollect(), preparedStatement->statementType);
-        clientContext->activeQuery = std::make_unique<ActiveQuery>();
+                preparedStatement->statementResult->getColumns());
+        clientContext->resetActiveQuery();
         getQueryProcessor(*database)->execute(physicalPlan.get(), executionContext.get());
         auto tableID = catalog->getReadOnlyVersion()->getTableID("person");
         validateDatabaseStateBeforeCheckPointCopyNode(tableID);
         if (transactionTestType == TransactionTestType::RECOVERY) {
             commitButSkipCheckpointingForTestingRecovery(*conn);
             validateDatabaseStateBeforeCheckPointCopyNode(tableID);
+            physicalPlan.reset();
             initWithoutLoadingGraph();
             validateDatabaseStateAfterCheckPointCopyNode(tableID);
         } else {
@@ -107,20 +98,20 @@ public:
 
     void validateTinysnbKnowsDateProperty() {
         std::multiset<date_t, std::greater<>> expectedResult = {
-            Date::FromCString("1905-12-12", strlen("1905-12-12")),
-            Date::FromCString("1905-12-12", strlen("1905-12-12")),
-            Date::FromCString("1950-05-14", strlen("1950-05-14")),
-            Date::FromCString("1950-05-14", strlen("1950-05-14")),
-            Date::FromCString("1950-05-14", strlen("1950-05-14")),
-            Date::FromCString("1950-05-14", strlen("1950-05-14")),
-            Date::FromCString("2000-01-01", strlen("2000-01-01")),
-            Date::FromCString("2000-01-01", strlen("2000-01-01")),
-            Date::FromCString("2021-06-30", strlen("2021-06-30")),
-            Date::FromCString("2021-06-30", strlen("2021-06-30")),
-            Date::FromCString("2021-06-30", strlen("2021-06-30")),
-            Date::FromCString("2021-06-30", strlen("2021-06-30")),
-            Date::FromCString("2021-06-30", strlen("2021-06-30")),
-            Date::FromCString("2021-06-30", strlen("2021-06-30"))};
+            Date::fromCString("1905-12-12", strlen("1905-12-12")),
+            Date::fromCString("1905-12-12", strlen("1905-12-12")),
+            Date::fromCString("1950-05-14", strlen("1950-05-14")),
+            Date::fromCString("1950-05-14", strlen("1950-05-14")),
+            Date::fromCString("1950-05-14", strlen("1950-05-14")),
+            Date::fromCString("1950-05-14", strlen("1950-05-14")),
+            Date::fromCString("2000-01-01", strlen("2000-01-01")),
+            Date::fromCString("2000-01-01", strlen("2000-01-01")),
+            Date::fromCString("2021-06-30", strlen("2021-06-30")),
+            Date::fromCString("2021-06-30", strlen("2021-06-30")),
+            Date::fromCString("2021-06-30", strlen("2021-06-30")),
+            Date::fromCString("2021-06-30", strlen("2021-06-30")),
+            Date::fromCString("2021-06-30", strlen("2021-06-30")),
+            Date::fromCString("2021-06-30", strlen("2021-06-30"))};
         std::multiset<date_t, std::greater<>> actualResult;
         auto queryResult = conn->query("match (:person)-[e:knows]->(:person) return e.date");
         while (queryResult->hasNext()) {
@@ -133,9 +124,6 @@ public:
     void validateDatabaseStateBeforeCheckPointCopyRel(table_id_t tableID) {
         auto relTableSchema =
             (RelTableSchema*)catalog->getReadOnlyVersion()->getTableSchema(tableID);
-        // Before checkPointing, we should have two versions of rel column and list files.
-        validateRelColumnAndListFilesExistence(
-            relTableSchema, DBFileType::WAL_VERSION, true /* existence */);
         validateRelColumnAndListFilesExistence(
             relTableSchema, DBFileType::ORIGINAL, true /* existence */);
         auto dummyWriteTrx = transaction::Transaction::getDummyWriteTrx();
@@ -147,10 +135,6 @@ public:
     void validateDatabaseStateAfterCheckPointCopyRel(table_id_t knowsTableID) {
         auto relTableSchema =
             (RelTableSchema*)catalog->getReadOnlyVersion()->getTableSchema(knowsTableID);
-        // After checkPointing, we should only have one version of rel column and list
-        // files(original version).
-        validateRelColumnAndListFilesExistence(
-            relTableSchema, DBFileType::WAL_VERSION, false /* existence */);
         validateRelColumnAndListFilesExistence(
             relTableSchema, DBFileType::ORIGINAL, true /* existence */);
         validateTinysnbKnowsDateProperty();
@@ -171,18 +155,18 @@ public:
         auto preparedStatement = conn->prepare(copyKnowsTableCMD);
         conn->beginWriteTransaction();
         auto mapper = PlanMapper(
-            *getStorageManager(*database), getMemoryManager(*database), getCatalog(*database),
-            clientContext->numThreadsForExecution);
+            *getStorageManager(*database), getMemoryManager(*database), getCatalog(*database));
         auto physicalPlan =
             mapper.mapLogicalPlanToPhysical(preparedStatement->logicalPlans[0].get(),
-                preparedStatement->getExpressionsToCollect(), preparedStatement->statementType);
-        clientContext->activeQuery = std::make_unique<ActiveQuery>();
+                preparedStatement->statementResult->getColumns());
+        clientContext->resetActiveQuery();
         getQueryProcessor(*database)->execute(physicalPlan.get(), executionContext.get());
         auto tableID = catalog->getReadOnlyVersion()->getTableID("knows");
         validateDatabaseStateBeforeCheckPointCopyRel(tableID);
         if (transactionTestType == TransactionTestType::RECOVERY) {
             commitButSkipCheckpointingForTestingRecovery(*conn);
             validateDatabaseStateBeforeCheckPointCopyRel(tableID);
+            physicalPlan.reset();
             initWithoutLoadingGraph();
             validateDatabaseStateAfterCheckPointCopyRel(tableID);
         } else {
@@ -226,28 +210,6 @@ TEST_F(TinySnbCopyCSVTransactionTest, CopyRelCommitNormalExecution) {
 
 TEST_F(TinySnbCopyCSVTransactionTest, CopyRelCommitRecovery) {
     copyRelCSVCommitAndRecoveryTest(TransactionTestType::RECOVERY);
-}
-
-TEST_F(TinySnbCopyCSVTransactionTest, CopyNodeOutputMsg) {
-    conn->query(createPersonTableCMD);
-    conn->query(createKnowsTableCMD);
-    auto result = conn->query(copyPersonTableCMD);
-    ASSERT_EQ(TestHelper::convertResultToString(*result),
-        std::vector<std::string>{"8 number of tuples has been copied to table: person."});
-    result = conn->query(copyKnowsTableCMD);
-    ASSERT_EQ(TestHelper::convertResultToString(*result),
-        std::vector<std::string>{"14 number of tuples has been copied to table: knows."});
-}
-
-TEST_F(TinySnbCopyCSVTransactionTest, CopyCSVStatementWithActiveTransactionErrorTest) {
-    auto re = conn->query(createPersonTableCMD);
-    ASSERT_TRUE(re->isSuccess());
-    conn->beginWriteTransaction();
-    auto result = conn->query(copyPersonTableCMD);
-    ASSERT_EQ(result->getErrorMessage(),
-        "DDL and CopyCSV statements are automatically wrapped in a transaction and committed. "
-        "As such, they cannot be part of an active transaction, please commit or rollback your "
-        "previous transaction and issue a ddl query without opening a transaction.");
 }
 
 } // namespace testing

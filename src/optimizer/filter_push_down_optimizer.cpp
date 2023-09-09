@@ -1,12 +1,16 @@
 #include "optimizer/filter_push_down_optimizer.h"
 
+#include "binder/expression/literal_expression.h"
 #include "binder/expression/property_expression.h"
-#include "planner/logical_plan/logical_operator/logical_expressions_scan.h"
-#include "planner/logical_plan/logical_operator/logical_filter.h"
-#include "planner/logical_plan/logical_operator/logical_scan_node.h"
-#include "planner/logical_plan/logical_operator/logical_scan_node_property.h"
+#include "binder/expression_visitor.h"
+#include "planner/logical_plan/logical_filter.h"
+#include "planner/logical_plan/logical_hash_join.h"
+#include "planner/logical_plan/scan/logical_dummy_scan.h"
+#include "planner/logical_plan/scan/logical_scan_node.h"
+#include "planner/logical_plan/scan/logical_scan_node_property.h"
 
 using namespace kuzu::binder;
+using namespace kuzu::common;
 using namespace kuzu::planner;
 
 namespace kuzu {
@@ -47,61 +51,35 @@ std::shared_ptr<LogicalOperator> FilterPushDownOptimizer::visitFilterReplace(
     return visitOperator(filter->getChild(0));
 }
 
-// A trivial sub-plan is defined as a plan containing only simple table scan (i.e. SCAN_NODE,
-// SCAN_NODE_PROPERTY), FILTER and PROJECTION.
-static bool isTrivialSubPlan(LogicalOperator* root) {
-    switch (root->getOperatorType()) {
-    case LogicalOperatorType::FILTER:
-    case LogicalOperatorType::SCAN_NODE_PROPERTY:
-    case LogicalOperatorType::PROJECTION: { // operators we directly search through
-        return isTrivialSubPlan(root->getChild(0).get());
-    }
-    case LogicalOperatorType::SCAN_NODE: {
-        return true;
-    }
-    default:
-        return false;
-    }
-}
-
-static std::vector<std::shared_ptr<LogicalOperator>> fetchOpsInTrivialSubPlan(
-    std::shared_ptr<LogicalOperator> root) {
-    std::vector<std::shared_ptr<LogicalOperator>> result;
-    auto op = std::move(root);
-    while (op->getOperatorType() != LogicalOperatorType::SCAN_NODE) {
-        result.push_back(op);
-        assert(op->getNumChildren() == 1);
-        op = op->getChild(0);
-    }
-    result.push_back(op);
-    return result;
-}
-
 std::shared_ptr<LogicalOperator> FilterPushDownOptimizer::visitCrossProductReplace(
     std::shared_ptr<LogicalOperator> op) {
     for (auto i = 0u; i < op->getNumChildren(); ++i) {
         auto optimizer = FilterPushDownOptimizer();
         op->setChild(i, optimizer.visitOperator(op->getChild(i)));
     }
-    if (!isTrivialSubPlan(op->getChild(1).get())) {
+    auto probeSchema = op->getChild(0)->getSchema();
+    auto buildSchema = op->getChild(1)->getSchema();
+    std::vector<join_condition_t> joinConditions;
+    for (auto& predicate : predicateSet->equalityPredicates) {
+        auto left = predicate->getChild(0);
+        auto right = predicate->getChild(1);
+        // TODO(Xiyang): this can only rewrite left = right, we should also be able to do
+        // expr(left), expr(right)
+        if (probeSchema->isExpressionInScope(*left) && buildSchema->isExpressionInScope(*right)) {
+            joinConditions.emplace_back(left, right);
+        } else if (probeSchema->isExpressionInScope(*right) &&
+                   buildSchema->isExpressionInScope(*left)) {
+            joinConditions.emplace_back(right, left);
+        }
+    }
+    if (joinConditions.empty()) {
         return finishPushDown(op);
     }
-    auto buildOps = fetchOpsInTrivialSubPlan(op->getChild(1));
-    auto node = ((LogicalScanNode&)*buildOps[buildOps.size() - 1]).getNode();
-    auto primaryKeyEqualityComparison = predicateSet->popNodePKEqualityComparison(*node);
-    if (primaryKeyEqualityComparison == nullptr) {
-        return finishPushDown(op);
-    }
-    // Append index scan to left branch
-    auto indexScan = make_shared<LogicalIndexScanNode>(
-        node, primaryKeyEqualityComparison->getChild(1), op->getChild(0));
-    indexScan->computeFlatSchema();
-    // Append right branch (except for node table scan) to left branch
-    buildOps[buildOps.size() - 2]->setChild(0, std::move(indexScan));
-    for (auto i = 0; i < buildOps.size() - 1; ++i) {
-        buildOps[i]->computeFlatSchema();
-    }
-    return buildOps[0];
+    auto hashJoin = std::make_shared<LogicalHashJoin>(
+        joinConditions, JoinType::INNER, op->getChild(0), op->getChild(1));
+    hashJoin->setSIP(planner::SidewaysInfoPassing::PROHIBIT);
+    hashJoin->computeFlatSchema();
+    return hashJoin;
 }
 
 std::shared_ptr<planner::LogicalOperator> FilterPushDownOptimizer::visitScanNodePropertyReplace(
@@ -112,9 +90,9 @@ std::shared_ptr<planner::LogicalOperator> FilterPushDownOptimizer::visitScanNode
     auto primaryKeyEqualityComparison = predicateSet->popNodePKEqualityComparison(*node);
     if (primaryKeyEqualityComparison != nullptr) { // Try rewrite index scan
         auto rhs = primaryKeyEqualityComparison->getChild(1);
-        if (rhs->expressionType == common::ExpressionType::LITERAL) {
+        if (rhs->expressionType == ExpressionType::LITERAL) {
             // Rewrite to index scan
-            auto expressionsScan = make_shared<LogicalExpressionsScan>(expression_vector{rhs});
+            auto expressionsScan = std::make_shared<LogicalDummyScan>();
             expressionsScan->computeFlatSchema();
             auto indexScan =
                 std::make_shared<LogicalIndexScanNode>(node, rhs, std::move(expressionsScan));
@@ -148,7 +126,8 @@ std::shared_ptr<planner::LogicalOperator> FilterPushDownOptimizer::pushDownToSca
     std::shared_ptr<binder::NodeExpression> node, std::shared_ptr<binder::Expression> predicate,
     std::shared_ptr<planner::LogicalOperator> child) {
     binder::expression_set propertiesSet;
-    for (auto& expression : predicate->getSubPropertyExpressions()) {
+    auto expressionCollector = std::make_unique<ExpressionCollector>();
+    for (auto& expression : expressionCollector->collectPropertyExpressions(predicate)) {
         auto propertyExpression = (PropertyExpression*)expression.get();
         if (child->getSchema()->isExpressionInScope(*propertyExpression)) {
             // Property already matched
@@ -200,7 +179,7 @@ std::shared_ptr<planner::LogicalOperator> FilterPushDownOptimizer::appendFilter(
 
 void FilterPushDownOptimizer::PredicateSet::addPredicate(
     std::shared_ptr<binder::Expression> predicate) {
-    if (predicate->expressionType == common::ExpressionType::EQUALS) {
+    if (predicate->expressionType == ExpressionType::EQUALS) {
         equalityPredicates.push_back(std::move(predicate));
     } else {
         nonEqualityPredicates.push_back(std::move(predicate));
@@ -208,7 +187,7 @@ void FilterPushDownOptimizer::PredicateSet::addPredicate(
 }
 
 static bool isNodePrimaryKey(const Expression& expression, const NodeExpression& node) {
-    if (expression.expressionType != common::ExpressionType::PROPERTY) {
+    if (expression.expressionType != ExpressionType::PROPERTY) {
         // not property
         return false;
     }
@@ -227,7 +206,7 @@ FilterPushDownOptimizer::PredicateSet::popNodePKEqualityComparison(
         return nullptr;
     }
     // We pop when the first primary key equality comparison is found.
-    auto resultPredicateIdx = common::INVALID_VECTOR_IDX;
+    auto resultPredicateIdx = INVALID_VECTOR_IDX;
     for (auto i = 0u; i < equalityPredicates.size(); ++i) {
         auto predicate = equalityPredicates[i];
         if (isNodePrimaryKey(*predicate->getChild(0), node)) {
@@ -243,7 +222,7 @@ FilterPushDownOptimizer::PredicateSet::popNodePKEqualityComparison(
             break;
         }
     }
-    if (resultPredicateIdx != common::INVALID_VECTOR_IDX) {
+    if (resultPredicateIdx != INVALID_VECTOR_IDX) {
         auto result = equalityPredicates[resultPredicateIdx];
         equalityPredicates.erase(equalityPredicates.begin() + resultPredicateIdx);
         return result;

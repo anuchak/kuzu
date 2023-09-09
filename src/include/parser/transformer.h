@@ -1,12 +1,24 @@
 #pragma once
 
 #include "cypher_parser.h"
-#include "parser/query/graph_pattern/pattern_element.h"
-#include "parser/query/regular_query.h"
+#include "expression/parsed_expression.h"
+#include "statement.h"
 
 namespace kuzu {
 namespace parser {
 
+class RegularQuery;
+class SingleQuery;
+class QueryPart;
+class UpdatingClause;
+class ReadingClause;
+class WithClause;
+class ReturnClause;
+class ProjectionBody;
+class PatternElement;
+class NodePattern;
+class PatternElementChain;
+class RelPattern;
 struct ParsedCaseAlternative;
 
 class Transformer {
@@ -16,6 +28,8 @@ public:
     std::unique_ptr<Statement> transform();
 
 private:
+    std::unique_ptr<Statement> transformOcStatement(CypherParser::OC_StatementContext& ctx);
+
     std::unique_ptr<RegularQuery> transformQuery(CypherParser::OC_QueryContext& ctx);
 
     std::unique_ptr<RegularQuery> transformRegularQuery(CypherParser::OC_RegularQueryContext& ctx);
@@ -37,12 +51,15 @@ private:
 
     std::unique_ptr<ReadingClause> transformUnwind(CypherParser::OC_UnwindContext& ctx);
 
+    std::unique_ptr<ReadingClause> transformInQueryCall(CypherParser::KU_InQueryCallContext& ctx);
+
     std::unique_ptr<UpdatingClause> transformCreate(CypherParser::OC_CreateContext& ctx);
+
+    std::unique_ptr<UpdatingClause> transformMerge(CypherParser::OC_MergeContext& ctx);
 
     std::unique_ptr<UpdatingClause> transformSet(CypherParser::OC_SetContext& ctx);
 
-    std::pair<std::unique_ptr<ParsedExpression>, std::unique_ptr<ParsedExpression>>
-    transformSetItem(CypherParser::OC_SetItemContext& ctx);
+    parsed_expression_pair transformSetItem(CypherParser::OC_SetItemContext& ctx);
 
     std::unique_ptr<UpdatingClause> transformDelete(CypherParser::OC_DeleteContext& ctx);
 
@@ -140,7 +157,7 @@ private:
 
     std::unique_ptr<ParsedExpression> transformListOperatorExpression(
         CypherParser::OC_ListOperatorExpressionContext& ctx,
-        std::unique_ptr<ParsedExpression> propertyExpression);
+        std::unique_ptr<ParsedExpression> childExpression);
 
     std::unique_ptr<ParsedExpression> transformListSliceOperatorExpression(
         CypherParser::KU_ListSliceOperatorExpressionContext& ctx,
@@ -181,10 +198,14 @@ private:
 
     std::string transformFunctionName(CypherParser::OC_FunctionNameContext& ctx);
 
+    std::unique_ptr<ParsedExpression> transformFunctionParameterExpression(
+        CypherParser::KU_FunctionParameterContext& ctx);
+
     std::unique_ptr<ParsedExpression> transformExistentialSubquery(
         CypherParser::OC_ExistentialSubqueryContext& ctx);
 
-    std::string transformPropertyLookup(CypherParser::OC_PropertyLookupContext& ctx);
+    std::unique_ptr<ParsedExpression> createPropertyExpression(
+        CypherParser::OC_PropertyLookupContext& ctx, std::unique_ptr<ParsedExpression> child);
 
     std::unique_ptr<ParsedExpression> transformCaseExpression(
         CypherParser::OC_CaseExpressionContext& ctx);
@@ -232,16 +253,22 @@ private:
 
     std::string transformDataType(CypherParser::KU_DataTypeContext& ctx);
 
-    std::string transformListIdentifiers(CypherParser::KU_ListIdentifiersContext& ctx);
-
     std::string transformPrimaryKey(CypherParser::KU_CreateNodeConstraintContext& ctx);
 
     std::vector<std::pair<std::string, std::string>> transformPropertyDefinitions(
         CypherParser::KU_PropertyDefinitionsContext& ctx);
 
-    std::unique_ptr<Statement> transformCopyCSV(CypherParser::KU_CopyCSVContext& ctx);
+    std::unique_ptr<Statement> transformCopyTo(CypherParser::KU_CopyTOContext& ctx);
 
-    std::unique_ptr<Statement> transformCopyNPY(CypherParser::KU_CopyNPYContext& ctx);
+    std::unique_ptr<Statement> transformCopyFromCSV(CypherParser::KU_CopyFromCSVContext& ctx);
+
+    std::unique_ptr<Statement> transformCopyFromNPY(CypherParser::KU_CopyFromNPYContext& ctx);
+
+    std::unique_ptr<Statement> transformStandaloneCall(CypherParser::KU_StandaloneCallContext& ctx);
+
+    std::vector<std::string> transformPositionalArgs(CypherParser::KU_PositionalArgsContext& ctx);
+
+    std::unique_ptr<Statement> transformCreateMacro(CypherParser::KU_CreateMacroContext& ctx);
 
     std::vector<std::string> transformFilePaths(
         std::vector<antlr4::tree::TerminalNode*> stringLiteral);

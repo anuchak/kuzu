@@ -11,7 +11,7 @@
   <a href="https://codecov.io/gh/kuzudb/kuzu" >
     <img src="https://codecov.io/github/kuzudb/kuzu/branch/master/graph/badge.svg?token=N1AT6H79LM"/>
   </a>
-  <a href="https://join.slack.com/t/kuzudb/shared_invite/zt-1qgxnn8ed-9LL7rfKozijOtvw5HyWDlQ">
+  <a href="https://join.slack.com/t/kuzudb/shared_invite/zt-1w0thj6s7-0bLaU8Sb~4fDMKJ~oejG_g">
     <img src="https://img.shields.io/badge/Slack-chat%20with%20us-informational?logo=slack" alt="slack" />
   </a>
   <a href="https://twitter.com/kuzudb">
@@ -33,6 +33,28 @@ Kùzu is an in-process property graph database management system (GDBMS) built f
 
 Kùzu is being actively developed at University of Waterloo as a feature-rich and usable GDBMS. Kùzu is available under a permissible license. So try it out and help us make it better! We welcome your feedback and feature requests.
 
+## Installation
+
+| Language | Installation                                                           |
+| -------- |------------------------------------------------------------------------|
+| Python | `pip install kuzu`                                                     |
+| NodeJS | `npm install kuzu`                                                     |
+| Rust   | `cargo add kuzu`                                                       |
+| Java   | [jar file](https://github.com/kuzudb/kuzu/releases/latest)             |
+| C/C++  | [precompiled binaries](https://github.com/kuzudb/kuzu/releases/latest) |
+| CLI    | [precompiled binaries](https://github.com/kuzudb/kuzu/releases/latest) |
+
+To learn more about installation, see our [Installation](https://kuzudb.com/docusaurus/installation/) page.
+
+## Getting Started
+
+Refer to our [Getting Started](https://kuzudb.com/docusaurus/getting-started/) page for your first example.
+
+More information can be found at
+- [Data Import](https://kuzudb.com/docusaurus/data-import/)
+- [Cypher Reference](https://kuzudb.com/docusaurus/cypher/)
+- [Client APIs](https://kuzudb.com/docusaurus/client-apis/)
+
 ## Build
 To build from source code, Kùzu requires Cmake(>=3.11), Python 3, and a compiler that supports `C++20`.
 - Perform a full clean build without tests and benchmark:
@@ -47,66 +69,14 @@ To build in parallel, pass `NUM_THREADS` as parameter, e.g., `make NUM_THREADS=8
 
 After build, our CLI binary `kuzu_shell` is available under the directory `build/release/tools/shell/`.
 
-## Installation
-### Precompiled binary
-Precompiled binary of our latest release can be downloaded [here](https://github.com/kuzudb/kuzu/releases/latest).  
-### Python package
-Our Python package can be directly install through pip.
-```
-pip install kuzu
-```
+### Building on Windows
+Currently MSVC is the only supported compiler:
 
+- In addition to the dependencies listed above, you will also need GNU Make and Ninja (E.g. with [Chocolatey](https://community.chocolatey.org/): `choco install make ninja`).
+- Build from within a "Visual Studio Developer Command Prompt" (or manually run vcvars64.bat for cmd or Launch-VsDevShell.ps1 for powershell. See [here](https://learn.microsoft.com/en-us/cpp/build/how-to-enable-a-64-bit-visual-cpp-toolset-on-the-command-line?view=msvc-170) and [here](https://learn.microsoft.com/en-us/visualstudio/ide/reference/command-prompt-powershell?view=vs-2022) for details).
+- Run `make release`, or the commands listed in the previous section.
 
-For more installation and usage instructions, please refer to [our website](https://kuzudb.com/).
-
-## Example
-We take `tinysnb` as an example graph, which is under `dataset/demo-db/csv` in our source code, and can be downloaded [here](https://github.com/kuzudb/kuzu/tree/master/dataset/demo-db/csv).
-
-### CLI
-#### Start CLI
-```
-./build/release/tools/shell/kuzu_shell "./testdb"
-```
-#### Schema Definition
-```cypher
-kuzu> CREATE NODE TABLE User(name STRING, age INT64, PRIMARY KEY (name));
-kuzu> CREATE REL TABLE Follows(FROM User TO User, since INT64);
-```
-
-#### Data Import
-```cypher
-kuzu> COPY User FROM "dataset/demo-db/csv/user.csv";
-kuzu> COPY Follows FROM "dataset/demo-db/csv/follows.csv";
-```
-
-After creating node/rel tables, and importing csv files, you can now run queries!
-```cypher
-kuzu> MATCH (a:User)-[f:Follows]->(b:User) RETURN a.name, b.name, f.since;
-```
-
-### Python
-```python
-import kuzu
-
-db = kuzu.Database('./testdb')
-conn = kuzu.Connection(db)
-conn.execute("CREATE NODE TABLE User(name STRING, age INT64, PRIMARY KEY (name))")
-conn.execute("CREATE REL TABLE Follows(FROM User TO User, since INT64)")
-conn.execute('COPY User FROM "user.csv"')
-conn.execute('COPY Follows FROM "follows.csv"')
-# Run a query.
-results = conn.execute('MATCH (u:User) RETURN COUNT(*);')
-while results.has_next():
-  print(results.get_next())
-# Run a query and get results as a pandas dataframe.
-results = conn.execute('MATCH (a:User)-[f:Follows]->(b:User) RETURN a.name, f.since, b.name;').get_as_df()
-print(results)
-# Run a query and get results as an arrow table.
-results = conn.execute('MATCH (u:User) RETURN u.name, u.age;').get_as_arrow(chunk_size=100)
-print(results)
-```
-
-Refer to our [Data Import](https://kuzudb.com/docs/data-import) and [Cypher](https://kuzudb.com/docs/cypher) section for more information.
+You can also build within Visual Studio, as long as you run `make release` first (or `make debug`), and then use [the CMake plugin](https://learn.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio).
 
 ## Contributing
 We welcome contributions to Kùzu. If you are interested in contributing to Kùzu, please read our [Contributing Guide](CONTRIBUTING.md).
@@ -142,4 +112,4 @@ You can use the following BibTeX citation:
 ```
 
 ## Contact Us
-You can contact us at [contact@kuzudb.com](mailto:contact@kuzudb.com) or [join our Slack workspace](https://join.slack.com/t/kuzudb/shared_invite/zt-1n67h736q-E3AFGSI4w~ljlFMYr3_Sjg).
+You can contact us at [contact@kuzudb.com](mailto:contact@kuzudb.com) or [join our Slack workspace](https://join.slack.com/t/kuzudb/shared_invite/zt-1w0thj6s7-0bLaU8Sb~4fDMKJ~oejG_g).

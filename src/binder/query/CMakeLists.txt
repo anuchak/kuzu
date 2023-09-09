@@ -3,10 +3,8 @@ add_library(
         OBJECT
         bound_create_clause.cpp
         bound_delete_clause.cpp
-        bound_projection_body.cpp
+        bound_merge_clause.cpp
         bound_set_clause.cpp
-        normalized_query_part.cpp
-        normalized_single_query.cpp
         query_graph.cpp)
 
 set(ALL_OBJECT_FILES

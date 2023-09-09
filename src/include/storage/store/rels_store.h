@@ -14,20 +14,20 @@ class RelsStore {
 public:
     RelsStore(const catalog::Catalog& catalog, MemoryManager& memoryManager, WAL* wal);
 
-    inline Column* getRelPropertyColumn(common::RelDirection relDirection,
+    inline Column* getRelPropertyColumn(common::RelDataDirection relDirection,
         common::table_id_t relTableID, uint64_t propertyIdx) const {
         return relTables.at(relTableID)->getPropertyColumn(relDirection, propertyIdx);
     }
-    inline Lists* getRelPropertyLists(common::RelDirection relDirection,
+    inline Lists* getRelPropertyLists(common::RelDataDirection relDirection,
         common::table_id_t relTableID, uint64_t propertyIdx) const {
         return relTables.at(relTableID)->getPropertyLists(relDirection, propertyIdx);
     }
-    inline AdjColumn* getAdjColumn(
-        common::RelDirection relDirection, common::table_id_t relTableID) const {
+    inline Column* getAdjColumn(
+        common::RelDataDirection relDirection, common::table_id_t relTableID) const {
         return relTables.at(relTableID)->getAdjColumn(relDirection);
     }
     inline AdjLists* getAdjLists(
-        common::RelDirection relDirection, common::table_id_t relTableID) const {
+        common::RelDataDirection relDirection, common::table_id_t relTableID) const {
         return relTables.at(relTableID)->getAdjLists(relDirection);
     }
 
@@ -36,8 +36,8 @@ public:
     // relStore when checkpointing and not in recovery mode. In other words, this function should
     // only be called by wal_replayer during checkpointing, during which time no other transaction
     // is running on the system, so we can directly create and insert a RelTable into relTables.
-    inline void createRelTable(common::table_id_t tableID, BufferManager* bufferManager, WAL* wal,
-        catalog::Catalog* catalog, MemoryManager* memoryManager) {
+    inline void createRelTable(
+        common::table_id_t tableID, catalog::Catalog* catalog, MemoryManager* memoryManager) {
         relTables[tableID] = std::make_unique<RelTable>(*catalog, tableID, *memoryManager, wal);
     }
 
@@ -55,23 +55,46 @@ public:
         relsStatistics.removeTableStatistic(tableID);
     }
 
-    inline void prepareCommitOrRollbackIfNecessary(bool isCommit) {
+    inline void prepareCommit() {
+        if (relsStatistics.hasUpdates()) {
+            wal->logTableStatisticsRecord(false /* isNodeTable */);
+            relsStatistics.writeTablesStatisticsFileForWALRecord(wal->getDirectory());
+        }
         for (auto& [_, relTable] : relTables) {
-            relTable->prepareCommitOrRollbackIfNecessary(isCommit);
+            relTable->prepareCommit();
+        }
+    }
+    inline void prepareRollback() {
+        if (relsStatistics.hasUpdates()) {
+            wal->logTableStatisticsRecord(false /* isNodeTable */);
+        }
+        for (auto& [_, relTable] : relTables) {
+            relTable->prepareRollback();
+        }
+    }
+    inline void checkpointInMemory(const std::unordered_set<common::table_id_t>& updatedTables) {
+        for (auto updatedTableID : updatedTables) {
+            relTables.at(updatedTableID)->checkpointInMemory();
+        }
+    }
+    inline void rollbackInMemory(const std::unordered_set<common::table_id_t>& updatedTables) {
+        for (auto updatedTableID : updatedTables) {
+            relTables.at(updatedTableID)->rollbackInMemory();
         }
     }
 
     inline bool isSingleMultiplicityInDirection(
-        common::RelDirection relDirection, common::table_id_t relTableID) const {
+        common::RelDataDirection relDirection, common::table_id_t relTableID) const {
         return relTables.at(relTableID)->isSingleMultiplicityInDirection(relDirection);
     }
 
-    std::pair<std::vector<AdjLists*>, std::vector<AdjColumn*>> getAdjListsAndColumns(
+    std::pair<std::vector<AdjLists*>, std::vector<Column*>> getAdjListsAndColumns(
         common::table_id_t boundTableID) const;
 
 private:
     std::unordered_map<common::table_id_t, std::unique_ptr<RelTable>> relTables;
     RelsStatistics relsStatistics;
+    WAL* wal;
 };
 
 } // namespace storage

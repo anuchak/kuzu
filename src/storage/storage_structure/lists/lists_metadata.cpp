@@ -21,13 +21,11 @@ ListsMetadata::ListsMetadata(
         FileHandle::O_PERSISTENT_FILE_NO_CREATE, BMFileHandle::FileVersionedType::VERSIONED_FILE);
     chunkToPageListHeadIdxMap = std::make_unique<InMemDiskArray<uint32_t>>(
         *metadataVersionedFileHandle, storageStructureIDAndFName.storageStructureID,
-        CHUNK_PAGE_LIST_HEAD_IDX_MAP_HEADER_PAGE_IDX, bufferManager, wal);
-    largeListIdxToPageListHeadIdxMap = std::make_unique<InMemDiskArray<uint32_t>>(
-        *metadataVersionedFileHandle, storageStructureIDAndFName.storageStructureID,
-        LARGE_LIST_IDX_TO_PAGE_LIST_HEAD_IDX_MAP_HEADER_PAGE_IDX, bufferManager, wal);
+        CHUNK_PAGE_LIST_HEAD_IDX_MAP_HEADER_PAGE_IDX, bufferManager, wal,
+        transaction::Transaction::getDummyReadOnlyTrx().get());
     pageLists = std::make_unique<InMemDiskArray<page_idx_t>>(*metadataVersionedFileHandle,
         storageStructureIDAndFName.storageStructureID, CHUNK_PAGE_LIST_HEADER_PAGE_IDX,
-        bufferManager, wal);
+        bufferManager, wal, transaction::Transaction::getDummyReadOnlyTrx().get());
 }
 
 uint64_t BaseListsMetadata::getPageIdxFromAPageList(
@@ -59,7 +57,6 @@ ListsMetadataBuilder::ListsMetadataBuilder(const std::string& listBaseFName) : B
 
 void ListsMetadataBuilder::saveToDisk() {
     chunkToPageListHeadIdxMapBuilder->saveToDisk();
-    largeListIdxToPageListHeadIdxMapBuilder->saveToDisk();
     pageListsBuilder->saveToDisk();
 }
 
@@ -72,33 +69,12 @@ void ListsMetadataBuilder::initChunkPageLists(uint32_t numChunks_) {
     }
 }
 
-void ListsMetadataBuilder::initLargeListPageLists(uint32_t numLargeLists_) {
-    // For each largeList, we store the PageListHeadIdx in pageLists and also the number of
-    // elements in the large list.
-    largeListIdxToPageListHeadIdxMapBuilder =
-        std::make_unique<InMemDiskArrayBuilder<uint32_t>>(*metadataFileHandleForBuilding,
-            LARGE_LIST_IDX_TO_PAGE_LIST_HEAD_IDX_MAP_HEADER_PAGE_IDX, (2 * numLargeLists_));
-    for (uint64_t largeListIdx = 0; largeListIdx < numLargeLists_; ++largeListIdx) {
-        (*largeListIdxToPageListHeadIdxMapBuilder)[largeListIdx] =
-            StorageStructureUtils::NULL_CHUNK_OR_LARGE_LIST_HEAD_IDX;
-    }
-}
-
 void ListsMetadataBuilder::populateChunkPageList(
     uint32_t chunkId, uint32_t numPages_, uint32_t startPageId) {
     if (numPages_ == 0) {
         return;
     }
     (*chunkToPageListHeadIdxMapBuilder)[chunkId] = pageListsBuilder->header.numElements;
-    populatePageIdsInAPageList(numPages_, startPageId);
-}
-
-void ListsMetadataBuilder::populateLargeListPageList(
-    uint32_t largeListIdx, uint32_t numPages_, uint32_t numElements, uint32_t startPageId) {
-    assert(numPages_ > 0);
-    auto offsetInMap = 2 * largeListIdx;
-    (*largeListIdxToPageListHeadIdxMapBuilder)[offsetInMap] = pageListsBuilder->header.numElements;
-    (*largeListIdxToPageListHeadIdxMapBuilder)[offsetInMap + 1] = numElements;
     populatePageIdsInAPageList(numPages_, startPageId);
 }
 

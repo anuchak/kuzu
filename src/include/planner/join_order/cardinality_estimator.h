@@ -1,6 +1,6 @@
 #pragma once
 
-#include "binder/query/reading_clause/query_graph.h"
+#include "binder/query/query_graph.h"
 #include "planner/logical_plan/logical_plan.h"
 #include "storage/store/nodes_statistics_and_deleted_ids.h"
 #include "storage/store/rels_statistics.h"
@@ -17,7 +17,7 @@ public:
     void initNodeIDDom(binder::QueryGraph* queryGraph);
 
     uint64_t estimateScanNode(LogicalOperator* op);
-    uint64_t estimateHashJoin(const binder::expression_vector& joinNodeIDs,
+    uint64_t estimateHashJoin(const binder::expression_vector& joinKeys,
         const LogicalPlan& probePlan, const LogicalPlan& buildPlan);
     uint64_t estimateCrossProduct(const LogicalPlan& probePlan, const LogicalPlan& buildPlan);
     uint64_t estimateIntersect(const binder::expression_vector& joinNodeIDs,
@@ -31,6 +31,11 @@ public:
 private:
     inline uint64_t atLeastOne(uint64_t x) { return x == 0 ? 1 : x; }
 
+    inline void addNodeIDDom(const binder::NodeExpression& node) {
+        if (!nodeIDName2dom.contains(node.getInternalIDPropertyName())) {
+            nodeIDName2dom.insert({node.getInternalIDPropertyName(), getNumNodes(node)});
+        }
+    }
     uint64_t getNodeIDDom(const std::string& nodeIDName) {
         assert(nodeIDName2dom.contains(nodeIDName));
         return nodeIDName2dom.at(nodeIDName);

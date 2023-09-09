@@ -44,7 +44,7 @@ char* kuzu_query_result_get_column_name(kuzu_query_result* query_result, uint64_
     return column_name_c;
 }
 
-kuzu_data_type* kuzu_query_result_get_column_data_type(
+kuzu_logical_type* kuzu_query_result_get_column_data_type(
     kuzu_query_result* query_result, uint64_t index) {
     auto column_data_types =
         static_cast<QueryResult*>(query_result->_query_result)->getColumnDataTypes();
@@ -52,8 +52,8 @@ kuzu_data_type* kuzu_query_result_get_column_data_type(
         return nullptr;
     }
     auto column_data_type = column_data_types[index];
-    auto* column_data_type_c = (kuzu_data_type*)malloc(sizeof(kuzu_data_type));
-    column_data_type_c->_data_type = new DataType(column_data_type);
+    auto* column_data_type_c = (kuzu_logical_type*)malloc(sizeof(kuzu_logical_type));
+    column_data_type_c->_data_type = new LogicalType(column_data_type);
     return column_data_type_c;
 }
 
@@ -94,4 +94,13 @@ void kuzu_query_result_write_to_csv(kuzu_query_result* query_result, const char*
 
 void kuzu_query_result_reset_iterator(kuzu_query_result* query_result) {
     static_cast<QueryResult*>(query_result->_query_result)->resetIterator();
+}
+
+struct ArrowSchema kuzu_query_result_get_arrow_schema(kuzu_query_result* query_result) {
+    return *static_cast<QueryResult*>(query_result->_query_result)->getArrowSchema();
+}
+
+struct ArrowArray kuzu_query_result_get_next_arrow_chunk(
+    kuzu_query_result* query_result, int64_t chunk_size) {
+    return *static_cast<QueryResult*>(query_result->_query_result)->getNextArrowChunk(chunk_size);
 }

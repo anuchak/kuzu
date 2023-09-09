@@ -12,14 +12,17 @@ namespace binder {
 
 std::unique_ptr<BoundStatement> Binder::bind(const Statement& statement) {
     switch (statement.getStatementType()) {
-    case StatementType::CREATE_NODE_TABLE_CLAUSE: {
+    case StatementType::CREATE_NODE_TABLE: {
         return bindCreateNodeTableClause(statement);
     }
-    case StatementType::CREATE_REL_TABLE_CLAUSE: {
+    case StatementType::CREATE_REL_TABLE: {
         return bindCreateRelTableClause(statement);
     }
-    case StatementType::COPY: {
-        return bindCopyClause(statement);
+    case StatementType::COPY_FROM: {
+        return bindCopyFromClause(statement);
+    }
+    case StatementType::COPY_TO: {
+        return bindCopyToClause(statement);
     }
     case StatementType::DROP_TABLE: {
         return bindDropTableClause(statement);
@@ -39,14 +42,23 @@ std::unique_ptr<BoundStatement> Binder::bind(const Statement& statement) {
     case StatementType::QUERY: {
         return bindQuery((const RegularQuery&)statement);
     }
+    case StatementType::STANDALONE_CALL: {
+        return bindStandaloneCall(statement);
+    }
+    case StatementType::EXPLAIN: {
+        return bindExplain(statement);
+    }
+    case StatementType::CREATE_MACRO: {
+        return bindCreateMacro(statement);
+    }
     default:
-        assert(false);
+        throw NotImplementedException("Binder::bind");
     }
 }
 
 std::shared_ptr<Expression> Binder::bindWhereExpression(const ParsedExpression& parsedExpression) {
     auto whereExpression = expressionBinder.bindExpression(parsedExpression);
-    ExpressionBinder::implicitCastIfNecessary(whereExpression, BOOL);
+    ExpressionBinder::implicitCastIfNecessary(whereExpression, LogicalTypeID::BOOL);
     return whereExpression;
 }
 
@@ -65,21 +77,15 @@ table_id_t Binder::bindNodeTableID(const std::string& tableName) const {
 }
 
 std::shared_ptr<Expression> Binder::createVariable(
-    const std::string& name, const DataType& dataType) {
-    if (variablesInScope.contains(name)) {
+    const std::string& name, const LogicalType& dataType) {
+    if (scope->contains(name)) {
         throw BinderException("Variable " + name + " already exists.");
     }
     auto uniqueName = getUniqueExpressionName(name);
-    auto variable = make_shared<VariableExpression>(dataType, uniqueName, name);
-    variable->setAlias(name);
-    variablesInScope.insert({name, variable});
-    return variable;
-}
-
-void Binder::validateFirstMatchIsNotOptional(const SingleQuery& singleQuery) {
-    if (singleQuery.isFirstReadingClauseOptionalMatch()) {
-        throw BinderException("First match clause cannot be optional match.");
-    }
+    auto expression = expressionBinder.createVariableExpression(dataType, uniqueName, name);
+    expression->setAlias(name);
+    scope->addExpression(name, expression);
+    return expression;
 }
 
 void Binder::validateProjectionColumnNamesAreUnique(const expression_vector& expressions) {
@@ -124,8 +130,8 @@ void Binder::validateUnionColumnsOfTheSameType(
         // Check whether the dataTypes in union expressions are exactly the same in each single
         // query.
         for (auto j = 0u; j < expressionsToProject.size(); j++) {
-            ExpressionBinder::validateExpectedDataType(
-                *expressionsToProjectToCheck[j], expressionsToProject[j]->dataType.typeID);
+            ExpressionBinder::validateExpectedDataType(*expressionsToProjectToCheck[j],
+                expressionsToProject[j]->dataType.getLogicalTypeID());
         }
     }
 }
@@ -141,21 +147,13 @@ void Binder::validateIsAllUnionOrUnionAll(const BoundRegularQuery& regularQuery)
     }
 }
 
-void Binder::validateReturnNotFollowUpdate(const NormalizedSingleQuery& singleQuery) {
-    for (auto i = 0u; i < singleQuery.getNumQueryParts(); ++i) {
-        auto normalizedQueryPart = singleQuery.getQueryPart(i);
-        if (normalizedQueryPart->hasUpdatingClause() && normalizedQueryPart->hasProjectionBody()) {
-            throw BinderException("Return/With after update is not supported.");
-        }
-    }
-}
-
 void Binder::validateReadNotFollowUpdate(const NormalizedSingleQuery& singleQuery) {
     bool hasSeenUpdateClause = false;
     for (auto i = 0u; i < singleQuery.getNumQueryParts(); ++i) {
         auto normalizedQueryPart = singleQuery.getQueryPart(i);
         if (hasSeenUpdateClause && normalizedQueryPart->hasReadingClause()) {
-            throw BinderException("Read after update is not supported.");
+            throw BinderException(
+                "Read after update is not supported. Try query with multiple statements.");
         }
         hasSeenUpdateClause |= normalizedQueryPart->hasUpdatingClause();
     }
@@ -178,11 +176,11 @@ bool Binder::validateStringParsingOptionName(std::string& parsingOptionName) {
 }
 
 void Binder::validateNodeTableHasNoEdge(const Catalog& _catalog, table_id_t tableID) {
-    for (auto& tableIDSchema : _catalog.getReadOnlyVersion()->getRelTableSchemas()) {
-        if (tableIDSchema.second->isSrcOrDstTable(tableID)) {
+    for (auto& relTableSchema : _catalog.getReadOnlyVersion()->getRelTableSchemas()) {
+        if (relTableSchema->isSrcOrDstTable(tableID)) {
             throw BinderException(StringUtils::string_format(
                 "Cannot delete a node table with edges. It is on the edges of rel: {}.",
-                tableIDSchema.second->tableName));
+                relTableSchema->tableName));
         }
     }
 }
@@ -191,13 +189,12 @@ std::string Binder::getUniqueExpressionName(const std::string& name) {
     return "_" + std::to_string(lastExpressionId++) + "_" + name;
 }
 
-std::unordered_map<std::string, std::shared_ptr<Expression>> Binder::enterSubquery() {
-    return variablesInScope;
+std::unique_ptr<BinderScope> Binder::saveScope() {
+    return scope->copy();
 }
 
-void Binder::exitSubquery(
-    std::unordered_map<std::string, std::shared_ptr<Expression>> prevVariablesInScope) {
-    variablesInScope = std::move(prevVariablesInScope);
+void Binder::restoreScope(std::unique_ptr<BinderScope> prevVariableScope) {
+    scope = std::move(prevVariableScope);
 }
 
 } // namespace binder

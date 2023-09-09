@@ -44,6 +44,15 @@ class QueryResult:
     get_as_torch_geometric()
         Converts the nodes and rels in query result into a PyTorch Geometric graph representation
         torch_geometric.data.Data or torch_geometric.data.HeteroData.
+
+    get_execution_time()
+        Get the time in ms which was required for executing the query.
+
+    get_compiling_time()
+        Get the time in ms which was required for compiling the query.
+
+    def get_num_tuples(self):
+        Get the number of tuples which the query returned.
     """
 
     def __init__(self, connection, query_result):
@@ -269,6 +278,20 @@ class QueryResult:
                     rels[(_src["table"], _src["offset"], _dst["table"],
                           _dst["offset"])] = row[i]
 
+                elif column_type == Type.RECURSIVE_REL.value:
+                    for node in row[i]['_nodes']:
+                        _id = node["_id"]
+                        nodes[(_id["table"], _id["offset"])] = node
+                        table_to_label_dict[_id["table"]] = node["_label"]
+                    for rel in row[i]['_rels']:
+                        for key in rel:
+                            if rel[key] is None:
+                                del rel[key]
+                        _src = rel["_src"]
+                        _dst = rel["_dst"]
+                        rels[(_src["table"], _src["offset"], _dst["table"],
+                              _dst["offset"])] = rel
+
         # Add nodes
         for node in nodes.values():
             _id = node["_id"]
@@ -304,7 +327,7 @@ class QueryResult:
         for i in range(len(column_names)):
             column_name = column_names[i]
             column_type = column_types[i]
-            if column_type in [Type.NODE.value, Type.REL.value]:
+            if column_type in [Type.NODE.value, Type.REL.value, Type.RECURSIVE_REL.value]:
                 properties_to_extract[i] = (column_type, column_name)
         return properties_to_extract
 
@@ -359,3 +382,39 @@ class QueryResult:
 
         converter = TorchGeometricResultConverter(self)
         return converter.get_as_torch_geometric()
+
+    def get_execution_time(self):
+        """
+        Get the time in ms which was required for executing the query.
+
+        Returns
+        -------
+        double
+            Query execution time as double in ms.
+        """
+        self.check_for_query_result_close()
+        return self._query_result.getExecutionTime()
+
+    def get_compiling_time(self):
+        """
+        Get the time in ms which was required for compiling the query.
+
+        Returns
+        -------
+        double
+            Query compile time as double in ms.
+        """
+        self.check_for_query_result_close()
+        return self._query_result.getCompilingTime()
+
+    def get_num_tuples(self):
+        """
+        Get the number of tuples which the query returned.
+
+        Returns
+        -------
+        int
+            Number of tuples.
+        """
+        self.check_for_query_result_close()
+        return self._query_result.getNumTuples()

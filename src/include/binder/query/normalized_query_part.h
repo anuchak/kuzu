@@ -1,9 +1,9 @@
 #pragma once
 
-#include "binder/query/reading_clause/bound_unwind_clause.h"
-#include "binder/query/reading_clause/query_graph.h"
+#include "binder/query/reading_clause/bound_reading_clause.h"
 #include "binder/query/return_with_clause/bound_projection_body.h"
 #include "binder/query/updating_clause/bound_updating_clause.h"
+#include "query_graph.h"
 
 namespace kuzu {
 namespace binder {
@@ -44,8 +44,6 @@ public:
     inline void setProjectionBodyPredicate(const std::shared_ptr<Expression>& predicate) {
         projectionBodyPredicate = predicate;
     }
-
-    expression_vector getPropertiesToRead() const;
 
 private:
     std::vector<std::unique_ptr<BoundReadingClause>> readingClauses;

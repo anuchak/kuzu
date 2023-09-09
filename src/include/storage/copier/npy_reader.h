@@ -7,6 +7,9 @@
 #include "common/exception.h"
 #include "common/types/internal_id_t.h"
 #include "common/types/types.h"
+#include <arrow/array.h>
+#include <arrow/buffer.h>
+#include <arrow/record_batch.h>
 
 namespace kuzu {
 namespace storage {
@@ -19,18 +22,20 @@ public:
 
     size_t getNumElementsPerRow() const;
 
-    void* getPointerToRow(size_t row) const;
-
-    inline std::string getFilePath() const { return filePath; }
+    uint8_t* getPointerToRow(size_t row) const;
 
     inline size_t getNumRows() const { return shape[0]; }
 
+    std::shared_ptr<arrow::DataType> getArrowType() const;
+    std::shared_ptr<arrow::RecordBatch> readBlock(common::block_idx_t blockIdx) const;
+
     // Used in tests only.
-    inline common::DataTypeID getType() const { return type; }
+    inline common::LogicalTypeID getType() const { return type; }
     inline std::vector<size_t> const& getShape() const { return shape; }
     inline size_t getNumDimensions() const { return shape.size(); }
 
-    void validate(common::DataType& type_, common::offset_t numRows, const std::string& tableName);
+    void validate(
+        const common::LogicalType& type_, common::offset_t numRows, const std::string& tableName);
 
 private:
     void parseHeader();
@@ -43,7 +48,18 @@ private:
     void* mmapRegion;
     size_t dataOffset;
     std::vector<size_t> shape;
-    common::DataTypeID type;
+    common::LogicalTypeID type;
+    static inline const std::string defaultFieldName = "NPY_FIELD";
+};
+
+class NpyMultiFileReader {
+public:
+    explicit NpyMultiFileReader(const std::vector<std::string>& filePaths);
+
+    std::shared_ptr<arrow::RecordBatch> readBlock(common::block_idx_t blockIdx) const;
+
+private:
+    std::vector<std::unique_ptr<NpyReader>> fileReaders;
 };
 
 } // namespace storage

@@ -130,17 +130,16 @@ void NodeStatisticsAndDeletedIDs::errorIfNodeHasEdges(offset_t nodeOffset) {
         if (numElementsInList != 0) {
             throw RuntimeException(StringUtils::string_format(
                 "Currently deleting a node with edges is not supported. node table {} nodeOffset "
-                "{} has {} (one-to-many or many-to-many) edges for edge file: {}.",
-                tableID, nodeOffset, numElementsInList,
-                adjList->getFileHandle()->getFileInfo()->path.c_str()));
+                "{} has {} (one-to-many or many-to-many) edges.",
+                tableID, nodeOffset, numElementsInList));
         }
     }
-    for (AdjColumn* adjColumn : adjListsAndColumns.second) {
+    for (Column* adjColumn : adjListsAndColumns.second) {
         if (!adjColumn->isNull(nodeOffset, transaction::Transaction::getDummyWriteTrx().get())) {
             throw RuntimeException(StringUtils::string_format(
                 "Currently deleting a node with edges is not supported. node table {} nodeOffset "
-                "{}  has a 1-1 edge for edge file: {}.",
-                tableID, nodeOffset, adjColumn->getFileHandle()->getFileInfo()->path.c_str()));
+                "{}  has a 1-1 edge.",
+                tableID, nodeOffset));
         }
     }
 }
@@ -186,7 +185,7 @@ std::map<table_id_t, offset_t> NodesStatisticsAndDeletedIDs::getMaxNodeOffsetPer
 
 void NodesStatisticsAndDeletedIDs::setDeletedNodeOffsetsForMorsel(
     transaction::Transaction* transaction, const std::shared_ptr<ValueVector>& nodeOffsetVector,
-    common::table_id_t tableID) {
+    table_id_t tableID) {
     // NOTE: We can remove the lock under the following assumptions, that should currently hold:
     // 1) During the phases when nodeStatisticsAndDeletedIDsPerTableForReadOnlyTrx change, which
     // is during checkpointing, this function, which is called during scans, cannot be called.
@@ -216,7 +215,7 @@ void NodesStatisticsAndDeletedIDs::addNodeStatisticsAndDeletedIDs(
 std::unique_ptr<TableStatistics> NodesStatisticsAndDeletedIDs::deserializeTableStatistics(
     uint64_t numTuples, uint64_t& offset, FileInfo* fileInfo, uint64_t tableID) {
     std::vector<offset_t> deletedNodeIDs;
-    offset = SerDeser::deserializeVector(deletedNodeIDs, fileInfo, offset);
+    SerDeser::deserializeVector(deletedNodeIDs, fileInfo, offset);
     return make_unique<NodeStatisticsAndDeletedIDs>(tableID,
         NodeStatisticsAndDeletedIDs::getMaxNodeOffsetFromNumTuples(numTuples), deletedNodeIDs);
 }
@@ -224,8 +223,7 @@ std::unique_ptr<TableStatistics> NodesStatisticsAndDeletedIDs::deserializeTableS
 void NodesStatisticsAndDeletedIDs::serializeTableStatistics(
     TableStatistics* tableStatistics, uint64_t& offset, FileInfo* fileInfo) {
     auto nodeTableStatistic = (NodeStatisticsAndDeletedIDs*)tableStatistics;
-    offset =
-        SerDeser::serializeVector(nodeTableStatistic->getDeletedNodeOffsets(), fileInfo, offset);
+    SerDeser::serializeVector(nodeTableStatistic->getDeletedNodeOffsets(), fileInfo, offset);
 }
 
 } // namespace storage

@@ -1,40 +1,43 @@
 #include "binder/query/updating_clause/bound_create_clause.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace binder {
 
+BoundCreateClause::BoundCreateClause(const BoundCreateClause& other)
+    : BoundUpdatingClause{ClauseType::CREATE} {
+    for (auto& info : other.infos) {
+        infos.push_back(info->copy());
+    }
+}
+
 std::vector<expression_pair> BoundCreateClause::getAllSetItems() const {
     std::vector<expression_pair> result;
-    for (auto& createNode : createNodes) {
-        for (auto& setItem : createNode->getSetItems()) {
-            result.push_back(setItem);
-        }
-    }
-    for (auto& createRel : createRels) {
-        for (auto& setItem : createRel->getSetItems()) {
+    for (auto& info : infos) {
+        for (auto& setItem : info->setItems) {
             result.push_back(setItem);
         }
     }
     return result;
 }
 
-expression_vector BoundCreateClause::getPropertiesToRead() const {
-    expression_vector result;
-    for (auto& setItem : getAllSetItems()) {
-        for (auto& property : setItem.second->getSubPropertyExpressions()) {
-            result.push_back(property);
+bool BoundCreateClause::hasInfo(const std::function<bool(const BoundCreateInfo&)>& check) const {
+    for (auto& info : infos) {
+        if (check(*info)) {
+            return true;
         }
     }
-    return result;
+    return false;
 }
 
-std::unique_ptr<BoundUpdatingClause> BoundCreateClause::copy() {
-    auto result = std::make_unique<BoundCreateClause>();
-    for (auto& createNode : createNodes) {
-        result->addCreateNode(createNode->copy());
-    }
-    for (auto& createRel : createRels) {
-        result->addCreateRel(createRel->copy());
+std::vector<BoundCreateInfo*> BoundCreateClause::getInfos(
+    const std::function<bool(const BoundCreateInfo&)>& check) const {
+    std::vector<BoundCreateInfo*> result;
+    for (auto& info : infos) {
+        if (check(*info)) {
+            result.push_back(info.get());
+        }
     }
     return result;
 }

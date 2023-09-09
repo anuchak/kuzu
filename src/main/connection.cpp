@@ -1,14 +1,15 @@
 #include "main/connection.h"
 
 #include "binder/binder.h"
-#include "json.hpp"
+#include "binder/visitor/statement_read_write_analyzer.h"
 #include "main/database.h"
 #include "main/plan_printer.h"
 #include "optimizer/optimizer.h"
+#include "parser/explain_statement.h"
 #include "parser/parser.h"
 #include "planner/logical_plan/logical_plan_util.h"
 #include "planner/planner.h"
-#include "processor/mapper/plan_mapper.h"
+#include "processor/plan_mapper.h"
 #include "processor/processor.h"
 #include "transaction/transaction.h"
 #include "transaction/transaction_manager.h"
@@ -50,12 +51,12 @@ void Connection::beginWriteTransaction() {
 
 void Connection::commit() {
     std::unique_lock<std::mutex> lck{mtx};
-    commitOrRollbackNoLock(true /* isCommit */);
+    commitOrRollbackNoLock(TransactionAction::COMMIT);
 }
 
 void Connection::rollback() {
     std::unique_lock<std::mutex> lck{mtx};
-    commitOrRollbackNoLock(false /* is rollback */);
+    commitOrRollbackNoLock(TransactionAction::ROLLBACK);
 }
 
 void Connection::setMaxNumThreadForExec(uint64_t numThreads) {
@@ -65,6 +66,19 @@ void Connection::setMaxNumThreadForExec(uint64_t numThreads) {
 uint64_t Connection::getMaxNumThreadForExec() {
     std::unique_lock<std::mutex> lck{mtx};
     return clientContext->numThreadsForExecution;
+}
+
+void Connection::setRecursiveJoinBFSPolicy(SchedulerType schedulerType) {
+    clientContext->bfsSchedulerType = schedulerType;
+}
+
+SchedulerType Connection::getRecursiveJoinBFSPolicy() {
+    std::unique_lock<std::mutex> lck{mtx};
+    return clientContext->bfsSchedulerType;
+}
+
+void Connection::setMaxActiveBFSSharedState(uint64_t maxActiveBFS) {
+    clientContext->maxActiveBFSSharedState = maxActiveBFS;
 }
 
 std::unique_ptr<PreparedStatement> Connection::prepare(const std::string& query) {
@@ -100,7 +114,7 @@ Connection::ConnectionTransactionMode Connection::getTransactionMode() {
 void Connection::setTransactionModeNoLock(ConnectionTransactionMode newTransactionMode) {
     if (activeTransaction && transactionMode == ConnectionTransactionMode::MANUAL &&
         newTransactionMode == ConnectionTransactionMode::AUTO_COMMIT) {
-        throw common::ConnectionException(
+        throw ConnectionException(
             "Cannot change transaction mode from MANUAL to AUTO_COMMIT when there is an "
             "active transaction. Need to first commit or rollback the active transaction.");
     }
@@ -109,12 +123,12 @@ void Connection::setTransactionModeNoLock(ConnectionTransactionMode newTransacti
 
 void Connection::commitButSkipCheckpointingForTestingRecovery() {
     std::unique_lock<std::mutex> lck{mtx};
-    commitOrRollbackNoLock(true /* isCommit */, true /* skip checkpointing for testing */);
+    commitOrRollbackNoLock(TransactionAction::COMMIT, true /* skip checkpointing for testing */);
 }
 
 void Connection::rollbackButSkipCheckpointingForTestingRecovery() {
     std::unique_lock<std::mutex> lck{mtx};
-    commitOrRollbackNoLock(false /* is rollback */, true /* skip checkpointing for testing */);
+    commitOrRollbackNoLock(TransactionAction::ROLLBACK, true /* skip checkpointing for testing */);
 }
 
 transaction::Transaction* Connection::getActiveTransaction() {
@@ -133,14 +147,14 @@ bool Connection::hasActiveTransaction() {
 }
 
 void Connection::commitNoLock() {
-    commitOrRollbackNoLock(true /* is commit */);
+    commitOrRollbackNoLock(TransactionAction::COMMIT);
 }
 
 void Connection::rollbackIfNecessaryNoLock() {
     // If there is no active transaction in the system (e.g., an exception occurs during
     // planning), we shouldn't roll back the transaction.
     if (activeTransaction != nullptr) {
-        commitOrRollbackNoLock(false /* is rollback */);
+        commitOrRollbackNoLock(TransactionAction::ROLLBACK);
     }
 }
 
@@ -159,13 +173,12 @@ std::unique_ptr<PreparedStatement> Connection::prepareNoLock(
     try {
         // parsing
         auto statement = Parser::parseQuery(query);
-        preparedStatement->preparedSummary.isExplain = statement->isExplain();
-        preparedStatement->preparedSummary.isProfile = statement->isProfile();
         // binding
-        auto binder = Binder(*database->catalog);
+        auto binder = Binder(*database->catalog, clientContext.get());
         auto boundStatement = binder.bind(*statement);
-        preparedStatement->statementType = boundStatement->getStatementType();
-        preparedStatement->readOnly = boundStatement->isReadOnly();
+        preparedStatement->preparedSummary.statementType = boundStatement->getStatementType();
+        preparedStatement->readOnly =
+            binder::StatementReadWriteAnalyzer().isReadOnly(*boundStatement);
         preparedStatement->parameterMap = binder.getParameterMap();
         preparedStatement->statementResult = boundStatement->getStatementResult()->copy();
         // planning
@@ -210,8 +223,13 @@ std::unique_ptr<PreparedStatement> Connection::prepareNoLock(
 std::string Connection::getNodeTableNames() {
     lock_t lck{mtx};
     std::string result = "Node tables: \n";
-    for (auto& tableIDSchema : database->catalog->getReadOnlyVersion()->getNodeTableSchemas()) {
-        result += "\t" + tableIDSchema.second->tableName + "\n";
+    std::vector<std::string> nodeTableNames;
+    for (auto& nodeTableSchema : database->catalog->getReadOnlyVersion()->getNodeTableSchemas()) {
+        nodeTableNames.push_back(nodeTableSchema->tableName);
+    }
+    std::sort(nodeTableNames.begin(), nodeTableNames.end());
+    for (auto& nodeTableName : nodeTableNames) {
+        result += "\t" + nodeTableName + "\n";
     }
     return result;
 }
@@ -219,8 +237,13 @@ std::string Connection::getNodeTableNames() {
 std::string Connection::getRelTableNames() {
     lock_t lck{mtx};
     std::string result = "Rel tables: \n";
-    for (auto& tableIDSchema : database->catalog->getReadOnlyVersion()->getRelTableSchemas()) {
-        result += "\t" + tableIDSchema.second->tableName + "\n";
+    std::vector<std::string> relTableNames;
+    for (auto relTableSchema : database->catalog->getReadOnlyVersion()->getRelTableSchemas()) {
+        relTableNames.push_back(relTableSchema->tableName);
+    }
+    std::sort(relTableNames.begin(), relTableNames.end());
+    for (auto& relTableName : relTableNames) {
+        result += "\t" + relTableName + "\n";
     }
     return result;
 }
@@ -233,11 +256,14 @@ std::string Connection::getNodePropertyNames(const std::string& tableName) {
     }
     std::string result = tableName + " properties: \n";
     auto tableID = catalog->getReadOnlyVersion()->getTableID(tableName);
-    auto primaryKeyPropertyID =
-        catalog->getReadOnlyVersion()->getNodeTableSchema(tableID)->getPrimaryKey().propertyID;
-    for (auto& property : catalog->getReadOnlyVersion()->getAllNodeProperties(tableID)) {
-        result += "\t" + property.name + " " + Types::dataTypeToString(property.dataType);
-        result += property.propertyID == primaryKeyPropertyID ? "(PRIMARY KEY)\n" : "\n";
+    auto primaryKeyPropertyID = catalog->getReadOnlyVersion()
+                                    ->getNodeTableSchema(tableID)
+                                    ->getPrimaryKey()
+                                    ->getPropertyID();
+    for (auto property : catalog->getReadOnlyVersion()->getProperties(tableID)) {
+        result += "\t" + property->getName() + " " +
+                  LogicalTypeUtils::dataTypeToString(*property->getDataType());
+        result += property->getPropertyID() == primaryKeyPropertyID ? "(PRIMARY KEY)\n" : "\n";
     }
     return result;
 }
@@ -258,22 +284,28 @@ std::string Connection::getRelPropertyNames(const std::string& relTableName) {
     std::string result = relTableName + " src node: " + srcTableSchema->tableName + "\n";
     result += relTableName + " dst node: " + dstTableSchema->tableName + "\n";
     result += relTableName + " properties: \n";
-    for (auto& property : catalog->getReadOnlyVersion()->getRelProperties(relTableID)) {
-        if (catalog::TableSchema::isReservedPropertyName(property.name)) {
+    for (auto property : catalog->getReadOnlyVersion()->getProperties(relTableID)) {
+        if (catalog::TableSchema::isReservedPropertyName(property->getName())) {
             continue;
         }
-        result += "\t" + property.name + " " + Types::dataTypeToString(property.dataType) + "\n";
+        result += "\t" + property->getName() + " " +
+                  LogicalTypeUtils::dataTypeToString(*property->getDataType()) + "\n";
     }
     return result;
 }
 
 void Connection::interrupt() {
-    clientContext->activeQuery->interrupted = true;
+    clientContext->interrupt();
 }
 
 void Connection::setQueryTimeOut(uint64_t timeoutInMS) {
     lock_t lck{mtx};
     clientContext->timeoutInMS = timeoutInMS;
+}
+
+uint64_t Connection::getQueryTimeOut() {
+    lock_t lck{mtx};
+    return clientContext->timeoutInMS;
 }
 
 std::unique_ptr<QueryResult> Connection::executeWithParams(PreparedStatement* preparedStatement,
@@ -299,10 +331,11 @@ void Connection::bindParametersNoLock(PreparedStatement* preparedStatement,
             throw Exception("Parameter " + name + " not found.");
         }
         auto expectParam = parameterMap.at(name);
-        if (expectParam->dataType != value->getDataType()) {
+        if (*expectParam->getDataType() != *value->getDataType()) {
             throw Exception("Parameter " + name + " has data type " +
-                            Types::dataTypeToString(value->getDataType()) + " but expect " +
-                            Types::dataTypeToString(expectParam->dataType) + ".");
+                            LogicalTypeUtils::dataTypeToString(*value->getDataType()) +
+                            " but expects " +
+                            LogicalTypeUtils::dataTypeToString(*expectParam->getDataType()) + ".");
         }
         parameterMap.at(name)->copyValueFrom(*value);
     }
@@ -310,16 +343,16 @@ void Connection::bindParametersNoLock(PreparedStatement* preparedStatement,
 
 std::unique_ptr<QueryResult> Connection::executeAndAutoCommitIfNecessaryNoLock(
     PreparedStatement* preparedStatement, uint32_t planIdx) {
-    clientContext->activeQuery = std::make_unique<ActiveQuery>();
+    clientContext->resetActiveQuery();
     clientContext->startTimingIfEnabled();
-    auto mapper = PlanMapper(*database->storageManager, database->memoryManager.get(),
-        database->catalog.get(), clientContext->numThreadsForExecution);
+    auto mapper = PlanMapper(
+        *database->storageManager, database->memoryManager.get(), database->catalog.get());
     std::unique_ptr<PhysicalPlan> physicalPlan;
     if (preparedStatement->isSuccess()) {
         try {
             physicalPlan =
                 mapper.mapLogicalPlanToPhysical(preparedStatement->logicalPlans[planIdx].get(),
-                    preparedStatement->getExpressionsToCollect(), preparedStatement->statementType);
+                    preparedStatement->statementResult->getColumns());
         } catch (std::exception& exception) {
             preparedStatement->success = false;
             preparedStatement->errMsg = exception.what();
@@ -334,31 +367,22 @@ std::unique_ptr<QueryResult> Connection::executeAndAutoCommitIfNecessaryNoLock(
     auto executionContext =
         std::make_unique<ExecutionContext>(clientContext->numThreadsForExecution, profiler.get(),
             database->memoryManager.get(), database->bufferManager.get(), clientContext.get());
-    // Execute query if EXPLAIN is not enabled.
-    if (!preparedStatement->preparedSummary.isExplain) {
-        profiler->enabled = preparedStatement->preparedSummary.isProfile;
-        auto executingTimer = TimeMetric(true /* enable */);
-        executingTimer.start();
-        std::shared_ptr<FactorizedTable> resultFT;
-        try {
-            beginTransactionIfAutoCommit(preparedStatement);
-            executionContext->transaction = activeTransaction.get();
-            resultFT =
-                database->queryProcessor->execute(physicalPlan.get(), executionContext.get());
-            if (ConnectionTransactionMode::AUTO_COMMIT == transactionMode) {
-                commitNoLock();
-            }
-        } catch (Exception& exception) { return getQueryResultWithError(exception.what()); }
-        executingTimer.stop();
-        queryResult->querySummary->executionTime = executingTimer.getElapsedTimeMS();
-        queryResult->initResultTableAndIterator(std::move(resultFT),
-            preparedStatement->statementResult->getColumns(),
-            preparedStatement->statementResult->getExpressionsToCollectPerColumn());
-    }
-    auto planPrinter = std::make_unique<PlanPrinter>(physicalPlan.get(), std::move(profiler));
-    queryResult->querySummary->planInJson =
-        std::make_unique<nlohmann::json>(planPrinter->printPlanToJson());
-    queryResult->querySummary->planInOstream = planPrinter->printPlanToOstream();
+    profiler->enabled = preparedStatement->isProfile();
+    auto executingTimer = TimeMetric(true /* enable */);
+    executingTimer.start();
+    std::shared_ptr<FactorizedTable> resultFT;
+    try {
+        beginTransactionIfAutoCommit(preparedStatement);
+        executionContext->transaction = activeTransaction.get();
+        resultFT = database->queryProcessor->execute(physicalPlan.get(), executionContext.get());
+        if (ConnectionTransactionMode::AUTO_COMMIT == transactionMode) {
+            commitNoLock();
+        }
+    } catch (Exception& exception) { return getQueryResultWithError(exception.what()); }
+    executingTimer.stop();
+    queryResult->querySummary->executionTime = executingTimer.getElapsedTimeMS();
+    queryResult->initResultTableAndIterator(
+        std::move(resultFT), preparedStatement->statementResult->getColumns());
     return queryResult;
 }
 
@@ -375,14 +399,14 @@ void Connection::beginTransactionNoLock(TransactionType type) {
                             database->transactionManager->beginWriteTransaction();
 }
 
-void Connection::commitOrRollbackNoLock(bool isCommit, bool skipCheckpointForTesting) {
+void Connection::commitOrRollbackNoLock(
+    transaction::TransactionAction action, bool skipCheckpointForTesting) {
     if (activeTransaction) {
-        if (activeTransaction->isWriteTransaction()) {
-            database->commitAndCheckpointOrRollback(
-                activeTransaction.get(), isCommit, skipCheckpointForTesting);
+        if (action == TransactionAction::COMMIT) {
+            database->commit(activeTransaction.get(), skipCheckpointForTesting);
         } else {
-            isCommit ? database->transactionManager->commit(activeTransaction.get()) :
-                       database->transactionManager->rollback(activeTransaction.get());
+            assert(action == TransactionAction::ROLLBACK);
+            database->rollback(activeTransaction.get(), skipCheckpointForTesting);
         }
         activeTransaction.reset();
         transactionMode = ConnectionTransactionMode::AUTO_COMMIT;
@@ -395,10 +419,9 @@ void Connection::beginTransactionIfAutoCommit(PreparedStatement* preparedStateme
     }
     if (!preparedStatement->allowActiveTransaction() && activeTransaction) {
         throw ConnectionException(
-            "DDL and CopyCSV statements are automatically wrapped in a "
-            "transaction and committed. As such, they cannot be part of an "
-            "active transaction, please commit or rollback your previous transaction and "
-            "issue a ddl query without opening a transaction.");
+            "DDL, Copy, createMacro statements can only run in the AUTO_COMMIT mode. Please commit "
+            "or rollback your previous transaction if there is any and issue the query without "
+            "beginning a transaction");
     }
     if (ConnectionTransactionMode::AUTO_COMMIT == transactionMode) {
         assert(!activeTransaction);
@@ -415,6 +438,11 @@ void Connection::beginTransactionIfAutoCommit(PreparedStatement* preparedStateme
             "Transaction mode is manual but there is no active transaction. Please begin a "
             "transaction or set the transaction mode of the connection to AUTO_COMMIT");
     }
+}
+
+void Connection::addScalarFunction(
+    std::string name, function::vector_function_definitions definitions) {
+    database->catalog->addVectorFunction(name, std::move(definitions));
 }
 
 } // namespace main

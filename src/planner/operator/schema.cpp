@@ -1,6 +1,10 @@
-#include "planner/logical_plan/logical_operator/schema.h"
+#include "planner/logical_plan/schema.h"
 
+#include "binder/expression_visitor.h"
 #include "common/exception.h"
+
+using namespace kuzu::binder;
+using namespace kuzu::common;
 
 namespace kuzu {
 namespace planner {
@@ -24,6 +28,22 @@ void Schema::insertToGroupAndScope(
     expressionNameToGroupPos.insert({expression->getUniqueName(), groupPos});
     groups[groupPos]->insertExpression(expression);
     expressionsInScope.push_back(expression);
+}
+
+void Schema::insertToScopeMayRepeat(
+    const std::shared_ptr<binder::Expression>& expression, uint32_t groupPos) {
+    if (expressionNameToGroupPos.contains(expression->getUniqueName())) {
+        return;
+    }
+    insertToScope(expression, groupPos);
+}
+
+void Schema::insertToGroupAndScopeMayRepeat(
+    const std::shared_ptr<binder::Expression>& expression, uint32_t groupPos) {
+    if (expressionNameToGroupPos.contains(expression->getUniqueName())) {
+        return;
+    }
+    insertToGroupAndScope(expression, groupPos);
 }
 
 void Schema::insertToGroupAndScope(
@@ -59,7 +79,7 @@ binder::expression_vector Schema::getSubExpressionsInScope(
         results.push_back(expression);
         return results;
     }
-    for (auto& child : expression->getChildren()) {
+    for (auto& child : ExpressionChildrenCollector::collectChildren(*expression)) {
         for (auto& subExpression : getSubExpressionsInScope(child)) {
             results.push_back(subExpression);
         }
@@ -107,17 +127,6 @@ size_t Schema::getNumGroups(bool isFlat) const {
     return result;
 }
 
-std::vector<binder::expression_vector> SchemaUtils::getExpressionsPerGroup(
-    const binder::expression_vector& expressions, const Schema& schema) {
-    std::vector<binder::expression_vector> result;
-    result.resize(schema.getNumGroups());
-    for (auto& expression : expressions) {
-        auto groupPos = schema.getGroupPos(*expression);
-        result[groupPos].push_back(expression);
-    }
-    return result;
-}
-
 f_group_pos SchemaUtils::getLeadingGroupPos(
     const std::unordered_set<f_group_pos>& groupPositions, const Schema& schema) {
     auto leadingGroupPos = INVALID_F_GROUP_POS;
@@ -136,8 +145,7 @@ void SchemaUtils::validateAtMostOneUnFlatGroup(
     for (auto groupPos : groupPositions) {
         if (!schema.getGroup(groupPos)->isFlat()) {
             if (hasUnFlatGroup) {
-                throw common::InternalException(
-                    "Unexpected multiple unFlat factorization groups found.");
+                throw InternalException("Unexpected multiple unFlat factorization groups found.");
             }
             hasUnFlatGroup = true;
         }
@@ -148,7 +156,7 @@ void SchemaUtils::validateNoUnFlatGroup(
     const std::unordered_set<f_group_pos>& groupPositions, const Schema& schema) {
     for (auto groupPos : groupPositions) {
         if (!schema.getGroup(groupPos)->isFlat()) {
-            throw common::InternalException("Unexpected unFlat factorization group found.");
+            throw InternalException("Unexpected unFlat factorization group found.");
         }
     }
 }

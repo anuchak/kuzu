@@ -21,6 +21,10 @@ public:
 private:
     void setNumThreads(const std::string& numThreadsString);
 
+    void setRecursiveJoinBFSPolicy(const std::string& bfsPolicy);
+
+    void setMaxActiveBFSSharedState(const std::string& maxActiveBFS);
+
     void printNodeSchema(const std::string& tableName);
     void printRelSchema(const std::string& tableName);
 

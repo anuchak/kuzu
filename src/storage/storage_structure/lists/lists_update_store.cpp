@@ -13,7 +13,7 @@ ListsUpdatesForNodeOffset::ListsUpdatesForNodeOffset(const RelTableSchema& relTa
     : isNewlyAddedNode{false} {
     for (auto& relProperty : relTableSchema.properties) {
         updatedPersistentListOffsets.emplace(
-            relProperty.propertyID, UpdatedPersistentListOffsets{});
+            relProperty->getPropertyID(), UpdatedPersistentListOffsets{});
     }
 }
 
@@ -27,12 +27,15 @@ bool ListsUpdatesForNodeOffset::hasAnyUpdatedPersistentListOffsets() const {
 }
 
 ListsUpdatesStore::ListsUpdatesStore(MemoryManager& memoryManager, RelTableSchema& relTableSchema)
-    : memoryManager{memoryManager} {
+    : memoryManager{memoryManager}, relTableSchema{
+                                        ku_static_unique_pointer_cast<TableSchema, RelTableSchema>(
+                                            relTableSchema.copy())} {
     updateSchema(relTableSchema);
 }
 
 void ListsUpdatesStore::updateSchema(RelTableSchema& relTableSchema) {
-    this->relTableSchema = relTableSchema;
+    this->relTableSchema =
+        ku_static_unique_pointer_cast<TableSchema, RelTableSchema>(relTableSchema.copy());
     initInsertedRelsAndListsUpdates();
     initListsUpdatesPerTablePerDirection();
 }
@@ -59,11 +62,11 @@ bool ListsUpdatesStore::isRelDeletedInPersistentStore(
     if (listsUpdatesForNodeOffset == nullptr) {
         return false;
     }
-    return listsUpdatesForNodeOffset->deletedRelOffsets.contains(relOffset);
+    return listsUpdatesForNodeOffset->deletedRelOffsets.count(relOffset) > 0;
 }
 
 bool ListsUpdatesStore::hasUpdates() const {
-    for (auto relDirection : REL_DIRECTIONS) {
+    for (auto relDirection : RelDataDirectionUtils::getRelDataDirections()) {
         for (auto& [_, listsUpdatesPerNode] : listsUpdatesPerDirection[relDirection]) {
             for (auto& [_, listsUpdatesForNodeOffset] : listsUpdatesPerNode) {
                 if (listsUpdatesForNodeOffset->hasUpdates()) {
@@ -78,7 +81,8 @@ bool ListsUpdatesStore::hasUpdates() const {
 // Note: This function also resets the overflowptr of each string in inMemList if necessary.
 void ListsUpdatesStore::readInsertedRelsToList(ListFileID& listFileID,
     std::vector<ft_tuple_idx_t> tupleIdxes, InMemList& inMemList,
-    uint64_t numElementsInPersistentStore, DiskOverflowFile* diskOverflowFile, DataType dataType) {
+    uint64_t numElementsInPersistentStore, DiskOverflowFile* diskOverflowFile,
+    LogicalType dataType) {
     ftOfInsertedRels->copyToInMemList(getColIdxInFT(listFileID), tupleIdxes,
         inMemList.getListData(), inMemList.nullMask.get(), numElementsInPersistentStore,
         diskOverflowFile, dataType);
@@ -95,9 +99,9 @@ void ListsUpdatesStore::insertRelIfNecessary(const ValueVector* srcNodeIDVector,
         std::vector<ValueVector*>{(ValueVector*)srcNodeIDVector, (ValueVector*)dstNodeIDVector};
     vectorsToAppendToFT.insert(
         vectorsToAppendToFT.end(), relPropertyVectors.begin(), relPropertyVectors.end());
-    for (auto direction : REL_DIRECTIONS) {
+    for (auto direction : RelDataDirectionUtils::getRelDataDirections()) {
         auto boundNodeID = direction == FWD ? srcNodeID : dstNodeID;
-        if (!relTableSchema.isSingleMultiplicityInDirection(direction)) {
+        if (!relTableSchema->isSingleMultiplicityInDirection(direction)) {
             if (!hasInsertedToFT) {
                 ftOfInsertedRels->append(vectorsToAppendToFT);
                 hasInsertedToFT = true;
@@ -108,8 +112,8 @@ void ListsUpdatesStore::insertRelIfNecessary(const ValueVector* srcNodeIDVector,
     }
 }
 
-void ListsUpdatesStore::deleteRelIfNecessary(common::ValueVector* srcNodeIDVector,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* relIDVector) {
+void ListsUpdatesStore::deleteRelIfNecessary(
+    ValueVector* srcNodeIDVector, ValueVector* dstNodeIDVector, ValueVector* relIDVector) {
     auto srcNodeID = srcNodeIDVector->getValue<nodeID_t>(
         srcNodeIDVector->state->selVector->selectedPositions[0]);
     auto dstNodeID = dstNodeIDVector->getValue<nodeID_t>(
@@ -121,9 +125,9 @@ void ListsUpdatesStore::deleteRelIfNecessary(common::ValueVector* srcNodeIDVecto
         // If the rel that we are going to delete is a newly inserted rel, we need to delete
         // its tupleIdx from the insertedRelsTupleIdxInFT of listsUpdatesStore in FWD and BWD
         // direction. Note: we don't reuse the space for inserted rel tuple in factorizedTable.
-        for (auto direction : REL_DIRECTIONS) {
-            auto boundNodeID = direction == RelDirection::FWD ? srcNodeID : dstNodeID;
-            if (!relTableSchema.isSingleMultiplicityInDirection(direction)) {
+        for (auto direction : RelDataDirectionUtils::getRelDataDirections()) {
+            auto boundNodeID = direction == RelDataDirection::FWD ? srcNodeID : dstNodeID;
+            if (!relTableSchema->isSingleMultiplicityInDirection(direction)) {
                 auto& insertedRelsTupleIdxInFT =
                     listsUpdatesPerDirection[direction]
                                             [StorageUtils::getListChunkIdx(boundNodeID.offset)]
@@ -137,9 +141,9 @@ void ListsUpdatesStore::deleteRelIfNecessary(common::ValueVector* srcNodeIDVecto
             }
         }
     } else {
-        for (auto direction : REL_DIRECTIONS) {
-            auto boundNodeID = direction == RelDirection::FWD ? srcNodeID : dstNodeID;
-            if (!relTableSchema.isSingleMultiplicityInDirection(direction)) {
+        for (auto direction : RelDataDirectionUtils::getRelDataDirections()) {
+            auto boundNodeID = direction == RelDataDirection::FWD ? srcNodeID : dstNodeID;
+            if (!relTableSchema->isSingleMultiplicityInDirection(direction)) {
                 getOrCreateListsUpdatesForNodeOffset(direction, boundNodeID)
                     ->deletedRelOffsets.insert(relID.offset);
             }
@@ -191,13 +195,13 @@ void ListsUpdatesStore::updateRelIfNecessary(ValueVector* srcNodeIDVector,
     auto dstNodeID = dstNodeIDVector->getValue<nodeID_t>(
         dstNodeIDVector->state->selVector->selectedPositions[0]);
     bool insertUpdatedRel = true;
-    for (auto direction : REL_DIRECTIONS) {
+    for (auto direction : RelDataDirectionUtils::getRelDataDirections()) {
         auto boundNodeID = direction == FWD ? srcNodeID : dstNodeID;
         // We should only store the property update if the property is stored as a list in the
         // current direction. (E.g. We update a rel property of a MANY-ONE rel table which stores
         // the property as column in the fwd direction, and list in the bwd direction, we should
         // only handle the updates for the bwd direction in this function).
-        if (!relTableSchema.isSingleMultiplicityInDirection(direction)) {
+        if (!relTableSchema->isSingleMultiplicityInDirection(direction)) {
             // The rel that we are going to update either stored in persistentStore or updateStore.
             if (listsUpdateInfo.isStoredInPersistentStore()) {
                 // If the rel is stored in persistentStore, we should store the update in the
@@ -254,7 +258,7 @@ void ListsUpdatesStore::readUpdatesToPropertyVectorIfExists(ListFileID& listFile
 
 void ListsUpdatesStore::readPropertyUpdateToInMemList(ListFileID& listFileID,
     ft_tuple_idx_t ftTupleIdx, InMemList& inMemList, uint64_t posToWriteToInMemList,
-    const DataType& dataType, DiskOverflowFile* overflowFileOfInMemList) {
+    const LogicalType& dataType, DiskOverflowFile* overflowFileOfInMemList) {
     assert(listFileID.listType == ListType::REL_PROPERTY_LISTS);
     auto propertyID = listFileID.relPropertyListID.propertyID;
     auto tupleIdxesToRead = std::vector<ft_tuple_idx_t>{ftTupleIdx};
@@ -266,14 +270,14 @@ void ListsUpdatesStore::readPropertyUpdateToInMemList(ListFileID& listFileID,
 }
 
 void ListsUpdatesStore::initNewlyAddedNodes(nodeID_t& nodeID) {
-    for (auto direction : REL_DIRECTIONS) {
-        if (!relTableSchema.isSingleMultiplicityInDirection(direction) &&
-            nodeID.tableID == relTableSchema.getBoundTableID(direction)) {
+    for (auto direction : RelDataDirectionUtils::getRelDataDirections()) {
+        if (!relTableSchema->isSingleMultiplicityInDirection(direction) &&
+            nodeID.tableID == relTableSchema->getBoundTableID(direction)) {
             auto& listsUpdatesPerNode =
                 listsUpdatesPerDirection[direction][StorageUtils::getListChunkIdx(nodeID.offset)];
-            if (!listsUpdatesPerNode.contains(nodeID.offset)) {
+            if (listsUpdatesPerNode.count(nodeID.offset) == 0) {
                 listsUpdatesPerNode.emplace(
-                    nodeID.offset, std::make_unique<ListsUpdatesForNodeOffset>(relTableSchema));
+                    nodeID.offset, std::make_unique<ListsUpdatesForNodeOffset>(*relTableSchema));
             }
             listsUpdatesPerNode.at(nodeID.offset)->isNewlyAddedNode = true;
         }
@@ -287,20 +291,20 @@ void ListsUpdatesStore::initInsertedRelsAndListsUpdates() {
         false /* isUnflat */, 0 /* dataChunkPos */, sizeof(nodeID_t)));
     factorizedTableSchema->appendColumn(std::make_unique<ColumnSchema>(
         false /* isUnflat */, 0 /* dataChunkPos */, sizeof(nodeID_t)));
-    for (auto& relProperty : relTableSchema.properties) {
+    for (auto& relProperty : relTableSchema->properties) {
         auto numBytesForProperty =
-            relProperty.propertyID == RelTableSchema::INTERNAL_REL_ID_PROPERTY_ID ?
+            relProperty->getPropertyID() == RelTableSchema::INTERNAL_REL_ID_PROPERTY_ID ?
                 sizeof(offset_t) :
-                Types::getDataTypeSize(relProperty.dataType);
+                storage::StorageUtils::getDataTypeSize(*relProperty->getDataType());
         propertyIDToColIdxMap.emplace(
-            relProperty.propertyID, factorizedTableSchema->getNumColumns());
+            relProperty->getPropertyID(), factorizedTableSchema->getNumColumns());
         factorizedTableSchema->appendColumn(std::make_unique<ColumnSchema>(
             false /* isUnflat */, 0 /* dataChunkPos */, numBytesForProperty));
         // Note: we create one factorizedTable to store the updated properties for each property.
         auto updatedRelsSchema = std::make_unique<FactorizedTableSchema>();
         updatedRelsSchema->appendColumn(std::make_unique<ColumnSchema>(
             false /* isUnflat */, 0 /* dataChunkPos */, numBytesForProperty));
-        listsUpdates.emplace(relProperty.propertyID,
+        listsUpdates.emplace(relProperty->getPropertyID(),
             std::make_unique<FactorizedTable>(&memoryManager, std::move(updatedRelsSchema)));
     }
     ftOfInsertedRels =
@@ -318,19 +322,19 @@ ft_col_idx_t ListsUpdatesStore::getColIdxInFT(ListFileID& listFileID) const {
 
 void ListsUpdatesStore::initListsUpdatesPerTablePerDirection() {
     listsUpdatesPerDirection.clear();
-    for (auto direction : REL_DIRECTIONS) {
+    for (auto direction : RelDataDirectionUtils::getRelDataDirections()) {
         listsUpdatesPerDirection.emplace_back();
     }
 }
 
 ListsUpdatesForNodeOffset* ListsUpdatesStore::getOrCreateListsUpdatesForNodeOffset(
-    RelDirection relDirection, nodeID_t nodeID) {
+    RelDataDirection relDirection, nodeID_t nodeID) {
     auto nodeOffset = nodeID.offset;
     auto& listsUpdatesPerNodeOffset =
         listsUpdatesPerDirection[relDirection][StorageUtils::getListChunkIdx(nodeOffset)];
-    if (!listsUpdatesPerNodeOffset.contains(nodeOffset)) {
+    if (listsUpdatesPerNodeOffset.count(nodeOffset) == 0) {
         listsUpdatesPerNodeOffset.emplace(
-            nodeOffset, std::make_unique<ListsUpdatesForNodeOffset>(relTableSchema));
+            nodeOffset, std::make_shared<ListsUpdatesForNodeOffset>(*relTableSchema));
     }
     return listsUpdatesPerNodeOffset.at(nodeOffset).get();
 }
@@ -340,8 +344,8 @@ ListsUpdatesForNodeOffset* ListsUpdatesStore::getListsUpdatesForNodeOffsetIfExis
     auto relNodeTableAndDir = getRelNodeTableAndDirFromListFileID(listFileID);
     auto& listsUpdatesPerChunk = listsUpdatesPerDirection[relNodeTableAndDir.dir];
     auto chunkIdx = StorageUtils::getListChunkIdx(nodeOffset);
-    if (!listsUpdatesPerChunk.contains(chunkIdx) ||
-        !listsUpdatesPerChunk.at(chunkIdx).contains(nodeOffset)) {
+    if (listsUpdatesPerChunk.count(chunkIdx) == 0 ||
+        listsUpdatesPerChunk.at(chunkIdx).count(nodeOffset) == 0) {
         return nullptr;
     }
     return listsUpdatesPerChunk.at(chunkIdx).at(nodeOffset).get();

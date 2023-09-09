@@ -5,6 +5,7 @@
 
 #include "common/in_mem_overflow_buffer.h"
 #include "common/vector/value_vector.h"
+#include "processor/data_pos.h"
 #include "processor/result/flat_tuple.h"
 #include "storage/buffer_manager/memory_manager.h"
 #include "storage/storage_structure/disk_overflow_file.h"
@@ -13,6 +14,7 @@
 namespace kuzu {
 namespace processor {
 
+// TODO(Guodong/Ziyi): Move these typedef to common and unify them with the ones without `ft_`.
 typedef uint64_t ft_tuple_idx_t;
 typedef uint32_t ft_col_idx_t;
 typedef uint32_t ft_col_offset_t;
@@ -93,7 +95,7 @@ private:
 
 class ColumnSchema {
 public:
-    ColumnSchema(bool isUnflat, uint32_t dataChunksPos, uint32_t numBytes)
+    ColumnSchema(bool isUnflat, data_chunk_pos_t dataChunksPos, uint32_t numBytes)
         : isUnflat{isUnflat}, dataChunkPos{dataChunksPos}, numBytes{numBytes}, mayContainNulls{
                                                                                    false} {}
 
@@ -101,7 +103,7 @@ public:
 
     inline bool isFlat() const { return !isUnflat; }
 
-    inline uint32_t getDataChunkPos() const { return dataChunkPos; }
+    inline data_chunk_pos_t getDataChunkPos() const { return dataChunkPos; }
 
     inline uint32_t getNumBytes() const { return numBytes; }
 
@@ -118,7 +120,7 @@ public:
 private:
     // We need isUnflat, dataChunkPos to know the factorization structure in the factorizedTable.
     bool isUnflat;
-    uint32_t dataChunkPos;
+    data_chunk_pos_t dataChunkPos;
     uint32_t numBytes;
     bool mayContainNulls;
 };
@@ -149,14 +151,14 @@ public:
         columns[idx]->setMayContainsNullsToTrue();
     }
 
-    static inline uint32_t getNumBytesForNullBuffer(uint32_t numColumns) {
-        return (numColumns >> 3) + ((numColumns & 7) != 0); // &7 is the same as %8;
-    }
-
     inline bool isEmpty() const { return columns.empty(); }
 
     bool operator==(const FactorizedTableSchema& other) const;
     inline bool operator!=(const FactorizedTableSchema& other) const { return !(*this == other); }
+
+    inline std::unique_ptr<FactorizedTableSchema> copy() const {
+        return std::make_unique<FactorizedTableSchema>(*this);
+    }
 
 private:
     std::vector<std::unique_ptr<ColumnSchema>> columns;
@@ -172,6 +174,7 @@ class FactorizedTable {
     friend FlatTupleIterator;
     friend class JoinHashTable;
     friend class IntersectHashTable;
+    friend class PathPropertyProbe;
 
 public:
     FactorizedTable(
@@ -259,13 +262,11 @@ public:
     // inside overflowFileOfInMemList.
     void copyToInMemList(ft_col_idx_t colIdx, std::vector<ft_tuple_idx_t>& tupleIdxesToRead,
         uint8_t* data, common::NullMask* nullMask, uint64_t startElemPosInList,
-        storage::DiskOverflowFile* overflowFileOfInMemList, const common::DataType& type) const;
+        storage::DiskOverflowFile* overflowFileOfInMemList, const common::LogicalType& type) const;
     void clear();
     int64_t findValueInFlatColumn(ft_col_idx_t colIdx, int64_t value) const;
 
 private:
-    static bool isNull(const uint8_t* nullMapBuffer, ft_col_idx_t idx);
-    void setNull(uint8_t* nullBuffer, ft_col_idx_t idx);
     void setOverflowColNull(uint8_t* nullBuffer, ft_col_idx_t colIdx, ft_tuple_idx_t tupleIdx);
 
     uint64_t computeNumTuplesToAppend(
@@ -306,17 +307,13 @@ private:
         uint8_t** tuplesToRead, ft_col_idx_t colIdx, common::ValueVector& vector) const;
     void readUnflatCol(const uint8_t* tupleToRead, const common::SelectionVector* selVector,
         ft_col_idx_t colIdx, common::ValueVector& vector) const;
-    void readFlatColToFlatVector(
-        uint8_t** tuplesToRead, ft_col_idx_t colIdx, common::ValueVector& vector) const;
+    void readFlatColToFlatVector(uint8_t* tupleToRead, ft_col_idx_t colIdx,
+        common::ValueVector& vector, common::sel_t pos) const;
     void readFlatColToUnflatVector(uint8_t** tuplesToRead, ft_col_idx_t colIdx,
         common::ValueVector& vector, uint64_t numTuplesToRead) const;
-    inline void readFlatCol(uint8_t** tuplesToRead, ft_col_idx_t colIdx,
-        common::ValueVector& vector, uint64_t numTuplesToRead) const {
-        vector.state->isFlat() ?
-            readFlatColToFlatVector(tuplesToRead, colIdx, vector) :
-            readFlatColToUnflatVector(tuplesToRead, colIdx, vector, numTuplesToRead);
-    }
-    static void copyOverflowIfNecessary(uint8_t* dst, uint8_t* src, const common::DataType& type,
+    void readFlatCol(uint8_t** tuplesToRead, ft_col_idx_t colIdx, common::ValueVector& vector,
+        uint64_t numTuplesToRead) const;
+    static void copyOverflowIfNecessary(uint8_t* dst, uint8_t* src, const common::LogicalType& type,
         storage::DiskOverflowFile* diskOverflowFile);
 
 private:
@@ -327,6 +324,18 @@ private:
     std::unique_ptr<DataBlockCollection> flatTupleBlockCollection;
     std::unique_ptr<DataBlockCollection> unflatTupleBlockCollection;
     std::unique_ptr<common::InMemOverflowBuffer> inMemOverflowBuffer;
+};
+
+// TODO(Ziyi): These two functions are used to store the copy message in a factorizedTable because
+// the current QueryProcessor::execute requires the last operator in the physical plan must be
+// ResultCollector. We should remove this class after we remove the assumption that the last
+// operator in the pipeline must be resultCollector.
+class FactorizedTableUtils {
+public:
+    static void appendStringToTable(FactorizedTable* factorizedTable, std::string& outputMsg,
+        storage::MemoryManager* memoryManager);
+    static std::shared_ptr<FactorizedTable> getFactorizedTableForOutputMsg(
+        std::string& outputMsg, storage::MemoryManager* memoryManager);
 };
 
 class FlatTupleIterator {

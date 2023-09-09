@@ -1,7 +1,5 @@
 #include "expression_evaluator/case_evaluator.h"
 
-#include "common/vector/value_vector_utils.h"
-
 using namespace kuzu::common;
 using namespace kuzu::processor;
 using namespace kuzu::storage;
@@ -21,7 +19,7 @@ void CaseExpressionEvaluator::init(const ResultSet& resultSet, MemoryManager* me
         alternativeEvaluator->init(resultSet, memoryManager);
     }
     elseEvaluator->init(resultSet, memoryManager);
-    BaseExpressionEvaluator::init(resultSet, memoryManager);
+    ExpressionEvaluator::init(resultSet, memoryManager);
 }
 
 void CaseExpressionEvaluator::evaluate() {
@@ -60,7 +58,7 @@ bool CaseExpressionEvaluator::select(SelectionVector& selVector) {
     return numSelectedValues > 0;
 }
 
-std::unique_ptr<BaseExpressionEvaluator> CaseExpressionEvaluator::clone() {
+std::unique_ptr<ExpressionEvaluator> CaseExpressionEvaluator::clone() {
     std::vector<std::unique_ptr<CaseAlternativeEvaluator>> clonedAlternativeEvaluators;
     for (auto& alternative : alternativeEvaluators) {
         clonedAlternativeEvaluators.push_back(alternative->clone());
@@ -72,7 +70,7 @@ std::unique_ptr<BaseExpressionEvaluator> CaseExpressionEvaluator::clone() {
 void CaseExpressionEvaluator::resolveResultVector(
     const ResultSet& resultSet, MemoryManager* memoryManager) {
     resultVector = std::make_shared<ValueVector>(expression->dataType, memoryManager);
-    std::vector<BaseExpressionEvaluator*> inputEvaluators;
+    std::vector<ExpressionEvaluator*> inputEvaluators;
     for (auto& alternative : alternativeEvaluators) {
         inputEvaluators.push_back(alternative->whenEvaluator.get());
         inputEvaluators.push_back(alternative->thenEvaluator.get());
@@ -92,12 +90,10 @@ void CaseExpressionEvaluator::fillEntry(sel_t resultPos, const ValueVector& then
     if (thenVector.isNull(thenPos)) {
         resultVector->setNull(resultPos, true);
     } else {
-        if (thenVector.dataType.typeID == common::VAR_LIST) {
+        if (thenVector.dataType.getLogicalTypeID() == LogicalTypeID::VAR_LIST) {
             auto srcListEntry = thenVector.getValue<list_entry_t>(thenPos);
             list_entry_t resultEntry = ListVector::addList(resultVector.get(), srcListEntry.size);
-            common::ValueVectorUtils::copyValue(reinterpret_cast<uint8_t*>(&resultEntry),
-                *resultVector, reinterpret_cast<uint8_t*>(&srcListEntry), thenVector);
-            resultVector->setValue(resultPos, resultEntry);
+            resultVector->copyFromVectorData(resultPos, &thenVector, thenPos);
         } else {
             auto val = thenVector.getValue<T>(thenPos);
             resultVector->setValue<T>(resultPos, val);
@@ -106,69 +102,69 @@ void CaseExpressionEvaluator::fillEntry(sel_t resultPos, const ValueVector& then
 }
 
 void CaseExpressionEvaluator::fillAllSwitch(const ValueVector& thenVector) {
-    auto typeID = resultVector->dataType.typeID;
-    switch (typeID) {
-    case BOOL: {
+    switch (resultVector->dataType.getLogicalTypeID()) {
+    case LogicalTypeID::BOOL: {
         fillAll<bool>(thenVector);
     } break;
-    case INT64: {
+    case LogicalTypeID::INT64: {
         fillAll<int64_t>(thenVector);
     } break;
-    case DOUBLE: {
+    case LogicalTypeID::DOUBLE: {
         fillAll<double_t>(thenVector);
     } break;
-    case DATE: {
+    case LogicalTypeID::DATE: {
         fillAll<date_t>(thenVector);
     } break;
-    case TIMESTAMP: {
+    case LogicalTypeID::TIMESTAMP: {
         fillAll<timestamp_t>(thenVector);
     } break;
-    case INTERVAL: {
+    case LogicalTypeID::INTERVAL: {
         fillAll<interval_t>(thenVector);
     } break;
-    case STRING: {
+    case LogicalTypeID::STRING: {
         fillAll<ku_string_t>(thenVector);
     } break;
-    case VAR_LIST: {
+    case LogicalTypeID::VAR_LIST: {
         fillAll<list_entry_t>(thenVector);
     } break;
     default:
-        throw NotImplementedException(
-            "Unimplemented type " + Types::dataTypeToString(typeID) + " for case expression.");
+        throw NotImplementedException("Unimplemented type " +
+                                      LogicalTypeUtils::dataTypeToString(resultVector->dataType) +
+                                      " for case expression.");
     }
 }
 
 void CaseExpressionEvaluator::fillSelectedSwitch(
     const SelectionVector& selVector, const ValueVector& thenVector) {
-    auto typeID = resultVector->dataType.typeID;
-    switch (typeID) {
-    case BOOL: {
+    switch (resultVector->dataType.getLogicalTypeID()) {
+    case LogicalTypeID::BOOL: {
         fillSelected<bool>(selVector, thenVector);
     } break;
-    case INT64: {
+    case LogicalTypeID::INT64: {
         fillSelected<int64_t>(selVector, thenVector);
     } break;
-    case DOUBLE: {
+    case LogicalTypeID::DOUBLE: {
         fillSelected<double_t>(selVector, thenVector);
     } break;
-    case DATE: {
+    case LogicalTypeID::DATE: {
         fillSelected<date_t>(selVector, thenVector);
     } break;
-    case TIMESTAMP: {
+    case LogicalTypeID::TIMESTAMP: {
         fillSelected<timestamp_t>(selVector, thenVector);
     } break;
-    case INTERVAL: {
+    case LogicalTypeID::INTERVAL: {
         fillSelected<interval_t>(selVector, thenVector);
     } break;
-    case STRING: {
+    case LogicalTypeID::STRING: {
         fillSelected<ku_string_t>(selVector, thenVector);
     } break;
-    case VAR_LIST: {
+    case LogicalTypeID::VAR_LIST: {
         fillSelected<list_entry_t>(selVector, thenVector);
     } break;
     default:
-        throw NotImplementedException(
-            "Unimplemented type " + Types::dataTypeToString(typeID) + " for case expression.");
+        throw NotImplementedException("Unimplemented type " +
+                                      LogicalTypeUtils::dataTypeToString(resultVector->dataType) +
+                                      " for case expression.");
     }
 }
 

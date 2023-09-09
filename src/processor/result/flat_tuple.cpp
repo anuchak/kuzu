@@ -5,21 +5,22 @@
 #include "utf8proc_wrapper.h"
 
 using namespace kuzu::utf8proc;
+using namespace kuzu::common;
 
 namespace kuzu {
 namespace processor {
 
-void FlatTuple::addValue(std::unique_ptr<common::Value> value) {
+void FlatTuple::addValue(std::unique_ptr<Value> value) {
     values.push_back(std::move(value));
 }
 
-uint32_t FlatTuple::len() {
+uint32_t FlatTuple::len() const {
     return values.size();
 }
 
-common::Value* FlatTuple::getValue(uint32_t idx) {
+Value* FlatTuple::getValue(uint32_t idx) const {
     if (idx >= len()) {
-        throw common::RuntimeException(common::StringUtils::string_format(
+        throw RuntimeException(StringUtils::string_format(
             "ValIdx is out of range. Number of values in flatTuple: {}, valIdx: {}.", len(), idx));
     }
     return values[idx].get();

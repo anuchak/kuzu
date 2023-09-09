@@ -230,7 +230,7 @@ bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
 
 bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* context) {
     while (true) {
-        if (bfsMorsel->hasBFSSharedState()) {
+        /*if (bfsMorsel->hasBFSSharedState()) {
             auto state = bfsMorsel->getBFSMorsel();
             if (state == EXTEND_IN_PROGRESS) {
                 computeBFSnThreadkMorsel(context);
@@ -242,7 +242,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
             if (state == PATH_LENGTH_WRITE_IN_PROGRESS) {
                 return true;
             }
-        }
+        }*/
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
             vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType);
         if (state.first == COMPLETE) {

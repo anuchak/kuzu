@@ -81,10 +81,8 @@ public:
         return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 
-#if defined(__GNUC__) || defined(__GNUG__)
     void addToLocalNextBFSLevel(
         common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) override;
-#endif
 
     inline bool hasMoreToWrite() override {
         return prevDistMorselStartEndIdx.first < prevDistMorselStartEndIdx.second;

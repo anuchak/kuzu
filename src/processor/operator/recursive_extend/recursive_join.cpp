@@ -233,9 +233,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
         if (bfsMorsel->hasBFSSharedState()) {
             auto state = bfsMorsel->getBFSMorsel();
             if (state == EXTEND_IN_PROGRESS) {
-#if defined(__GNUC__) || defined(__GNUG__)
                 computeBFSnThreadkMorsel(context);
-#endif
                 if (bfsMorsel->finishBFSMorsel(queryRelType)) {
                     return true;
                 }
@@ -254,9 +252,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
             return true;
         }
         if (state.second == EXTEND_IN_PROGRESS) {
-#if defined(__GNUC__) || defined(__GNUG__)
             computeBFSnThreadkMorsel(context);
-#endif
             if (bfsMorsel->finishBFSMorsel(queryRelType)) {
                 return true;
             }
@@ -271,7 +267,6 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
 // is operating on its morsel. Lock-free CAS operation occurs here, visited nodes are marked with
 // the function call addToLocalNextBFSLevel on the visited vector. The path lengths are written to
 // the pathLength vector.
-#if defined(__GNUC__) || defined(__GNUG__)
 void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
     // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
@@ -288,7 +283,6 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
         nodeOffset = bfsMorsel->getNextNodeOffset();
     }
 }
-#endif
 
 // Used for 1T1S scheduling policy, an offset at a time BFS extension is done, and then we check
 // if the BFS is complete or not. No lock-free CAS operation occurring on the visited vector here.

@@ -3,7 +3,6 @@
 namespace kuzu {
 namespace processor {
 
-#if defined(__GNUC__) || defined(__GNUG__)
 template<>
 void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
     common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
@@ -37,13 +36,10 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
         }
     }
 }
-#endif
 
-#if defined(__GNUC__) || defined(__GNUG__)
 template<>
 void AllShortestPathMorsel<true>::addToLocalNextBFSLevel(
     common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {}
-#endif
 
 template<>
 int64_t AllShortestPathMorsel<false>::writeToVector(

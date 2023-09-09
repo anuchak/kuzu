@@ -1,7 +1,3 @@
-#if defined(_MSC_VER)
-#include <Windows.h>
-#include <intrin.h>
-#endif
 #include "common/exception.h"
 #include "processor/operator/recursive_extend/all_shortest_path_state.h"
 #include "processor/operator/recursive_extend/bfs_state.h"
@@ -205,7 +201,6 @@ std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
     return startScanIdxAndSize;
 }
 
-#if defined(__GNUC__) || defined(__GNUG__)
 template<>
 void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
@@ -226,13 +221,10 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         }
     }
 }
-#endif
 
-#if defined(__GNUC__) || defined(__GNUG__)
 template<>
 void ShortestPathMorsel<true>::addToLocalNextBFSLevel(
     common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {}
-#endif
 
 template<>
 int64_t ShortestPathMorsel<false>::writeToVector(

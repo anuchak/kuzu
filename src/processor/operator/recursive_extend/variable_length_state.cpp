@@ -3,7 +3,6 @@
 namespace kuzu {
 namespace processor {
 
-#if defined(__GNUC__) || defined(__GNUG__)
 template<>
 void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
     common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
@@ -50,15 +49,12 @@ void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
         }
     }
 }
-#endif
 
-#if defined(__GNUC__) || defined(__GNUG__)
 template<>
 void VariableLengthMorsel<true>::addToLocalNextBFSLevel(
     common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
     throw common::NotImplementedException("Not implemented for TRACK_PATH and nTkS scheduler. ");
 }
-#endif
 
 template<>
 int64_t VariableLengthMorsel<false>::writeToVector(

@@ -139,9 +139,7 @@ private:
 
     bool doBFSnThreadkMorsel(ExecutionContext* context);
 
-#if defined(__GNUC__) || defined(__GNUG__)
     void computeBFSnThreadkMorsel(ExecutionContext* context);
-#endif
 
     // Compute BFS for a given src node.
     void computeBFSOneThreadOneMorsel(ExecutionContext* context);

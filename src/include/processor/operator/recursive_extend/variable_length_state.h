@@ -45,10 +45,8 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
         return topEntry->multiplicity;
     }
 
-#if defined(__GNUC__) || defined(__GNUG__)
     void addToLocalNextBFSLevel(
         common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) override;
-#endif
 
     inline common::offset_t getNextNodeOffset() override {
         if (startScanIdx == endScanIdx) {

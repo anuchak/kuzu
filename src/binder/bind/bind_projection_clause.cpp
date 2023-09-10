@@ -1,6 +1,9 @@
 #include "binder/binder.h"
+#include "binder/expression/expression_util.h"
 #include "binder/expression/literal_expression.h"
 #include "binder/expression_visitor.h"
+#include "binder/query/return_with_clause/bound_return_clause.h"
+#include "binder/query/return_with_clause/bound_with_clause.h"
 #include "parser/expression/parsed_property_expression.h"
 
 using namespace kuzu::common;
@@ -9,33 +12,46 @@ using namespace kuzu::parser;
 namespace kuzu {
 namespace binder {
 
+// WITH clause is like SQL CTE. So the projection list of WITH clause should be explicitly
+// evaluated. This, however, creates problem in the following case
+// MATCH (a) WITH a RETURN a.age;
+// Although only a.age is needed for further processing. The CTE "MATCH (a) WITH a" require us to
+// fully materialize all columns of "a". Note that we cannot rely on projection push down to
+// optimize this because projection pushdown assumes all columns in WITH/RETURN are needed.
+// Our solution is:
+// First rewrite node and rel as their INTERNAL ID property in WITH clause. So
+// MATCH (a) WITH a._id RETURN a.age;
+// And then apply WithClauseProjectionRewriter after binding to rewrite as
+// MATCH (a) WITH a._id, a.age RETURN a.age
+static expression_vector rewriteProjectionInWithClause(const expression_vector& expressions) {
+    expression_vector result;
+    for (auto& expression : expressions) {
+        if (ExpressionUtil::isNodeVariable(*expression)) {
+            auto node = (NodeExpression*)expression.get();
+            result.push_back(node->getInternalIDProperty());
+        } else if (ExpressionUtil::isRelVariable(*expression)) {
+            auto rel = (RelExpression*)expression.get();
+            result.push_back(rel->getSrcNode()->getInternalIDProperty());
+            result.push_back(rel->getDstNode()->getInternalIDProperty());
+            result.push_back(rel->getInternalIDProperty());
+        } else if (ExpressionUtil::isRecursiveRelVariable(*expression)) {
+            auto rel = (RelExpression*)expression.get();
+            result.push_back(expression);
+            result.push_back(rel->getLengthExpression());
+        } else {
+            result.push_back(expression);
+        }
+    }
+    return ExpressionUtil::removeDuplication(result);
+}
+
 std::unique_ptr<BoundWithClause> Binder::bindWithClause(const WithClause& withClause) {
     auto projectionBody = withClause.getProjectionBody();
     auto projectionExpressions =
         bindProjectionExpressions(projectionBody->getProjectionExpressions());
     validateProjectionColumnsInWithClauseAreAliased(projectionExpressions);
-    expression_vector newProjectionExpressions;
-    for (auto& expression : projectionExpressions) {
-        if (ExpressionUtil::isNodeVariable(*expression)) {
-            auto node = (NodeExpression*)expression.get();
-            newProjectionExpressions.push_back(node->getInternalIDProperty());
-            for (auto& property : node->getPropertyExpressions()) {
-                newProjectionExpressions.push_back(property->copy());
-            }
-        } else if (ExpressionUtil::isRelVariable(*expression)) {
-            auto rel = (RelExpression*)expression.get();
-            for (auto& property : rel->getPropertyExpressions()) {
-                newProjectionExpressions.push_back(property->copy());
-            }
-        } else if (ExpressionUtil::isRecursiveRelVariable(*expression)) {
-            auto rel = (RelExpression*)expression.get();
-            newProjectionExpressions.push_back(expression);
-            newProjectionExpressions.push_back(rel->getLengthExpression());
-        } else {
-            newProjectionExpressions.push_back(expression);
-        }
-    }
-    auto boundProjectionBody = bindProjectionBody(*projectionBody, newProjectionExpressions);
+    auto boundProjectionBody =
+        bindProjectionBody(*projectionBody, rewriteProjectionInWithClause(projectionExpressions));
     validateOrderByFollowedBySkipOrLimitInWithClause(*boundProjectionBody);
     scope->clear();
     addExpressionsToScope(projectionExpressions);
@@ -211,14 +227,30 @@ expression_vector Binder::bindOrderByExpressions(
 
 uint64_t Binder::bindSkipLimitExpression(const ParsedExpression& expression) {
     auto boundExpression = expressionBinder.bindExpression(expression);
-    // We currently do not support the number of rows to skip/limit written as an expression (eg.
-    // SKIP 3 + 2 is not supported).
-    if (expression.getExpressionType() != LITERAL ||
-        ((LiteralExpression&)(*boundExpression)).getDataType().getLogicalTypeID() !=
-            LogicalTypeID::INT64) {
-        throw BinderException("The number of rows to skip/limit must be a non-negative integer.");
+    auto errorMsg = "The number of rows to skip/limit must be a non-negative integer.";
+    if (!ExpressionVisitor::isConstant(*boundExpression)) {
+        throw BinderException(errorMsg);
     }
-    return ((LiteralExpression&)(*boundExpression)).value->getValue<int64_t>();
+    auto value = ((LiteralExpression&)(*boundExpression)).value.get();
+    int64_t num = 0;
+    // TODO: replace the following switch with value.cast()
+    switch (value->getDataType()->getLogicalTypeID()) {
+    case LogicalTypeID::INT64: {
+        num = value->getValue<int64_t>();
+    } break;
+    case LogicalTypeID::INT32: {
+        num = value->getValue<int32_t>();
+    } break;
+    case LogicalTypeID::INT16: {
+        num = value->getValue<int16_t>();
+    } break;
+    default:
+        throw BinderException(errorMsg);
+    }
+    if (num < 0) {
+        throw BinderException(errorMsg);
+    }
+    return num;
 }
 
 void Binder::addExpressionsToScope(const expression_vector& projectionExpressions) {

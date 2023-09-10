@@ -1,6 +1,7 @@
 #pragma once
 
 #include "node_column.h"
+#include "storage/store/table_statistics.h"
 
 namespace kuzu {
 namespace storage {
@@ -14,14 +15,22 @@ class StringNodeColumn : public NodeColumn {
 public:
     StringNodeColumn(common::LogicalType dataType, const catalog::MetadataDAHInfo& metaDAHeaderInfo,
         BMFileHandle* dataFH, BMFileHandle* metadataFH, BufferManager* bufferManager, WAL* wal,
-        transaction::Transaction* transaction);
+        transaction::Transaction* transaction, RWPropertyStats propertyStatistics);
 
     void scan(transaction::Transaction* transaction, common::node_group_idx_t nodeGroupIdx,
         common::offset_t startOffsetInGroup, common::offset_t endOffsetInGroup,
         common::ValueVector* resultVector, uint64_t offsetInVector = 0) final;
+    void scan(common::node_group_idx_t nodeGroupIdx, ColumnChunk* columnChunk) final;
 
     common::page_idx_t append(ColumnChunk* columnChunk, common::page_idx_t startPageIdx,
         common::node_group_idx_t nodeGroupIdx) final;
+
+    void writeValue(common::offset_t nodeOffset, common::ValueVector* vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom) final;
+
+    inline InMemDiskArray<OverflowColumnChunkMetadata>* getOverflowMetadataDA() {
+        return overflowMetadataDA.get();
+    }
 
     void checkpointInMemory() final;
     void rollbackInMemory() final;
@@ -37,7 +46,7 @@ private:
         common::ValueVector* resultVector, common::page_idx_t overflowPageIdx);
 
 private:
-    std::unique_ptr<InMemDiskArray<ColumnChunkMetadata>> overflowMetadataDA;
+    std::unique_ptr<InMemDiskArray<OverflowColumnChunkMetadata>> overflowMetadataDA;
 };
 
 } // namespace storage

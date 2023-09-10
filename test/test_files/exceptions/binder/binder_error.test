@@ -38,12 +38,12 @@ Binder exception: Expression in WITH must be aliased (use AS).
 -LOG BindToDifferentVariableType1
 -STATEMENT MATCH (a:person)-[e1:knows]->(b:person) WITH e1 AS a MATCH (a) RETURN *
 ---- error
-Binder exception: e1 has data type REL. (NODE) was expected.
+Binder exception: a has data type REL. (NODE) was expected.
 
 -LOG BindToDifferentVariableType2
 -STATEMENT MATCH (a:person)-[e1:knows]->(b:person) WITH a.age + 1 AS a MATCH (a) RETURN *
 ---- error
-Binder exception: +(a.age,1) has data type INT64. (NODE) was expected.
+Binder exception: a has data type INT64. (NODE) was expected.
 
 -LOG BindEmptyStar
 -STATEMENT RETURN *
@@ -245,7 +245,7 @@ Binder exception: Delete PROPERTY is not supported.
 -LOG CreateNodeTableUsedName
 -STATEMENT CREATE NODE TABLE person(NAME STRING, ID INT64, PRIMARY KEY(NAME))
 ---- error
-Binder exception: Node person already exists.
+Binder exception: person already exists in catalog.
 
 -LOG CreateNodeTablePKColNameNotExists
 -STATEMENT CREATE NODE TABLE PERSON(NAME STRING, ID INT64, birthdate date, primary key (dummyColName))
@@ -285,7 +285,7 @@ Binder exception: Copy csv option value can only be a single character with an o
 -LOG CreateRelTableUsedName
 -STATEMENT CREATE REL TABLE knows ( FROM person TO person)
 ---- error
-Binder exception: Rel knows already exists.
+Binder exception: knows already exists in catalog.
 
 -LOG CreateRelTableInvalidNodeTableName
 -STATEMENT CREATE REL TABLE knows_post ( FROM person TO post)

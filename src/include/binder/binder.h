@@ -5,9 +5,12 @@
 #include "expression_binder.h"
 #include "parser/copy.h"
 #include "parser/query/regular_query.h"
-#include "query_normalizer.h"
 
 namespace kuzu {
+namespace parser {
+struct CreateTableInfo;
+}
+
 namespace main {
 class ClientContext;
 }
@@ -17,6 +20,8 @@ namespace binder {
 class BoundCreateInfo;
 class BoundSetPropertyInfo;
 class BoundDeleteInfo;
+class BoundWithClause;
+class BoundReturnClause;
 
 // BinderScope keeps track of expressions in scope and their aliases. We maintain the order of
 // expressions in
@@ -56,9 +61,11 @@ class Binder {
     friend class ExpressionBinder;
 
 public:
-    explicit Binder(const catalog::Catalog& catalog, main::ClientContext* clientContext)
-        : catalog{catalog}, lastExpressionId{0}, scope{std::make_unique<BinderScope>()},
-          expressionBinder{this}, clientContext{clientContext} {}
+    explicit Binder(const catalog::Catalog& catalog, storage::MemoryManager* memoryManager,
+        main::ClientContext* clientContext)
+        : catalog{catalog}, memoryManager{memoryManager}, lastExpressionId{0},
+          scope{std::make_unique<BinderScope>()}, expressionBinder{this}, clientContext{
+                                                                              clientContext} {}
 
     std::unique_ptr<BoundStatement> bind(const parser::Statement& statement);
 
@@ -77,41 +84,50 @@ private:
         const std::string& name, const common::LogicalType& dataType);
 
     /*** bind DDL ***/
-    std::unique_ptr<BoundStatement> bindCreateNodeTableClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindCreateRelTableClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindDropTableClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindRenameTableClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindAddPropertyClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindDropPropertyClause(const parser::Statement& statement);
-    std::unique_ptr<BoundStatement> bindRenamePropertyClause(const parser::Statement& statement);
+    std::unique_ptr<BoundCreateTableInfo> bindCreateTableInfo(const parser::CreateTableInfo* info);
+    std::unique_ptr<BoundCreateTableInfo> bindCreateNodeTableInfo(
+        const parser::CreateTableInfo* info);
+    std::unique_ptr<BoundCreateTableInfo> bindCreateRelTableInfo(
+        const parser::CreateTableInfo* info);
+    std::unique_ptr<BoundCreateTableInfo> bindCreateRelTableGroupInfo(
+        const parser::CreateTableInfo* info);
+    std::unique_ptr<BoundCreateTableInfo> bindCreateRdfGraphInfo(
+        const parser::CreateTableInfo* info);
+    std::unique_ptr<BoundStatement> bindCreateTable(const parser::Statement& statement);
 
-    std::vector<std::unique_ptr<catalog::Property>> bindProperties(
-        std::vector<std::pair<std::string, std::string>> propertyNameDataTypes);
-    uint32_t bindPrimaryKey(const std::string& pkColName,
-        std::vector<std::pair<std::string, std::string>> propertyNameDataTypes);
+    std::unique_ptr<BoundStatement> bindDropTable(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindRenameTable(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindAddProperty(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindDropProperty(const parser::Statement& statement);
+    std::unique_ptr<BoundStatement> bindRenameProperty(const parser::Statement& statement);
+
     common::property_id_t bindPropertyName(
         catalog::NodeTableSchema::TableSchema* tableSchema, const std::string& propertyName);
-    std::unique_ptr<common::LogicalType> bindDataType(const std::string& dataType);
 
     /*** bind copy from/to ***/
+    static bool bindContainsSerial(
+        catalog::TableSchema* tableSchema, common::CopyDescription::FileType fileType);
+    expression_vector bindColumnExpressions(
+        catalog::TableSchema* tableSchema, common::CopyDescription::FileType fileType);
     std::unique_ptr<BoundStatement> bindCopyFromClause(const parser::Statement& statement);
     std::unique_ptr<BoundStatement> bindCopyToClause(const parser::Statement& statement);
 
-    std::vector<std::string> bindFilePaths(const std::vector<std::string>& filePaths);
+    static std::vector<std::string> bindFilePaths(const std::vector<std::string>& filePaths);
 
-    common::CSVReaderConfig bindParsingOptions(
+    std::unique_ptr<common::CSVReaderConfig> bindParsingOptions(
         const std::unordered_map<std::string, std::unique_ptr<parser::ParsedExpression>>*
             parsingOptions);
     void bindStringParsingOptions(common::CSVReaderConfig& csvReaderConfig,
         const std::string& optionName, std::string& optionValue);
     char bindParsingOptionValue(std::string value);
-    common::CopyDescription::FileType bindFileType(const std::vector<std::string>& filePaths);
-    common::CopyDescription::FileType bindFileType(const std::string& filePath);
+    static common::CopyDescription::FileType bindFileType(
+        const std::vector<std::string>& filePaths);
+    static common::CopyDescription::FileType bindFileType(const std::string& filePath);
 
     /*** bind query ***/
     std::unique_ptr<BoundRegularQuery> bindQuery(const parser::RegularQuery& regularQuery);
-    std::unique_ptr<BoundSingleQuery> bindSingleQuery(const parser::SingleQuery& singleQuery);
-    std::unique_ptr<BoundQueryPart> bindQueryPart(const parser::QueryPart& queryPart);
+    std::unique_ptr<NormalizedSingleQuery> bindSingleQuery(const parser::SingleQuery& singleQuery);
+    std::unique_ptr<NormalizedQueryPart> bindQueryPart(const parser::QueryPart& queryPart);
 
     /*** bind call ***/
     std::unique_ptr<BoundStatement> bindStandaloneCall(const parser::Statement& statement);
@@ -216,7 +232,7 @@ private:
         const BoundProjectionBody& boundProjectionBody);
 
     static void validateUnionColumnsOfTheSameType(
-        const std::vector<std::unique_ptr<BoundSingleQuery>>& boundSingleQueries);
+        const std::vector<std::unique_ptr<NormalizedSingleQuery>>& normalizedSingleQueries);
 
     static void validateIsAllUnionOrUnionAll(const BoundRegularQuery& regularQuery);
 
@@ -239,6 +255,7 @@ private:
 
 private:
     const catalog::Catalog& catalog;
+    storage::MemoryManager* memoryManager;
     uint32_t lastExpressionId;
     std::unique_ptr<BinderScope> scope;
     ExpressionBinder expressionBinder;

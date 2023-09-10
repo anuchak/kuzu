@@ -183,5 +183,11 @@ struct ClientContextConstants {
  */
 enum SchedulerType { OneThreadOneMorsel, nThreadkMorsel };
 
+struct OrderByConstants {
+    static constexpr uint64_t NUM_BYTES_FOR_PAYLOAD_IDX = 8;
+    static constexpr uint64_t MIN_SIZE_TO_REDUCE = common::DEFAULT_VECTOR_CAPACITY * 5;
+    static constexpr uint64_t MIN_LIMIT_RATIO_TO_REDUCE = 2;
+};
+
 } // namespace common
 } // namespace kuzu

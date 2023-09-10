@@ -1,9 +1,11 @@
 #include "catalog/catalog_content.h"
 
+#include "catalog/rel_table_group_schema.h"
 #include "common/ser_deser.h"
 #include "common/string_utils.h"
 #include "storage/storage_utils.h"
 
+using namespace kuzu::binder;
 using namespace kuzu::common;
 using namespace kuzu::storage;
 using namespace kuzu::transaction;
@@ -20,39 +22,84 @@ CatalogContent::CatalogContent(const std::string& directory) {
     registerBuiltInFunctions();
 }
 
-table_id_t CatalogContent::addNodeTableSchema(std::string tableName, property_id_t primaryKeyId,
-    std::vector<std::unique_ptr<Property>> properties) {
-    table_id_t tableID = assignNextTableID();
+static void assignPropertyIDAndTableID(
+    std::vector<std::unique_ptr<Property>>& properties, table_id_t tableID) {
     for (auto i = 0u; i < properties.size(); ++i) {
         properties[i]->setPropertyID(i);
         properties[i]->setTableID(tableID);
     }
+}
+
+table_id_t CatalogContent::addNodeTableSchema(const BoundCreateTableInfo& info) {
+    table_id_t tableID = assignNextTableID();
+    auto extraInfo = reinterpret_cast<BoundExtraCreateNodeTableInfo*>(info.extraInfo.get());
+    auto properties = Property::copy(extraInfo->properties);
+    assignPropertyIDAndTableID(properties, tableID);
     auto nodeTableSchema = std::make_unique<NodeTableSchema>(
-        std::move(tableName), tableID, primaryKeyId, std::move(properties));
+        info.tableName, tableID, extraInfo->primaryKeyIdx, std::move(properties));
     tableNameToIDMap.emplace(nodeTableSchema->tableName, tableID);
     tableSchemas.emplace(tableID, std::move(nodeTableSchema));
     return tableID;
 }
 
-table_id_t CatalogContent::addRelTableSchema(std::string tableName, RelMultiplicity relMultiplicity,
-    std::vector<std::unique_ptr<Property>> properties, table_id_t srcTableID, table_id_t dstTableID,
-    std::unique_ptr<LogicalType> srcPKDataType, std::unique_ptr<LogicalType> dstPKDataType) {
-    table_id_t tableID = assignNextTableID();
-    getNodeTableSchema(srcTableID)->addFwdRelTableID(tableID);
-    getNodeTableSchema(dstTableID)->addBwdRelTableID(tableID);
+// TODO(Xiyang): move this to binding stage
+static void addRelInternalIDProperty(std::vector<std::unique_ptr<Property>>& properties) {
     auto relInternalIDProperty = std::make_unique<Property>(
         InternalKeyword::ID, std::make_unique<LogicalType>(LogicalTypeID::INTERNAL_ID));
     properties.insert(properties.begin(), std::move(relInternalIDProperty));
-    for (auto i = 0u; i < properties.size(); ++i) {
-        properties[i]->setPropertyID(i);
-        properties[i]->setTableID(tableID);
-    }
-    auto relTableSchema = std::make_unique<RelTableSchema>(std::move(tableName), tableID,
-        relMultiplicity, std::move(properties), srcTableID, dstTableID, std::move(srcPKDataType),
-        std::move(dstPKDataType));
+}
+
+table_id_t CatalogContent::addRelTableSchema(const BoundCreateTableInfo& info) {
+    table_id_t tableID = assignNextTableID();
+    auto extraInfo = reinterpret_cast<BoundExtraCreateRelTableInfo*>(info.extraInfo.get());
+    auto properties = Property::copy(extraInfo->properties);
+    addRelInternalIDProperty(properties);
+    assignPropertyIDAndTableID(properties, tableID);
+    getNodeTableSchema(extraInfo->srcTableID)->addFwdRelTableID(tableID);
+    getNodeTableSchema(extraInfo->dstTableID)->addBwdRelTableID(tableID);
+    auto relTableSchema = std::make_unique<RelTableSchema>(info.tableName, tableID,
+        extraInfo->relMultiplicity, std::move(properties), extraInfo->srcTableID,
+        extraInfo->dstTableID, extraInfo->srcPkDataType->copy(), extraInfo->dstPkDataType->copy());
     tableNameToIDMap.emplace(relTableSchema->tableName, tableID);
     tableSchemas.emplace(tableID, std::move(relTableSchema));
     return tableID;
+}
+
+table_id_t CatalogContent::addRelTableGroupSchema(const binder::BoundCreateTableInfo& info) {
+    table_id_t relTableGroupID = assignNextTableID();
+    auto extraInfo = (BoundExtraCreateRelTableGroupInfo*)info.extraInfo.get();
+    std::vector<table_id_t> relTableIDs;
+    relTableIDs.reserve(extraInfo->infos.size());
+    for (auto& childInfo : extraInfo->infos) {
+        relTableIDs.push_back(addRelTableSchema(*childInfo));
+    }
+    auto relTableGroupName = info.tableName;
+    auto relTableGroupSchema = std::make_unique<RelTableGroupSchema>(
+        relTableGroupName, relTableGroupID, std::move(relTableIDs));
+    tableNameToIDMap.emplace(relTableGroupName, relTableGroupID);
+    tableSchemas.emplace(relTableGroupID, std::move(relTableGroupSchema));
+    return relTableGroupID;
+}
+
+table_id_t CatalogContent::addRdfGraphSchema(const BoundCreateTableInfo& info) {
+    table_id_t rdfGraphID = assignNextTableID();
+    auto extraInfo = reinterpret_cast<BoundExtraCreateRdfGraphInfo*>(info.extraInfo.get());
+    auto nodeInfo = extraInfo->nodeInfo.get();
+    auto relInfo = extraInfo->relInfo.get();
+    auto relExtraInfo = (BoundExtraCreateRelTableInfo*)relInfo->extraInfo.get();
+    // Node table schema
+    auto nodeTableID = addNodeTableSchema(*nodeInfo);
+    // Rel table schema
+    relExtraInfo->srcTableID = nodeTableID;
+    relExtraInfo->dstTableID = nodeTableID;
+    auto relTableID = addRelTableSchema(*relInfo);
+    // Rdf table schema
+    auto rdfGraphName = info.tableName;
+    auto rdfGraphSchema =
+        std::make_unique<RdfGraphSchema>(rdfGraphName, rdfGraphID, nodeTableID, relTableID);
+    tableNameToIDMap.emplace(rdfGraphName, rdfGraphID);
+    tableSchemas.emplace(rdfGraphID, std::move(rdfGraphSchema));
+    return rdfGraphID;
 }
 
 bool CatalogContent::containNodeTable(const std::string& tableName) const {

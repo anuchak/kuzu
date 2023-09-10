@@ -35,8 +35,12 @@ public:
 
 class Property {
 public:
+    // TODO: these should be guarded as reserved property names.
     static constexpr std::string_view REL_FROM_PROPERTY_NAME = "_FROM_";
     static constexpr std::string_view REL_TO_PROPERTY_NAME = "_TO_";
+    static constexpr std::string_view OFFSET_NAME = "_OFFSET_";
+    static constexpr std::string_view REL_BOUND_OFFSET_NAME = "_BOUND_OFFSET_";
+    static constexpr std::string_view REL_NBR_OFFSET_NAME = "_NBR_OFFSET_";
 
     Property(std::string name, std::unique_ptr<common::LogicalType> dataType)
         : Property{std::move(name), std::move(dataType), common::INVALID_PROPERTY_ID,
@@ -75,13 +79,13 @@ public:
     void serialize(common::FileInfo* fileInfo, uint64_t& offset) const;
     static std::unique_ptr<Property> deserialize(common::FileInfo* fileInfo, uint64_t& offset);
 
-    static std::vector<std::unique_ptr<catalog::Property>> copyProperties(
-        const std::vector<std::unique_ptr<catalog::Property>>& propertiesToCopy);
-
     inline std::unique_ptr<Property> copy() const {
         return std::make_unique<Property>(
             name, dataType->copy(), propertyID, tableID, metadataDAHInfo->copy());
     }
+
+    static std::vector<std::unique_ptr<Property>> copy(
+        const std::vector<std::unique_ptr<Property>>& properties);
 
 private:
     std::string name;

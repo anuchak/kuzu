@@ -1,5 +1,6 @@
 #include "binder/binder.h"
 
+#include "binder/bound_statement_rewriter.h"
 #include "binder/expression/variable_expression.h"
 #include "common/string_utils.h"
 
@@ -11,49 +12,49 @@ namespace kuzu {
 namespace binder {
 
 std::unique_ptr<BoundStatement> Binder::bind(const Statement& statement) {
+    std::unique_ptr<BoundStatement> boundStatement;
     switch (statement.getStatementType()) {
-    case StatementType::CREATE_NODE_TABLE: {
-        return bindCreateNodeTableClause(statement);
-    }
-    case StatementType::CREATE_REL_TABLE: {
-        return bindCreateRelTableClause(statement);
-    }
+    case StatementType::CREATE_TABLE: {
+        boundStatement = bindCreateTable(statement);
+    } break;
     case StatementType::COPY_FROM: {
-        return bindCopyFromClause(statement);
-    }
+        boundStatement = bindCopyFromClause(statement);
+    } break;
     case StatementType::COPY_TO: {
-        return bindCopyToClause(statement);
-    }
+        boundStatement = bindCopyToClause(statement);
+    } break;
     case StatementType::DROP_TABLE: {
-        return bindDropTableClause(statement);
-    }
+        boundStatement = bindDropTable(statement);
+    } break;
     case StatementType::RENAME_TABLE: {
-        return bindRenameTableClause(statement);
-    }
+        boundStatement = bindRenameTable(statement);
+    } break;
     case StatementType::ADD_PROPERTY: {
-        return bindAddPropertyClause(statement);
-    }
+        boundStatement = bindAddProperty(statement);
+    } break;
     case StatementType::DROP_PROPERTY: {
-        return bindDropPropertyClause(statement);
-    }
+        boundStatement = bindDropProperty(statement);
+    } break;
     case StatementType::RENAME_PROPERTY: {
-        return bindRenamePropertyClause(statement);
-    }
+        boundStatement = bindRenameProperty(statement);
+    } break;
     case StatementType::QUERY: {
-        return bindQuery((const RegularQuery&)statement);
-    }
+        boundStatement = bindQuery((const RegularQuery&)statement);
+    } break;
     case StatementType::STANDALONE_CALL: {
-        return bindStandaloneCall(statement);
-    }
+        boundStatement = bindStandaloneCall(statement);
+    } break;
     case StatementType::EXPLAIN: {
-        return bindExplain(statement);
-    }
+        boundStatement = bindExplain(statement);
+    } break;
     case StatementType::CREATE_MACRO: {
-        return bindCreateMacro(statement);
-    }
+        boundStatement = bindCreateMacro(statement);
+    } break;
     default:
         throw NotImplementedException("Binder::bind");
     }
+    BoundStatementRewriter::rewrite(*boundStatement);
+    return boundStatement;
 }
 
 std::shared_ptr<Expression> Binder::bindWhereExpression(const ParsedExpression& parsedExpression) {
@@ -117,21 +118,21 @@ void Binder::validateOrderByFollowedBySkipOrLimitInWithClause(
 }
 
 void Binder::validateUnionColumnsOfTheSameType(
-    const std::vector<std::unique_ptr<BoundSingleQuery>>& boundSingleQueries) {
-    if (boundSingleQueries.size() <= 1) {
+    const std::vector<std::unique_ptr<NormalizedSingleQuery>>& normalizedSingleQueries) {
+    if (normalizedSingleQueries.size() <= 1) {
         return;
     }
-    auto expressionsToProject = boundSingleQueries[0]->getExpressionsToCollect();
-    for (auto i = 1u; i < boundSingleQueries.size(); i++) {
-        auto expressionsToProjectToCheck = boundSingleQueries[i]->getExpressionsToCollect();
-        if (expressionsToProject.size() != expressionsToProjectToCheck.size()) {
+    auto columns = normalizedSingleQueries[0]->getStatementResult()->getColumns();
+    for (auto i = 1u; i < normalizedSingleQueries.size(); i++) {
+        auto otherColumns = normalizedSingleQueries[i]->getStatementResult()->getColumns();
+        if (columns.size() != otherColumns.size()) {
             throw BinderException("The number of columns to union/union all must be the same.");
         }
         // Check whether the dataTypes in union expressions are exactly the same in each single
         // query.
-        for (auto j = 0u; j < expressionsToProject.size(); j++) {
-            ExpressionBinder::validateExpectedDataType(*expressionsToProjectToCheck[j],
-                expressionsToProject[j]->dataType.getLogicalTypeID());
+        for (auto j = 0u; j < columns.size(); j++) {
+            ExpressionBinder::validateExpectedDataType(
+                *otherColumns[j], columns[j]->dataType.getLogicalTypeID());
         }
     }
 }

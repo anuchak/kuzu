@@ -17,7 +17,7 @@ ValueVector::ValueVector(LogicalType dataType, storage::MemoryManager* memoryMan
 
 void ValueVector::setState(std::shared_ptr<DataChunkState> state) {
     this->state = state;
-    if (dataType.getLogicalTypeID() == LogicalTypeID::STRUCT) {
+    if (dataType.getPhysicalType() == PhysicalTypeID::STRUCT) {
         auto childrenVectors = StructVector::getFieldVectors(this);
         for (auto& childVector : childrenVectors) {
             childVector->setState(state);
@@ -123,6 +123,151 @@ void ValueVector::copyFromVectorData(
     }
 }
 
+void ValueVector::copyFromValue(uint64_t pos, const Value& value) {
+    if (value.isNull()) {
+        setNull(pos, true);
+        return;
+    }
+    setNull(pos, false);
+    auto dstValue = valueBuffer.get() + pos * numBytesPerValue;
+    switch (dataType.getPhysicalType()) {
+    case PhysicalTypeID::INT64: {
+        memcpy(dstValue, &value.val.int64Val, numBytesPerValue);
+    } break;
+    case PhysicalTypeID::INT32: {
+        memcpy(dstValue, &value.val.int32Val, numBytesPerValue);
+    } break;
+    case PhysicalTypeID::INT16: {
+        memcpy(dstValue, &value.val.int16Val, numBytesPerValue);
+    } break;
+    case PhysicalTypeID::DOUBLE: {
+        memcpy(dstValue, &value.val.doubleVal, numBytesPerValue);
+    } break;
+    case PhysicalTypeID::FLOAT: {
+        memcpy(dstValue, &value.val.floatVal, numBytesPerValue);
+    } break;
+    case PhysicalTypeID::BOOL: {
+        memcpy(dstValue, &value.val.booleanVal, numBytesPerValue);
+    } break;
+    case PhysicalTypeID::INTERVAL: {
+        memcpy(dstValue, &value.val.intervalVal, numBytesPerValue);
+    } break;
+    case PhysicalTypeID::STRING: {
+        StringVector::addString(
+            this, *(ku_string_t*)dstValue, value.strVal.data(), value.strVal.length());
+    } break;
+    case PhysicalTypeID::VAR_LIST: {
+        auto listEntry = reinterpret_cast<list_entry_t*>(dstValue);
+        auto numValues = NestedVal::getChildrenSize(&value);
+        *listEntry = ListVector::addList(this, numValues);
+        auto dstDataVector = ListVector::getDataVector(this);
+        for (auto i = 0u; i < numValues; ++i) {
+            auto childVal = NestedVal::getChildVal(&value, i);
+            dstDataVector->setNull(listEntry->offset + i, childVal->isNull());
+            if (!childVal->isNull()) {
+                dstDataVector->copyFromValue(
+                    listEntry->offset + i, *NestedVal::getChildVal(&value, i));
+            }
+        }
+    } break;
+    case PhysicalTypeID::FIXED_LIST: {
+        auto numValues = NestedVal::getChildrenSize(&value);
+        auto childType = FixedListType::getChildType(value.getDataType());
+        auto numBytesPerChildValue = getDataTypeSize(*childType);
+        auto bufferToWrite = valueBuffer.get() + pos * numBytesPerValue;
+        for (auto i = 0u; i < numValues; i++) {
+            auto val = NestedVal::getChildVal(&value, i);
+            switch (childType->getPhysicalType()) {
+            case PhysicalTypeID::INT64: {
+                memcpy(bufferToWrite, &val->getValueReference<int64_t>(), numBytesPerChildValue);
+            } break;
+            case PhysicalTypeID::INT32: {
+                memcpy(bufferToWrite, &val->getValueReference<int32_t>(), numBytesPerChildValue);
+            } break;
+            case PhysicalTypeID::INT16: {
+                memcpy(bufferToWrite, &val->getValueReference<int16_t>(), numBytesPerChildValue);
+            } break;
+            case PhysicalTypeID::DOUBLE: {
+                memcpy(bufferToWrite, &val->getValueReference<double_t>(), numBytesPerChildValue);
+            } break;
+            case PhysicalTypeID::FLOAT: {
+                memcpy(bufferToWrite, &val->getValueReference<float_t>(), numBytesPerChildValue);
+            } break;
+            default: {
+                throw NotImplementedException{"FixedListColumnChunk::write"};
+            }
+            }
+            bufferToWrite += numBytesPerChildValue;
+        }
+    } break;
+    case PhysicalTypeID::STRUCT: {
+        auto structFields = StructVector::getFieldVectors(this);
+        for (auto i = 0u; i < structFields.size(); ++i) {
+            structFields[i]->copyFromValue(pos, *NestedVal::getChildVal(&value, i));
+        }
+    } break;
+    default:
+        throw NotImplementedException("ValueVector::copyFromValue");
+    }
+}
+
+std::unique_ptr<Value> ValueVector::getAsValue(uint64_t pos) {
+    if (isNull(pos)) {
+        return Value::createNullValue(dataType).copy();
+    }
+    auto value = Value::createDefaultValue(dataType).copy();
+    switch (dataType.getPhysicalType()) {
+    case PhysicalTypeID::INT64: {
+        value->val.int64Val = getValue<int64_t>(pos);
+    } break;
+    case PhysicalTypeID::INT32: {
+        value->val.int32Val = getValue<int32_t>(pos);
+    } break;
+    case PhysicalTypeID::INT16: {
+        value->val.int16Val = getValue<int16_t>(pos);
+    } break;
+    case PhysicalTypeID::DOUBLE: {
+        value->val.doubleVal = getValue<double_t>(pos);
+    } break;
+    case PhysicalTypeID::FLOAT: {
+        value->val.floatVal = getValue<float_t>(pos);
+    } break;
+    case PhysicalTypeID::BOOL: {
+        value->val.booleanVal = getValue<bool>(pos);
+    } break;
+    case PhysicalTypeID::INTERVAL: {
+        value->val.intervalVal = getValue<interval_t>(pos);
+    } break;
+    case PhysicalTypeID::STRING: {
+        value->strVal = getValue<ku_string_t>(pos).getAsString();
+    } break;
+    case PhysicalTypeID::VAR_LIST: {
+        auto dataVector = ListVector::getDataVector(this);
+        auto listEntry = getValue<list_entry_t>(pos);
+        std::vector<std::unique_ptr<Value>> children;
+        children.reserve(listEntry.size);
+        for (auto i = 0u; i < listEntry.size; ++i) {
+            children.push_back(dataVector->getAsValue(listEntry.offset + i));
+        }
+        value->childrenSize = children.size();
+        value->children = std::move(children);
+    } break;
+    case PhysicalTypeID::STRUCT: {
+        auto& fieldVectors = StructVector::getFieldVectors(this);
+        std::vector<std::unique_ptr<Value>> children;
+        children.reserve(fieldVectors.size());
+        for (auto& fieldVector : fieldVectors) {
+            children.push_back(fieldVector->getAsValue(pos));
+        }
+        value->childrenSize = children.size();
+        value->children = std::move(children);
+    } break;
+    default:
+        throw NotImplementedException("ValueVector::getAsValue");
+    }
+    return value;
+}
+
 void ValueVector::resetAuxiliaryBuffer() {
     switch (dataType.getPhysicalType()) {
     case PhysicalTypeID::STRING: {
@@ -183,9 +328,16 @@ void ValueVector::initializeValueBuffer() {
 
 void ArrowColumnVector::setArrowColumn(
     ValueVector* vector, std::shared_ptr<arrow::ChunkedArray> column) {
+    assert(vector->dataType.getLogicalTypeID() == LogicalTypeID::ARROW_COLUMN);
     auto arrowColumnBuffer =
         reinterpret_cast<ArrowColumnAuxiliaryBuffer*>(vector->auxiliaryBuffer.get());
     arrowColumnBuffer->column = std::move(column);
+}
+
+void ArrowColumnVector::slice(ValueVector* vector, offset_t offset) {
+    auto arrowColumnBuffer =
+        reinterpret_cast<ArrowColumnAuxiliaryBuffer*>(vector->auxiliaryBuffer.get());
+    setArrowColumn(vector, arrowColumnBuffer->column->Slice((int64_t)offset));
 }
 
 template void ValueVector::setValue<nodeID_t>(uint32_t pos, nodeID_t val);

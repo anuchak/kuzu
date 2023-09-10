@@ -7,6 +7,7 @@
 #include "common/constants.h"
 #include "common/exception.h"
 #include "common/rel_direction.h"
+#include "common/table_type.h"
 #include "common/types/types_include.h"
 #include "property.h"
 
@@ -17,20 +18,18 @@ class BMFileHandle;
 
 namespace catalog {
 
-enum class TableType : uint8_t { NODE = 0, REL = 1, INVALID = 2 };
-
 enum class RelMultiplicity : uint8_t { MANY_MANY, MANY_ONE, ONE_MANY, ONE_ONE };
 RelMultiplicity getRelMultiplicityFromString(const std::string& relMultiplicityString);
 std::string getRelMultiplicityAsString(RelMultiplicity relMultiplicity);
 
 class TableSchema {
 public:
-    TableSchema(std::string tableName, common::table_id_t tableID, TableType tableType,
+    TableSchema(std::string tableName, common::table_id_t tableID, common::TableType tableType,
         std::vector<std::unique_ptr<Property>> properties)
         : tableName{std::move(tableName)}, tableID{tableID}, tableType{tableType},
           properties{std::move(properties)}, nextPropertyID{
                                                  (common::property_id_t)this->properties.size()} {}
-    TableSchema(TableType tableType, std::string tableName, common::table_id_t tableID,
+    TableSchema(common::TableType tableType, std::string tableName, common::table_id_t tableID,
         std::vector<std::unique_ptr<Property>> properties, common::property_id_t nextPropertyID)
         : tableType{tableType}, tableName{std::move(tableName)}, tableID{tableID},
           properties{std::move(properties)}, nextPropertyID{nextPropertyID} {}
@@ -81,14 +80,11 @@ public:
     void serialize(common::FileInfo* fileInfo, uint64_t& offset);
     static std::unique_ptr<TableSchema> deserialize(common::FileInfo* fileInfo, uint64_t& offset);
 
-    inline TableType getTableType() const { return tableType; }
+    inline common::TableType getTableType() const { return tableType; }
 
     inline void updateTableName(std::string newTableName) { tableName = std::move(newTableName); }
 
     virtual std::unique_ptr<TableSchema> copy() const = 0;
-
-protected:
-    std::vector<std::unique_ptr<Property>> copyProperties() const;
 
 private:
     inline common::property_id_t increaseNextPropertyID() { return nextPropertyID++; }
@@ -96,7 +92,7 @@ private:
     virtual void serializeInternal(common::FileInfo* fileInfo, uint64_t& offset) = 0;
 
 public:
-    TableType tableType;
+    common::TableType tableType;
     std::string tableName;
     common::table_id_t tableID;
     std::vector<std::unique_ptr<Property>> properties;
@@ -108,20 +104,21 @@ public:
     NodeTableSchema(common::property_id_t primaryPropertyId,
         std::unordered_set<common::table_id_t> fwdRelTableIDSet,
         std::unordered_set<common::table_id_t> bwdRelTableIDSet)
-        : TableSchema{common::InternalKeyword::ANONYMOUS, common::INVALID_TABLE_ID, TableType::NODE,
-              std::vector<std::unique_ptr<Property>>{}},
+        : TableSchema{common::InternalKeyword::ANONYMOUS, common::INVALID_TABLE_ID,
+              common::TableType::NODE, std::vector<std::unique_ptr<Property>>{}},
           primaryKeyPropertyID{primaryPropertyId}, fwdRelTableIDSet{std::move(fwdRelTableIDSet)},
           bwdRelTableIDSet{std::move(bwdRelTableIDSet)} {}
     NodeTableSchema(std::string tableName, common::table_id_t tableID,
         common::property_id_t primaryPropertyId, std::vector<std::unique_ptr<Property>> properties)
-        : TableSchema{std::move(tableName), tableID, TableType::NODE, std::move(properties)},
+        : TableSchema{std::move(tableName), tableID, common::TableType::NODE,
+              std::move(properties)},
           primaryKeyPropertyID{primaryPropertyId} {}
     NodeTableSchema(std::string tableName, common::table_id_t tableID,
         std::vector<std::unique_ptr<Property>> properties, common::property_id_t nextPropertyID,
         common::property_id_t primaryKeyPropertyID,
         std::unordered_set<common::table_id_t> fwdRelTableIDSet,
         std::unordered_set<common::table_id_t> bwdRelTableIDSet)
-        : TableSchema{TableType::NODE, std::move(tableName), tableID, std::move(properties),
+        : TableSchema{common::TableType::NODE, std::move(tableName), tableID, std::move(properties),
               nextPropertyID},
           primaryKeyPropertyID{primaryKeyPropertyID}, fwdRelTableIDSet{std::move(fwdRelTableIDSet)},
           bwdRelTableIDSet{std::move(bwdRelTableIDSet)} {}
@@ -145,7 +142,7 @@ public:
     }
 
     inline std::unique_ptr<TableSchema> copy() const override {
-        return std::make_unique<NodeTableSchema>(tableName, tableID, copyProperties(),
+        return std::make_unique<NodeTableSchema>(tableName, tableID, Property::copy(properties),
             nextPropertyID, primaryKeyPropertyID, fwdRelTableIDSet, bwdRelTableIDSet);
     }
 
@@ -169,7 +166,8 @@ public:
     RelTableSchema(RelMultiplicity relMultiplicity, common::table_id_t srcTableID,
         common::table_id_t dstTableID, std::unique_ptr<common::LogicalType> srcPKDataType,
         std::unique_ptr<common::LogicalType> dstPKDataType)
-        : TableSchema{"", common::INVALID_TABLE_ID, TableType::REL, {} /* properties */},
+        : TableSchema{common::InternalKeyword::ANONYMOUS, common::INVALID_TABLE_ID,
+              common::TableType::REL, {} /* properties */},
           relMultiplicity{relMultiplicity}, srcTableID{srcTableID}, dstTableID{dstTableID},
           srcPKDataType{std::move(srcPKDataType)}, dstPKDataType{std::move(dstPKDataType)} {}
     RelTableSchema(std::string tableName, common::table_id_t tableID,
@@ -177,7 +175,7 @@ public:
         common::table_id_t srcTableID, common::table_id_t dstTableID,
         std::unique_ptr<common::LogicalType> srcPKDataType,
         std::unique_ptr<common::LogicalType> dstPKDataType)
-        : TableSchema{std::move(tableName), tableID, TableType::REL, std::move(properties)},
+        : TableSchema{std::move(tableName), tableID, common::TableType::REL, std::move(properties)},
           relMultiplicity{relMultiplicity}, srcTableID{srcTableID}, dstTableID{dstTableID},
           srcPKDataType{std::move(srcPKDataType)}, dstPKDataType{std::move(dstPKDataType)} {}
     RelTableSchema(std::string tableName, common::table_id_t tableID,
@@ -185,7 +183,7 @@ public:
         RelMultiplicity relMultiplicity, common::table_id_t srcTableID,
         common::table_id_t dstTableID, std::unique_ptr<common::LogicalType> srcPKDataType,
         std::unique_ptr<common::LogicalType> dstPKDataType)
-        : TableSchema{TableType::REL, std::move(tableName), tableID, std::move(properties),
+        : TableSchema{common::TableType::REL, std::move(tableName), tableID, std::move(properties),
               nextPropertyID},
           relMultiplicity{relMultiplicity}, srcTableID{srcTableID}, dstTableID{dstTableID},
           srcPKDataType{std::move(srcPKDataType)}, dstPKDataType{std::move(dstPKDataType)} {}
@@ -209,15 +207,6 @@ public:
         return relDirection == common::RelDataDirection::FWD ? dstTableID : srcTableID;
     }
 
-    static std::unique_ptr<RelTableSchema> deserialize(
-        common::FileInfo* fileInfo, uint64_t& offset);
-
-    inline std::unique_ptr<TableSchema> copy() const override {
-        return std::make_unique<RelTableSchema>(tableName, tableID, copyProperties(),
-            nextPropertyID, relMultiplicity, srcTableID, dstTableID, srcPKDataType->copy(),
-            dstPKDataType->copy());
-    }
-
     inline RelMultiplicity getRelMultiplicity() const { return relMultiplicity; }
 
     inline common::table_id_t getSrcTableID() const { return srcTableID; }
@@ -228,6 +217,15 @@ public:
 
     inline common::LogicalType* getDstPKDataType() const { return dstPKDataType.get(); }
 
+    static std::unique_ptr<RelTableSchema> deserialize(
+        common::FileInfo* fileInfo, uint64_t& offset);
+
+    inline std::unique_ptr<TableSchema> copy() const override {
+        return std::make_unique<RelTableSchema>(tableName, tableID, Property::copy(properties),
+            nextPropertyID, relMultiplicity, srcTableID, dstTableID, srcPKDataType->copy(),
+            dstPKDataType->copy());
+    }
+
 private:
     void serializeInternal(common::FileInfo* fileInfo, uint64_t& offset) final;
 
@@ -237,6 +235,36 @@ private:
     common::table_id_t dstTableID;
     std::unique_ptr<common::LogicalType> srcPKDataType;
     std::unique_ptr<common::LogicalType> dstPKDataType;
+};
+
+class RdfGraphSchema : public TableSchema {
+public:
+    RdfGraphSchema(std::string tableName, common::table_id_t tableID,
+        common::table_id_t nodeTableID, common::table_id_t relTableID)
+        : TableSchema{std::move(tableName), tableID, common::TableType::RDF,
+              std::vector<std::unique_ptr<Property>>{}},
+          nodeTableID{nodeTableID}, relTableID{relTableID} {}
+    RdfGraphSchema(common::table_id_t nodeTableID, common::table_id_t relTableID)
+        : TableSchema{common::InternalKeyword::ANONYMOUS, common::INVALID_TABLE_ID,
+              common::TableType::RDF, std::vector<std::unique_ptr<Property>>{}},
+          nodeTableID{nodeTableID}, relTableID{relTableID} {}
+
+    inline common::table_id_t getNodeTableID() const { return nodeTableID; }
+    inline common::table_id_t getRelTableID() const { return relTableID; }
+
+    static std::unique_ptr<RdfGraphSchema> deserialize(
+        common::FileInfo* fileInfo, uint64_t& offset);
+
+    inline std::unique_ptr<TableSchema> copy() const final {
+        return std::make_unique<RdfGraphSchema>(tableName, tableID, nodeTableID, relTableID);
+    }
+
+private:
+    void serializeInternal(common::FileInfo* fileInfo, uint64_t& offset) final;
+
+private:
+    common::table_id_t nodeTableID;
+    common::table_id_t relTableID;
 };
 
 } // namespace catalog

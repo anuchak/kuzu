@@ -72,8 +72,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     auto lengthPos = DataPos(outSchema->getExpressionPos(*lengthExpression));
     auto expressions = inSchema->getExpressionsInScope();
     auto prevOperator = mapOperator(logicalOperator->getChild(0).get());
-    auto resultCollector =
-        appendResultCollectorIfNotCopy(std::move(prevOperator), expressions, inSchema);
+    auto resultCollector = appendResultCollector(std::move(prevOperator), expressions, inSchema);
     auto sharedFTable = ((ResultCollector*)resultCollector.get())->getResultFactorizedTable();
     auto fTableSharedState = std::make_shared<FactorizedTableScanSharedState>(sharedFTable, 1u);
     auto pathPos = DataPos();

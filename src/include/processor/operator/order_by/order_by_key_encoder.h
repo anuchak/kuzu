@@ -7,6 +7,7 @@
 #include "common/exception.h"
 #include "common/utils.h"
 #include "common/vector/value_vector.h"
+#include "order_by_data_info.h"
 #include "processor/result/factorized_table.h"
 
 namespace kuzu {
@@ -45,9 +46,8 @@ using encode_function_t = std::function<void(const uint8_t*, uint8_t*, bool)>;
 class OrderByKeyEncoder {
 
 public:
-    OrderByKeyEncoder(std::vector<common::ValueVector*>& orderByVectors,
-        std::vector<bool>& isAscOrder, storage::MemoryManager* memoryManager, uint8_t ftIdx,
-        uint32_t numTuplesPerBlockInFT, uint32_t numBytesPerTuple);
+    OrderByKeyEncoder(const OrderByDataInfo& orderByDataInfo, storage::MemoryManager* memoryManager,
+        uint8_t ftIdx, uint32_t numTuplesPerBlockInFT, uint32_t numBytesPerTuple);
 
     inline std::vector<std::shared_ptr<DataBlock>>& getKeyBlocks() { return keyBlocks; }
 
@@ -86,7 +86,9 @@ public:
 
     static uint32_t getEncodingSize(const common::LogicalType& dataType);
 
-    void encodeKeys();
+    void encodeKeys(const std::vector<common::ValueVector*>& orderByKeys);
+
+    inline void clear() { keyBlocks.clear(); }
 
 private:
     template<typename type>
@@ -121,7 +123,6 @@ private:
 private:
     storage::MemoryManager* memoryManager;
     std::vector<std::shared_ptr<DataBlock>> keyBlocks;
-    std::vector<common::ValueVector*>& orderByVectors;
     std::vector<bool> isAscOrder;
     uint32_t numBytesPerTuple;
     uint32_t maxNumTuplesPerBlock;

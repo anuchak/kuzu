@@ -1,4 +1,5 @@
 #include "binder/binder.h"
+#include "binder/expression/expression_util.h"
 #include "binder/query/updating_clause/bound_create_clause.h"
 #include "binder/query/updating_clause/bound_delete_clause.h"
 #include "binder/query/updating_clause/bound_merge_clause.h"
@@ -229,6 +230,10 @@ std::unique_ptr<BoundUpdatingClause> Binder::bindDeleteClause(
             boundDeleteClause->addInfo(std::move(deleteNodeInfo));
         } break;
         case LogicalTypeID::REL: {
+            auto rel = (RelExpression*)nodeOrRel.get();
+            if (rel->getDirectionType() == RelDirectionType::BOTH) {
+                throw BinderException("Delete undirected rel is not supported.");
+            }
             auto deleteRel = std::make_unique<BoundDeleteInfo>(UpdateTableType::REL, nodeOrRel);
             boundDeleteClause->addInfo(std::move(deleteRel));
         } break;

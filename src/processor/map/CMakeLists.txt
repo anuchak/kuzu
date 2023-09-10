@@ -9,7 +9,8 @@ add_library(kuzu_processor_mapper
         map_acc_hash_join.cpp
         map_standalone_call.cpp
         map_in_query_call.cpp
-        map_copy.cpp
+        map_copy_to.cpp
+        map_copy_from.cpp
         map_create.cpp
         map_create_macro.cpp
         map_cross_product.cpp
@@ -37,7 +38,6 @@ add_library(kuzu_processor_mapper
         map_scan_node_property.cpp
         map_semi_masker.cpp
         map_set.cpp
-        map_skip.cpp
         map_union.cpp
         map_unwind.cpp
         plan_mapper.cpp)

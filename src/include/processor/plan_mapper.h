@@ -14,6 +14,7 @@ namespace planner {
 struct LogicalSetPropertyInfo;
 struct LogicalCreateNodeInfo;
 struct LogicalCreateRelInfo;
+class LogicalCopyFrom;
 } // namespace planner
 
 namespace processor {
@@ -24,6 +25,7 @@ class NodeInsertExecutor;
 class RelInsertExecutor;
 class NodeSetExecutor;
 class RelSetExecutor;
+class CopyRelSharedState;
 
 class PlanMapper {
 public:
@@ -58,7 +60,6 @@ private:
     std::unique_ptr<PhysicalOperator> mapMultiplicityReducer(
         planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapNodeLabelFilter(planner::LogicalOperator* logicalOperator);
-    std::unique_ptr<PhysicalOperator> mapSkip(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapLimit(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapMerge(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapAggregate(planner::LogicalOperator* logicalOperator);
@@ -73,12 +74,16 @@ private:
     std::unique_ptr<PhysicalOperator> mapSetRelProperty(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapDeleteNode(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapDeleteRel(planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapCreateTable(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapCreateNodeTable(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapCreateRelTable(planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapCreateRelTableGroup(
+        planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapCreateRdfGraph(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapCopyFrom(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapCopyTo(planner::LogicalOperator* logicalOperator);
-    std::unique_ptr<PhysicalOperator> mapCopyNode(planner::LogicalOperator* logicalOperator);
-    std::unique_ptr<PhysicalOperator> mapCopyRel(planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapCopyNodeFrom(planner::LogicalOperator* logicalOperator);
+    std::unique_ptr<PhysicalOperator> mapCopyRelFrom(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapDropTable(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapRenameTable(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapAddProperty(planner::LogicalOperator* logicalOperator);
@@ -89,6 +94,17 @@ private:
     std::unique_ptr<PhysicalOperator> mapExplain(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapExpressionsScan(planner::LogicalOperator* logicalOperator);
     std::unique_ptr<PhysicalOperator> mapCreateMacro(planner::LogicalOperator* logicalOperator);
+
+    std::unique_ptr<PhysicalOperator> createReader(common::CopyDescription* copyDesc,
+        catalog::TableSchema* tableSchema, planner::Schema* outSchema,
+        const std::vector<std::shared_ptr<binder::Expression>>& dataColumnExpressions,
+        const std::shared_ptr<binder::Expression>& offsetExpression, bool preserveOrder);
+    std::unique_ptr<PhysicalOperator> createIndexLookup(catalog::RelTableSchema* tableSchema,
+        const std::vector<DataPos>& dataPoses, const DataPos& boundOffsetDataPos,
+        const DataPos& nbrOffsetDataPos, std::unique_ptr<PhysicalOperator> readerOp);
+    std::unique_ptr<PhysicalOperator> createCopyRelColumnsOrLists(
+        std::shared_ptr<CopyRelSharedState> sharedState, planner::LogicalCopyFrom* copyFrom,
+        bool isColumns, std::unique_ptr<PhysicalOperator> copyRelColumns);
 
     std::unique_ptr<ResultCollector> createResultCollector(common::AccumulateType accumulateType,
         const binder::expression_vector& expressions, planner::Schema* schema,
@@ -112,9 +128,9 @@ private:
         std::vector<DataPos> aggregatesOutputPos, planner::Schema* inSchema,
         planner::Schema* outSchema, std::unique_ptr<PhysicalOperator> prevOperator,
         const std::string& paramsString);
-    std::unique_ptr<PhysicalOperator> appendResultCollectorIfNotCopy(
+    std::unique_ptr<PhysicalOperator> appendResultCollector(
         std::unique_ptr<PhysicalOperator> lastOperator,
-        binder::expression_vector expressionsToCollect, planner::Schema* schema);
+        const binder::expression_vector& expressionsToCollect, planner::Schema* schema);
 
     std::unique_ptr<NodeInsertExecutor> getNodeInsertExecutor(storage::NodesStore* nodesStore,
         storage::RelsStore* relsStore, planner::LogicalCreateNodeInfo* info,

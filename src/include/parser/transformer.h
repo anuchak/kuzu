@@ -237,9 +237,16 @@ private:
 
     std::unique_ptr<Statement> transformAlterTable(CypherParser::KU_AlterTableContext& ctx);
 
-    std::unique_ptr<Statement> transformCreateNodeClause(CypherParser::KU_CreateNodeContext& ctx);
+    std::unique_ptr<Statement> transformCreateNodeTable(
+        CypherParser::KU_CreateNodeTableContext& ctx);
 
-    std::unique_ptr<Statement> transformCreateRelClause(CypherParser::KU_CreateRelContext& ctx);
+    std::unique_ptr<Statement> transformCreateRelTable(CypherParser::KU_CreateRelTableContext& ctx);
+
+    std::unique_ptr<Statement> transformCreateRelTableGroup(
+        CypherParser::KU_CreateRelTableGroupContext& ctx);
+
+    std::unique_ptr<Statement> transformCreateRdfGraphClause(
+        CypherParser::KU_CreateRdfGraphContext& ctx);
 
     std::unique_ptr<Statement> transformDropTable(CypherParser::KU_DropTableContext& ctx);
 
@@ -260,7 +267,7 @@ private:
 
     std::unique_ptr<Statement> transformCopyTo(CypherParser::KU_CopyTOContext& ctx);
 
-    std::unique_ptr<Statement> transformCopyFromCSV(CypherParser::KU_CopyFromCSVContext& ctx);
+    std::unique_ptr<Statement> transformCopyFrom(CypherParser::KU_CopyFromCSVContext& ctx);
 
     std::unique_ptr<Statement> transformCopyFromNPY(CypherParser::KU_CopyFromNPYContext& ctx);
 

@@ -36,9 +36,7 @@ public:
     // On return true, there are no null. On return false, there may or may not be nulls.
     inline bool hasNoNullsGuarantee() const { return nullMask->hasNoNullsGuarantee(); }
     inline void setRangeNonNull(uint32_t startPos, uint32_t len) {
-        for (auto i = 0u; i < len; ++i) {
-            setNull(startPos + i, false);
-        }
+        nullMask->setNullFromRange(startPos, len, false);
     }
     inline const uint64_t* getNullMaskData() { return nullMask->getData(); }
     inline void setNull(uint32_t pos, bool isNull) { nullMask->setNull(pos, isNull); }
@@ -53,6 +51,7 @@ public:
 
     inline uint32_t getNumBytesPerValue() const { return numBytesPerValue; }
 
+    // TODO(Guodong): Rename this to getValueRef
     template<typename T>
     inline T& getValue(uint32_t pos) const {
         return ((T*)valueBuffer.get())[pos];
@@ -68,6 +67,9 @@ public:
     void copyFromVectorData(
         uint8_t* dstData, const ValueVector* srcVector, const uint8_t* srcVectorData);
     void copyFromVectorData(uint64_t dstPos, const ValueVector* srcVector, uint64_t srcPos);
+
+    void copyFromValue(uint64_t pos, const Value& value);
+    std::unique_ptr<Value> getAsValue(uint64_t pos);
 
     inline uint8_t* getData() const { return valueBuffer.get(); }
 
@@ -223,10 +225,13 @@ public:
 class ArrowColumnVector {
 public:
     static inline std::shared_ptr<arrow::ChunkedArray> getArrowColumn(ValueVector* vector) {
+        assert(vector->dataType.getLogicalTypeID() == LogicalTypeID::ARROW_COLUMN);
         return reinterpret_cast<ArrowColumnAuxiliaryBuffer*>(vector->auxiliaryBuffer.get())->column;
     }
 
     static void setArrowColumn(ValueVector* vector, std::shared_ptr<arrow::ChunkedArray> column);
+
+    static void slice(ValueVector* vector, offset_t offset);
 };
 
 class MapVector {

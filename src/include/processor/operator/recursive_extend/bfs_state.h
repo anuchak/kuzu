@@ -128,7 +128,8 @@ public:
           bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
-          pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
+          pathLengthThreadWriters{std::unordered_set<std::thread::id>()},
+          lockTracker {std::vector<std::shared_mutex>((maxNodeOffset_ / 4) + 1)} {}
 
     inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
 
@@ -202,6 +203,10 @@ public:
     uint64_t inputFTableTupleIdx;
     // To track which threads are writing path lengths to their ValueVectors
     std::unordered_set<std::thread::id> pathLengthThreadWriters;
+
+    // initial bucket size let it be 4
+    // hence ceil(max_offset / 4) will be total size of lockTracker
+    std::vector<std::shared_mutex> lockTracker;
 
     // FOR ALL_SHORTEST_PATH only
     uint8_t minDistance;
@@ -315,6 +320,9 @@ protected:
 public:
     TargetDstNodes* targetDstNodes;
     BFSSharedState* bfsSharedState;
+
+    std::vector<std::vector<common::offset_t>> localBuffer;
+
 };
 
 template<bool TRACK_PATH>
@@ -372,6 +380,15 @@ public:
         endScanIdx = endScanIdx_;
         bfsSharedState = bfsSharedState_;
         numVisitedDstNodes = 0u;
+        if(localBuffer.empty()) {
+            localBuffer = std::vector<std::vector<common::offset_t>>((bfsSharedState->maxOffset / 4) + 1);
+        } else {
+            for(auto i = 0u; i < localBuffer.size(); i++) {
+                if(!localBuffer.empty()) {
+                    localBuffer[i].resize(0);
+                }
+            }
+        }
     }
 
     // For Shortest Path, multiplicity is always 0

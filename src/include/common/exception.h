@@ -8,6 +8,7 @@ namespace common {
 
 struct ExceptionMessage {
     static std::string existedPKException(const std::string& pkString);
+    static std::string nonExistPKException(const std::string& pkString);
     static std::string invalidPKType(const std::string& type);
     static inline std::string nullPKException() {
         return "Found NULL, which violates the non-null constraint of the primary key column.";
@@ -15,6 +16,17 @@ struct ExceptionMessage {
     static inline std::string notAllowCopyOnNonEmptyTableException() {
         return "COPY commands can only be executed once on a table.";
     }
+    static std::string overLargeStringValueException(const std::string& length);
+    static std::string violateUniquenessOfRelAdjColumn(const std::string& tableName,
+        const std::string& offset, const std::string& multiplicity, const std::string& direction);
+
+    static inline std::string validateCopyNPYByColumnException() {
+        return "Please use COPY FROM BY COLUMN statement for copying npy files.";
+    }
+    static inline std::string validateCopyCSVParquetByColumnException() {
+        return "Please use COPY FROM statement for copying csv and parquet files.";
+    }
+    static std::string validateCopyNpyNotForRelTablesException(const std::string& tableName);
 };
 
 class Exception : public std::exception {
@@ -30,73 +42,74 @@ private:
 
 class ParserException : public Exception {
 public:
-    explicit ParserException(const std::string& msg) : Exception("Parser exception: " + msg){};
+    explicit ParserException(const std::string& msg) : Exception("Parser exception: " + msg) {}
 };
 
 class BinderException : public Exception {
 public:
-    explicit BinderException(const std::string& msg) : Exception("Binder exception: " + msg){};
+    explicit BinderException(const std::string& msg) : Exception("Binder exception: " + msg) {}
 };
 
 class ConversionException : public Exception {
 public:
-    explicit ConversionException(const std::string& msg) : Exception(msg){};
+    explicit ConversionException(const std::string& msg)
+        : Exception("Conversion exception: " + msg) {}
 };
 
 class CopyException : public Exception {
 public:
-    explicit CopyException(const std::string& msg) : Exception("Copy exception: " + msg){};
+    explicit CopyException(const std::string& msg) : Exception("Copy exception: " + msg) {}
 };
 
 class CatalogException : public Exception {
 public:
-    explicit CatalogException(const std::string& msg) : Exception("Catalog exception: " + msg){};
+    explicit CatalogException(const std::string& msg) : Exception("Catalog exception: " + msg) {}
 };
 
 class StorageException : public Exception {
 public:
-    explicit StorageException(const std::string& msg) : Exception("Storage exception: " + msg){};
+    explicit StorageException(const std::string& msg) : Exception("Storage exception: " + msg) {}
 };
 
 class BufferManagerException : public Exception {
 public:
     explicit BufferManagerException(const std::string& msg)
-        : Exception("Buffer manager exception: " + msg){};
+        : Exception("Buffer manager exception: " + msg) {}
 };
 
 class InternalException : public Exception {
 public:
-    explicit InternalException(const std::string& msg) : Exception(msg){};
+    explicit InternalException(const std::string& msg) : Exception(msg) {}
 };
 
 class NotImplementedException : public Exception {
 public:
-    explicit NotImplementedException(const std::string& msg) : Exception(msg){};
+    explicit NotImplementedException(const std::string& msg) : Exception(msg) {}
 };
 
 class RuntimeException : public Exception {
 public:
-    explicit RuntimeException(const std::string& msg) : Exception("Runtime exception: " + msg){};
+    explicit RuntimeException(const std::string& msg) : Exception("Runtime exception: " + msg) {}
 };
 
 class ConnectionException : public Exception {
 public:
-    explicit ConnectionException(const std::string& msg) : Exception(msg){};
+    explicit ConnectionException(const std::string& msg) : Exception(msg) {}
 };
 
 class TransactionManagerException : public Exception {
 public:
-    explicit TransactionManagerException(const std::string& msg) : Exception(msg){};
+    explicit TransactionManagerException(const std::string& msg) : Exception(msg) {}
 };
 
 class InterruptException : public Exception {
 public:
-    explicit InterruptException() : Exception("Interrupted."){};
+    explicit InterruptException() : Exception("Interrupted.") {}
 };
 
 class TestException : public Exception {
 public:
-    explicit TestException(const std::string& msg) : Exception("Test exception: " + msg){};
+    explicit TestException(const std::string& msg) : Exception("Test exception: " + msg) {}
 };
 
 } // namespace common

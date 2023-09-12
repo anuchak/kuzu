@@ -1,6 +1,6 @@
 #pragma once
 
-#include "base_evaluator.h"
+#include "expression_evaluator.h"
 
 namespace kuzu {
 namespace evaluator {
@@ -23,10 +23,6 @@ public:
 protected:
     void resolveResultVector(
         const processor::ResultSet& resultSet, storage::MemoryManager* memoryManager) override;
-
-private:
-    static void copyValueToVector(
-        uint8_t* dstValue, common::ValueVector* dstVector, const common::Value* srcValue);
 
 private:
     std::shared_ptr<common::Value> value;

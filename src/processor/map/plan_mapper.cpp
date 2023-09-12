@@ -21,7 +21,7 @@ static void setPhysicalPlanIfProfile(
 std::unique_ptr<PhysicalPlan> PlanMapper::mapLogicalPlanToPhysical(
     LogicalPlan* logicalPlan, const binder::expression_vector& expressionsToCollect) {
     auto lastOperator = mapOperator(logicalPlan->getLastOperator().get());
-    lastOperator = appendResultCollectorIfNotCopy(
+    lastOperator = appendResultCollector(
         std::move(lastOperator), expressionsToCollect, logicalPlan->getSchema());
     auto physicalPlan = make_unique<PhysicalPlan>(std::move(lastOperator));
     setPhysicalPlanIfProfile(logicalPlan, physicalPlan.get());
@@ -83,9 +83,6 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapOperator(LogicalOperator* logic
     case LogicalOperatorType::NODE_LABEL_FILTER: {
         physicalOperator = mapNodeLabelFilter(logicalOperator);
     } break;
-    case LogicalOperatorType::SKIP: {
-        physicalOperator = mapSkip(logicalOperator);
-    } break;
     case LogicalOperatorType::LIMIT: {
         physicalOperator = mapLimit(logicalOperator);
     } break;
@@ -128,11 +125,8 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapOperator(LogicalOperator* logic
     case LogicalOperatorType::DELETE_REL: {
         physicalOperator = mapDeleteRel(logicalOperator);
     } break;
-    case LogicalOperatorType::CREATE_NODE_TABLE: {
-        physicalOperator = mapCreateNodeTable(logicalOperator);
-    } break;
-    case LogicalOperatorType::CREATE_REL_TABLE: {
-        physicalOperator = mapCreateRelTable(logicalOperator);
+    case LogicalOperatorType::CREATE_TABLE: {
+        physicalOperator = mapCreateTable(logicalOperator);
     } break;
     case LogicalOperatorType::COPY_FROM: {
         physicalOperator = mapCopyFrom(logicalOperator);
@@ -186,17 +180,11 @@ std::vector<DataPos> PlanMapper::getExpressionsDataPos(
     return result;
 }
 
-std::unique_ptr<PhysicalOperator> PlanMapper::appendResultCollectorIfNotCopy(
-    std::unique_ptr<PhysicalOperator> lastOperator, binder::expression_vector expressionsToCollect,
-    Schema* schema) {
-    // We have a special code path for executing copy rel and copy npy, so we don't need to append
-    // the resultCollector.
-    if (lastOperator->getOperatorType() != PhysicalOperatorType::COPY_REL &&
-        lastOperator->getOperatorType() != PhysicalOperatorType::COPY_NPY) {
-        lastOperator = createResultCollector(
-            AccumulateType::REGULAR, expressionsToCollect, schema, std::move(lastOperator));
-    }
-    return lastOperator;
+std::unique_ptr<PhysicalOperator> PlanMapper::appendResultCollector(
+    std::unique_ptr<PhysicalOperator> lastOperator,
+    const binder::expression_vector& expressionsToCollect, planner::Schema* schema) {
+    return createResultCollector(
+        AccumulateType::REGULAR, expressionsToCollect, schema, std::move(lastOperator));
 }
 
 } // namespace processor

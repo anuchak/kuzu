@@ -11,24 +11,42 @@
 namespace kuzu {
 namespace binder {
 
+struct BoundCopyFromInfo {
+    std::unique_ptr<common::CopyDescription> copyDesc;
+    catalog::TableSchema* tableSchema;
+    expression_vector columnExpressions;
+    std::shared_ptr<Expression> offsetExpression;
+    // `boundOffsetExpression` and `nbrOffsetExpression` are for rel tables only.
+    std::shared_ptr<Expression> boundOffsetExpression;
+    std::shared_ptr<Expression> nbrOffsetExpression;
+
+    bool containsSerial;
+
+    BoundCopyFromInfo(std::unique_ptr<common::CopyDescription> copyDesc,
+        catalog::TableSchema* tableSchema, expression_vector columnExpressions,
+        std::shared_ptr<Expression> offsetExpression,
+        std::shared_ptr<Expression> boundOffsetExpression,
+        std::shared_ptr<Expression> nbrOffsetExpression, bool containsSerial)
+        : copyDesc{std::move(copyDesc)}, tableSchema{tableSchema}, columnExpressions{std::move(
+                                                                       columnExpressions)},
+          offsetExpression{std::move(offsetExpression)}, boundOffsetExpression{std::move(
+                                                             boundOffsetExpression)},
+          nbrOffsetExpression{std::move(nbrOffsetExpression)}, containsSerial{containsSerial} {}
+
+    std::unique_ptr<BoundCopyFromInfo> copy();
+};
+
 class BoundCopyFrom : public BoundStatement {
 public:
-    BoundCopyFrom(
-        common::CopyDescription copyDescription, common::table_id_t tableID, std::string tableName)
+    explicit BoundCopyFrom(std::unique_ptr<BoundCopyFromInfo> info)
         : BoundStatement{common::StatementType::COPY_FROM,
               BoundStatementResult::createSingleStringColumnResult()},
-          copyDescription{copyDescription}, tableID{tableID}, tableName{std::move(tableName)} {}
+          info{std::move(info)} {}
 
-    inline common::CopyDescription getCopyDescription() const { return copyDescription; }
-
-    inline common::table_id_t getTableID() const { return tableID; }
-
-    inline std::string getTableName() const { return tableName; }
+    inline BoundCopyFromInfo* getInfo() const { return info.get(); }
 
 private:
-    common::CopyDescription copyDescription;
-    common::table_id_t tableID;
-    std::string tableName;
+    std::unique_ptr<BoundCopyFromInfo> info;
 };
 
 } // namespace binder

@@ -16,12 +16,42 @@ namespace storage {
 
 class NullColumnChunk;
 
+struct BaseColumnChunkMetadata {
+    common::page_idx_t pageIdx;
+    common::page_idx_t numPages;
+
+    BaseColumnChunkMetadata() : pageIdx{common::INVALID_PAGE_IDX}, numPages{0} {}
+    BaseColumnChunkMetadata(common::page_idx_t pageIdx, common::page_idx_t numPages)
+        : pageIdx(pageIdx), numPages(numPages) {}
+    virtual ~BaseColumnChunkMetadata() = default;
+};
+
+struct ColumnChunkMetadata : public BaseColumnChunkMetadata {
+    uint64_t numValues;
+
+    ColumnChunkMetadata() : BaseColumnChunkMetadata(), numValues{UINT64_MAX} {}
+    ColumnChunkMetadata(
+        common::page_idx_t pageIdx, common::page_idx_t numPages, uint64_t numNodesInChunk)
+        : BaseColumnChunkMetadata{pageIdx, numPages}, numValues(numNodesInChunk) {}
+};
+
+struct OverflowColumnChunkMetadata : public BaseColumnChunkMetadata {
+    common::offset_t lastOffsetInPage;
+
+    OverflowColumnChunkMetadata()
+        : BaseColumnChunkMetadata(), lastOffsetInPage{common::INVALID_OFFSET} {}
+    OverflowColumnChunkMetadata(
+        common::page_idx_t pageIdx, common::page_idx_t numPages, common::offset_t lastOffsetInPage)
+        : BaseColumnChunkMetadata{pageIdx, numPages}, lastOffsetInPage(lastOffsetInPage) {}
+};
+
 // Base data segment covers all fixed-sized data types.
 // Some template functions are almost duplicated from `InMemColumnChunk`, which is intended.
 // Currently, `InMemColumnChunk` is used to populate rel columns. Eventually, we will merge them.
 class ColumnChunk {
 public:
     friend class ColumnChunkFactory;
+    friend class VarListDataColumnChunk;
 
     // ColumnChunks must be initialized after construction, so this constructor should only be used
     // through the ColumnChunkFactory
@@ -76,6 +106,8 @@ public:
     }
 
     inline uint64_t getNumBytesPerValue() const { return numBytesPerValue; }
+    inline uint64_t getNumBytes() const { return bufferSize; }
+    inline uint8_t* getData() { return buffer.get(); }
 
     virtual void write(const common::Value& val, uint64_t posToWrite);
 
@@ -90,9 +122,13 @@ public:
 
     void populateWithDefaultVal(common::ValueVector* defaultValueVector);
 
+    inline uint64_t getNumValues() const { return numValues; }
+
+    inline void setNumValues(uint64_t numValues_) { this->numValues = numValues_; }
+
 protected:
     // Initializes the data buffer. Is (and should be) only called in constructor.
-    virtual void initialize(common::offset_t numValues);
+    virtual void initialize(common::offset_t capacity);
 
     template<typename T>
     void templateCopyArrowArray(
@@ -107,7 +143,7 @@ protected:
         arrow::Array* array, common::offset_t startPosInChunk, uint32_t numValuesToAppend);
 
     virtual inline common::page_idx_t getNumPagesForBuffer() const {
-        return getNumPagesForBytes(numBytes);
+        return getNumPagesForBytes(bufferSize);
     }
 
     common::offset_t getOffsetInBuffer(common::offset_t pos) const;
@@ -117,11 +153,12 @@ protected:
 protected:
     common::LogicalType dataType;
     uint32_t numBytesPerValue;
-    uint64_t numBytes;
+    uint64_t bufferSize;
     std::unique_ptr<uint8_t[]> buffer;
     std::unique_ptr<NullColumnChunk> nullChunk;
     std::vector<std::unique_ptr<ColumnChunk>> childrenChunks;
     const common::CopyDescription* copyDescription;
+    uint64_t numValues;
 };
 
 template<>
@@ -148,31 +185,53 @@ public:
         arrow::Array* array, common::offset_t startPosInChunk, uint32_t numValuesToAppend) final;
 
     void append(ColumnChunk* other, common::offset_t startPosInOtherChunk,
-        common::offset_t startPosInChunk, uint32_t numValuesToAppend) final;
-};
+        common::offset_t startPosInChunk, uint32_t numValuesToAppend) override;
 
-class NullColumnChunk : public BoolColumnChunk {
-public:
-    NullColumnChunk() : BoolColumnChunk(nullptr /*copyDescription*/, false /*hasNullChunk*/) {}
-    // Maybe this should be combined with BoolColumnChunk if the only difference is these functions?
-    inline bool isNull(common::offset_t pos) const { return getValue<bool>(pos); }
-    inline void setNull(common::offset_t pos, bool isNull) { setValue(isNull, pos); }
-
-    void resize(uint64_t numValues) final;
-
-    inline void resetNullBuffer() { memset(buffer.get(), 0 /* non null */, numBytes); }
+    void resize(uint64_t capacity) final;
 
 protected:
     inline uint64_t numBytesForValues(common::offset_t numValues) const {
         // 8 values per byte, and we need a buffer size which is a multiple of 8 bytes
         return ceil(numValues / 8.0 / 8.0) * 8;
     }
-    inline void initialize(common::offset_t numValues) final {
-        numBytesPerValue = 0;
-        numBytes = numBytesForValues(numValues);
-        // Each byte defaults to 0, indicating everything is non-null
-        buffer = std::make_unique<uint8_t[]>(numBytes);
+
+    void initialize(common::offset_t capacity) final;
+};
+
+class NullColumnChunk : public BoolColumnChunk {
+public:
+    NullColumnChunk()
+        : BoolColumnChunk(nullptr /*copyDescription*/, false /*hasNullChunk*/), mayHaveNullValue{
+                                                                                    false} {}
+    // Maybe this should be combined with BoolColumnChunk if the only difference is these functions?
+    inline bool isNull(common::offset_t pos) const { return getValue<bool>(pos); }
+    inline void setNull(common::offset_t pos, bool isNull) {
+        setValue(isNull, pos);
+        if (isNull) {
+            mayHaveNullValue = true;
+        }
     }
+
+    inline bool mayHaveNull() const { return mayHaveNullValue; }
+
+    inline void resetNullBuffer() {
+        memset(buffer.get(), 0 /* non null */, bufferSize);
+        mayHaveNullValue = false;
+    }
+
+    inline void copyFromBuffer(uint64_t* srcBuffer, uint64_t srcOffset, uint64_t dstOffset,
+        uint64_t numBits, bool invert = false) {
+        if (common::NullMask::copyNullMask(
+                srcBuffer, srcOffset, (uint64_t*)buffer.get(), dstOffset, numBits, invert)) {
+            mayHaveNullValue = true;
+        }
+    }
+
+    void append(ColumnChunk* other, common::offset_t startPosInOtherChunk,
+        common::offset_t startPosInChunk, uint32_t numValuesToAppend) final;
+
+protected:
+    bool mayHaveNullValue;
 };
 
 class FixedListColumnChunk : public ColumnChunk {
@@ -194,9 +253,9 @@ public:
 
     inline void initialize(common::offset_t numValues) final {
         numBytesPerValue = 0;
-        numBytes = 0;
+        bufferSize = 0;
         // Each byte defaults to 0, indicating everything is non-null
-        buffer = std::make_unique<uint8_t[]>(numBytes);
+        buffer = std::make_unique<uint8_t[]>(bufferSize);
     }
 };
 

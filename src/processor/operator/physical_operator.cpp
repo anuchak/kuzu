@@ -29,20 +29,17 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::COPY_NODE: {
         return "COPY_NODE";
     }
-    case PhysicalOperatorType::COPY_REL: {
-        return "COPY_REL";
+    case PhysicalOperatorType::COPY_REL_COLUMNS: {
+        return "COPY_REL_COLUMNS";
+    }
+    case PhysicalOperatorType::COPY_REL_LISTS: {
+        return "COPY_REL_LISTS";
     }
     case PhysicalOperatorType::CREATE_MACRO: {
         return "CREATE_MACRO";
     }
-    case PhysicalOperatorType::READ_CSV: {
-        return "READ_CSV";
-    }
-    case PhysicalOperatorType::READ_NPY: {
-        return "READ_NPY";
-    }
-    case PhysicalOperatorType::READ_PARQUET: {
-        return "READ_PARQUET";
+    case PhysicalOperatorType::READER: {
+        return "READER";
     }
     case PhysicalOperatorType::INSERT_NODE: {
         return "INSERT_NODE";
@@ -55,6 +52,9 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     }
     case PhysicalOperatorType::CREATE_REL_TABLE: {
         return "CREATE_REL_TABLE";
+    }
+    case PhysicalOperatorType::CREATE_RDF_GRAPH: {
+        return "CREATE_RDF_TABLE";
     }
     case PhysicalOperatorType::CROSS_PRODUCT: {
         return "CROSS_PRODUCT";
@@ -88,6 +88,9 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     }
     case PhysicalOperatorType::HASH_JOIN_PROBE: {
         return "HASH_JOIN_PROBE";
+    }
+    case PhysicalOperatorType::INDEX_LOOKUP: {
+        return "INDEX_LOOKUP";
     }
     case PhysicalOperatorType::INDEX_SCAN: {
         return "INDEX_SCAN";
@@ -157,6 +160,12 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     }
     case PhysicalOperatorType::SKIP: {
         return "SKIP";
+    }
+    case PhysicalOperatorType::TOP_K: {
+        return "TOP_K";
+    }
+    case PhysicalOperatorType::TOP_K_SCAN: {
+        return "TOP_K_SCAN";
     }
     case PhysicalOperatorType::ORDER_BY: {
         return "ORDER_BY";

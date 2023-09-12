@@ -1,6 +1,4 @@
 add_subdirectory(aggregate)
-add_subdirectory(copy_from)
-add_subdirectory(copy_to)
 add_subdirectory(ddl)
 add_subdirectory(hash_join)
 add_subdirectory(intersect)
@@ -18,6 +16,7 @@ add_library(kuzu_processor_operator
         filter.cpp
         filtering_operator.cpp
         flatten.cpp
+        index_lookup.cpp
         index_scan.cpp
         limit.cpp
         multiplicity_reducer.cpp

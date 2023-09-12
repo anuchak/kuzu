@@ -4,19 +4,19 @@
 #include "storage/copier/column_chunk.h"
 #include "storage/storage_structure/disk_array.h"
 #include "storage/storage_structure/storage_structure.h"
+#include "storage/store/property_statistics.h"
 
 namespace kuzu {
+namespace transaction {
+class TransactionTests;
+}
+
 namespace storage {
 
 using read_node_column_func_t = std::function<void(uint8_t* frame, PageElementCursor& pageCursor,
     common::ValueVector* resultVector, uint32_t posInVector, uint32_t numValuesToRead)>;
 using write_node_column_func_t = std::function<void(
     uint8_t* frame, uint16_t posInFrame, common::ValueVector* vector, uint32_t posInVector)>;
-
-struct ColumnChunkMetadata {
-    common::page_idx_t pageIdx = common::INVALID_PAGE_IDX;
-    common::page_idx_t numPages = 0;
-};
 
 struct FixedSizedNodeColumnFunc {
     static void readValuesFromPage(uint8_t* frame, PageElementCursor& pageCursor,
@@ -45,38 +45,41 @@ struct BoolNodeColumnFunc {
 };
 
 class NullNodeColumn;
+class StructNodeColumn;
 // TODO(Guodong): This is intentionally duplicated with `Column`, as for now, we don't change rel
 // tables. `Column` is used for rel tables only. Eventually, we should remove `Column`.
 class NodeColumn {
+    friend class LocalColumn;
+    friend class StringLocalColumn;
+    friend class VarListLocalColumn;
+    friend class transaction::TransactionTests;
+    friend class StructNodeColumn;
+
 public:
     NodeColumn(const catalog::Property& property, BMFileHandle* dataFH, BMFileHandle* metadataFH,
         BufferManager* bufferManager, WAL* wal, transaction::Transaction* transaction,
-        bool requireNullColumn = true);
+        RWPropertyStats propertyStatistics, bool requireNullColumn = true);
     NodeColumn(common::LogicalType dataType, const catalog::MetadataDAHInfo& metaDAHeaderInfo,
         BMFileHandle* dataFH, BMFileHandle* metadataFH, BufferManager* bufferManager, WAL* wal,
-        transaction::Transaction* transaction, bool requireNullColumn);
+        transaction::Transaction* transaction, RWPropertyStats PropertyStatistics,
+        bool requireNullColumn);
     virtual ~NodeColumn() = default;
 
     // Expose for feature store
-    virtual void batchLookup(const common::offset_t* nodeOffsets, size_t size, uint8_t* result);
+    virtual void batchLookup(transaction::Transaction* transaction,
+        const common::offset_t* nodeOffsets, size_t size, uint8_t* result);
 
     virtual void scan(transaction::Transaction* transaction, common::ValueVector* nodeIDVector,
         common::ValueVector* resultVector);
     virtual void scan(transaction::Transaction* transaction, common::node_group_idx_t nodeGroupIdx,
         common::offset_t startOffsetInGroup, common::offset_t endOffsetInGroup,
         common::ValueVector* resultVector, uint64_t offsetInVector = 0);
+    virtual void scan(common::node_group_idx_t nodeGroupIdx, ColumnChunk* columnChunk);
     virtual void lookup(transaction::Transaction* transaction, common::ValueVector* nodeIDVector,
         common::ValueVector* resultVector);
 
     virtual common::page_idx_t append(
         ColumnChunk* columnChunk, common::page_idx_t startPageIdx, uint64_t nodeGroupIdx);
-
-    // TODO(Guodong): refactor these write interfaces.
-    void write(common::ValueVector* nodeIDVector, common::ValueVector* vectorToWriteFrom);
-    inline void write(common::offset_t nodeOffset, common::ValueVector* vectorToWriteFrom,
-        uint32_t posInVectorToWriteFrom) {
-        writeInternal(nodeOffset, vectorToWriteFrom, posInVectorToWriteFrom);
-    }
 
     virtual void setNull(common::offset_t nodeOffset);
 
@@ -84,6 +87,10 @@ public:
     inline uint32_t getNumBytesPerValue() const { return numBytesPerFixedSizedValue; }
     inline uint64_t getNumNodeGroups(transaction::Transaction* transaction) const {
         return metadataDA->getNumElements(transaction->getType());
+    }
+    inline NodeColumn* getChildColumn(common::vector_idx_t childIdx) {
+        assert(childIdx < childrenColumns.size());
+        return childrenColumns[childIdx].get();
     }
 
     virtual void checkpointInMemory();
@@ -107,11 +114,18 @@ protected:
     void readFromPage(transaction::Transaction* transaction, common::page_idx_t pageIdx,
         const std::function<void(uint8_t*)>& func);
 
+    void write(common::ValueVector* nodeIDVector, common::ValueVector* vectorToWriteFrom);
+    inline void write(common::offset_t nodeOffset, common::ValueVector* vectorToWriteFrom,
+        uint32_t posInVectorToWriteFrom) {
+        writeInternal(nodeOffset, vectorToWriteFrom, posInVectorToWriteFrom);
+    }
     virtual void writeInternal(common::offset_t nodeOffset, common::ValueVector* vectorToWriteFrom,
         uint32_t posInVectorToWriteFrom);
-    void writeValue(common::offset_t nodeOffset, common::ValueVector* vectorToWriteFrom,
+    virtual void writeValue(common::offset_t nodeOffset, common::ValueVector* vectorToWriteFrom,
         uint32_t posInVectorToWriteFrom);
 
+    PageElementCursor getPageCursorForOffset(
+        transaction::TransactionType transactionType, common::offset_t nodeOffset);
     // TODO(Guodong): This is mostly duplicated with
     // StorageStructure::createWALVersionOfPageIfNecessaryForElement(). Should be cleared later.
     WALPageIdxPosInPageAndFrame createWALVersionOfPageForValue(common::offset_t nodeOffset);
@@ -130,25 +144,35 @@ protected:
     std::vector<std::unique_ptr<NodeColumn>> childrenColumns;
     read_node_column_func_t readNodeColumnFunc;
     write_node_column_func_t writeNodeColumnFunc;
+    RWPropertyStats propertyStatistics;
 };
 
 class BoolNodeColumn : public NodeColumn {
 public:
     BoolNodeColumn(const catalog::MetadataDAHInfo& metaDAHeaderInfo, BMFileHandle* dataFH,
         BMFileHandle* metadataFH, BufferManager* bufferManager, WAL* wal,
-        transaction::Transaction* transaction, bool requireNullColumn = true);
+        transaction::Transaction* transaction, RWPropertyStats propertyStatistics,
+        bool requireNullColumn = true);
 
-    void batchLookup(const common::offset_t* nodeOffsets, size_t size, uint8_t* result) final;
+    void batchLookup(transaction::Transaction* transaction, const common::offset_t* nodeOffsets,
+        size_t size, uint8_t* result) final;
 };
 
 class NullNodeColumn : public NodeColumn {
+    friend StructNodeColumn;
+
 public:
     NullNodeColumn(common::page_idx_t metaDAHPageIdx, BMFileHandle* dataFH,
         BMFileHandle* metadataFH, BufferManager* bufferManager, WAL* wal,
-        transaction::Transaction* transaction);
+        transaction::Transaction* transaction, RWPropertyStats propertyStatistics);
 
     void scan(transaction::Transaction* transaction, common::ValueVector* nodeIDVector,
         common::ValueVector* resultVector) final;
+    void scan(transaction::Transaction* transaction, common::node_group_idx_t nodeGroupIdx,
+        common::offset_t startOffsetInGroup, common::offset_t endOffsetInGroup,
+        common::ValueVector* resultVector, uint64_t offsetInVector = 0) final;
+    void scan(common::node_group_idx_t nodeGroupIdx, ColumnChunk* columnChunk) final;
+
     void lookup(transaction::Transaction* transaction, common::ValueVector* nodeIDVector,
         common::ValueVector* resultVector) final;
     common::page_idx_t append(
@@ -177,14 +201,14 @@ public:
 struct NodeColumnFactory {
     static inline std::unique_ptr<NodeColumn> createNodeColumn(const catalog::Property& property,
         BMFileHandle* dataFH, BMFileHandle* metadataFH, BufferManager* bufferManager, WAL* wal,
-        transaction::Transaction* transaction) {
+        transaction::Transaction* transaction, RWPropertyStats propertyStatistics) {
         return createNodeColumn(*property.getDataType(), *property.getMetadataDAHInfo(), dataFH,
-            metadataFH, bufferManager, wal, transaction);
+            metadataFH, bufferManager, wal, transaction, propertyStatistics);
     }
     static std::unique_ptr<NodeColumn> createNodeColumn(const common::LogicalType& dataType,
         const catalog::MetadataDAHInfo& metaDAHeaderInfo, BMFileHandle* dataFH,
         BMFileHandle* metadataFH, BufferManager* bufferManager, WAL* wal,
-        transaction::Transaction* transaction);
+        transaction::Transaction* transaction, RWPropertyStats propertyStatistics);
 };
 
 } // namespace storage

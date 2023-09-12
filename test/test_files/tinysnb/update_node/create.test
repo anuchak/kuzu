@@ -1,4 +1,4 @@
--GROUP TinySnbUpdateTest
+-GROUP TinySnbUpdateNodeTest
 -DATASET CSV tinysnb
 
 --
@@ -22,7 +22,6 @@
 9|1980-10-26|10 years 5 months 13:00:00.000024
 
 -CASE InsertNodeWithStringTest
--SKIP
 -STATEMENT CREATE (:person {ID:32, fName:'A'}), (:person {ID:33, fName:'BCD'}), (:person {ID:34, fName:'this is a long name'})
 ---- ok
 -STATEMENT MATCH (a:person) WHERE a.ID > 8 RETURN a.ID, a.fName
@@ -124,7 +123,6 @@
 100|50|4:3|5:3
 
 -CASE InsertNodeWithListTest
--SKIP
 -BEGIN_WRITE_TRANSACTION
 -STATEMENT CREATE (:person {ID:11, workedHours:[1,2,3], usedNames:['A', 'this is a long name']})
 ---- ok
@@ -133,9 +131,29 @@
 10|[10,11,12,3,4,5,6,7]|[Ad,De,Hi,Kye,Orlan]
 11|[1,2,3]|[A,this is a long name]
 9|[1]|[Grad]
-# -COMMIT
+#-COMMIT
 -STATEMENT MATCH (a:person) WHERE a.ID > 8 RETURN a.ID, a.workedHours,a.usedNames
 ---- 3
 10|[10,11,12,3,4,5,6,7]|[Ad,De,Hi,Kye,Orlan]
 11|[1,2,3]|[A,this is a long name]
 9|[1]|[Grad]
+
+-CASE CreateStruct
+-STATEMENT CREATE NODE TABLE test(id INT64, prop STRUCT(age INT64, name STRING), PRIMARY KEY(id));
+---- ok
+-STATEMENT CREATE (a:test {id:1, prop:{age:10, name:'A'}})
+---- ok
+-STATEMENT MATCH (a:test) RETURN a.prop
+---- 1
+{age: 10, name: A}
+
+-CASE CreateStructWithWriteTransaction
+-STATEMENT CREATE NODE TABLE test(id INT64, prop STRUCT(age INT64, name STRING), PRIMARY KEY(id));
+---- ok
+-BEGIN_WRITE_TRANSACTION
+-STATEMENT CREATE (a:test {id:1, prop:{age:10, name:'A'}})
+---- ok
+-STATEMENT MATCH (a:test) RETURN a.prop
+---- 1
+{age: 10, name: A}
+-COMMIT

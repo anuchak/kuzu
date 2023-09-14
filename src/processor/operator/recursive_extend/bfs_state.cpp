@@ -210,6 +210,7 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         if (bfsSharedState->visitedNodes[nodeID.offset] == NOT_VISITED_DST ||
             bfsSharedState->visitedNodes[nodeID.offset] == NOT_VISITED) {
             // (x + ((x >> 31) & ((1 << n) + ~0))) >> n
+            // here n is the power of 2, 2^n = bucket size
             auto bucket = (nodeID.offset + ((nodeID.offset >> 31) & ((1 << 2) + ~0))) >> 2;
             localBuffer[bucket].push_back(nodeID.offset);
         }

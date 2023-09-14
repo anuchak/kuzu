@@ -207,15 +207,17 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; ++i) {
         auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
-        // (x + ((x >> 31) & ((1 << n) + ~0))) >> n
-        auto bucket = (nodeID.offset + ((nodeID.offset >> 31) & ((1 << 2) + ~0))) >> 2;
-        localBuffer[bucket].push_back(nodeID.offset);
+        if (bfsSharedState->visitedNodes[nodeID.offset] == NOT_VISITED_DST ||
+            bfsSharedState->visitedNodes[nodeID.offset] == NOT_VISITED) {
+            // (x + ((x >> 31) & ((1 << n) + ~0))) >> n
+            auto bucket = (nodeID.offset + ((nodeID.offset >> 31) & ((1 << 2) + ~0))) >> 2;
+            localBuffer[bucket].push_back(nodeID.offset);
+        }
     }
     for(auto i = 0u; i < localBuffer.size(); i++) {
         if(!localBuffer[i].empty()) {
             bfsSharedState->lockTracker[i].lock();
-            for(auto j = 0u; j < localBuffer[i].size(); j++) {
-                auto offset = localBuffer[i][j];
+            for(unsigned long offset : localBuffer[i]) {
                 if(bfsSharedState->visitedNodes[offset] == NOT_VISITED_DST) {
                     bfsSharedState->visitedNodes[offset] = VISITED_DST_NEW;
                     bfsSharedState->pathLength[offset] = bfsSharedState->currentLevel + 1;

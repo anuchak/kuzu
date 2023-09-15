@@ -209,15 +209,18 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
-            if (__sync_bool_compare_and_swap(
+            /*if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
                 __sync_bool_compare_and_swap(&bfsSharedState->pathLength[nodeID.offset], 0u,
                     bfsSharedState->currentLevel + 1);
                 numVisitedDstNodes++;
-            }
+            }*/
+            bfsSharedState->visitedNodes[nodeID.offset] = VISITED_DST_NEW;
+            bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
         } else if (state == NOT_VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            /*__sync_bool_compare_and_swap(
+                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);*/
+            bfsSharedState->visitedNodes[nodeID.offset] = VISITED_NEW;
         }
     }
 }

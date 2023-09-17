@@ -27,8 +27,12 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
         }
         state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == VISITED_NEW || state == VISITED_DST_NEW) {
-            __sync_fetch_and_add(&bfsSharedState->nodeIDToMultiplicity[nodeID.offset],
-                boundNodeMultiplicity);
+            auto currMultiplicity = bfsSharedState->nodeIDToMultiplicity[nodeID.offset];
+            while (
+                !__sync_bool_compare_and_swap(&bfsSharedState->nodeIDToMultiplicity[nodeID.offset],
+                    currMultiplicity, currMultiplicity + boundNodeMultiplicity)) {
+                currMultiplicity = bfsSharedState->nodeIDToMultiplicity[nodeID.offset];
+            }
         }
     }
 }

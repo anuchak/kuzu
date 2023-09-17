@@ -68,7 +68,7 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
         if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
             numThreadsBFSActive++;
             // change this to 512 - 2048 - 10000 - 100,000
-            auto bfsMorselSize = std::min(512lu, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+            auto bfsMorselSize = std::min(2048lu, bfsLevelNodeOffsets.size() - nextScanStartIdx);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
@@ -211,7 +211,7 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
-                __sync_bool_compare_and_swap(&bfsSharedState->pathLength[nodeID.offset], 0u,
+                __sync_fetch_and_add(&bfsSharedState->pathLength[nodeID.offset],
                     bfsSharedState->currentLevel + 1);
                 numVisitedDstNodes++;
             }

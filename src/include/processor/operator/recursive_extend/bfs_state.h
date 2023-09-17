@@ -97,6 +97,36 @@ private:
 
 struct BaseBFSMorsel;
 
+struct edgeListAndLevel;
+
+// FOR PATH RETURN
+struct edgeList {
+    common::offset_t edgeOffset;
+    edgeListAndLevel* src;
+
+    edgeList(common::offset_t edgeOffset_, edgeListAndLevel* src_) {
+        edgeOffset = edgeOffset_;
+        src = src_;
+    }
+
+    virtual ~edgeList() = default;
+};
+
+// FOR PATH RETURN
+struct edgeListAndLevel {
+    uint8_t bfsLevel;
+    edgeListAndLevel* next;
+    edgeList* top;
+
+    edgeListAndLevel(uint8_t bfsLevel_, edgeListAndLevel* next_) {
+        bfsLevel = bfsLevel_;
+        next = next_;
+        top = nullptr;
+    }
+
+    virtual ~edgeListAndLevel() = default;
+};
+
 /// Each element of nodeIDMultiplicityToLevel vector for Variable Length BFSSharedState
 struct multiplicityAndLevel {
     std::atomic<uint64_t> multiplicity;

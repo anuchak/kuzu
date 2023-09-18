@@ -27,6 +27,11 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
         }
         state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == VISITED_NEW || state == VISITED_DST_NEW) {
+            /// This can also be implemented using the fetch and add gcc primitive -
+            /// __sync_fetch_and_add. It *is* supposed to give better performance but I tested this
+            /// on LDBC-100 for 1 src and 1000 src query. There was no performance difference
+            /// noticed. So keeping this the same.
+            /// TODO: Later when writing the paper maybe come back to explore this again.
             auto currMultiplicity = bfsSharedState->nodeIDToMultiplicity[nodeID.offset];
             while (
                 !__sync_bool_compare_and_swap(&bfsSharedState->nodeIDToMultiplicity[nodeID.offset],

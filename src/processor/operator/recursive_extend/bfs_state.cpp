@@ -211,8 +211,11 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
-                __sync_fetch_and_add(&bfsSharedState->pathLength[nodeID.offset],
-                    bfsSharedState->currentLevel + 1);
+                /// NOTE: This write is safe to do here without a CAS, because we have a full
+                /// memory barrier once each thread merges its results. A CAS would be required
+                /// if a read had occurred before this full memory barrier - such as visitedNodes
+                /// state. Those states are being written to even before each thread holds the lock.
+                bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
                 numVisitedDstNodes++;
             }
         } else if (state == NOT_VISITED) {

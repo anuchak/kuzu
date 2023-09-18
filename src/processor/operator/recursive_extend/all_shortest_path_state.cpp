@@ -13,12 +13,17 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
-                __sync_bool_compare_and_swap(&bfsSharedState->pathLength[nodeID.offset], 0u,
-                    bfsSharedState->currentLevel + 1);
+                /// NOTE: This write is safe to do here without a CAS, because we have a full
+                /// memory barrier once each thread merges its results (they have to hold a lock).
+                /// A CAS would be required if a read had occurred before this full memory barrier
+                /// - such as visitedNodes state. Those states are being written to and read from
+                /// even before each thread holds the lock.
+                bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
                 numVisitedDstNodes++;
-                if (bfsSharedState->minDistance < bfsSharedState->currentLevel) {
-                    __sync_bool_compare_and_swap(&bfsSharedState->minDistance,
-                        bfsSharedState->minDistance, bfsSharedState->currentLevel);
+                auto minDistance_ = bfsSharedState->minDistance;
+                if (minDistance_ < bfsSharedState->currentLevel) {
+                    __sync_bool_compare_and_swap(&bfsSharedState->minDistance, minDistance_,
+                        bfsSharedState->currentLevel);
                 }
             }
         } else if (state == NOT_VISITED) {
@@ -27,17 +32,8 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
         }
         state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == VISITED_NEW || state == VISITED_DST_NEW) {
-            /// This can also be implemented using the fetch and add gcc primitive -
-            /// __sync_fetch_and_add. It *is* supposed to give better performance but I tested this
-            /// on LDBC-100 for 1 src and 1000 src query. There was no performance difference
-            /// noticed. So keeping this the same.
-            /// TODO: Later when writing the paper maybe come back to explore this again.
-            auto currMultiplicity = bfsSharedState->nodeIDToMultiplicity[nodeID.offset];
-            while (
-                !__sync_bool_compare_and_swap(&bfsSharedState->nodeIDToMultiplicity[nodeID.offset],
-                    currMultiplicity, currMultiplicity + boundNodeMultiplicity)) {
-                currMultiplicity = bfsSharedState->nodeIDToMultiplicity[nodeID.offset];
-            }
+            __atomic_fetch_add(&bfsSharedState->nodeIDToMultiplicity[nodeID.offset],
+                boundNodeMultiplicity, __ATOMIC_RELAXED);
         }
     }
 }

@@ -189,8 +189,8 @@ bool RecursiveJoin::scanOutput() {
                 return false;
             }
             auto tableID = *begin(dataInfo->dstNodeTableIDs);
-            auto ret = sharedState->writeDstNodeIDAndPathLength(vectorsToScan, colIndicesToScan,
-                vectors->dstNodeIDVector, vectors->pathLengthVector, tableID, bfsMorsel);
+            auto ret = sharedState->writeDstNodeIDAndPathLength(
+                vectorsToScan, colIndicesToScan, tableID, bfsMorsel, vectors.get());
             /**
              * ret > 0: non-zero path lengths were written to vector, return to parent op
              * ret < 0: path length writing is complete, proceed to computeBFS for another morsel
@@ -217,7 +217,7 @@ bool RecursiveJoin::scanOutput() {
 bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
     if (sharedState->getSchedulerType() == SchedulerType::OneThreadOneMorsel) {
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
-            vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType);
+            vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType, joinType);
         if (state.first == COMPLETE) {
             return false;
         }
@@ -244,7 +244,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
             }
         }
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
-            vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType);
+            vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType, joinType);
         if (state.first == COMPLETE) {
             return false;
         }
@@ -270,15 +270,13 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
 void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
     // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
-    assert(bfsMorsel->getRecursiveJoinType() == false);
     common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
     uint64_t boundNodeMultiplicity;
     while (nodeOffset != common::INVALID_OFFSET) {
         boundNodeMultiplicity = bfsMorsel->getBoundNodeMultiplicity(nodeOffset);
         scanFrontier->setNodeID(common::nodeID_t{nodeOffset, *begin(dataInfo->dstNodeTableIDs)});
         while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
-            bfsMorsel->addToLocalNextBFSLevel(
-                vectors->recursiveDstNodeIDVector, boundNodeMultiplicity);
+            bfsMorsel->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
         }
         nodeOffset = bfsMorsel->getNextNodeOffset();
     }

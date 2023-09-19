@@ -33,18 +33,18 @@ struct RecursiveJoinSharedState {
     inline std::pair<GlobalSSSPState, SSSPLocalState> getBFSMorsel(
         const std::vector<common::ValueVector*>& vectorsToScan,
         const std::vector<ft_col_idx_t>& colIndicesToScan, common::ValueVector* srcNodeIDVector,
-        BaseBFSMorsel* bfsMorsel, common::QueryRelType queryRelType) {
+        BaseBFSMorsel* bfsMorsel, common::QueryRelType queryRelType,
+        planner::RecursiveJoinType recursiveJoinType) {
         return morselDispatcher->getBFSMorsel(inputFTableSharedState, vectorsToScan,
-            colIndicesToScan, srcNodeIDVector, bfsMorsel, queryRelType);
+            colIndicesToScan, srcNodeIDVector, bfsMorsel, queryRelType, recursiveJoinType);
     }
 
     inline int64_t writeDstNodeIDAndPathLength(
         const std::vector<common::ValueVector*>& vectorsToScan,
-        const std::vector<ft_col_idx_t>& colIndicesToScan, common::ValueVector* dstNodeIDVector,
-        common::ValueVector* pathLengthVector, common::table_id_t tableID,
-        std::unique_ptr<BaseBFSMorsel>& bfsMorsel) {
-        return morselDispatcher->writeDstNodeIDAndPathLength(inputFTableSharedState, vectorsToScan,
-            colIndicesToScan, dstNodeIDVector, pathLengthVector, tableID, bfsMorsel);
+        const std::vector<ft_col_idx_t>& colIndicesToScan, common::table_id_t tableID,
+        std::unique_ptr<BaseBFSMorsel>& bfsMorsel, RecursiveJoinVectors* vectors) {
+        return morselDispatcher->writeDstNodeIDAndPathLength(
+            inputFTableSharedState, vectorsToScan, colIndicesToScan, tableID, bfsMorsel, vectors);
     }
 };
 
@@ -81,22 +81,6 @@ struct RecursiveJoinDataInfo {
             pathLengthPos, localResultSetDescriptor->copy(), recursiveDstNodeIDPos,
             recursiveDstNodeTableIDs, recursiveEdgeIDPos, pathPos);
     }
-};
-
-struct RecursiveJoinVectors {
-    common::ValueVector* srcNodeIDVector = nullptr;
-    common::ValueVector* dstNodeIDVector = nullptr;
-    common::ValueVector* pathLengthVector = nullptr;
-    common::ValueVector* pathVector = nullptr;              // STRUCT(LIST(NODE), LIST(REL))
-    common::ValueVector* pathNodesVector = nullptr;         // LIST(NODE)
-    common::ValueVector* pathNodesIDDataVector = nullptr;   // INTERNAL_ID
-    common::ValueVector* pathRelsVector = nullptr;          // LIST(REL)
-    common::ValueVector* pathRelsSrcIDDataVector = nullptr; // INTERNAL_ID
-    common::ValueVector* pathRelsDstIDDataVector = nullptr; // INTERNAL_ID
-    common::ValueVector* pathRelsIDDataVector = nullptr;    // INTERNAL_ID
-
-    common::ValueVector* recursiveEdgeIDVector = nullptr;
-    common::ValueVector* recursiveDstNodeIDVector = nullptr;
 };
 
 class RecursiveJoin : public PhysicalOperator {

@@ -25,11 +25,13 @@ public:
         const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
         const std::vector<common::ValueVector*> vectorsToScan,
         const std::vector<ft_col_idx_t> colIndicesToScan, common::ValueVector* srcNodeIDVector,
-        BaseBFSMorsel* bfsMorsel, common::QueryRelType queryRelType);
+        BaseBFSMorsel* bfsMorsel, common::QueryRelType queryRelType,
+        planner::RecursiveJoinType recursiveJoinType);
 
     static void setUpNewBFSSharedState(std::shared_ptr<BFSSharedState>& newBFSSharedState,
         BaseBFSMorsel* bfsMorsel, FactorizedTableScanMorsel* inputFTableMorsel,
-        common::nodeID_t nodeID, common::QueryRelType queryRelType);
+        common::nodeID_t nodeID, common::QueryRelType queryRelType,
+        planner::RecursiveJoinType recursiveJoinType);
 
     uint32_t getNextAvailableSSSPWork();
 
@@ -38,8 +40,8 @@ public:
     int64_t writeDstNodeIDAndPathLength(
         const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-        common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-        common::table_id_t tableID, std::unique_ptr<BaseBFSMorsel>& baseBfsMorsel);
+        common::table_id_t tableID, std::unique_ptr<BaseBFSMorsel>& baseBfsMorsel,
+        RecursiveJoinVectors* vectors);
 
     inline common::SchedulerType getSchedulerType() { return schedulerType; }
 

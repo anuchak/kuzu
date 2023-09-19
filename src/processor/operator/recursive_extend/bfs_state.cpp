@@ -1,12 +1,14 @@
+#include "processor/operator/recursive_extend/bfs_state.h"
+
 #include "common/exception.h"
 #include "processor/operator/recursive_extend/all_shortest_path_state.h"
-#include "processor/operator/recursive_extend/bfs_state.h"
 #include "processor/operator/table_scan/factorized_table_scan.h"
 
 namespace kuzu {
 namespace processor {
 
-void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType) {
+void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType,
+    planner::RecursiveJoinType joinType) {
     ssspLocalState = EXTEND_IN_PROGRESS;
     currentLevel = 0u;
     nextScanStartIdx = 0u;
@@ -45,6 +47,15 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
                 std::vector<multiplicityAndLevel*>(visitedNodes.size(), nullptr);
         } else {
             std::fill(nodeIDMultiplicityToLevel.begin(), nodeIDMultiplicityToLevel.end(), nullptr);
+        }
+    }
+    if (joinType == planner::RecursiveJoinType::TRACK_PATH &&
+        queryRelType == common::QueryRelType::SHORTEST) {
+        // was not initialized at the constructor, being used for the 1st time
+        edgeTableID = UINT64_MAX;
+        if (srcNodeOffsetAndEdgeOffset.empty()) {
+            srcNodeOffsetAndEdgeOffset =
+                std::vector<std::pair<uint64_t, uint64_t>>(visitedNodes.size());
         }
     }
 }
@@ -147,6 +158,9 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
         visitedNodes[srcOffset] = VISITED;
     }
     bfsLevelNodeOffsets.push_back(srcOffset);
+    if (queryRelType == common::QueryRelType::SHORTEST && !srcNodeOffsetAndEdgeOffset.empty()) {
+        srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};
+    }
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         nodeIDToMultiplicity[srcOffset] = 1;
         return;
@@ -203,10 +217,11 @@ std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
 
 template<>
 void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
-    common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
-    for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; ++i) {
-        auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
-        auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
+    RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
+    auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+    for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
+        auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
+        auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
@@ -227,17 +242,51 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
 }
 
 template<>
-void ShortestPathMorsel<true>::addToLocalNextBFSLevel(
-    common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {}
+void ShortestPathMorsel<true>::addToLocalNextBFSLevel(RecursiveJoinVectors* vectors,
+    uint64_t boundNodeMultiplicity, common::offset_t boundNodeOffset) {
+    auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+    auto recursiveEdgeIDVector = vectors->recursiveEdgeIDVector;
+    for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
+        auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
+        auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
+        auto state = bfsSharedState->visitedNodes[nodeID.offset];
+        if (state == NOT_VISITED_DST) {
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
+                numVisitedDstNodes++;
+                auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);
+                // TODO: Do we even need this ? Because once we track back the path to the source
+                // we know the length of the path, so a separate vector to have the bfsLevel is not
+                // needed. Remove this later if speed is slow.
+                bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
+                bfsSharedState->srcNodeOffsetAndEdgeOffset[nodeID.offset] = {
+                    boundNodeOffset, edgeID.offset};
+                /// TEMP - to keep the edge table ID saved later for writing to the ValueVector
+                if (bfsSharedState->edgeTableID == UINT64_MAX) {
+                    bfsSharedState->edgeTableID = edgeID.tableID;
+                }
+            }
+        } else if (state == NOT_VISITED) {
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW)) {
+                auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);
+                bfsSharedState->srcNodeOffsetAndEdgeOffset[nodeID.offset] = {
+                    boundNodeOffset, edgeID.offset};
+            }
+        }
+    }
+}
 
 template<>
 int64_t ShortestPathMorsel<false>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) {
+    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+    RecursiveJoinVectors* vectors) {
     auto size = 0u;
     auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
+    auto dstNodeIDVector = vectors->dstNodeIDVector;
+    auto pathLengthVector = vectors->pathLengthVector;
     while (startScanIdxAndSize.first < endIdx) {
         if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
                 bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
@@ -266,9 +315,62 @@ template<>
 int64_t ShortestPathMorsel<true>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) {
-    throw common::NotImplementedException("Not implemented for TRACK_PATH and nTkS scheduler. ");
+    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+    RecursiveJoinVectors* vectors) {
+    auto size = 0u, nodeIDDataVectorPos = 0u, relIDDataVectorPos = 0u;
+    auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
+    if (vectors->pathVector != nullptr) {
+        vectors->pathVector->resetAuxiliaryBuffer();
+    }
+    uint8_t pathLength;
+    auto nodeBuffer = std::vector<common::offset_t>(30u);
+    auto relBuffer = std::vector<common::offset_t>(30u);
+    while (startScanIdxAndSize.first < endIdx) {
+        if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
+                bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
+            bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
+            pathLength = bfsSharedState->pathLength[startScanIdxAndSize.first];
+            auto nodeEntry = common::ListVector::addList(vectors->pathNodesVector, pathLength - 1);
+            auto relEntry = common::ListVector::addList(vectors->pathRelsVector, pathLength);
+            vectors->pathNodesVector->setValue(size, nodeEntry);
+            vectors->pathRelsVector->setValue(size, relEntry);
+            vectors->dstNodeIDVector->setValue<common::nodeID_t>(
+                size, common::nodeID_t{startScanIdxAndSize.first, tableID});
+            vectors->pathLengthVector->setValue<int64_t>(size, pathLength);
+            size++;
+            auto entry = bfsSharedState->srcNodeOffsetAndEdgeOffset[startScanIdxAndSize.first];
+            auto idx = 0u;
+            nodeBuffer[pathLength - idx] = startScanIdxAndSize.first;
+            while (entry.first != UINT64_MAX && entry.second != UINT64_MAX) {
+                relBuffer[pathLength - idx - 1] = entry.second;
+                nodeBuffer[pathLength - ++idx] = entry.first;
+                entry = bfsSharedState->srcNodeOffsetAndEdgeOffset[entry.first];
+            }
+            for (auto i = 1u; i < pathLength; i++) {
+                vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(
+                    nodeIDDataVectorPos++, common::nodeID_t{nodeBuffer[i], tableID});
+            }
+            for (auto i = 0u; i < pathLength; i++) {
+                vectors->pathRelsSrcIDDataVector->setValue<common::nodeID_t>(
+                    relIDDataVectorPos, common::nodeID_t{nodeBuffer[i], tableID});
+                vectors->pathRelsIDDataVector->setValue<common::relID_t>(
+                    relIDDataVectorPos, common::relID_t{relBuffer[i], bfsSharedState->edgeTableID});
+                vectors->pathRelsDstIDDataVector->setValue<common::nodeID_t>(
+                    relIDDataVectorPos++, common::nodeID_t{nodeBuffer[i + 1], tableID});
+            }
+        }
+        startScanIdxAndSize.first++;
+    }
+    if (size > 0) {
+        vectors->dstNodeIDVector->state->initOriginalAndSelectedSize(size);
+        // We need to rescan the FTable to get the source for which the pathLengths were computed.
+        // This is because the thread that scanned FTable initially might not be the thread writing
+        // the pathLengths to its vector.
+        inputFTableSharedState->getTable()->scan(vectorsToScan, bfsSharedState->inputFTableTupleIdx,
+            1 /* numTuples */, colIndicesToScan);
+        return size;
+    }
+    return 0;
 }
 
 } // namespace processor

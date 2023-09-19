@@ -18,7 +18,7 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
     common::ValueVector* srcNodeIDVector, BaseBFSMorsel* bfsMorsel,
-    common::QueryRelType queryRelType) {
+    common::QueryRelType queryRelType, planner::RecursiveJoinType recursiveJoinType) {
     std::unique_lock lck{mutex};
     switch (schedulerType) {
     case common::SchedulerType::OneThreadOneMorsel: {
@@ -79,7 +79,7 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                     auto newBFSSharedState =
                         std::make_shared<BFSSharedState>(upperBound, lowerBound, maxOffset);
                     setUpNewBFSSharedState(newBFSSharedState, bfsMorsel, inputFTableMorsel.get(),
-                        nodeID, queryRelType);
+                        nodeID, queryRelType, recursiveJoinType);
                     if (newSharedStateIdx != UINT32_MAX) {
                         activeBFSSharedState[newSharedStateIdx] = newBFSSharedState;
                     }
@@ -88,7 +88,7 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                     /// BFSSharedState, only this current Thread should have exclusive access to it.
                     activeBFSSharedState[newSharedStateIdx]->mutex.lock();
                     setUpNewBFSSharedState(activeBFSSharedState[newSharedStateIdx], bfsMorsel,
-                        inputFTableMorsel.get(), nodeID, queryRelType);
+                        inputFTableMorsel.get(), nodeID, queryRelType, recursiveJoinType);
                     activeBFSSharedState[newSharedStateIdx]->mutex.unlock();
                 }
                 return {IN_PROGRESS, EXTEND_IN_PROGRESS};
@@ -103,8 +103,8 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
 
 void MorselDispatcher::setUpNewBFSSharedState(std::shared_ptr<BFSSharedState>& newBFSSharedState,
     BaseBFSMorsel* bfsMorsel, FactorizedTableScanMorsel* inputFTableMorsel, common::nodeID_t nodeID,
-    common::QueryRelType queryRelType) {
-    newBFSSharedState->reset(bfsMorsel->targetDstNodes, queryRelType);
+    common::QueryRelType queryRelType, planner::RecursiveJoinType recursiveJoinType) {
+    newBFSSharedState->reset(bfsMorsel->targetDstNodes, queryRelType, recursiveJoinType);
     newBFSSharedState->inputFTableTupleIdx = inputFTableMorsel->startTupleIdx;
     newBFSSharedState->srcOffset = nodeID.offset;
     newBFSSharedState->markSrc(bfsMorsel->targetDstNodes->contains(nodeID), queryRelType);
@@ -155,13 +155,12 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::findAvailableSSSP(
 int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-    common::table_id_t tableID, std::unique_ptr<BaseBFSMorsel>& baseBfsMorsel) {
+    common::table_id_t tableID, std::unique_ptr<BaseBFSMorsel>& baseBfsMorsel,
+    RecursiveJoinVectors* vectors) {
     if (baseBfsMorsel->hasMoreToWrite()) {
         auto startScanIdxAndSize = baseBfsMorsel->getPrevDistStartScanIdxAndSize();
         return baseBfsMorsel->writeToVector(inputFTableSharedState, std::move(vectorsToScan),
-            std::move(colIndicesToScan), dstNodeIDVector, pathLengthVector, tableID,
-            startScanIdxAndSize);
+            std::move(colIndicesToScan), tableID, startScanIdxAndSize, nullptr);
     }
     auto bfsSharedState = baseBfsMorsel->bfsSharedState;
     auto startScanIdxAndSize = bfsSharedState->getDstPathLengthMorsel();
@@ -194,8 +193,7 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
         return -1;
     }
     return baseBfsMorsel->writeToVector(inputFTableSharedState, std::move(vectorsToScan),
-        std::move(colIndicesToScan), dstNodeIDVector, pathLengthVector, tableID,
-        startScanIdxAndSize);
+        std::move(colIndicesToScan), tableID, startScanIdxAndSize, vectors);
 }
 
 } // namespace processor

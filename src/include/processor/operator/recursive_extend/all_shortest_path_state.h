@@ -81,8 +81,8 @@ public:
         return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 
-    void addToLocalNextBFSLevel(
-        common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) override;
+    void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,
+        unsigned long boundNodeOffset) override;
 
     inline bool hasMoreToWrite() override {
         return prevDistMorselStartEndIdx.first < prevDistMorselStartEndIdx.second;
@@ -96,8 +96,8 @@ public:
     int64_t writeToVector(
         const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-        common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) override;
+        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+        RecursiveJoinVectors* vectors) override;
 
 private:
     inline bool isAllDstReachedWithMinDistance() const {

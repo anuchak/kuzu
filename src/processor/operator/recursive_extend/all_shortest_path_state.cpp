@@ -5,10 +5,11 @@ namespace processor {
 
 template<>
 void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
-    common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
-    for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; i++) {
-        auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
-        auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
+    RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
+    auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+    for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
+        auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
+        auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
@@ -22,8 +23,8 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
                 numVisitedDstNodes++;
                 auto minDistance_ = bfsSharedState->minDistance;
                 if (minDistance_ < bfsSharedState->currentLevel) {
-                    __sync_bool_compare_and_swap(&bfsSharedState->minDistance, minDistance_,
-                        bfsSharedState->currentLevel);
+                    __sync_bool_compare_and_swap(
+                        &bfsSharedState->minDistance, minDistance_, bfsSharedState->currentLevel);
                 }
             }
         } else if (state == NOT_VISITED) {
@@ -40,16 +41,20 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
 
 template<>
 void AllShortestPathMorsel<true>::addToLocalNextBFSLevel(
-    common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {}
+    RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
+    throw common::NotImplementedException("Not implemented for TRACK_PATH and nTkS scheduler. ");
+}
 
 template<>
 int64_t AllShortestPathMorsel<false>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) {
+    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+    RecursiveJoinVectors* vectors) {
     auto size = 0u;
     auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
+    auto dstNodeIDVector = vectors->dstNodeIDVector;
+    auto pathLengthVector = vectors->pathLengthVector;
     while (startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
         if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
                 bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
@@ -87,8 +92,8 @@ template<>
 int64_t AllShortestPathMorsel<true>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) {
+    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+    RecursiveJoinVectors* vectors) {
     throw common::NotImplementedException("Not implemented for TRACK_PATH and nTkS scheduler. ");
 }
 

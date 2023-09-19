@@ -45,8 +45,8 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
         return topEntry->multiplicity;
     }
 
-    void addToLocalNextBFSLevel(
-        common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) override;
+    void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,
+        unsigned long boundNodeOffset) override;
 
     inline common::offset_t getNextNodeOffset() override {
         if (startScanIdx == endScanIdx) {
@@ -67,8 +67,8 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
     int64_t writeToVector(
         const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-        common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) override;
+        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+        RecursiveJoinVectors* vectors) override;
 
 private:
     uint64_t startScanIdx;

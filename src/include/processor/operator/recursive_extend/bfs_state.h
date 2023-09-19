@@ -4,11 +4,28 @@
 
 #include "common/query_rel_type.h"
 #include "frontier.h"
+#include "planner/logical_plan/extend/recursive_join_type.h"
 #include "processor/operator/mask.h"
 #include "processor/operator/table_scan/factorized_table_scan.h"
 
 namespace kuzu {
 namespace processor {
+
+struct RecursiveJoinVectors {
+    common::ValueVector* srcNodeIDVector = nullptr;
+    common::ValueVector* dstNodeIDVector = nullptr;
+    common::ValueVector* pathLengthVector = nullptr;
+    common::ValueVector* pathVector = nullptr;              // STRUCT(LIST(NODE), LIST(REL))
+    common::ValueVector* pathNodesVector = nullptr;         // LIST(NODE)
+    common::ValueVector* pathNodesIDDataVector = nullptr;   // INTERNAL_ID
+    common::ValueVector* pathRelsVector = nullptr;          // LIST(REL)
+    common::ValueVector* pathRelsSrcIDDataVector = nullptr; // INTERNAL_ID
+    common::ValueVector* pathRelsDstIDDataVector = nullptr; // INTERNAL_ID
+    common::ValueVector* pathRelsIDDataVector = nullptr;    // INTERNAL_ID
+
+    common::ValueVector* recursiveEdgeIDVector = nullptr;
+    common::ValueVector* recursiveDstNodeIDVector = nullptr;
+};
 
 /**
  * States used for nTkS scheduler to mark different status of node offsets.
@@ -193,7 +210,8 @@ public:
         return true;
     }
 
-    void reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType);
+    void reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType,
+        planner::RecursiveJoinType joinType);
 
     SSSPLocalState getBFSMorsel(BaseBFSMorsel* bfsMorsel);
 
@@ -239,6 +257,11 @@ public:
 
     // For VARIABLE_LENGTH only
     std::vector<multiplicityAndLevel*> nodeIDMultiplicityToLevel;
+
+    // FOR RETURNING SHORTEST_PATH + TRACK_PATH ONLY
+    std::vector<std::pair<uint64_t, uint64_t>> srcNodeOffsetAndEdgeOffset;
+    // TEMP - to keep the edge table ID saved somewhere
+    common::table_id_t edgeTableID;
 };
 
 struct BaseBFSMorsel {
@@ -294,8 +317,8 @@ public:
 
     virtual uint64_t getBoundNodeMultiplicity(common::offset_t nodeOffset) = 0;
 
-    virtual void addToLocalNextBFSLevel(
-        common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) = 0;
+    virtual void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors,
+        uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) = 0;
 
     virtual common::offset_t getNextNodeOffset() = 0;
 
@@ -306,8 +329,8 @@ public:
     virtual int64_t writeToVector(
         const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-        common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) = 0;
+        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+        RecursiveJoinVectors* vectors) = 0;
 
 protected:
     inline bool isCurrentFrontierEmpty() const { return currentFrontier->nodeIDs.empty(); }
@@ -414,8 +437,8 @@ public:
         return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 
-    void addToLocalNextBFSLevel(
-        common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) override;
+    void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,
+        unsigned long boundNodeOffset) override;
 
     // For Shortest Path, this function will always return false, because there is no nodeID
     // multiplicity. Each distance morsel will exactly fit into ValueVector size perfectly.
@@ -428,8 +451,8 @@ public:
     int64_t writeToVector(
         const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
         std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-        common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) override;
+        common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+        RecursiveJoinVectors* vectors) override;
 
 private:
     inline bool isAllDstReached() const {

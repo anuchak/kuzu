@@ -7,7 +7,6 @@
 namespace kuzu {
 namespace processor {
 
-struct RecursiveJoinVectors;
 /*
  * BaseFrontierScanner scans all dst nodes from k'th frontier. To identify the
  * destination nodes in the k'th frontier, we use a semi mask that marks the destination nodes (or

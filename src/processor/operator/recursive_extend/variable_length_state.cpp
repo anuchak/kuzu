@@ -5,10 +5,11 @@ namespace processor {
 
 template<>
 void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
-    common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
-    for (auto i = 0u; i < tmpDstNodeIDVector->state->selVector->selectedSize; i++) {
-        auto pos = tmpDstNodeIDVector->state->selVector->selectedPositions[i];
-        auto nodeID = tmpDstNodeIDVector->getValue<common::nodeID_t>(pos);
+    RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
+    auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+    for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
+        auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
+        auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST || state == VISITED_DST) {
             __sync_bool_compare_and_swap(
@@ -19,8 +20,8 @@ void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
         }
         auto member = bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset];
         if (!member) {
-            auto entry = new multiplicityAndLevel(boundNodeMultiplicity,
-                bfsSharedState->currentLevel + 1, nullptr);
+            auto entry = new multiplicityAndLevel(
+                boundNodeMultiplicity, bfsSharedState->currentLevel + 1, nullptr);
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset], member, entry)) {
                 // no need to do anything, current thread was successful
@@ -31,11 +32,10 @@ void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
             }
         } else {
             if (member->bfsLevel != bfsSharedState->currentLevel + 1) {
-                auto entry = new multiplicityAndLevel(boundNodeMultiplicity,
-                    bfsSharedState->currentLevel + 1, member);
+                auto entry = new multiplicityAndLevel(
+                    boundNodeMultiplicity, bfsSharedState->currentLevel + 1, member);
                 if (__sync_bool_compare_and_swap(
-                        &bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset], member,
-                        entry)) {
+                        &bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset], member, entry)) {
                     // no need to do anything, current thread was successful
                 } else {
                     delete entry;
@@ -52,7 +52,7 @@ void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
 
 template<>
 void VariableLengthMorsel<true>::addToLocalNextBFSLevel(
-    common::ValueVector* tmpDstNodeIDVector, uint64_t boundNodeMultiplicity) {
+    RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
     throw common::NotImplementedException("Not implemented for TRACK_PATH and nTkS scheduler. ");
 }
 
@@ -60,11 +60,13 @@ template<>
 int64_t VariableLengthMorsel<false>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) {
+    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+    RecursiveJoinVectors* vectors) {
     auto size = 0u;
     auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
     bool exitOuterLoop = false;
+    auto dstNodeIDVector = vectors->dstNodeIDVector;
+    auto pathLengthVector = vectors->pathLengthVector;
     while (startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
         if (bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
             bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) {
@@ -96,9 +98,9 @@ int64_t VariableLengthMorsel<false>::writeToVector(
                 entry = entry->next;
                 delete temp;
             }
-            if(entry && entry->bfsLevel < lowerBound) {
+            if (entry && entry->bfsLevel < lowerBound) {
                 multiplicityAndLevel* temp;
-                while(entry) {
+                while (entry) {
                     temp = entry;
                     entry = entry->next;
                     delete temp;
@@ -126,8 +128,8 @@ template<>
 int64_t VariableLengthMorsel<true>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::ValueVector* dstNodeIDVector, common::ValueVector* pathLengthVector,
-    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize) {
+    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+    RecursiveJoinVectors* vectors) {
     throw common::NotImplementedException("Not implemented for TRACK_PATH and nTkS scheduler. ");
 }
 

@@ -160,7 +160,7 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
     if (baseBfsMorsel->hasMoreToWrite()) {
         auto startScanIdxAndSize = baseBfsMorsel->getPrevDistStartScanIdxAndSize();
         return baseBfsMorsel->writeToVector(inputFTableSharedState, std::move(vectorsToScan),
-            std::move(colIndicesToScan), tableID, startScanIdxAndSize, nullptr);
+            std::move(colIndicesToScan), tableID, startScanIdxAndSize, vectors);
     }
     auto bfsSharedState = baseBfsMorsel->bfsSharedState;
     auto startScanIdxAndSize = bfsSharedState->getDstPathLengthMorsel();

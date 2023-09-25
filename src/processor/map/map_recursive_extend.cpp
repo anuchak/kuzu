@@ -28,7 +28,7 @@ static std::shared_ptr<RecursiveJoinSharedState> createSharedState(
                          dataInfo->recursiveDstNodeTableIDs.size() == 1;
     auto maxNodeOffsetsPerTable =
         storageManager.getNodesStore().getNodesStatisticsAndDeletedIDs().getMaxNodeOffsetPerTable();
-    auto maxNodeOffset = maxNodeOffsetsPerTable.at(nbrNode.getSingleTableID());
+    auto maxNodeOffset = maxNodeOffsetsPerTable.at(nbrNode.getTableIDs()[0]);
 #if defined(_MSC_VER)
     morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::OneThreadOneMorsel,
         rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);

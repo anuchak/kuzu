@@ -8,7 +8,8 @@ namespace processor {
 template<bool TRACK_PATH>
 struct VariableLengthMorsel : public BaseBFSMorsel {
     VariableLengthMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes)
-        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound} {}
+        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound},
+          localEdgeListSegment{std::vector<edgeListSegment*>()} {}
     ~VariableLengthMorsel() override = default;
 
     inline bool getRecursiveJoinType() final { return TRACK_PATH; }
@@ -38,11 +39,14 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
     }
 
     inline uint64_t getBoundNodeMultiplicity(common::offset_t nodeOffset) override {
-        auto topEntry = bfsSharedState->nodeIDMultiplicityToLevel[nodeOffset];
-        while (topEntry && topEntry->bfsLevel != bfsSharedState->currentLevel) {
-            topEntry = topEntry->next;
+        if (!bfsSharedState->nodeIDToMultiplicity.empty()) {
+            auto topEntry = bfsSharedState->nodeIDMultiplicityToLevel[nodeOffset];
+            while (topEntry && topEntry->bfsLevel != bfsSharedState->currentLevel) {
+                topEntry = topEntry->next;
+            }
+            return topEntry->multiplicity;
         }
-        return topEntry->multiplicity;
+        return 0u;
     }
 
     void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,
@@ -70,10 +74,16 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
         common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
         RecursiveJoinVectors* vectors) override;
 
+    inline std::vector<edgeListSegment*>& getLocalEdgeListSegments() {
+        return localEdgeListSegment;
+    }
+
 private:
     uint64_t startScanIdx;
     uint64_t endScanIdx;
     std::pair<uint64_t, uint64_t> prevDistMorselStartEndIdx;
+    /// For [Single Label, Track Path] case only.
+    std::vector<edgeListSegment*> localEdgeListSegment;
 };
 
 } // namespace processor

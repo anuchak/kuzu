@@ -10,7 +10,8 @@ struct AllShortestPathMorsel : public BaseBFSMorsel {
 public:
     AllShortestPathMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes)
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, minDistance{0},
-          numVisitedDstNodes{0}, prevDistMorselStartEndIdx{0u, 0u} {}
+          numVisitedDstNodes{0}, prevDistMorselStartEndIdx{0u, 0u},
+          localEdgeListSegment{std::vector<edgeListSegment*>()} {}
 
     ~AllShortestPathMorsel() override = default;
 
@@ -71,6 +72,9 @@ public:
 
     // For Shortest Path, multiplicity is always 0
     inline uint64_t getBoundNodeMultiplicity(common::offset_t offset) override {
+        if (bfsSharedState->nodeIDToMultiplicity.empty()) {
+            return 0u;
+        }
         return bfsSharedState->nodeIDToMultiplicity[offset];
     }
 
@@ -99,6 +103,10 @@ public:
         common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
         RecursiveJoinVectors* vectors) override;
 
+    inline std::vector<edgeListSegment*>& getLocalEdgeListSegments() {
+        return localEdgeListSegment;
+    }
+
 private:
     inline bool isAllDstReachedWithMinDistance() const {
         return numVisitedDstNodes == targetDstNodes->getNumNodes() && currentLevel > minDistance;
@@ -113,6 +121,8 @@ private:
     uint64_t startScanIdx;
     uint64_t endScanIdx;
     std::pair<uint64_t, uint64_t> prevDistMorselStartEndIdx;
+    /// For [Single Label, Track Path] case only.
+    std::vector<edgeListSegment*> localEdgeListSegment;
 };
 
 } // namespace processor

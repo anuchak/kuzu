@@ -2,6 +2,7 @@
 
 #include "common/exception.h"
 #include "processor/operator/recursive_extend/all_shortest_path_state.h"
+#include "processor/operator/recursive_extend/variable_length_state.h"
 #include "processor/operator/table_scan/factorized_table_scan.h"
 
 namespace kuzu {
@@ -32,21 +33,44 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
     pathLengthThreadWriters = std::unordered_set<std::thread::id>();
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         minDistance = 0u;
-        // nodeIDToMultiplicity is not defined in the constructor directly, only for all shortest
-        // recursive join it is required. If it is empty then assign a vector of size maxNodeOffset
-        // to it (same size as visitedNodes).
-        if (nodeIDToMultiplicity.empty()) {
-            nodeIDToMultiplicity = std::vector<uint64_t>(visitedNodes.size(), 0u);
+        if (joinType == planner::RecursiveJoinType::TRACK_NONE) {
+            // nodeIDToMultiplicity is not defined in the constructor directly, only for all
+            // shortest recursive join it is required. If it is empty then assign a vector of size
+            // maxNodeOffset to it (same size as visitedNodes).
+            if (nodeIDToMultiplicity.empty()) {
+                nodeIDToMultiplicity = std::vector<uint64_t>(visitedNodes.size(), 0u);
+            } else {
+                std::fill(nodeIDToMultiplicity.begin(), nodeIDToMultiplicity.end(), 0u);
+            }
         } else {
-            std::fill(nodeIDToMultiplicity.begin(), nodeIDToMultiplicity.end(), 0u);
+            edgeTableID = UINT64_MAX;
+            if (nodeIDEdgeListAndLevel.empty()) {
+                nodeIDEdgeListAndLevel =
+                    std::vector<edgeListAndLevel*>(visitedNodes.size(), nullptr);
+                allEdgeListSegments = std::vector<edgeListSegment*>();
+            } else {
+                std::fill(nodeIDEdgeListAndLevel.begin(), nodeIDEdgeListAndLevel.end(), nullptr);
+                allEdgeListSegments.erase(allEdgeListSegments.begin(), allEdgeListSegments.end());
+            }
         }
     }
     if (queryRelType == common::QueryRelType::VARIABLE_LENGTH) {
-        if (nodeIDMultiplicityToLevel.empty()) {
-            nodeIDMultiplicityToLevel =
-                std::vector<multiplicityAndLevel*>(visitedNodes.size(), nullptr);
+        if (joinType == planner::RecursiveJoinType::TRACK_NONE) {
+            if (nodeIDMultiplicityToLevel.empty()) {
+                nodeIDMultiplicityToLevel =
+                    std::vector<multiplicityAndLevel*>(visitedNodes.size(), nullptr);
+            } else {
+                std::fill(
+                    nodeIDMultiplicityToLevel.begin(), nodeIDMultiplicityToLevel.end(), nullptr);
+            }
         } else {
-            std::fill(nodeIDMultiplicityToLevel.begin(), nodeIDMultiplicityToLevel.end(), nullptr);
+            edgeTableID = UINT64_MAX;
+            if (nodeIDEdgeListAndLevel.empty()) {
+                nodeIDEdgeListAndLevel =
+                    std::vector<edgeListAndLevel*>(visitedNodes.size(), nullptr);
+            } else {
+                std::fill(nodeIDEdgeListAndLevel.begin(), nodeIDEdgeListAndLevel.end(), nullptr);
+            }
         }
     }
     if (joinType == planner::RecursiveJoinType::TRACK_PATH &&
@@ -119,6 +143,20 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
     } else if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         auto allShortestPathMorsel = (reinterpret_cast<AllShortestPathMorsel<false>*>(bfsMorsel));
         numVisitedNodes += allShortestPathMorsel->getNumVisitedDstNodes();
+        if (!allShortestPathMorsel->getLocalEdgeListSegments().empty()) {
+            auto& localEdgeListSegment = allShortestPathMorsel->getLocalEdgeListSegments();
+            allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
+                localEdgeListSegment.end());
+            localEdgeListSegment.resize(0);
+        }
+    } else {
+        auto varLenPathMorsel = (reinterpret_cast<VariableLengthMorsel<false>*>(bfsMorsel));
+        if (!varLenPathMorsel->getLocalEdgeListSegments().empty()) {
+            auto localEdgeListSegment = varLenPathMorsel->getLocalEdgeListSegments();
+            allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
+                localEdgeListSegment.end());
+            localEdgeListSegment.resize(0);
+        }
     }
     if (numThreadsBFSActive == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
         moveNextLevelAsCurrentLevel();
@@ -162,13 +200,28 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
         srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};
     }
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
-        nodeIDToMultiplicity[srcOffset] = 1;
-        return;
+        if (nodeIDEdgeListAndLevel.empty()) {
+            nodeIDToMultiplicity[srcOffset] = 1;
+        } else {
+            auto entry = new edgeListAndLevel(
+                0 /* bfs level */, srcOffset, nullptr /* next edgeListAndLevel ptr */);
+            entry->top = new edgeList(UINT64_MAX, nullptr /* src node pointer */ ,
+                nullptr /*  next edgeList ptr */);
+            nodeIDEdgeListAndLevel[srcOffset] = entry;
+        }
     }
     if (queryRelType == common::QueryRelType::VARIABLE_LENGTH) {
-        auto entry = new multiplicityAndLevel(
-            1 /* multiplicity */, 0 /* bfs level */, nullptr /* next multiplicityAndLevel ptr */);
-        nodeIDMultiplicityToLevel[srcOffset] = entry;
+        if (nodeIDEdgeListAndLevel.empty()) {
+            auto entry = new multiplicityAndLevel(1 /* multiplicity */, 0 /* bfs level */,
+                nullptr /* next multiplicityAndLevel ptr */);
+            nodeIDMultiplicityToLevel[srcOffset] = entry;
+        } else {
+            auto entry = new edgeListAndLevel(
+                0 /* bfs level */, srcOffset, nullptr /* next edgeListAndLevel ptr */);
+            entry->top = new edgeList(UINT64_MAX, nullptr /* src node pointer */ ,
+                nullptr /*  next edgeList ptr */);
+            nodeIDEdgeListAndLevel[srcOffset] = entry;
+        }
     }
 }
 
@@ -177,6 +230,8 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
     nextScanStartIdx = 0u;
     bfsLevelNodeOffsets.clear();
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
+        /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
+        /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
         for (auto i = 0u; i < visitedNodes.size(); i++) {
             if (visitedNodes[i] == VISITED_NEW) {
                 visitedNodes[i] = VISITED;
@@ -306,7 +361,7 @@ int64_t ShortestPathMorsel<false>::writeToVector(
         // the pathLengths to its vector.
         inputFTableSharedState->getTable()->scan(vectorsToScan, bfsSharedState->inputFTableTupleIdx,
             1 /* numTuples */, colIndicesToScan);
-        if(!vectorsToScan[0]->state->isFlat()) {
+        if (!vectorsToScan[0]->state->isFlat()) {
             vectorsToScan[0]->state->setToFlat();
         }
         return size;
@@ -326,8 +381,8 @@ int64_t ShortestPathMorsel<true>::writeToVector(
         vectors->pathVector->resetAuxiliaryBuffer();
     }
     uint8_t pathLength;
-    auto nodeBuffer = std::vector<common::offset_t>(30u);
-    auto relBuffer = std::vector<common::offset_t>(30u);
+    auto nodeBuffer = std::vector<common::offset_t>(31u);
+    auto relBuffer = std::vector<common::offset_t>(31u);
     while (startScanIdxAndSize.first < endIdx) {
         if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
                 bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&

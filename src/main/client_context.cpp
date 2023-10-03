@@ -19,7 +19,7 @@ void ActiveQuery::reset() {
 
 ClientContext::ClientContext()
     : numThreadsForExecution{std::thread::hardware_concurrency()},
-      bfsSchedulerType{OneThreadOneMorsel}, timeoutInMS{ClientContextConstants::TIMEOUT_IN_MS},
+      bfsSchedulerType{nThreadkMorsel}, timeoutInMS{ClientContextConstants::TIMEOUT_IN_MS},
       varLengthExtendMaxDepth{VAR_LENGTH_EXTEND_MAX_DEPTH},
       maxActiveBFSSharedState{std::thread::hardware_concurrency()} {}
 

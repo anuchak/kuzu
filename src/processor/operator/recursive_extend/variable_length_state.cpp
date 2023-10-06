@@ -186,6 +186,10 @@ int64_t VariableLengthMorsel<true>::writeToVector(
     if (vectors->pathVector != nullptr) {
         vectors->pathVector->resetAuxiliaryBuffer();
     }
+    if(nodeBuffer.empty()) {
+        nodeBuffer = std::vector<edgeListAndLevel*>(31u, nullptr);
+        relBuffer = std::vector<edgeList*>(31u, nullptr);
+    }
     if(hasMorePathToWrite) {
         bool exitLoop = true;
         auto edgeListAndLevel = bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first];
@@ -232,8 +236,8 @@ int64_t VariableLengthMorsel<true>::writeToVector(
             hasMorePathToWrite = true;
         } else {
             hasMorePathToWrite = false;
-            bfsSharedState->nodeIDMultiplicityToLevel[startScanIdxAndSize.first] =
-                bfsSharedState->nodeIDMultiplicityToLevel[startScanIdxAndSize.first]->next;
+            bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first] =
+                bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->next;
         }
     } else {
         while(startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
@@ -308,6 +312,7 @@ int64_t VariableLengthMorsel<true>::writeToVector(
             startScanIdxAndSize.first++;
         }
     }
+    prevDistMorselStartEndIdx = {startScanIdxAndSize.first, endIdx};
     if (size > 0) {
         vectors->dstNodeIDVector->state->initOriginalAndSelectedSize(size);
         // We need to rescan the FTable to get the source for which the pathLengths were computed.

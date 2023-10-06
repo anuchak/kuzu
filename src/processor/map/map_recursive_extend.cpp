@@ -33,22 +33,10 @@ static std::shared_ptr<RecursiveJoinSharedState> createSharedState(
     morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::OneThreadOneMorsel,
         rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
 #else
-    if (joinType == planner::RecursiveJoinType::TRACK_NONE && isSingleLabel) {
+    if (isSingleLabel) {
         morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::nThreadkMorsel,
             rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
-    } else if (joinType == planner::RecursiveJoinType::TRACK_PATH && isSingleLabel &&
-               rel.getRelType() == common::QueryRelType::SHORTEST) {
-        morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::nThreadkMorsel,
-            rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
-    } else if (joinType == planner::RecursiveJoinType::TRACK_PATH && isSingleLabel &&
-               rel.getRelType() == common::QueryRelType::ALL_SHORTEST) {
-        morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::nThreadkMorsel,
-            rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
-    } /*else if (joinType == planner::RecursiveJoinType::TRACK_PATH && isSingleLabel &&
-               rel.getRelType() == common::QueryRelType::VARIABLE_LENGTH) {
-        morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::nThreadkMorsel,
-            rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
-    } */else {
+    } else {
         morselDispatcher =
             std::make_shared<MorselDispatcher>(common::SchedulerType::OneThreadOneMorsel,
                 rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);

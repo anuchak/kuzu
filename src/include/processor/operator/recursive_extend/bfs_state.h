@@ -125,7 +125,7 @@ struct edgeListAndLevel;
 struct edgeList {
     common::offset_t edgeOffset;
     edgeListAndLevel* src;
-    edgeList *next;
+    edgeList* next;
 
     edgeList(common::offset_t edgeOffset_, edgeListAndLevel* src_, edgeList* next_) {
         edgeOffset = edgeOffset_;
@@ -178,11 +178,10 @@ struct edgeListSegment {
         edgeListAndLevelBlock = std::vector<edgeListAndLevel*>();
     }
 
-    // KEEPING THIS DESTRUCTOR HERE, BUT NOT SURE YET IF THIS IS *SAFE* OR NOT
     ~edgeListSegment() {
         free(edgeListBlockPtr);
         for (auto& edgeListAndLevel : edgeListAndLevelBlock) {
-            free(edgeListAndLevel);
+            delete edgeListAndLevel;
         }
     }
 };

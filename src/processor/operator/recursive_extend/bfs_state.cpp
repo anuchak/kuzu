@@ -152,7 +152,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
     } else {
         auto varLenPathMorsel = (reinterpret_cast<VariableLengthMorsel<false>*>(bfsMorsel));
         if (!varLenPathMorsel->getLocalEdgeListSegments().empty()) {
-            auto localEdgeListSegment = varLenPathMorsel->getLocalEdgeListSegments();
+            auto& localEdgeListSegment = varLenPathMorsel->getLocalEdgeListSegments();
             allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
                 localEdgeListSegment.end());
             localEdgeListSegment.resize(0);
@@ -205,8 +205,8 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
         } else {
             auto entry = new edgeListAndLevel(
                 0 /* bfs level */, srcOffset, nullptr /* next edgeListAndLevel ptr */);
-            entry->top = new edgeList(UINT64_MAX, nullptr /* src node pointer */ ,
-                nullptr /*  next edgeList ptr */);
+            entry->top = new edgeList(
+                UINT64_MAX, nullptr /* src node pointer */, nullptr /*  next edgeList ptr */);
             nodeIDEdgeListAndLevel[srcOffset] = entry;
         }
     }
@@ -218,8 +218,8 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
         } else {
             auto entry = new edgeListAndLevel(
                 0 /* bfs level */, srcOffset, nullptr /* next edgeListAndLevel ptr */);
-            entry->top = new edgeList(UINT64_MAX, nullptr /* src node pointer */ ,
-                nullptr /*  next edgeList ptr */);
+            entry->top = new edgeList(
+                UINT64_MAX, nullptr /* src node pointer */, nullptr /*  next edgeList ptr */);
             nodeIDEdgeListAndLevel[srcOffset] = entry;
         }
     }

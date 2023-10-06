@@ -11,7 +11,7 @@ public:
     AllShortestPathMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes)
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, minDistance{0},
           numVisitedDstNodes{0}, prevDistMorselStartEndIdx{0u, 0u},
-          localEdgeListSegment{std::vector<edgeListSegment*>()} {}
+          localEdgeListSegment{std::vector<edgeListSegment*>()}, hasMorePathToWrite{false} {}
 
     ~AllShortestPathMorsel() override = default;
 
@@ -68,6 +68,10 @@ public:
         endScanIdx = endScanIdx_;
         bfsSharedState = bfsSharedState_;
         numVisitedDstNodes = 0u;
+        if (TRACK_PATH && nodeBuffer.empty()) {
+            nodeBuffer = std::vector<edgeListAndLevel*>(31u, nullptr);
+            relBuffer = std::vector<edgeList*>(31u, nullptr);
+        }
     }
 
     // For Shortest Path, multiplicity is always 0
@@ -123,6 +127,9 @@ private:
     std::pair<uint64_t, uint64_t> prevDistMorselStartEndIdx;
     /// For [Single Label, Track Path] case only.
     std::vector<edgeListSegment*> localEdgeListSegment;
+    std::vector<edgeListAndLevel*> nodeBuffer;
+    std::vector<edgeList*> relBuffer;
+    bool hasMorePathToWrite;
 };
 
 } // namespace processor

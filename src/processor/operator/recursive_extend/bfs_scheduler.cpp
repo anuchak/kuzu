@@ -178,10 +178,10 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
         /// HOLD LOCKS in this relative order ALWAYS. First the global mutex of morsel dispatcher
         /// and then the local BFSSharedState being marked as MORSEL_COMPLETE. There will be a
         /// deadlock situation if it is not followed since some thread might be trying find work.
-        if(!bfsSharedState->allEdgeListSegments.empty()) {
+        if (!bfsSharedState->allEdgeListSegments.empty()) {
             delete bfsSharedState->nodeIDEdgeListAndLevel[bfsSharedState->srcOffset]->top;
             delete bfsSharedState->nodeIDEdgeListAndLevel[bfsSharedState->srcOffset];
-            for(auto & allEdgeListSegment : bfsSharedState->allEdgeListSegments) {
+            for (auto& allEdgeListSegment : bfsSharedState->allEdgeListSegments) {
                 delete allEdgeListSegment;
             }
         }

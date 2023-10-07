@@ -50,7 +50,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
                 allEdgeListSegments = std::vector<edgeListSegment*>();
             } else {
                 std::fill(nodeIDEdgeListAndLevel.begin(), nodeIDEdgeListAndLevel.end(), nullptr);
-                allEdgeListSegments.erase(allEdgeListSegments.begin(), allEdgeListSegments.end());
+                allEdgeListSegments.clear();
             }
         }
     }
@@ -70,6 +70,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
                     std::vector<edgeListAndLevel*>(visitedNodes.size(), nullptr);
             } else {
                 std::fill(nodeIDEdgeListAndLevel.begin(), nodeIDEdgeListAndLevel.end(), nullptr);
+                allEdgeListSegments.clear();
             }
         }
     }

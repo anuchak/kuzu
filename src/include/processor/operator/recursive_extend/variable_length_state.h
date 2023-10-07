@@ -78,8 +78,6 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
         common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
         RecursiveJoinVectors* vectors) override;
 
-
-
     inline std::vector<edgeListSegment*>& getLocalEdgeListSegments() {
         return localEdgeListSegment;
     }

@@ -59,7 +59,7 @@ void VariableLengthMorsel<true>::addToLocalNextBFSLevel(
     auto newEdgeListSegment = new edgeListSegment(totalEdgeListSize);
     localEdgeListSegment.push_back(newEdgeListSegment);
     auto srcNodeEdgeListAndLevel = bfsSharedState->nodeIDEdgeListAndLevel[boundNodeOffset];
-    while(srcNodeEdgeListAndLevel->bfsLevel != bfsSharedState->currentLevel) {
+    while (srcNodeEdgeListAndLevel->bfsLevel != bfsSharedState->currentLevel) {
         srcNodeEdgeListAndLevel = srcNodeEdgeListAndLevel->next;
     }
     for (auto i = 0u; i < totalEdgeListSize; i++) {
@@ -175,6 +175,8 @@ int64_t VariableLengthMorsel<false>::writeToVector(
     return 0;
 }
 
+// TODO (Anurag): This function can be refactored because a huge part is common (looping to
+// enumerate all paths).
 template<>
 int64_t VariableLengthMorsel<true>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
@@ -186,11 +188,11 @@ int64_t VariableLengthMorsel<true>::writeToVector(
     if (vectors->pathVector != nullptr) {
         vectors->pathVector->resetAuxiliaryBuffer();
     }
-    if(nodeBuffer.empty()) {
+    if (nodeBuffer.empty()) {
         nodeBuffer = std::vector<edgeListAndLevel*>(31u, nullptr);
         relBuffer = std::vector<edgeList*>(31u, nullptr);
     }
-    if(hasMorePathToWrite) {
+    if (hasMorePathToWrite) {
         bool exitLoop = true;
         auto edgeListAndLevel = bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first];
         auto pathLength = edgeListAndLevel->bfsLevel;
@@ -204,8 +206,8 @@ int64_t VariableLengthMorsel<true>::writeToVector(
                 size, common::nodeID_t{startScanIdxAndSize.first, tableID});
             vectors->pathLengthVector->setValue<int64_t>(size, pathLength);
             for (auto i = 1u; i < pathLength; i++) {
-                vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(nodeIDDataVectorPos++,
-                    common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
+                vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(
+                    nodeIDDataVectorPos++, common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
             }
             for (auto i = 0u; i < pathLength; i++) {
                 vectors->pathRelsSrcIDDataVector->setValue<common::nodeID_t>(
@@ -213,14 +215,13 @@ int64_t VariableLengthMorsel<true>::writeToVector(
                 vectors->pathRelsIDDataVector->setValue<common::relID_t>(relIDDataVectorPos,
                     common::relID_t{relBuffer[i]->edgeOffset, bfsSharedState->edgeTableID});
                 vectors->pathRelsDstIDDataVector->setValue<common::nodeID_t>(
-                    relIDDataVectorPos++,
-                    common::nodeID_t{nodeBuffer[i + 1]->nodeOffset, tableID});
+                    relIDDataVectorPos++, common::nodeID_t{nodeBuffer[i + 1]->nodeOffset, tableID});
             }
             for (auto i = 0u; i < pathLength; i++) {
                 if (relBuffer[i]->next) {
                     auto j = i;
                     auto temp_ = relBuffer[j]->next;
-                    while(temp_->edgeOffset != UINT64_MAX) {
+                    while (temp_->edgeOffset != UINT64_MAX) {
                         relBuffer[j] = temp_;
                         nodeBuffer[j] = temp_->src;
                         temp_ = nodeBuffer[j]->top;
@@ -232,7 +233,7 @@ int64_t VariableLengthMorsel<true>::writeToVector(
             }
             size++;
         } while (size < common::DEFAULT_VECTOR_CAPACITY && !exitLoop);
-        if(size == common::DEFAULT_VECTOR_CAPACITY && !exitLoop) {
+        if (size == common::DEFAULT_VECTOR_CAPACITY && !exitLoop) {
             hasMorePathToWrite = true;
         } else {
             hasMorePathToWrite = false;
@@ -240,12 +241,14 @@ int64_t VariableLengthMorsel<true>::writeToVector(
                 bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->next;
         }
     } else {
-        while(startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
-            if((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW ||
-                bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST) &&
+        while (startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
+            if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW ||
+                    bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST) &&
                 bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first] &&
-                bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->bfsLevel >= lowerBound) {
-                auto edgeListAndLevel = bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first];
+                bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->bfsLevel >=
+                    lowerBound) {
+                auto edgeListAndLevel =
+                    bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first];
                 auto pathLength = edgeListAndLevel->bfsLevel;
                 auto idx = 0u;
                 nodeBuffer[pathLength - idx] = edgeListAndLevel;
@@ -258,20 +261,24 @@ int64_t VariableLengthMorsel<true>::writeToVector(
                 bool exitLoop = true;
                 do {
                     exitLoop = true;
-                    auto nodeEntry = common::ListVector::addList(vectors->pathNodesVector, pathLength - 1);
-                    auto relEntry = common::ListVector::addList(vectors->pathRelsVector, pathLength);
+                    auto nodeEntry =
+                        common::ListVector::addList(vectors->pathNodesVector, pathLength - 1);
+                    auto relEntry =
+                        common::ListVector::addList(vectors->pathRelsVector, pathLength);
                     vectors->pathNodesVector->setValue(size, nodeEntry);
                     vectors->pathRelsVector->setValue(size, relEntry);
                     vectors->dstNodeIDVector->setValue<common::nodeID_t>(
                         size, common::nodeID_t{startScanIdxAndSize.first, tableID});
                     vectors->pathLengthVector->setValue<int64_t>(size, pathLength);
                     for (auto i = 1u; i < pathLength; i++) {
-                        vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(nodeIDDataVectorPos++,
+                        vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(
+                            nodeIDDataVectorPos++,
                             common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
                     }
                     for (auto i = 0u; i < pathLength; i++) {
                         vectors->pathRelsSrcIDDataVector->setValue<common::nodeID_t>(
-                            relIDDataVectorPos, common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
+                            relIDDataVectorPos,
+                            common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
                         vectors->pathRelsIDDataVector->setValue<common::relID_t>(relIDDataVectorPos,
                             common::relID_t{relBuffer[i]->edgeOffset, bfsSharedState->edgeTableID});
                         vectors->pathRelsDstIDDataVector->setValue<common::nodeID_t>(
@@ -282,7 +289,7 @@ int64_t VariableLengthMorsel<true>::writeToVector(
                         if (relBuffer[i]->next) {
                             auto j = i;
                             auto temp_ = relBuffer[j]->next;
-                            while(temp_->edgeOffset != UINT64_MAX) {
+                            while (temp_->edgeOffset != UINT64_MAX) {
                                 relBuffer[j] = temp_;
                                 nodeBuffer[j] = temp_->src;
                                 temp_ = nodeBuffer[j]->top;
@@ -300,7 +307,7 @@ int64_t VariableLengthMorsel<true>::writeToVector(
                 } else if (size == common::DEFAULT_VECTOR_CAPACITY && exitLoop) {
                     hasMorePathToWrite = false;
                     bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first] =
-                    bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->next;
+                        bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->next;
                     break;
                 } else {
                     hasMorePathToWrite = false;

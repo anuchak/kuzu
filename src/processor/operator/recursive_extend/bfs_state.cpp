@@ -427,6 +427,9 @@ int64_t ShortestPathMorsel<true>::writeToVector(
         // the pathLengths to its vector.
         inputFTableSharedState->getTable()->scan(vectorsToScan, bfsSharedState->inputFTableTupleIdx,
             1 /* numTuples */, colIndicesToScan);
+        if (!vectorsToScan[0]->state->isFlat()) {
+            vectorsToScan[0]->state->setToFlat();
+        }
         return size;
     }
     return 0;

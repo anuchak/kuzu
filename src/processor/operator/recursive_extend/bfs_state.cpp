@@ -25,7 +25,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
         }
     }
     std::fill(pathLength.begin(), pathLength.end(), 0u);
-    bfsLevelNodeOffsets.clear();
+    curBFSLevelTotalOffsets = 0u;
     srcOffset = 0u;
     numThreadsBFSActive = 0u;
     nextDstScanStartIdx = 0u;
@@ -101,10 +101,10 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
         return PATH_LENGTH_WRITE_IN_PROGRESS;
     }
     case EXTEND_IN_PROGRESS: {
-        if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
+        if (nextScanStartIdx < curBFSLevelTotalOffsets) {
             numThreadsBFSActive++;
             // change this to 512 - 2048 - 10000 - 100,000
-            auto bfsMorselSize = std::min(2048lu, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+            auto bfsMorselSize = std::min(2048lu, curBFSLevelTotalOffsets - nextScanStartIdx);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
@@ -120,7 +120,7 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
 }
 
 bool BFSSharedState::hasWork() const {
-    if (ssspLocalState == EXTEND_IN_PROGRESS && nextScanStartIdx < bfsLevelNodeOffsets.size()) {
+    if (ssspLocalState == EXTEND_IN_PROGRESS && nextScanStartIdx < curBFSLevelTotalOffsets) {
         return true;
     }
     if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
@@ -159,7 +159,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
             localEdgeListSegment.resize(0);
         }
     }
-    if (numThreadsBFSActive == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
+    if (numThreadsBFSActive == 0 && nextScanStartIdx == curBFSLevelTotalOffsets) {
         moveNextLevelAsCurrentLevel();
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
             ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
@@ -173,7 +173,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
 }
 
 bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType) {
-    if (bfsLevelNodeOffsets.empty()) { // no more to extend.
+    if (curBFSLevelTotalOffsets == 0u) { // no more to extend.
         return true;
     }
     if (currentLevel == upperBound) { // upper limit reached.
@@ -196,7 +196,12 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
     } else {
         visitedNodes[srcOffset] = VISITED;
     }
-    bfsLevelNodeOffsets.push_back(srcOffset);
+    curBFSLevelTotalOffsets++;
+    if (bfsLevelNodeOffsets.size() < curBFSLevelTotalOffsets) {
+        bfsLevelNodeOffsets.push_back(srcOffset);
+    } else {
+        bfsLevelNodeOffsets[curBFSLevelTotalOffsets - 1] = srcOffset;
+    }
     if (queryRelType == common::QueryRelType::SHORTEST && !srcNodeOffsetAndEdgeOffset.empty()) {
         srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};
     }
@@ -229,17 +234,27 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
 void BFSSharedState::moveNextLevelAsCurrentLevel() {
     currentLevel++;
     nextScanStartIdx = 0u;
-    bfsLevelNodeOffsets.clear();
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
         /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
         /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
+        curBFSLevelTotalOffsets = 0u;
         for (auto i = 0u; i < visitedNodes.size(); i++) {
             if (visitedNodes[i] == VISITED_NEW) {
                 visitedNodes[i] = VISITED;
-                bfsLevelNodeOffsets.push_back(i);
+                curBFSLevelTotalOffsets++;
+                if (curBFSLevelTotalOffsets > bfsLevelNodeOffsets.size()) {
+                    bfsLevelNodeOffsets.push_back(i);
+                } else {
+                    bfsLevelNodeOffsets[curBFSLevelTotalOffsets - 1] = i;
+                }
             } else if (visitedNodes[i] == VISITED_DST_NEW) {
                 visitedNodes[i] = VISITED_DST;
-                bfsLevelNodeOffsets.push_back(i);
+                curBFSLevelTotalOffsets++;
+                if (curBFSLevelTotalOffsets > bfsLevelNodeOffsets.size()) {
+                    bfsLevelNodeOffsets.push_back(i);
+                } else {
+                    bfsLevelNodeOffsets[curBFSLevelTotalOffsets - 1] = i;
+                }
             }
         }
     }

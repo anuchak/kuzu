@@ -110,7 +110,7 @@ void MorselDispatcher::setUpNewBFSSharedState(std::shared_ptr<BFSSharedState>& n
     newBFSSharedState->markSrc(bfsMorsel->targetDstNodes->contains(nodeID), queryRelType);
     newBFSSharedState->numThreadsBFSActive++;
     auto bfsMorselSize = std::min(common::DEFAULT_VECTOR_CAPACITY,
-        newBFSSharedState->bfsLevelNodeOffsets.size() - newBFSSharedState->nextScanStartIdx);
+        newBFSSharedState->curBFSLevelTotalOffsets - newBFSSharedState->nextScanStartIdx);
     auto morselScanEndIdx = newBFSSharedState->nextScanStartIdx + bfsMorselSize;
     bfsMorsel->reset(
         newBFSSharedState->nextScanStartIdx, morselScanEndIdx, newBFSSharedState.get());

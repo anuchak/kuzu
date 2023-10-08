@@ -202,7 +202,7 @@ struct multiplicityAndLevel {
 };
 
 /**
- * An BFSSharedState is a unit of work for the nTkS scheduling policy. It is *ONLY* used for the
+ * A BFSSharedState is a unit of work for the nTkS scheduling policy. It is *ONLY* used for the
  * particular case of SINGLE_LABEL | NO_PATH_TRACKING. A BFSSharedState is *NOT*
  * exclusive to a thread and any thread can pick up BFS extension or Writing Path Length.
  * A shared_ptr is maintained by the BaseBFSMorsel and a morsel of work is fetched using this ptr.
@@ -214,10 +214,10 @@ public:
           nextScanStartIdx{0u}, numVisitedNodes{0u}, visitedNodes{std::vector<uint8_t>(
                                                          maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
-          bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
-          maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
-          numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
-          pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
+          bfsLevelNodeOffsets{std::vector<common::offset_t>()}, curBFSLevelTotalOffsets{0u},
+          srcOffset{0u}, maxOffset{maxNodeOffset_}, upperBound{upperBound_},
+          lowerBound{lowerBound_}, numThreadsBFSActive{0u}, nextDstScanStartIdx{0u},
+          inputFTableTupleIdx{0u}, pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
 
     inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
 
@@ -281,6 +281,7 @@ public:
     std::vector<uint8_t> visitedNodes;
     std::vector<uint8_t> pathLength;
     std::vector<common::offset_t> bfsLevelNodeOffsets;
+    uint64_t curBFSLevelTotalOffsets;
     // Offset of src node.
     common::offset_t srcOffset;
     // Maximum offset of dst nodes.

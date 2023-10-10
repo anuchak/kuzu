@@ -204,11 +204,15 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
         if (nodeIDEdgeListAndLevel.empty()) {
             nodeIDToMultiplicity[srcOffset] = 1;
         } else {
-            auto entry = new edgeListAndLevel(
-                0 /* bfs level */, srcOffset, nullptr /* next edgeListAndLevel ptr */);
-            entry->top = new edgeList(
-                UINT64_MAX, nullptr /* src node pointer */, nullptr /*  next edgeList ptr */);
-            nodeIDEdgeListAndLevel[srcOffset] = entry;
+            auto newEdgeListSegment = new edgeListSegment(1);
+            newEdgeListSegment->edgeListBlockPtr[0].edgeOffset = UINT64_MAX;
+            newEdgeListSegment->edgeListBlockPtr[0].next = nullptr;
+            newEdgeListSegment->edgeListBlockPtr[0].src = nullptr;
+            newEdgeListSegment->edgeListAndLevelBlock.push_back(
+                new edgeListAndLevel(0, srcOffset, nullptr));
+            nodeIDEdgeListAndLevel[srcOffset] = newEdgeListSegment->edgeListAndLevelBlock[0];
+            nodeIDEdgeListAndLevel[srcOffset]->top = &newEdgeListSegment->edgeListBlockPtr[0];
+            allEdgeListSegments.push_back(newEdgeListSegment);
         }
     }
     if (queryRelType == common::QueryRelType::VARIABLE_LENGTH) {
@@ -217,11 +221,15 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
                 nullptr /* next multiplicityAndLevel ptr */);
             nodeIDMultiplicityToLevel[srcOffset] = entry;
         } else {
-            auto entry = new edgeListAndLevel(
-                0 /* bfs level */, srcOffset, nullptr /* next edgeListAndLevel ptr */);
-            entry->top = new edgeList(
-                UINT64_MAX, nullptr /* src node pointer */, nullptr /*  next edgeList ptr */);
-            nodeIDEdgeListAndLevel[srcOffset] = entry;
+            auto newEdgeListSegment = new edgeListSegment(1);
+            newEdgeListSegment->edgeListBlockPtr[0].edgeOffset = UINT64_MAX;
+            newEdgeListSegment->edgeListBlockPtr[0].next = nullptr;
+            newEdgeListSegment->edgeListBlockPtr[0].src = nullptr;
+            newEdgeListSegment->edgeListAndLevelBlock.push_back(
+                new edgeListAndLevel(0, srcOffset, nullptr));
+            nodeIDEdgeListAndLevel[srcOffset] = newEdgeListSegment->edgeListAndLevelBlock[0];
+            nodeIDEdgeListAndLevel[srcOffset]->top = &newEdgeListSegment->edgeListBlockPtr[0];
+            allEdgeListSegments.push_back(newEdgeListSegment);
         }
     }
 }

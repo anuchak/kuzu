@@ -178,15 +178,11 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
         /// HOLD LOCKS in this relative order ALWAYS. First the global mutex of morsel dispatcher
         /// and then the local BFSSharedState being marked as MORSEL_COMPLETE. There will be a
         /// deadlock situation if it is not followed since some thread might be trying find work.
+        bfsSharedState->freeIntermediatePathData();
         mutex.lock();
         bfsSharedState->mutex.lock();
         numActiveBFSSharedState--;
         bfsSharedState->ssspLocalState = MORSEL_COMPLETE;
-        if (!bfsSharedState->allEdgeListSegments.empty()) {
-            for (auto& allEdgeListSegment : bfsSharedState->allEdgeListSegments) {
-                delete allEdgeListSegment;
-            }
-        }
         bfsSharedState->mutex.unlock();
         // If all SSSP have been completed indicated by count (numActiveBFSSharedState == 0) and no
         // more SSSP are available indicated by state IN_PROGRESS_ALL_SRC_SCANNED then global state

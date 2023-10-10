@@ -252,6 +252,15 @@ public:
         return true;
     }
 
+    inline void freeIntermediatePathData() {
+        std::unique_lock lck{mutex};
+        if (!allEdgeListSegments.empty()) {
+            for (auto& allEdgeListSegment : allEdgeListSegments) {
+                delete allEdgeListSegment;
+            }
+        }
+    }
+
     void reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType,
         planner::RecursiveJoinType joinType);
 

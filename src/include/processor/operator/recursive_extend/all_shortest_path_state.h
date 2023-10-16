@@ -86,7 +86,19 @@ public:
         if (startScanIdx == endScanIdx) {
             return common::INVALID_OFFSET;
         }
-        return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
+        while (startScanIdx < endScanIdx) {
+            if (bfsSharedState->visitedNodes[startScanIdx] == VISITED_NEXT_LEVEL) {
+                bfsSharedState->visitedNodes[startScanIdx] = VISITED;
+                return startScanIdx++;
+            }
+            if (bfsSharedState->visitedNodes[startScanIdx] == VISITED_DST_NEXT_LEVEL) {
+                bfsSharedState->visitedNodes[startScanIdx] = VISITED_DST;
+                return startScanIdx++;
+            }
+            startScanIdx++;
+        }
+        return common::INVALID_OFFSET;
+        //return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 
     void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,

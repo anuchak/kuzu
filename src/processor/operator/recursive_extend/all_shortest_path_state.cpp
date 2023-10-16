@@ -114,9 +114,10 @@ int64_t AllShortestPathMorsel<false>::writeToVector(
     auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
     auto dstNodeIDVector = vectors->dstNodeIDVector;
     auto pathLengthVector = vectors->pathLengthVector;
+    uint8_t state;
     while (startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
-        if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
-                bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
+        state = bfsSharedState->visitedNodes[startScanIdxAndSize.first];
+        if ((state == VISITED_DST || state == VISITED_DST_NEW || state == VISITED_DST_NEXT_LEVEL) &&
             bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
             auto multiplicity = bfsSharedState->nodeIDToMultiplicity[startScanIdxAndSize.first];
             do {
@@ -214,9 +215,10 @@ int64_t AllShortestPathMorsel<true>::writeToVector(
                 bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->next;
         }
     } else {
+        uint8_t state;
         while (startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
-            if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW ||
-                    bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST) &&
+            state = bfsSharedState->visitedNodes[startScanIdxAndSize.first];
+            if ((state == VISITED_DST_NEW || state == VISITED_DST || state == VISITED_DST_NEXT_LEVEL) &&
                 bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first] &&
                 bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->bfsLevel >=
                     lowerBound) {

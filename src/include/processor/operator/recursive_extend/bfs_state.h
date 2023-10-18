@@ -214,10 +214,10 @@ public:
           nextScanStartIdx{0u}, numVisitedNodes{0u}, visitedNodes{std::vector<uint8_t>(
                                                          maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
-          bfsLevelNodeOffsets{std::vector<common::offset_t>()},
-          srcOffset{0u}, maxOffset{maxNodeOffset_}, upperBound{upperBound_},
-          lowerBound{lowerBound_}, numThreadsBFSActive{0u}, nextDstScanStartIdx{0u},
-          inputFTableTupleIdx{0u}, pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
+          bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
+          maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
+          numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
+          pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
 
     inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
 

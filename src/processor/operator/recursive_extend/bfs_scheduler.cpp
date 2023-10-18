@@ -118,15 +118,48 @@ void MorselDispatcher::setUpNewBFSSharedState(std::shared_ptr<BFSSharedState>& n
 }
 
 uint32_t MorselDispatcher::getNextAvailableSSSPWork() {
+    uint64_t maxBFSWork = 0u, maxBfsID = UINT64_MAX, maxPathLenWriteWork = 0,
+             maxPathLenWriteID = UINT64_MAX;
     for (auto i = 0u; i < activeBFSSharedState.size(); i++) {
         if (activeBFSSharedState[i]) {
             activeBFSSharedState[i]->mutex.lock();
-            if (activeBFSSharedState[i]->hasWork()) {
+            auto bfsSharedState = activeBFSSharedState[i];
+            if (bfsSharedState->ssspLocalState == EXTEND_IN_PROGRESS &&
+                bfsSharedState->nextScanStartIdx < bfsSharedState->bfsLevelNodeOffsets.size()) {
+                auto frontierSize =
+                    bfsSharedState->bfsLevelNodeOffsets.size() - bfsSharedState->nextScanStartIdx;
+                auto threadsActive =
+                    bfsSharedState->numThreadsBFSActive ? bfsSharedState->numThreadsBFSActive : 1;
+                auto work = frontierSize / threadsActive;
+                if (work > maxBFSWork) {
+                    maxBFSWork = work;
+                    maxBfsID = i;
+                }
                 activeBFSSharedState[i]->mutex.unlock();
-                return i;
+                continue;
+            } else if (bfsSharedState->ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
+                       bfsSharedState->nextDstScanStartIdx < bfsSharedState->visitedNodes.size()) {
+                auto totalOffsets =
+                    bfsSharedState->visitedNodes.size() - bfsSharedState->nextDstScanStartIdx;
+                auto threadsActive = !bfsSharedState->pathLengthThreadWriters.empty() ?
+                                         bfsSharedState->pathLengthThreadWriters.size() :
+                                         1;
+                auto work = totalOffsets / threadsActive;
+                if (work > maxPathLenWriteWork) {
+                    maxPathLenWriteWork = work;
+                    maxPathLenWriteID = i;
+                }
+                activeBFSSharedState[i]->mutex.unlock();
+                continue;
             }
             activeBFSSharedState[i]->mutex.unlock();
         }
+    }
+    if (maxBFSWork > 0) {
+        return maxBfsID;
+    }
+    if (maxPathLenWriteWork > 0) {
+        return maxPathLenWriteID;
     }
     return UINT32_MAX;
 }

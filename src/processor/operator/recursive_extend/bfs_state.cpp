@@ -103,8 +103,7 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
     case EXTEND_IN_PROGRESS: {
         if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
             numThreadsBFSActive++;
-            // change this to 512 - 2048 - 10000 - 100,000
-            auto bfsMorselSize = std::min(2048lu, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+            auto bfsMorselSize = std::min(256lu, bfsLevelNodeOffsets.size() - nextScanStartIdx);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;

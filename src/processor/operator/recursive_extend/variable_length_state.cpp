@@ -66,25 +66,40 @@ void VariableLengthMorsel<true>::addToLocalNextBFSLevel(
         auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
-        if (state == NOT_VISITED_DST || state == VISITED_DST) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW);
-        } else if (state == NOT_VISITED || state == VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
-        }
-        auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
-        if (!entry || (entry->bfsLevel <= bfsSharedState->currentLevel)) {
-            auto newEntry =
-                new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
-            if (__sync_bool_compare_and_swap(
-                    &bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset], entry, newEntry)) {
-                // This thread was successful in doing the CAS operation at the top.
-                newEdgeListSegment->edgeListAndLevelBlock.push_back(newEntry);
-            } else {
-                // This thread was NOT successful in doing the CAS operation, hence free the memory
-                // right here since it has no use.
-                delete newEntry;
+        if (state != VISITED_NEW && state != VISITED_DST_NEW) {
+            bool isCASuccessful = false;
+            switch (state) {
+            case NOT_VISITED_DST:
+            case VISITED_DST: {
+                if (__sync_bool_compare_and_swap(
+                        &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
+                    isCASuccessful = true;
+                }
+            } break;
+            case NOT_VISITED:
+            case VISITED: {
+                if (__sync_bool_compare_and_swap(
+                        &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW)) {
+                    isCASuccessful = true;
+                }
+            } break;
+            default:
+                throw common::RuntimeException(
+                    "Unknown Visited state encountered inside addToLocalNextBFSLevel.");
+            }
+            if (isCASuccessful) {
+                auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
+                auto newEntry =
+                    new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
+                if (__sync_bool_compare_and_swap(
+                        &bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset], entry, newEntry)) {
+                    // This thread was successful in doing the CAS operation at the top.
+                    newEdgeListSegment->edgeListAndLevelBlock.push_back(newEntry);
+                } else {
+                    // This thread was NOT successful in doing the CAS operation, hence free the
+                    // memory right here since it has no use.
+                    delete newEntry;
+                }
             }
         }
         auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);

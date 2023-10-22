@@ -64,6 +64,9 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
         recursivePlanSchema->getExpressionPos(*recursiveInfo->nodeCopy->getInternalIDProperty()));
     auto recursiveEdgeIDPos = DataPos(
         recursivePlanSchema->getExpressionPos(*recursiveInfo->rel->getInternalIDProperty()));
+
+
+
     // Generate RecursiveJoin
     auto outSchema = extend->getSchema();
     auto inSchema = extend->getChild(0)->getSchema();

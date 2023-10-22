@@ -20,6 +20,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
         std::fill(visitedNodes.begin(), visitedNodes.end(), NOT_VISITED_DST);
     } else {
         std::fill(visitedNodes.begin(), visitedNodes.end(), NOT_VISITED);
+        std::fill(visitedNodesBwd.begin(), visitedNodesBwd.end(), NOT_VISITED);
         for (auto& dstOffset : targetDstNodes->getNodeIDs()) {
             visitedNodes[dstOffset.offset] = NOT_VISITED_DST;
         }
@@ -187,7 +188,8 @@ bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRel
     return false;
 }
 
-void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRelType) {
+void BFSSharedState::markSrc(TargetDstNodes* targetDstNodes, bool isSrcDestination,
+    common::QueryRelType queryRelType) {
     if (isSrcDestination) {
         visitedNodes[srcOffset] = VISITED_DST;
         numVisitedNodes++;
@@ -195,6 +197,12 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
     } else {
         visitedNodes[srcOffset] = VISITED;
     }
+    for(auto& dstOffset : targetDstNodes->getNodeIDs()) {
+        visitedNodesBwd[dstOffset.offset] = VISITED;
+        pathLengthBwd[dstOffset.offset] = 0;
+        bfsLevelNodeOffsetsBwd.push_back(dstOffset.offset);
+    }
+    visitedNodesBwd[srcOffset] = NOT_VISITED_DST;
     bfsLevelNodeOffsets.push_back(srcOffset);
     if (queryRelType == common::QueryRelType::SHORTEST && !srcNodeOffsetAndEdgeOffset.empty()) {
         srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};

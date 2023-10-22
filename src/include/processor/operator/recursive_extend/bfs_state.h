@@ -215,6 +215,10 @@ public:
                                                          maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
           bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
+          currentLevelBwd{0u}, nextScanStartIdxBwd{0u}, numVisitedNodesBwd{0u},
+          visitedNodesBwd{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
+          pathLengthBwd{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
+          bfsLevelNodeOffsetsBwd{std::vector<common::offset_t>()},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
           pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
@@ -273,7 +277,7 @@ public:
     // If BFS has completed.
     bool isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType);
     // Mark src as visited.
-    void markSrc(bool isSrcDestination, common::QueryRelType queryRelType);
+    void markSrc(TargetDstNodes* targetDstNodes, bool isSrcDestination, common::QueryRelType queryRelType);
 
     void moveNextLevelAsCurrentLevel();
 
@@ -290,6 +294,15 @@ public:
     std::vector<uint8_t> visitedNodes;
     std::vector<uint8_t> pathLength;
     std::vector<common::offset_t> bfsLevelNodeOffsets;
+
+    /// ADDING THIS FOR BI-DIRECTIONAL BFS POC
+    uint8_t currentLevelBwd;
+    uint64_t nextScanStartIdxBwd;
+    uint64_t numVisitedNodesBwd;
+    std::vector<uint8_t> visitedNodesBwd;
+    std::vector<uint8_t> pathLengthBwd;
+    std::vector<common::offset_t> bfsLevelNodeOffsetsBwd;
+
     // Offset of src node.
     common::offset_t srcOffset;
     // Maximum offset of dst nodes.

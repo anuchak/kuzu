@@ -70,51 +70,31 @@ void VariableLengthMorsel<true>::addToLocalNextBFSLevel(
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_BARRIER)) {
                 auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
-                auto newEntry =
-                    new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
-                if (__sync_bool_compare_and_swap(
-                        &bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset], entry, newEntry)) {
-                    // This thread was successful in doing the CAS operation at the top.
-                    newEdgeListSegment->edgeListAndLevelBlock.push_back(newEntry);
-                } else {
-                    // This thread was NOT successful in doing the CAS operation, hence free the
-                    // memory right here since it has no use.
-                    delete newEntry;
-                }
-                __sync_bool_compare_and_swap(
-                    &bfsSharedState->visitedNodes[nodeID.offset], VISITED_BARRIER, VISITED_DST_NEW);
+                auto newEntry = new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
+                __sync_bool_compare_and_swap(&bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset], entry, newEntry);
+                newEdgeListSegment->edgeListAndLevelBlock.push_back(newEntry);
+                __sync_bool_compare_and_swap(&bfsSharedState->visitedNodes[nodeID.offset], VISITED_BARRIER, VISITED_DST_NEW);
             } else {
-                state = bfsSharedState->visitedNodes[nodeID.offset];
-                while (state != VISITED_BARRIER) {
-                    state = bfsSharedState->visitedNodes[nodeID.offset];
+                while (bfsSharedState->visitedNodes[nodeID.offset] != VISITED_DST_NEW) {
+                    // Keep spinning
                 }
             }
         } else if (state == NOT_VISITED || state == VISITED) {
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_BARRIER)) {
                 auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
-                auto newEntry =
-                    new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
-                if (__sync_bool_compare_and_swap(
-                        &bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset], entry, newEntry)) {
-                    // This thread was successful in doing the CAS operation at the top.
-                    newEdgeListSegment->edgeListAndLevelBlock.push_back(newEntry);
-                } else {
-                    // This thread was NOT successful in doing the CAS operation, hence free the
-                    // memory right here since it has no use.
-                    delete newEntry;
-                }
-                __sync_bool_compare_and_swap(
-                    &bfsSharedState->visitedNodes[nodeID.offset], VISITED_BARRIER, VISITED_NEW);
+                auto newEntry = new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
+                __sync_bool_compare_and_swap(&bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset], entry, newEntry);
+                newEdgeListSegment->edgeListAndLevelBlock.push_back(newEntry);
+                __sync_bool_compare_and_swap(&bfsSharedState->visitedNodes[nodeID.offset], VISITED_BARRIER, VISITED_NEW);
             } else {
-                state = bfsSharedState->visitedNodes[nodeID.offset];
-                while (state != VISITED_BARRIER) {
-                    state = bfsSharedState->visitedNodes[nodeID.offset];
+                while (bfsSharedState->visitedNodes[nodeID.offset] != VISITED_NEW) {
+                    // Keep spinning
                 }
             }
         } else if (state == VISITED_BARRIER) {
-            while (state != VISITED_BARRIER) {
-                state = bfsSharedState->visitedNodes[nodeID.offset];
+            while (bfsSharedState->visitedNodes[nodeID.offset] == VISITED_BARRIER) {
+                // Keep spinning
             }
         }
         auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);

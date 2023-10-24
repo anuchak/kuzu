@@ -40,8 +40,6 @@ enum VisitedState : uint8_t {
     VISITED = 3,
     VISITED_NEW = 4,
     VISITED_DST_NEW = 5,
-
-    VISITED_BARRIER = 6,
 };
 
 /**

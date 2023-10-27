@@ -10,8 +10,11 @@ namespace processor {
 
 void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType,
     planner::RecursiveJoinType joinType) {
+    isForward = true;
+    isIntersectionFound = false;
     ssspLocalState = EXTEND_IN_PROGRESS;
     currentLevel = 0u;
+    currentLevelBwd = 0u;
     nextScanStartIdx = 0u;
     numVisitedNodes = 0u;
     auto totalDestinations = targetDstNodes->getNumNodes();
@@ -20,13 +23,13 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
         std::fill(visitedNodes.begin(), visitedNodes.end(), NOT_VISITED_DST);
     } else {
         std::fill(visitedNodes.begin(), visitedNodes.end(), NOT_VISITED);
-        std::fill(visitedNodesBwd.begin(), visitedNodesBwd.end(), NOT_VISITED);
         for (auto& dstOffset : targetDstNodes->getNodeIDs()) {
             visitedNodes[dstOffset.offset] = NOT_VISITED_DST;
         }
     }
     std::fill(pathLength.begin(), pathLength.end(), 0u);
     bfsLevelNodeOffsets.clear();
+    bfsLevelNodeOffsetsBwd.clear();
     srcOffset = 0u;
     numThreadsBFSActive = 0u;
     nextDstScanStartIdx = 0u;
@@ -102,16 +105,22 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
         return PATH_LENGTH_WRITE_IN_PROGRESS;
     }
     case EXTEND_IN_PROGRESS: {
-        if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
+        if (isForward && nextScanStartIdx < bfsLevelNodeOffsets.size()) {
             numThreadsBFSActive++;
             auto bfsMorselSize = std::min(256lu, bfsLevelNodeOffsets.size() - nextScanStartIdx);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
             return EXTEND_IN_PROGRESS;
-        } else {
-            return NO_WORK_TO_SHARE;
+        } else if (!isForward && nextScanStartIdx < bfsLevelNodeOffsetsBwd.size()) {
+            numThreadsBFSActive++;
+            auto bfsMorselSize = std::min(256lu, bfsLevelNodeOffsetsBwd.size() - nextScanStartIdx);
+            auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
+            bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
+            nextScanStartIdx += bfsMorselSize;
+            return EXTEND_IN_PROGRESS;
         }
+        return NO_WORK_TO_SHARE;
     }
     default:
         throw common::RuntimeException(
@@ -159,7 +168,9 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
             localEdgeListSegment.resize(0);
         }
     }
-    if (numThreadsBFSActive == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
+    bool bfsExtensionComplete = (isForward) ? (nextScanStartIdx == bfsLevelNodeOffsets.size()) :
+                                              (nextScanStartIdx == bfsLevelNodeOffsetsBwd.size());
+    if (numThreadsBFSActive == 0 && bfsExtensionComplete) {
         moveNextLevelAsCurrentLevel();
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
             ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
@@ -173,10 +184,13 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
 }
 
 bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType) {
-    if (bfsLevelNodeOffsets.empty()) { // no more to extend.
+    if (isIntersectionFound) {
         return true;
     }
-    if (currentLevel == upperBound) { // upper limit reached.
+    if (bfsLevelNodeOffsets.empty() || bfsLevelNodeOffsetsBwd.empty()) { // no more to extend.
+        return true;
+    }
+    if ((currentLevel + currentLevelBwd) == upperBound) { // upper limit reached.
         return true;
     }
     if (queryRelType == common::QueryRelType::SHORTEST) {
@@ -188,21 +202,19 @@ bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRel
     return false;
 }
 
-void BFSSharedState::markSrc(TargetDstNodes* targetDstNodes, bool isSrcDestination,
-    common::QueryRelType queryRelType) {
+void BFSSharedState::markSrc(
+    TargetDstNodes* targetDstNodes, bool isSrcDestination, common::QueryRelType queryRelType) {
     if (isSrcDestination) {
-        visitedNodes[srcOffset] = VISITED_DST;
+        visitedNodes[srcOffset] = VISITED_FWD;
         numVisitedNodes++;
         pathLength[srcOffset] = 0;
     } else {
-        visitedNodes[srcOffset] = VISITED;
+        visitedNodes[srcOffset] = VISITED_FWD;
     }
-    for(auto& dstOffset : targetDstNodes->getNodeIDs()) {
-        visitedNodesBwd[dstOffset.offset] = VISITED;
-        pathLengthBwd[dstOffset.offset] = 0;
+    for (auto& dstOffset : targetDstNodes->getNodeIDs()) {
+        visitedNodes[dstOffset.offset] = VISITED_DST;
         bfsLevelNodeOffsetsBwd.push_back(dstOffset.offset);
     }
-    visitedNodesBwd[srcOffset] = NOT_VISITED_DST;
     bfsLevelNodeOffsets.push_back(srcOffset);
     if (queryRelType == common::QueryRelType::SHORTEST && !srcNodeOffsetAndEdgeOffset.empty()) {
         srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};
@@ -242,20 +254,31 @@ void BFSSharedState::markSrc(TargetDstNodes* targetDstNodes, bool isSrcDestinati
 }
 
 void BFSSharedState::moveNextLevelAsCurrentLevel() {
-    currentLevel++;
-    nextScanStartIdx = 0u;
-    if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
-        /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
-        /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
-        bfsLevelNodeOffsets.clear();
-        for (auto i = 0u; i < visitedNodes.size(); i++) {
-            if (visitedNodes[i] == VISITED_NEW) {
-                visitedNodes[i] = VISITED;
-                bfsLevelNodeOffsets.push_back(i);
-            } else if (visitedNodes[i] == VISITED_DST_NEW) {
-                visitedNodes[i] = VISITED_DST;
-                bfsLevelNodeOffsets.push_back(i);
+    if (isForward) {
+        currentLevel++;
+        nextScanStartIdx = 0u;
+        if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
+            bfsLevelNodeOffsets.clear();
+            for (auto i = 0u; i < visitedNodes.size(); i++) {
+                if (visitedNodes[i] == VISITED_NEW) {
+                    visitedNodes[i] = VISITED_FWD;
+                    bfsLevelNodeOffsets.push_back(i);
+                }
             }
+            isForward = (bfsLevelNodeOffsets.size() < bfsLevelNodeOffsetsBwd.size());
+        }
+    } else {
+        currentLevelBwd++;
+        nextScanStartIdx = 0u;
+        if (currentLevel < upperBound) {
+            bfsLevelNodeOffsetsBwd.clear();
+            for (auto i = 0u; i < visitedNodes.size(); i++) {
+                if (visitedNodes[i] == VISITED_NEW) {
+                    visitedNodes[i] = VISITED_BWD;
+                    bfsLevelNodeOffsetsBwd.push_back(i);
+                }
+            }
+            isForward = (bfsLevelNodeOffsets.size() < bfsLevelNodeOffsetsBwd.size());
         }
     }
 }
@@ -289,25 +312,20 @@ std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
 template<>
 void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
-    auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+    bool isBFSFwd = bfsSharedState->isForward;
+    auto recursiveDstNodeIDVector =
+        isBFSFwd ? vectors->recursiveDstNodeIDVector : vectors->recursiveDstNodeIDVectorBwd;
     for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
         auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
-        if (state == NOT_VISITED_DST) {
-            if (__sync_bool_compare_and_swap(
-                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
-                /// NOTE: This write is safe to do here without a CAS, because we have a full
-                /// memory barrier once each thread merges its results (they have to hold a lock).
-                /// A CAS would be required if a read had occurred before this full memory barrier
-                /// - such as visitedNodes state. Those states are being written to and read from
-                /// even before each thread holds the lock.
-                bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
-                numVisitedDstNodes++;
-            }
-        } else if (state == NOT_VISITED) {
+        if (state == NOT_VISITED) {
             __sync_bool_compare_and_swap(
                 &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+        } else if (isBFSFwd && (state == VISITED_BWD)) {
+            __sync_bool_compare_and_swap(&bfsSharedState->isIntersectionFound, false, true);
+        } else if (!isBFSFwd && (state == VISITED_FWD)) {
+            __sync_bool_compare_and_swap(&bfsSharedState->isIntersectionFound, false, true);
         }
     }
 }
@@ -358,14 +376,18 @@ int64_t ShortestPathMorsel<false>::writeToVector(
     auto endIdx = startScanIdxAndSize.first + startScanIdxAndSize.second;
     auto dstNodeIDVector = vectors->dstNodeIDVector;
     auto pathLengthVector = vectors->pathLengthVector;
+    if (!bfsSharedState->isIntersectionFound) {
+        return 0;
+    }
     while (startScanIdxAndSize.first < endIdx) {
         if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
                 bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
-            bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
+            (bfsSharedState->currentLevel + bfsSharedState->currentLevelBwd) >=
+                bfsSharedState->lowerBound) {
             dstNodeIDVector->setValue<common::nodeID_t>(
                 size, common::nodeID_t{startScanIdxAndSize.first, tableID});
             pathLengthVector->setValue<int64_t>(
-                size, bfsSharedState->pathLength[startScanIdxAndSize.first]);
+                size, bfsSharedState->currentLevel + bfsSharedState->currentLevelBwd);
             size++;
         }
         startScanIdxAndSize.first++;

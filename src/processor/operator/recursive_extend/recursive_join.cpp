@@ -271,12 +271,22 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
     // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
     common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
+    bool fwdBFS = bfsMorsel->bfsSharedState->isForward;
     uint64_t boundNodeMultiplicity;
     while (nodeOffset != common::INVALID_OFFSET) {
         boundNodeMultiplicity = bfsMorsel->getBoundNodeMultiplicity(nodeOffset);
-        scanFrontier->setNodeID(common::nodeID_t{nodeOffset, *begin(dataInfo->dstNodeTableIDs)});
-        while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
-            bfsMorsel->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
+        if (fwdBFS) {
+            scanFrontier->setNodeID(
+                common::nodeID_t{nodeOffset, *begin(dataInfo->dstNodeTableIDs)});
+            while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
+                bfsMorsel->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
+            }
+        } else {
+            scanFrontierBwd->setNodeID(
+                common::nodeID_t{nodeOffset, *begin(dataInfo->dstNodeTableIDs)});
+            while (recursiveRootBwd->getNextTuple(context)) { // Exhaust recursive plan.
+                bfsMorsel->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
+            }
         }
         nodeOffset = bfsMorsel->getNextNodeOffset();
     }
@@ -326,6 +336,20 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
     vectors->recursiveEdgeIDVector =
         localResultSet->getValueVector(dataInfo->recursiveEdgeIDPos).get();
     recursiveRoot->initLocalState(localResultSet.get(), context);
+
+    auto opBwd = recursiveRootBwd.get();
+    while (!opBwd->isSource()) {
+        assert(opBwd->getNumChildren() == 1);
+        opBwd = opBwd->getChild(0);
+    }
+    scanFrontierBwd = (ScanFrontier*)opBwd;
+    localResultSetBwd = std::make_unique<ResultSet>(
+        dataInfo->localResultSetDescriptorBwd.get(), context->memoryManager);
+    vectors->recursiveDstNodeIDVectorBwd =
+        localResultSetBwd->getValueVector(dataInfo->recursiveDstNodeIDPosBwd).get();
+    vectors->recursiveEdgeIDVectorBwd =
+        localResultSetBwd->getValueVector(dataInfo->recursiveEdgeIDPosBwd).get();
+    recursiveRootBwd->initLocalState(localResultSetBwd.get(), context);
 }
 
 void RecursiveJoin::populateTargetDstNodes() {

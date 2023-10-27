@@ -19,6 +19,9 @@ public:
     inline std::shared_ptr<binder::NodeExpression> getBoundNode() const { return boundNode; }
     inline std::shared_ptr<binder::NodeExpression> getNbrNode() const { return nbrNode; }
     inline std::shared_ptr<binder::RelExpression> getRel() const { return rel; }
+
+    inline void setDirection() { direction = ExtendDirection::BWD; }
+
     inline ExtendDirection getDirection() const { return direction; }
     virtual f_group_pos_set getGroupsPosToFlatten() = 0;
 

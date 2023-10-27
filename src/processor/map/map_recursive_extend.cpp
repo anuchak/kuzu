@@ -1,6 +1,7 @@
 #include "binder/expression/node_expression.h"
 #include "binder/expression/rel_expression.h"
 #include "common/query_rel_type.h"
+#include "planner/logical_plan/extend/logical_extend.h"
 #include "planner/logical_plan/extend/logical_recursive_extend.h"
 #include "planner/logical_plan/logical_operator.h"
 #include "processor/operator/recursive_extend/recursive_join.h"
@@ -65,7 +66,20 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     auto recursiveEdgeIDPos = DataPos(
         recursivePlanSchema->getExpressionPos(*recursiveInfo->rel->getInternalIDProperty()));
 
-
+    auto logicalRecursiveRootBwd = logicalRecursiveRoot->copy();
+    logicalRecursiveRootBwd->getChild(0)->computeFlatSchema();
+    logicalRecursiveRootBwd->computeFlatSchema();
+    auto logicalExtendBwd = (LogicalExtend*)logicalRecursiveRootBwd.get();
+    /// Set to BWD extend as direction
+    logicalExtendBwd->setDirection();
+    auto recursiveRootBwd = mapOperator(logicalRecursiveRootBwd.get());
+    auto recursivePlanSchemaBwd = logicalRecursiveRootBwd->getSchema();
+    auto recursivePlanResultSetDescriptorBwd =
+        std::make_unique<ResultSetDescriptor>(recursivePlanSchemaBwd);
+    auto recursiveDstNodeIDPosBwd = DataPos(recursivePlanSchemaBwd->getExpressionPos(
+        *recursiveInfo->nodeCopy->getInternalIDProperty()));
+    auto recursiveEdgeIDPosBwd = DataPos(
+        recursivePlanSchemaBwd->getExpressionPos(*recursiveInfo->rel->getInternalIDProperty()));
 
     // Generate RecursiveJoin
     auto outSchema = extend->getSchema();
@@ -84,7 +98,9 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     }
     auto dataInfo = std::make_unique<RecursiveJoinDataInfo>(boundNodeIDPos, nbrNodeIDPos,
         nbrNode->getTableIDsSet(), lengthPos, std::move(recursivePlanResultSetDescriptor),
-        recursiveDstNodeIDPos, recursiveInfo->node->getTableIDsSet(), recursiveEdgeIDPos, pathPos);
+        std::move(recursivePlanResultSetDescriptorBwd), recursiveDstNodeIDPos,
+        recursiveDstNodeIDPosBwd, recursiveInfo->node->getTableIDsSet(), recursiveEdgeIDPos,
+        recursiveEdgeIDPosBwd, pathPos);
     auto sharedState = createSharedState(*nbrNode, *boundNode, *rel, dataInfo.get(),
         extend->getJoinType(), storageManager, fTableSharedState);
     std::vector<DataPos> outDataPoses;
@@ -96,7 +112,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     return std::make_unique<RecursiveJoin>(rel->getLowerBound(), rel->getUpperBound(),
         rel->getRelType(), extend->getJoinType(), sharedState, std::move(dataInfo), outDataPoses,
         colIndicesToScan, std::move(resultCollector), getOperatorID(),
-        extend->getExpressionsForPrinting(), std::move(recursiveRoot));
+        extend->getExpressionsForPrinting(), std::move(recursiveRoot), std::move(recursiveRootBwd));
 }
 
 } // namespace processor

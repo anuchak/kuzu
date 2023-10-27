@@ -25,6 +25,9 @@ struct RecursiveJoinVectors {
 
     common::ValueVector* recursiveEdgeIDVector = nullptr;
     common::ValueVector* recursiveDstNodeIDVector = nullptr;
+
+    common::ValueVector* recursiveEdgeIDVectorBwd = nullptr;
+    common::ValueVector* recursiveDstNodeIDVectorBwd = nullptr;
 };
 
 /**
@@ -32,6 +35,13 @@ struct RecursiveJoinVectors {
  * VISITED_NEW and VISITED_DST_NEW are the states when a node is initially visited and
  * when we scan to prepare the bfsLevelNodes vector for next level extension,
  * VISITED_NEW -> VISITED | VISITED_DST_NEW -> VISITED_DST
+ *
+ * BI-DIRECTIONAL BFS STATE TRANSITIONS
+ * ------------------------------------
+ *
+ * NOT_VISITED_DST -> VISITED_DST_NEW -> VISITED_DST_FWD | VISITED_DST_BWD (depending on when
+ * visited, forward or backward bfs extension) NOT_VISITED -> VISITED_NEW -> VISITED_FWD |
+ * VISITED_BWD (same logic as above)
  */
 enum VisitedState : uint8_t {
     NOT_VISITED_DST = 0,
@@ -40,6 +50,8 @@ enum VisitedState : uint8_t {
     VISITED = 3,
     VISITED_NEW = 4,
     VISITED_DST_NEW = 5,
+    VISITED_FWD = 6,
+    VISITED_BWD = 7
 };
 
 /**
@@ -210,17 +222,14 @@ struct multiplicityAndLevel {
 struct BFSSharedState {
 public:
     BFSSharedState(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
-        : mutex{std::mutex()}, ssspLocalState{EXTEND_IN_PROGRESS}, currentLevel{0u},
-          nextScanStartIdx{0u}, numVisitedNodes{0u}, visitedNodes{std::vector<uint8_t>(
-                                                         maxNodeOffset_ + 1, NOT_VISITED)},
+        : mutex{std::mutex()}, isForward{true}, isIntersectionFound{false},
+          ssspLocalState{EXTEND_IN_PROGRESS}, currentLevel{0u}, nextScanStartIdx{0u},
+          numVisitedNodes{0u}, visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
-          bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
-          currentLevelBwd{0u}, nextScanStartIdxBwd{0u}, numVisitedNodesBwd{0u},
-          visitedNodesBwd{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
-          pathLengthBwd{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
-          bfsLevelNodeOffsetsBwd{std::vector<common::offset_t>()},
-          maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
-          numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
+          bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u}, currentLevelBwd{0u},
+          bfsLevelNodeOffsetsBwd{std::vector<common::offset_t>()}, maxOffset{maxNodeOffset_},
+          upperBound{upperBound_}, lowerBound{lowerBound_}, numThreadsBFSActive{0u},
+          nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
           pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
 
     inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
@@ -277,13 +286,16 @@ public:
     // If BFS has completed.
     bool isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType);
     // Mark src as visited.
-    void markSrc(TargetDstNodes* targetDstNodes, bool isSrcDestination, common::QueryRelType queryRelType);
+    void markSrc(
+        TargetDstNodes* targetDstNodes, bool isSrcDestination, common::QueryRelType queryRelType);
 
     void moveNextLevelAsCurrentLevel();
 
     std::pair<uint64_t, int64_t> getDstPathLengthMorsel();
 
 public:
+    bool isForward;
+    bool isIntersectionFound;
     std::mutex mutex;
     SSSPLocalState ssspLocalState;
     uint8_t currentLevel;
@@ -297,10 +309,6 @@ public:
 
     /// ADDING THIS FOR BI-DIRECTIONAL BFS POC
     uint8_t currentLevelBwd;
-    uint64_t nextScanStartIdxBwd;
-    uint64_t numVisitedNodesBwd;
-    std::vector<uint8_t> visitedNodesBwd;
-    std::vector<uint8_t> pathLengthBwd;
     std::vector<common::offset_t> bfsLevelNodeOffsetsBwd;
 
     // Offset of src node.
@@ -502,7 +510,10 @@ public:
         if (startScanIdx == endScanIdx) {
             return common::INVALID_OFFSET;
         }
-        return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
+        if (bfsSharedState->isForward) {
+            return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
+        }
+        return bfsSharedState->bfsLevelNodeOffsetsBwd[startScanIdx++];
     }
 
     void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,

@@ -11,8 +11,8 @@ public:
     MSBFSMorsel(uint8_t upperBound, uint8_t lowerBound, common::offset_t maxOffset,
         TargetDstNodes* targetDstNodes)
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, maxOffset{maxOffset},
-          dstReachedMask{0llu}, totalSources{0u}, dstLaneCount{0u}, curSrcIdx{0u}, hasMoreDst{
-                                                                                       false} {
+          dstReachedMask{0llu}, totalSources{0u}, dstLaneCount{0u}, curSrcIdx{0u},
+          hasMoreDst{false}, srcNodeDataChunkSelectedPositions{nullptr}, lastDstOffsetWritten{0u} {
         visit = new uint64_t[maxOffset + 1]{0llu};
         seen = new uint64_t[maxOffset + 1]{0llu};
         next = new uint64_t[maxOffset + 1]{0llu};
@@ -64,6 +64,7 @@ public:
         hasMoreDst = false;
         curSrcIdx = 0u;
         srcNodeDataChunkSelectedPositions = nullptr;
+        lastDstOffsetWritten = 0u;
     }
 
     inline void markSrc(common::nodeID_t nodeID) override {
@@ -131,6 +132,7 @@ private:
                      // write
     uint64_t curSrcIdx; // track the source idx from the selection positions vector for which
                         // destinations being written
+    uint64_t lastDstOffsetWritten; // The last destination offset which was written to ValueVector.
 };
 
 } // namespace processor

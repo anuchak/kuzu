@@ -14,7 +14,8 @@ int64_t MSBFSMorsel<false>::writeToVector(
     auto dstNodeIDVector = recursiveJoinVectors->dstNodeIDVector;
     auto laneMask = (1llu << dstLaneCount);
     if (hasMoreToWrite()) {
-        auto size = 0u, offset = 0u;
+        auto size = 0u;
+        auto offset = lastDstOffsetWritten;
         auto srcOffset = srcNodeIDVector
                              ->getValue<common::nodeID_t>(
                                  srcNodeIDVector->state->selVector->selectedPositions[0])
@@ -61,6 +62,7 @@ int64_t MSBFSMorsel<false>::writeToVector(
         }
         if (offset < (maxOffset + 1)) {
             hasMoreDst = true;
+            lastDstOffsetWritten = offset;
         } else {
             dstLaneCount++;
         }

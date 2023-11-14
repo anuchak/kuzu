@@ -4,6 +4,8 @@
 #include <iostream>
 #include <utility>
 
+#include "processor/operator/recursive_extend/ms_bfs_morsel.h"
+
 namespace kuzu {
 namespace processor {
 
@@ -33,6 +35,27 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
         auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(
             srcNodeIDVector->state->selVector->selectedPositions[0]);
         bfsMorsel->markSrc(nodeID);
+        return {IN_PROGRESS, EXTEND_IN_PROGRESS};
+    }
+    case common::SchedulerType::Reachability: {
+        if (srcNodeIDVector->state->isFlat()) {
+            srcNodeIDVector->state->selVector->resetSelectorToUnselected();
+            srcNodeIDVector->state->setToUnflat();
+        }
+        auto inputFTableMorsel = inputFTableSharedState->getMorsel();
+        if (inputFTableMorsel->numTuples == 0) {
+            return {COMPLETE, NO_WORK_TO_SHARE};
+        }
+        inputFTableSharedState->getTable()->scan(vectorsToScan, inputFTableMorsel->startTupleIdx,
+            inputFTableMorsel->numTuples, colIndicesToScan);
+        auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel<false>*>(bfsMorsel));
+        msBFSMorsel->resetState();
+        srcNodeIDVector->state->setToFlat();
+        msBFSMorsel->srcNodeDataChunkSelectedPositions =
+            srcNodeIDVector->state->selVector->selectedPositions;
+        for (auto i = 0; i < srcNodeIDVector->state->selVector->selectedSize; i++) {
+            msBFSMorsel->markSrc(srcNodeIDVector->getValue<common::nodeID_t>(i));
+        }
         return {IN_PROGRESS, EXTEND_IN_PROGRESS};
     }
     case common::SchedulerType::nThreadkMorsel: {

@@ -1,6 +1,7 @@
 #include "processor/operator/recursive_extend/recursive_join.h"
 
 #include "processor/operator/recursive_extend/all_shortest_path_state.h"
+#include "processor/operator/recursive_extend/ms_bfs_morsel.h"
 #include "processor/operator/recursive_extend/scan_frontier.h"
 #include "processor/operator/recursive_extend/variable_length_state.h"
 
@@ -12,7 +13,8 @@ namespace processor {
 // User's setting of scheduler policy is given preference. If user changes policy to 1T1S then
 // before operator begins execution we change the policy globally here.
 void RecursiveJoin::initGlobalStateInternal(kuzu::processor::ExecutionContext* context) {
-    if (context->clientContext->getBFSSchedulerType() == SchedulerType::OneThreadOneMorsel) {
+    if ((context->clientContext->getBFSSchedulerType() == SchedulerType::OneThreadOneMorsel) &&
+        (sharedState->morselDispatcher->getSchedulerType() != SchedulerType::Reachability)) {
         sharedState->morselDispatcher->setSchedulerType(SchedulerType::OneThreadOneMorsel);
         return;
     }
@@ -100,6 +102,13 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
             throw NotImplementedException("BaseRecursiveJoin::initLocalStateInternal");
         }
     } break;
+    case QueryRelType::REACHABILITY: {
+        // Need to confirm this here since REACHABILITY should be triggered only if no path being
+        // tracked.
+        assert(joinType != planner::RecursiveJoinType::TRACK_PATH);
+        bfsMorsel = std::make_unique<MSBFSMorsel<false /* TRACK_PATH */>>(
+            upperBound, lowerBound, sharedState->getMaxOffset(), targetDstNodes.get());
+    } break;
     default:
         throw NotImplementedException("BaseRecursiveJoin::initLocalStateInternal");
     }
@@ -183,6 +192,17 @@ bool RecursiveJoin::scanOutput() {
         }
         vectors->dstNodeIDVector->state->initOriginalAndSelectedSize(offsetVectorSize);
         return true;
+    } else if (sharedState->getSchedulerType() == SchedulerType::Reachability) {
+        auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel<false>*>(bfsMorsel.get()));
+        auto tableID = *begin(dataInfo->dstNodeTableIDs);
+        int64_t numValuesWritten;
+        while ((numValuesWritten = msBFSMorsel->writeToVector(tableID, vectors.get())) == 0) {
+            // keep pulling until no. of values written is not 0 or -1
+        }
+        if (numValuesWritten > 0) {
+            return true;
+        }
+        return false;
     } else {
         while (true) {
             if (!bfsMorsel->hasBFSSharedState()) {
@@ -222,6 +242,14 @@ bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
             return false;
         }
         computeBFSOneThreadOneMorsel(context);
+        return true;
+    } else if (sharedState->getSchedulerType() == SchedulerType::Reachability) {
+        auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
+            vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType, joinType);
+        if (state.first == COMPLETE) {
+            return false;
+        }
+        computeMSBFSMorsel(context);
         return true;
     } else {
         return doBFSnThreadkMorsel(context);
@@ -298,6 +326,54 @@ void RecursiveJoin::computeBFSOneThreadOneMorsel(ExecutionContext* context) {
         } else {
             // Otherwise move to the next frontier.
             bfsMorsel->finalizeCurrentLevel();
+        }
+    }
+}
+
+void RecursiveJoin::computeMSBFSMorsel(kuzu::processor::ExecutionContext* context) {
+    auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel<false>*>(bfsMorsel.get()));
+    uint64_t *temp, *x = msBFSMorsel->visit, *next_ = msBFSMorsel->next;
+    while (doMSBFS(msBFSMorsel->seen, x, next_, msBFSMorsel->maxOffset, context)) {
+        msBFSMorsel->updateBFSLevel();
+        temp = x;
+        x = next_;
+        next_ = temp;
+    }
+}
+
+bool RecursiveJoin::doMSBFS(uint64_t* seen, uint64_t* curFrontier, uint64_t* nextFrontier,
+    uint64_t maxOffset, kuzu::processor::ExecutionContext* context) {
+    for (auto offset = 0u; offset < (maxOffset + 1); offset++) {
+        seen[offset] |= curFrontier[offset];
+        nextFrontier[offset] = 0llu;
+    }
+    if (bfsMorsel->isComplete()) {
+        return false;
+    }
+    bool active = false;
+    for (auto offset = 0u; offset < (maxOffset + 1); offset++) {
+        if (curFrontier[offset]) {
+            callMSBFSRecursivePlan(seen, curFrontier, nextFrontier, offset, active, context);
+            if (bfsMorsel->isComplete())
+                return false;
+        }
+    }
+    return active;
+}
+
+void RecursiveJoin::callMSBFSRecursivePlan(const uint64_t* seen, const uint64_t* curFrontier,
+    uint64_t* nextFrontier, common::offset_t parentOffset, bool& isBFSActive,
+    kuzu::processor::ExecutionContext* context) {
+    scanFrontier->setNodeID(common::nodeID_t{parentOffset, *begin(dataInfo->dstNodeTableIDs)});
+    while (recursiveRoot->getNextTuple(context)) {
+        auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+        for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
+            auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
+            auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
+            uint64_t unseen = curFrontier[parentOffset] & ~seen[nodeID.offset];
+            if (unseen)
+                nextFrontier[nodeID.offset] |= unseen;
+            isBFSActive |= unseen;
         }
     }
 }

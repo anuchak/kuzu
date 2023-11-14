@@ -5,6 +5,7 @@ add_library(kuzu_processor_operator_ver_length_extend
         bfs_state.cpp
         frontier.cpp
         frontier_scanner.cpp
+        ms_bfs_morsel.cpp
         recursive_join.cpp
         path_property_probe.cpp
         scan_frontier.cpp

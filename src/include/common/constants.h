@@ -181,7 +181,7 @@ struct ClientContextConstants {
  *    performed OR a group of offsets for which path length needs to be written to the ValueVector.
  *
  */
-enum SchedulerType { OneThreadOneMorsel, nThreadkMorsel };
+enum SchedulerType { OneThreadOneMorsel, nThreadkMorsel, Reachability };
 
 struct OrderByConstants {
     static constexpr uint64_t NUM_BYTES_FOR_PAYLOAD_IDX = 8;

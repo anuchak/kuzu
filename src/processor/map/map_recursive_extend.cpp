@@ -33,14 +33,17 @@ static std::shared_ptr<RecursiveJoinSharedState> createSharedState(
     morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::OneThreadOneMorsel,
         rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
 #else
-    if (isSingleLabel) {
+    // TODO (Anurag): Hardcoding BFS Scheduler type here for PoC to Reachability type.
+    morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::Reachability,
+        rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
+    /*if (isSingleLabel) {
         morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::nThreadkMorsel,
             rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
     } else {
         morselDispatcher =
             std::make_shared<MorselDispatcher>(common::SchedulerType::OneThreadOneMorsel,
                 rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
-    }
+    }*/
 #endif
     return std::make_shared<RecursiveJoinSharedState>(
         morselDispatcher, fTableSharedState, std::move(semiMasks));
@@ -74,7 +77,11 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     auto prevOperator = mapOperator(logicalOperator->getChild(0).get());
     auto resultCollector = appendResultCollector(std::move(prevOperator), expressions, inSchema);
     auto sharedFTable = ((ResultCollector*)resultCollector.get())->getResultFactorizedTable();
-    auto fTableSharedState = std::make_shared<FactorizedTableScanSharedState>(sharedFTable, 1u);
+
+    // TODO (Anurag): SETTING MAX MORSEL SIZE HERE AS 64 for Reachability type queries but for
+    // other cases it should be set to 1. This needs to be decided at query planning time.
+    auto fTableSharedState = std::make_shared<FactorizedTableScanSharedState>(sharedFTable, 64u);
+
     auto pathPos = DataPos();
     if (extend->getJoinType() == planner::RecursiveJoinType::TRACK_PATH) {
         pathPos = DataPos(outSchema->getExpressionPos(*rel));
@@ -90,9 +97,15 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
         outDataPoses.emplace_back(outSchema->getExpressionPos(*expressions[i]));
         colIndicesToScan.push_back(i);
     }
-    return std::make_unique<RecursiveJoin>(rel->getLowerBound(), rel->getUpperBound(),
+    /*return std::make_unique<RecursiveJoin>(rel->getLowerBound(), rel->getUpperBound(),
         rel->getRelType(), extend->getJoinType(), sharedState, std::move(dataInfo), outDataPoses,
         colIndicesToScan, std::move(resultCollector), getOperatorID(),
+        extend->getExpressionsForPrinting(), std::move(recursiveRoot));*/
+    // TODO (Anurag): Hardcoding this here for now, but later the "optimizer" needs to decide this
+    // TODO (Anurag): automatically by traversing the query pipeline that it is Reachability type.
+    return std::make_unique<RecursiveJoin>(rel->getLowerBound(), rel->getUpperBound(),
+        common::QueryRelType::REACHABILITY, extend->getJoinType(), sharedState, std::move(dataInfo),
+        outDataPoses, colIndicesToScan, std::move(resultCollector), getOperatorID(),
         extend->getExpressionsForPrinting(), std::move(recursiveRoot));
 }
 

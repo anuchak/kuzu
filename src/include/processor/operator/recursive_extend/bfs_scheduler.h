@@ -45,6 +45,8 @@ public:
 
     inline common::SchedulerType getSchedulerType() { return schedulerType; }
 
+    inline common::offset_t getMaxOffset() const { return maxOffset; }
+
     inline void setSchedulerType(common::SchedulerType schedulerType_) {
         schedulerType = schedulerType_;
     }

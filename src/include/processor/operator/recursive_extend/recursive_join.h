@@ -30,6 +30,8 @@ struct RecursiveJoinSharedState {
 
     inline common::SchedulerType getSchedulerType() { return morselDispatcher->getSchedulerType(); }
 
+    inline common::offset_t getMaxOffset() { return morselDispatcher->getMaxOffset(); }
+
     inline std::pair<GlobalSSSPState, SSSPLocalState> getBFSMorsel(
         const std::vector<common::ValueVector*>& vectorsToScan,
         const std::vector<ft_col_idx_t>& colIndicesToScan, common::ValueVector* srcNodeIDVector,
@@ -127,6 +129,15 @@ private:
 
     // Compute BFS for a given src node.
     void computeBFSOneThreadOneMorsel(ExecutionContext* context);
+
+    void computeMSBFSMorsel(ExecutionContext* context);
+
+    bool doMSBFS(uint64_t* seen, uint64_t* curFrontier, uint64_t* nextFrontier, uint64_t maxOffset,
+        kuzu::processor::ExecutionContext* context);
+
+    void callMSBFSRecursivePlan(const uint64_t* seen, const uint64_t* curFrontier,
+        uint64_t* nextFrontier, common::offset_t parentOffset, bool& isBFSActive,
+        kuzu::processor::ExecutionContext* context);
 
     void updateVisitedNodes(common::nodeID_t boundNodeID);
 

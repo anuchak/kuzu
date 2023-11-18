@@ -8,7 +8,7 @@ namespace processor {
 template<bool TRACK_PATH>
 struct VariableLengthMorsel : public BaseBFSMorsel {
     VariableLengthMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes)
-        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound},
+        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, countAllNodesVisited{0u},
           localEdgeListSegment{std::vector<edgeListSegment*>()}, hasMorePathToWrite{false} {}
     ~VariableLengthMorsel() override = default;
 
@@ -36,6 +36,7 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
         startScanIdx = startScanIdx_;
         endScanIdx = endScanIdx_;
         bfsSharedState = bfsSharedState_;
+        countAllNodesVisited = 0u;
         if (TRACK_PATH && nodeBuffer.empty()) {
             nodeBuffer = std::vector<edgeListAndLevel*>(31u, nullptr);
             relBuffer = std::vector<edgeList*>(31u, nullptr);
@@ -81,6 +82,9 @@ struct VariableLengthMorsel : public BaseBFSMorsel {
     inline std::vector<edgeListSegment*>& getLocalEdgeListSegments() {
         return localEdgeListSegment;
     }
+
+public:
+    uint64_t countAllNodesVisited;
 
 private:
     uint64_t startScanIdx;

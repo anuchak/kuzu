@@ -21,6 +21,7 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
                 /// even before each thread holds the lock.
                 bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
                 numVisitedDstNodes++;
+                countAllNodesVisited++;
                 auto minDistance_ = bfsSharedState->minDistance;
                 if (minDistance_ < bfsSharedState->currentLevel) {
                     __sync_bool_compare_and_swap(
@@ -28,8 +29,10 @@ void AllShortestPathMorsel<false>::addToLocalNextBFSLevel(
                 }
             }
         } else if (state == NOT_VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW)) {
+                countAllNodesVisited++;
+            }
         }
         state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == VISITED_NEW || state == VISITED_DST_NEW) {
@@ -57,6 +60,7 @@ void AllShortestPathMorsel<true>::addToLocalNextBFSLevel(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
                 bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
                 numVisitedDstNodes++;
+                countAllNodesVisited++;
                 auto minDistance_ = bfsSharedState->minDistance;
                 if (minDistance_ < bfsSharedState->currentLevel) {
                     __sync_bool_compare_and_swap(
@@ -64,8 +68,10 @@ void AllShortestPathMorsel<true>::addToLocalNextBFSLevel(
                 }
             }
         } else if (state == NOT_VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW)) {
+                countAllNodesVisited++;
+            }
         }
         state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == VISITED_DST_NEW || state == VISITED_NEW) {

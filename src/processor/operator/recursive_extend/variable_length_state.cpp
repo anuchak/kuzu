@@ -12,11 +12,15 @@ void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
         auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST || state == VISITED_DST) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW);
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
+                countAllNodesVisited++;
+            }
         } else if (state == NOT_VISITED || state == VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW)) {
+                countAllNodesVisited++;
+            }
         }
         auto member = bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset];
         if (!member) {
@@ -67,11 +71,15 @@ void VariableLengthMorsel<true>::addToLocalNextBFSLevel(
         auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST || state == VISITED_DST) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW);
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
+                countAllNodesVisited++;
+            }
         } else if (state == NOT_VISITED || state == VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW)) {
+                countAllNodesVisited++;
+            }
         }
         auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
         if (!entry || (entry->bfsLevel <= bfsSharedState->currentLevel)) {

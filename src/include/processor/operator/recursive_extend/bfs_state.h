@@ -211,8 +211,8 @@ struct BFSSharedState {
 public:
     BFSSharedState(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
         : mutex{std::mutex()}, ssspLocalState{EXTEND_IN_PROGRESS}, currentLevel{0u},
-          nextScanStartIdx{0u}, numVisitedNodes{0u}, visitedNodes{std::vector<uint8_t>(
-                                                         maxNodeOffset_ + 1, NOT_VISITED)},
+          nextScanStartIdx{0u}, numVisitedNodes{0u}, countAllNodesVisited{0u},
+          visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
           bfsLevelNodeOffsets{std::vector<common::offset_t>()}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
@@ -287,6 +287,7 @@ public:
 
     // Visited state
     uint64_t numVisitedNodes;
+    uint64_t countAllNodesVisited;
     std::vector<uint8_t> visitedNodes;
     std::vector<uint8_t> pathLength;
     std::vector<common::offset_t> bfsLevelNodeOffsets;
@@ -471,8 +472,6 @@ public:
         }
     }
 
-    inline uint64_t getNumVisitedDstNodes() { return numVisitedDstNodes; }
-
     /// This is used for nTkSCAS scheduler case (no tracking of path + single label case)
     inline void reset(
         uint64_t startScanIdx_, uint64_t endScanIdx_, BFSSharedState* bfsSharedState_) override {
@@ -480,6 +479,7 @@ public:
         endScanIdx = endScanIdx_;
         bfsSharedState = bfsSharedState_;
         numVisitedDstNodes = 0u;
+        countAllNodesVisited = 0u;
     }
 
     // For Shortest Path, multiplicity is always 0
@@ -516,6 +516,7 @@ private:
 
 public:
     uint64_t numVisitedDstNodes;
+    uint64_t countAllNodesVisited;
     frontier::node_id_set_t visited;
 
     /// These will be used for [Single Label, Track None] to track starting, ending index of morsel.

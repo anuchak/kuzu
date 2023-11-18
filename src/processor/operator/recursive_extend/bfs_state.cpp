@@ -14,6 +14,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
     currentLevel = 0u;
     nextScanStartIdx = 0u;
     numVisitedNodes = 0u;
+    countAllNodesVisited = 0u;
     auto totalDestinations = targetDstNodes->getNumNodes();
     if (totalDestinations == (maxOffset + 1) || totalDestinations == 0u) {
         // All node offsets are destinations hence mark all as not visited destinations.
@@ -139,10 +140,12 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
     // ONLY for shortest path and all shortest path recursive join.
     if (queryRelType == common::QueryRelType::SHORTEST) {
         auto shortestPathMorsel = (reinterpret_cast<ShortestPathMorsel<false>*>(bfsMorsel));
-        numVisitedNodes += shortestPathMorsel->getNumVisitedDstNodes();
+        numVisitedNodes += shortestPathMorsel->numVisitedDstNodes;
+        countAllNodesVisited += shortestPathMorsel->countAllNodesVisited;
     } else if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         auto allShortestPathMorsel = (reinterpret_cast<AllShortestPathMorsel<false>*>(bfsMorsel));
-        numVisitedNodes += allShortestPathMorsel->getNumVisitedDstNodes();
+        numVisitedNodes += allShortestPathMorsel->numVisitedDstNodes;
+        countAllNodesVisited += allShortestPathMorsel->countAllNodesVisited;
         if (!allShortestPathMorsel->getLocalEdgeListSegments().empty()) {
             auto& localEdgeListSegment = allShortestPathMorsel->getLocalEdgeListSegments();
             allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
@@ -151,6 +154,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
         }
     } else {
         auto varLenPathMorsel = (reinterpret_cast<VariableLengthMorsel<false>*>(bfsMorsel));
+        countAllNodesVisited += varLenPathMorsel->countAllNodesVisited;
         if (!varLenPathMorsel->getLocalEdgeListSegments().empty()) {
             auto& localEdgeListSegment = varLenPathMorsel->getLocalEdgeListSegments();
             allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
@@ -239,14 +243,17 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
         /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
         /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
-        bfsLevelNodeOffsets.clear();
-        for (auto i = 0u; i < visitedNodes.size(); i++) {
+        auto newSize = countAllNodesVisited;
+        countAllNodesVisited = 0u;
+        bfsLevelNodeOffsets.resize(newSize);
+        int count = 0;
+        for (auto i = 0u; i < visitedNodes.size() && count < newSize; i++) {
             if (visitedNodes[i] == VISITED_NEW) {
                 visitedNodes[i] = VISITED;
-                bfsLevelNodeOffsets.push_back(i);
+                bfsLevelNodeOffsets[count++] = i;
             } else if (visitedNodes[i] == VISITED_DST_NEW) {
                 visitedNodes[i] = VISITED_DST;
-                bfsLevelNodeOffsets.push_back(i);
+                bfsLevelNodeOffsets[count++] = i;
             }
         }
     }
@@ -296,10 +303,13 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
                 /// even before each thread holds the lock.
                 bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
                 numVisitedDstNodes++;
+                countAllNodesVisited++;
             }
         } else if (state == NOT_VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW)) {
+                countAllNodesVisited++;
+            }
         }
     }
 }
@@ -317,6 +327,7 @@ void ShortestPathMorsel<true>::addToLocalNextBFSLevel(RecursiveJoinVectors* vect
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
                 numVisitedDstNodes++;
+                countAllNodesVisited++;
                 auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);
                 // TODO: Do we even need this ? Because once we track back the path to the source
                 // we know the length of the path, so a separate vector to have the bfsLevel is not
@@ -335,6 +346,7 @@ void ShortestPathMorsel<true>::addToLocalNextBFSLevel(RecursiveJoinVectors* vect
                 auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);
                 bfsSharedState->srcNodeOffsetAndEdgeOffset[nodeID.offset] = {
                     boundNodeOffset, edgeID.offset};
+                countAllNodesVisited++;
             }
         }
     }

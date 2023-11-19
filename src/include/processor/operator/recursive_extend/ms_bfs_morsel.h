@@ -36,19 +36,13 @@ public:
         if (currentLevel == upperBound) {
             return true;
         }
-        if (!targetDstNodes->getNodeIDs().empty()) {
-            for (auto dst : targetDstNodes->getNodeIDs()) {
-                if (seen[dst.offset] != dstReachedMask)
-                    return false;
-            }
-            return true;
-        } else {
-            for (auto dstOffset = 0u; dstOffset < (maxOffset + 1); dstOffset++) {
-                if (seen[dstOffset] != dstReachedMask)
-                    return false;
-            }
-            return true;
+        auto count = 0u;
+        for (auto dstOffset = 0u; dstOffset < (maxOffset + 1); dstOffset++) {
+            if (seen[dstOffset] != dstReachedMask)
+                return false;
+            count++;
         }
+        return count == targetDstNodes->getNumNodes();
     }
 
     inline void updateBFSLevel() { currentLevel++; }

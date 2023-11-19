@@ -32,6 +32,7 @@ int64_t MSBFSMorsel<false>::writeToVector(
             }
             offset++;
         }
+        lastDstOffsetWritten = offset;
         if (offset == (maxOffset + 1)) {
             hasMoreDst = false;
             dstLaneCount++;

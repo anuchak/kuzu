@@ -13,9 +13,9 @@ public:
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, maxOffset{maxOffset},
           dstReachedMask{0llu}, totalSources{0u}, dstLaneCount{0u}, curSrcIdx{0u},
           hasMoreDst{false}, srcNodeDataChunkSelectedPositions{nullptr}, lastDstOffsetWritten{0u} {
-        visit = new uint64_t[maxOffset + 1]{0llu};
-        seen = new uint64_t[maxOffset + 1]{0llu};
-        next = new uint64_t[maxOffset + 1]{0llu};
+        visit = new uint8_t [maxOffset + 1]{0llu};
+        seen = new uint8_t [maxOffset + 1]{0llu};
+        next = new uint8_t [maxOffset + 1]{0llu};
     }
 
     ~MSBFSMorsel() override {
@@ -36,28 +36,23 @@ public:
         if (currentLevel == upperBound) {
             return true;
         }
-        if (!targetDstNodes->getNodeIDs().empty()) {
-            for (auto dst : targetDstNodes->getNodeIDs()) {
-                if (seen[dst.offset] != dstReachedMask)
-                    return false;
-            }
-            return true;
-        } else {
-            for (auto dstOffset = 0u; dstOffset < (maxOffset + 1); dstOffset++) {
-                if (seen[dstOffset] != dstReachedMask)
-                    return false;
-            }
-            return true;
+        auto totalCount = targetDstNodes->getNumNodes();
+        auto count = 0u;
+        for (auto dstOffset = 0u; dstOffset < (maxOffset + 1); dstOffset++) {
+            if (seen[dstOffset] != dstReachedMask)
+                return false;
+            count++;
         }
+        return totalCount == count;
     }
 
     inline void updateBFSLevel() { currentLevel++; }
 
     inline void resetState() final {
         BaseBFSMorsel::resetState();
-        memset(visit, 0llu, sizeof(uint64_t) * (maxOffset + 1));
-        memset(seen, 0llu, sizeof(uint64_t) * (maxOffset + 1));
-        memset(next, 0llu, sizeof(uint64_t) * (maxOffset + 1));
+        memset(visit, 0llu, sizeof(uint8_t) * (maxOffset + 1));
+        memset(seen, 0llu, sizeof(uint8_t) * (maxOffset + 1));
+        memset(next, 0llu, sizeof(uint8_t) * (maxOffset + 1));
         dstReachedMask = 0llu;
         totalSources = 0u;
         dstLaneCount = 0u;
@@ -120,9 +115,9 @@ public:
     // SEEN array stands for the globally already seen nodes that cannot be visited again.
     // NEXT array stands for the next frontier, the ones which need to be visited as part of next
     // level.
-    uint64_t* visit;
-    uint64_t* seen;
-    uint64_t* next;
+    uint8_t * visit;
+    uint8_t * seen;
+    uint8_t * next;
 
 private:
     uint64_t dstReachedMask;

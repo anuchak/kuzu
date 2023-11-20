@@ -13,9 +13,9 @@ public:
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, maxOffset{maxOffset},
           dstReachedMask{0llu}, totalSources{0u}, dstLaneCount{0u}, curSrcIdx{0u},
           hasMoreDst{false}, srcNodeDataChunkSelectedPositions{nullptr}, lastDstOffsetWritten{0u} {
-        visit = new uint32_t [maxOffset + 1]{0llu};
-        seen = new uint32_t [maxOffset + 1]{0llu};
-        next = new uint32_t [maxOffset + 1]{0llu};
+        visit = new uint64_t[maxOffset + 1]{0llu};
+        seen = new uint64_t[maxOffset + 1]{0llu};
+        next = new uint64_t[maxOffset + 1]{0llu};
     }
 
     ~MSBFSMorsel() override {
@@ -49,9 +49,9 @@ public:
 
     inline void resetState() final {
         BaseBFSMorsel::resetState();
-        memset(visit, 0llu, sizeof(uint32_t ) * (maxOffset + 1));
-        memset(seen, 0llu, sizeof(uint32_t ) * (maxOffset + 1));
-        memset(next, 0llu, sizeof(uint32_t ) * (maxOffset + 1));
+        memset(visit, 0llu, sizeof(uint64_t) * (maxOffset + 1));
+        memset(seen, 0llu, sizeof(uint64_t) * (maxOffset + 1));
+        memset(next, 0llu, sizeof(uint64_t) * (maxOffset + 1));
         dstReachedMask = 0llu;
         totalSources = 0u;
         dstLaneCount = 0u;
@@ -114,9 +114,9 @@ public:
     // SEEN array stands for the globally already seen nodes that cannot be visited again.
     // NEXT array stands for the next frontier, the ones which need to be visited as part of next
     // level.
-    uint32_t * visit;
-    uint32_t * seen;
-    uint32_t * next;
+    uint64_t* visit;
+    uint64_t* seen;
+    uint64_t* next;
 
 private:
     uint64_t dstReachedMask;

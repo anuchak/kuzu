@@ -370,14 +370,10 @@ void RecursiveJoin::callMSBFSRecursivePlan(const uint16_t * seen, const uint16_t
         for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
             auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
             auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
-            if(nextFrontier[nodeID.offset]) {
-                nextFrontier[nodeID.offset] |= curFrontier[parentOffset];
-            } else {
-                uint64_t unseen = curFrontier[parentOffset] & ~seen[nodeID.offset];
-                if (unseen)
-                    nextFrontier[nodeID.offset] |= unseen;
-                isBFSActive |= unseen;
-            }
+            uint64_t unseen = curFrontier[parentOffset] & ~seen[nodeID.offset];
+            if (unseen)
+                nextFrontier[nodeID.offset] |= unseen;
+            isBFSActive |= unseen;
         }
     }
 }

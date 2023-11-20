@@ -332,7 +332,7 @@ void RecursiveJoin::computeBFSOneThreadOneMorsel(ExecutionContext* context) {
 
 void RecursiveJoin::computeMSBFSMorsel(kuzu::processor::ExecutionContext* context) {
     auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel<false>*>(bfsMorsel.get()));
-    uint64_t *temp, *x = msBFSMorsel->visit, *next_ = msBFSMorsel->next;
+    uint16_t *temp, *x = msBFSMorsel->visit, *next_ = msBFSMorsel->next;
     while (doMSBFS(msBFSMorsel->seen, x, next_, msBFSMorsel->maxOffset, context)) {
         msBFSMorsel->updateBFSLevel();
         temp = x;
@@ -341,7 +341,7 @@ void RecursiveJoin::computeMSBFSMorsel(kuzu::processor::ExecutionContext* contex
     }
 }
 
-bool RecursiveJoin::doMSBFS(uint64_t* seen, uint64_t* curFrontier, uint64_t* nextFrontier,
+bool RecursiveJoin::doMSBFS(uint16_t * seen, uint16_t * curFrontier, uint16_t * nextFrontier,
     uint64_t maxOffset, kuzu::processor::ExecutionContext* context) {
     for (auto offset = 0u; offset < (maxOffset + 1); offset++) {
         seen[offset] |= curFrontier[offset];
@@ -361,8 +361,8 @@ bool RecursiveJoin::doMSBFS(uint64_t* seen, uint64_t* curFrontier, uint64_t* nex
     return active;
 }
 
-void RecursiveJoin::callMSBFSRecursivePlan(const uint64_t* seen, const uint64_t* curFrontier,
-    uint64_t* nextFrontier, common::offset_t parentOffset, bool& isBFSActive,
+void RecursiveJoin::callMSBFSRecursivePlan(const uint16_t * seen, const uint16_t * curFrontier,
+    uint16_t * nextFrontier, common::offset_t parentOffset, bool& isBFSActive,
     kuzu::processor::ExecutionContext* context) {
     scanFrontier->setNodeID(common::nodeID_t{parentOffset, *begin(dataInfo->dstNodeTableIDs)});
     while (recursiveRoot->getNextTuple(context)) {
@@ -370,10 +370,14 @@ void RecursiveJoin::callMSBFSRecursivePlan(const uint64_t* seen, const uint64_t*
         for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
             auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
             auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
-            uint64_t unseen = curFrontier[parentOffset] & ~seen[nodeID.offset];
-            if (unseen)
-                nextFrontier[nodeID.offset] |= unseen;
-            isBFSActive |= unseen;
+            if(nextFrontier[nodeID.offset]) {
+                nextFrontier[nodeID.offset] |= curFrontier[parentOffset];
+            } else {
+                uint64_t unseen = curFrontier[parentOffset] & ~seen[nodeID.offset];
+                if (unseen)
+                    nextFrontier[nodeID.offset] |= unseen;
+                isBFSActive |= unseen;
+            }
         }
     }
 }

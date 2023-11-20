@@ -132,11 +132,11 @@ private:
 
     void computeMSBFSMorsel(ExecutionContext* context);
 
-    bool doMSBFS(uint64_t* seen, uint64_t* curFrontier, uint64_t* nextFrontier, uint64_t maxOffset,
+    bool doMSBFS(uint32_t * seen, uint32_t * curFrontier, uint32_t * nextFrontier, uint64_t maxOffset,
         kuzu::processor::ExecutionContext* context);
 
-    void callMSBFSRecursivePlan(const uint64_t* seen, const uint64_t* curFrontier,
-        uint64_t* nextFrontier, common::offset_t parentOffset, bool& isBFSActive,
+    void callMSBFSRecursivePlan(const uint32_t * seen, const uint32_t * curFrontier,
+        uint32_t * nextFrontier, common::offset_t parentOffset, bool& isBFSActive,
         kuzu::processor::ExecutionContext* context);
 
     void updateVisitedNodes(common::nodeID_t boundNodeID);

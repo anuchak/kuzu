@@ -80,7 +80,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
 
     // TODO (Anurag): SETTING MAX MORSEL SIZE HERE AS 64 for Reachability type queries but for
     // other cases it should be set to 1. This needs to be decided at query planning time.
-    auto fTableSharedState = std::make_shared<FactorizedTableScanSharedState>(sharedFTable, 64u);
+    auto fTableSharedState = std::make_shared<FactorizedTableScanSharedState>(sharedFTable, 32u);
 
     auto pathPos = DataPos();
     if (extend->getJoinType() == planner::RecursiveJoinType::TRACK_PATH) {

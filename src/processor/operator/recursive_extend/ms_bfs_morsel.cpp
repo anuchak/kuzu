@@ -29,8 +29,7 @@ int64_t MSBFSMorsel<false>::writeToVector(
             if (laneMask & seen[offset]) {
                 dstNodeIDVector->setValue<common::nodeID_t>(
                     size, common::nodeID_t{offset, tableID});
-                pathLengthVector->setValue<int64_t>(
-                    size, pathLengths[offset][dstLaneCount]);
+                pathLengthVector->setValue<int64_t>(size, pathLengths[offset][dstLaneCount]);
                 size++;
             }
             offset++;
@@ -60,8 +59,7 @@ int64_t MSBFSMorsel<false>::writeToVector(
             if (laneMask & seen[offset]) {
                 dstNodeIDVector->setValue<common::nodeID_t>(
                     size, common::nodeID_t{offset, tableID});
-                pathLengthVector->setValue<int64_t>(
-                    size, pathLengths[offset][dstLaneCount]);
+                pathLengthVector->setValue<int64_t>(size, pathLengths[offset][dstLaneCount]);
                 size++;
             }
             offset++;

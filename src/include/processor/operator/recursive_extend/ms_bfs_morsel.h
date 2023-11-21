@@ -16,9 +16,9 @@ public:
         visit = new uint64_t[maxOffset + 1]{0llu};
         seen = new uint64_t[maxOffset + 1]{0llu};
         next = new uint64_t[maxOffset + 1]{0llu};
-        pathLengths = new uint8_t * [maxOffset + 1]{nullptr};
-        for(auto i = 0u; i <= maxOffset; i++) {
-            pathLengths[i] = new uint8_t [64]{0llu};
+        pathLengths = new uint8_t* [maxOffset + 1] { nullptr };
+        for (auto i = 0u; i <= maxOffset; i++) {
+            pathLengths[i] = new uint8_t[64]{0llu};
         }
     }
 
@@ -26,10 +26,10 @@ public:
         delete[] visit;
         delete[] seen;
         delete[] next;
-        for(auto i = 0u; i <= maxOffset; i++) {
-            delete [] pathLengths[i];
+        for (auto i = 0u; i <= maxOffset; i++) {
+            delete[] pathLengths[i];
         }
-        delete [] pathLengths;
+        delete[] pathLengths;
     }
 
     inline bool getRecursiveJoinType() final { return TRACK_PATH; }
@@ -60,7 +60,7 @@ public:
         memset(visit, 0llu, sizeof(uint64_t) * (maxOffset + 1));
         memset(seen, 0llu, sizeof(uint64_t) * (maxOffset + 1));
         memset(next, 0llu, sizeof(uint64_t) * (maxOffset + 1));
-        for(auto i = 0u; i <= maxOffset; i++) {
+        for (auto i = 0u; i <= maxOffset; i++) {
             memset(pathLengths[i], 0llu, sizeof(uint8_t) * 64);
         }
         dstReachedMask = 0llu;
@@ -129,7 +129,7 @@ public:
     uint64_t* seen;
     uint64_t* next;
 
-    uint8_t **pathLengths;
+    uint8_t** pathLengths;
 
 private:
     uint64_t dstReachedMask;

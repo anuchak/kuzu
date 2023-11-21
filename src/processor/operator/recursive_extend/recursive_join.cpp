@@ -376,13 +376,2574 @@ void RecursiveJoin::callMSBFSRecursivePlan(const uint64_t* seen, const uint64_t*
                 nextFrontier[nodeID.offset] |= unseen;
             }
             isBFSActive |= unseen;
-            int lane = 0;
-            while(unseen) {
-                auto isVisited = unseen & 0x1;
-                if(isVisited)
-                    msBFSMorsel->pathLengths[nodeID.offset][lane] = msBFSMorsel->currentLevel + 1;
-                lane++;
-                unseen = unseen >> 1;
+            auto count = 0u;
+            while (unseen) {
+                auto isVisited = unseen & 0xFF;
+                switch (isVisited) {
+                case 0: {
+                    // Do nothing, none of the BFS lanes have been visited.
+                } break;
+                case 1: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 2: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 3: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 4: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 5: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 6: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 7: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 8: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 9: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 10: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 11: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 12: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 13: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 14: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 15: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 16: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 17: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 18: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 19: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 20: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 21: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 22: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 23: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 24: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 25: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 26: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 27: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 28: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 29: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 30: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 31: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 32: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 33: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 34: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 35: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 36: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 37: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 38: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 39: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 40: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 41: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 42: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 43: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 44: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 45: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 46: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 47: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 48: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 49: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 50: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 51: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 52: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 53: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 54: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 55: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 56: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 57: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 58: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 59: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 60: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 61: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 62: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 63: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 64: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 65: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 66: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 67: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 68: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 69: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 70: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 71: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 72: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 73: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 74: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 75: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 76: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 77: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 78: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 79: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 80: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 81: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 82: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 83: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 84: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 85: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 86: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 87: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 88: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 89: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 90: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 91: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 92: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 93: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 94: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 95: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 96: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 97: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 98: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 99: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 100: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 101: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 102: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 103: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 104: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 105: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 106: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 107: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 108: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 109: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 110: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 111: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 112: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 113: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 114: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 115: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 116: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 117: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 118: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 119: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 120: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 121: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 122: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 123: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 124: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 125: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 126: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 127: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 128: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 129: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 130: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 131: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 132: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 133: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 134: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 135: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 136: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 137: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 138: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 139: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 140: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 141: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 142: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 143: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 144: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 145: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 146: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 147: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 148: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 149: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 150: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 151: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 152: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 153: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 154: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 155: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 156: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 157: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 158: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 159: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 160: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 161: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 162: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 163: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 164: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 165: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 166: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 167: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 168: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 169: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 170: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 171: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 172: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 173: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 174: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 175: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 176: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 177: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 178: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 179: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 180: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 181: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 182: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 183: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 184: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 185: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 186: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 187: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 188: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 189: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 190: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 191: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 192: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 193: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 194: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 195: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 196: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 197: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 198: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 199: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 200: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 201: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 202: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 203: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 204: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 205: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 206: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 207: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 208: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 209: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 210: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 211: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 212: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 213: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 214: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 215: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 216: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 217: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 218: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 219: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 220: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 221: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 222: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 223: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 224: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 225: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 226: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 227: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 228: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 229: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 230: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 231: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 232: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 233: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 234: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 235: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 236: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 237: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 238: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 239: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 240: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 241: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 242: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 243: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 244: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 245: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 246: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 247: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 248: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 249: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 250: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 251: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 252: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 253: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 254: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                case 255: {
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 0] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 1] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 2] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 3] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 4] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 5] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 6] =
+                        msBFSMorsel->currentLevel + 1;
+                    msBFSMorsel->pathLengths[nodeID.offset][8 * count + 7] =
+                        msBFSMorsel->currentLevel + 1;
+                } break;
+                }
+                count++;
+                unseen = unseen >> 8;
             }
         }
     }

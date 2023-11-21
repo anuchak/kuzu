@@ -365,15 +365,25 @@ void RecursiveJoin::callMSBFSRecursivePlan(const uint64_t* seen, const uint64_t*
     uint64_t* nextFrontier, common::offset_t parentOffset, bool& isBFSActive,
     kuzu::processor::ExecutionContext* context) {
     scanFrontier->setNodeID(common::nodeID_t{parentOffset, *begin(dataInfo->dstNodeTableIDs)});
+    auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel<false>*>(bfsMorsel.get()));
     while (recursiveRoot->getNextTuple(context)) {
         auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
         for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
             auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
             auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
             uint64_t unseen = curFrontier[parentOffset] & ~seen[nodeID.offset];
-            if (unseen)
+            if (unseen) {
                 nextFrontier[nodeID.offset] |= unseen;
+            }
             isBFSActive |= unseen;
+            int lane = 0;
+            while(unseen) {
+                auto isVisited = unseen & 0x1;
+                if(isVisited)
+                    msBFSMorsel->pathLengths[nodeID.offset][lane] = msBFSMorsel->currentLevel + 1;
+                lane++;
+                unseen = unseen >> 1;
+            }
         }
     }
 }

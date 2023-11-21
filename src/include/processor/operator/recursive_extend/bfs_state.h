@@ -414,13 +414,13 @@ protected:
     uint8_t upperBound;
     uint8_t lowerBound;
     // Level state
-    uint8_t currentLevel;
     uint64_t nextNodeIdxToExtend; // next node to extend from current frontier.
     Frontier* currentFrontier;
     Frontier* nextFrontier;
     std::vector<std::unique_ptr<Frontier>> frontiers;
     // Target information.
 public:
+    uint8_t currentLevel;
     TargetDstNodes* targetDstNodes;
     BFSSharedState* bfsSharedState;
 };

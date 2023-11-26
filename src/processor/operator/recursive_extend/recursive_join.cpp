@@ -244,18 +244,31 @@ bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
         computeBFSOneThreadOneMorsel(context);
         return true;
     } else if (sharedState->getSchedulerType() == SchedulerType::Reachability) {
-        auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
-            vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType, joinType);
-        if (state.first == COMPLETE) {
-            return false;
-        }
-        auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel*>(bfsMorsel.get()));
-        msBFSMorsel->doMSBFS(context, vectors.get(), scanFrontier, recursiveRoot.get(),
-            *begin(dataInfo->dstNodeTableIDs));
-        return true;
+        return computeMSBFSMorsel(context);
     } else {
         return doBFSnThreadkMorsel(context);
     }
+}
+
+/*
+ * Do BFS on MS-BFS morsel received from scheduler. Check isBFSComplete flag to determine if more
+ * BFS extension is needed for this morsel. If not, the loop will continue to fetch another morsel
+ * from the scheduler. If the state returned is COMPLETE, no more BFS to be done, return false.
+ */
+bool RecursiveJoin::computeMSBFSMorsel(kuzu::processor::ExecutionContext* context) {
+    auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel*>(bfsMorsel.get()));
+    do {
+        if (msBFSMorsel->isBFSComplete) {
+            auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
+                vectors->srcNodeIDVector, bfsMorsel.get(), queryRelType, joinType);
+            if (state.first == COMPLETE) {
+                return false;
+            }
+        }
+        msBFSMorsel->doMSBFS(context, vectors.get(), scanFrontier, recursiveRoot.get(),
+            *begin(dataInfo->dstNodeTableIDs));
+    } while (msBFSMorsel->isBFSComplete);
+    return true;
 }
 
 bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* context) {

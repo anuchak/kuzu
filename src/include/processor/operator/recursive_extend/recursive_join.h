@@ -123,6 +123,8 @@ private:
 
     bool computeBFS(ExecutionContext* context);
 
+    bool computeMSBFSMorsel(ExecutionContext* context);
+
     bool doBFSnThreadkMorsel(ExecutionContext* context);
 
     void computeBFSnThreadkMorsel(ExecutionContext* context);

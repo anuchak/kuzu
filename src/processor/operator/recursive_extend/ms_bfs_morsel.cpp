@@ -3,63 +3,6 @@
 namespace kuzu {
 namespace processor {
 
-void MSBFSMorsel::doMSBFS(ExecutionContext* context, RecursiveJoinVectors* vectors,
-    ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot, common::table_id_t tableID) {
-    uint64_t *visit_, *next_;
-    if (currentLevel % 2) {
-        visit_ = next;
-        next_ = visit;
-    } else {
-        visit_ = visit;
-        next_ = next;
-    }
-    if (extendCurFrontier(scanFrontier, recursiveRoot, tableID, visit_, next_, context, vectors)) {
-        updateBFSLevel();
-        for (auto offset = 0u; offset < (maxOffset + 1); offset++) {
-            seen[offset] |= next_[offset];
-            visit_[offset] = 0llu;
-        }
-    } else {
-        isBFSComplete = true;
-    }
-}
-
-bool MSBFSMorsel::extendCurFrontier(ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot,
-    common::table_id_t tableID, const uint64_t* curFrontier, uint64_t* nextFrontier,
-    kuzu::processor::ExecutionContext* context, RecursiveJoinVectors* vectors) {
-    if (isComplete()) {
-        return false;
-    }
-    bool active = false;
-    for (auto offset = 0u; offset < (maxOffset + 1); offset++) {
-        if (curFrontier[offset]) {
-            auto parentNode = common::nodeID_t{offset, tableID};
-            exploreNbrs(scanFrontier, recursiveRoot, curFrontier, nextFrontier, parentNode, active,
-                context, vectors);
-        }
-    }
-    return active;
-}
-
-bool MSBFSMorsel::exploreNbrs(ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot,
-    const uint64_t* curFrontier, uint64_t* nextFrontier, common::nodeID_t parentNode,
-    bool& isBFSActive, kuzu::processor::ExecutionContext* context,
-    RecursiveJoinVectors* vectors) const {
-    scanFrontier->setNodeID(parentNode);
-    while (recursiveRoot->getNextTuple(context)) {
-        auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
-        for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
-            auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
-            auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
-            uint64_t unseen = curFrontier[parentNode.offset] & ~seen[nodeID.offset];
-            if (unseen) {
-                nextFrontier[nodeID.offset] |= unseen;
-            }
-            isBFSActive |= unseen;
-        }
-    }
-}
-
 int64_t MSBFSMorsel::writeToVector(
     common::table_id_t tableID, RecursiveJoinVectors* recursiveJoinVectors) {
     // If no sources to write destination for, then this will be 0, we return -1 to indicate this.

@@ -25,18 +25,6 @@ public:
 
     inline bool getRecursiveJoinType() final { return false; }
 
-    void doMSBFS(ExecutionContext* context, RecursiveJoinVectors* vectors,
-        ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot, common::table_id_t tableID);
-
-    bool extendCurFrontier(ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot,
-        common::table_id_t tableID, const uint64_t* curFrontier, uint64_t* nextFrontier,
-        kuzu::processor::ExecutionContext* context, RecursiveJoinVectors* vectors);
-
-    bool exploreNbrs(ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot,
-        const uint64_t* curFrontier, uint64_t* nextFrontier, common::nodeID_t parentNode,
-        bool& isBFSActive, kuzu::processor::ExecutionContext* context,
-        RecursiveJoinVectors* vectors) const;
-
     inline bool isComplete() final {
         /**
          * 1) Is current frontier empty ? As in the visit vector does not have 1 for even 1 element.

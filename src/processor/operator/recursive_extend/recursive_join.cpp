@@ -304,7 +304,7 @@ bool RecursiveJoin::extendCurFrontierMSBFS(ExecutionContext* context, MSBFSMorse
     return active;
 }
 
-bool RecursiveJoin::exploreNbrsMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
+void RecursiveJoin::exploreNbrsMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
     const uint64_t* curFrontier, uint64_t* nextFrontier, common::offset_t parentOffset,
     bool& isBFSActive) {
     scanFrontier->setNodeID(common::nodeID_t{parentOffset, *begin(dataInfo->dstNodeTableIDs)});

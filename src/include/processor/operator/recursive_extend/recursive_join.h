@@ -131,7 +131,7 @@ private:
     bool extendCurFrontierMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
         uint64_t* curFrontier, uint64_t* nextFrontier);
 
-    bool exploreNbrsMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
+    void exploreNbrsMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
         const uint64_t* curFrontier, uint64_t* nextFrontier, common::offset_t parentOffset,
         bool& isBFSActive);
 

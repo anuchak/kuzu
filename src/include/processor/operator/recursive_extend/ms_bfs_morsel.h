@@ -13,7 +13,7 @@ public:
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, maxOffset{maxOffset},
           dstReachedMask{0llu}, totalSources{0u}, dstLaneCount{0u}, curSrcIdx{0u},
           hasMoreDst{false}, srcNodeDataChunkSelectedPositions{nullptr}, lastDstOffsetWritten{0u},
-          visit{nullptr}, seen{nullptr}, next{nullptr}, pathLengths{nullptr} {}
+          isBFSComplete{true}, visit{nullptr}, seen{nullptr}, next{nullptr} {}
 
     ~MSBFSMorsel() override {
         if (!visit)
@@ -21,10 +21,6 @@ public:
         delete[] visit;
         delete[] seen;
         delete[] next;
-        for (auto i = 0u; i <= maxOffset; i++) {
-            delete[] pathLengths[i];
-        }
-        delete[] pathLengths;
     }
 
     inline bool getRecursiveJoinType() final { return false; }
@@ -39,7 +35,7 @@ public:
     bool exploreNbrs(ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot,
         const uint64_t* curFrontier, uint64_t* nextFrontier, common::nodeID_t parentNode,
         bool& isBFSActive, kuzu::processor::ExecutionContext* context,
-        RecursiveJoinVectors* vectors);
+        RecursiveJoinVectors* vectors) const;
 
     inline bool isComplete() final {
         /**
@@ -64,21 +60,15 @@ public:
 
     inline void resetState() final {
         BaseBFSMorsel::resetState();
+        isBFSComplete = false; // receiving a new MS-BFS morsel, reset to false
         if (!visit) {
             visit = new uint64_t[maxOffset + 1]{0llu};
             seen = new uint64_t[maxOffset + 1]{0llu};
             next = new uint64_t[maxOffset + 1]{0llu};
-            pathLengths = new uint8_t* [maxOffset + 1] { nullptr };
-            for (auto i = 0u; i <= maxOffset; i++) {
-                pathLengths[i] = new uint8_t[64]{0llu};
-            }
         } else {
             memset(visit, 0llu, sizeof(uint64_t) * (maxOffset + 1));
             memset(seen, 0llu, sizeof(uint64_t) * (maxOffset + 1));
             memset(next, 0llu, sizeof(uint64_t) * (maxOffset + 1));
-            for (auto i = 0u; i <= maxOffset; i++) {
-                memset(pathLengths[i], 0llu, sizeof(uint8_t) * 64);
-            }
         }
         dstReachedMask = 0llu;
         totalSources = 0u;
@@ -91,6 +81,7 @@ public:
 
     inline void markSrc(common::nodeID_t nodeID) override {
         visit[nodeID.offset] = (1llu << totalSources++);
+        seen[nodeID.offset] = visit[nodeID.offset];
         dstReachedMask |= visit[nodeID.offset];
     }
 
@@ -123,9 +114,6 @@ public:
         // Value Vectors.
     }
 
-    bool writePathLengths(common::table_id_t tableId, uint64_t unseenBFSLanes,
-        common::offset_t offset, RecursiveJoinVectors* recursiveJoinVectors);
-
     int64_t writeToVector(common::table_id_t tableID, RecursiveJoinVectors* recursiveJoinVectors);
 
     int64_t writeToVector(
@@ -138,6 +126,11 @@ public:
     }
 
 public:
+    // This will indicate when MS-BFS has actually completed. We need this
+    // because when we return after doing BFS extension for 1 level, it will write to the Value
+    // Vector and again come back to the operator. Now the thread needs to check whether it should
+    // go to the BFS Scheduler for a new morsel or continue with the previous one it received.
+    bool isBFSComplete;
     uint64_t maxOffset;
     common::sel_t* srcNodeDataChunkSelectedPositions; // keep track of the selected positions
     // FOR MS-BFS PoC - To test reachability in queries of Recursive Join
@@ -148,8 +141,6 @@ public:
     uint64_t* visit;
     uint64_t* seen;
     uint64_t* next;
-
-    uint8_t** pathLengths;
 
 private:
     uint64_t dstReachedMask;

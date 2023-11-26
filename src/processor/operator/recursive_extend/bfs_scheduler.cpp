@@ -48,7 +48,7 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
         }
         inputFTableSharedState->getTable()->scan(vectorsToScan, inputFTableMorsel->startTupleIdx,
             inputFTableMorsel->numTuples, colIndicesToScan);
-        auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel<false>*>(bfsMorsel));
+        auto msBFSMorsel = (reinterpret_cast<MSBFSMorsel*>(bfsMorsel));
         msBFSMorsel->resetState();
         srcNodeIDVector->state->setToFlat();
         msBFSMorsel->srcNodeDataChunkSelectedPositions =

@@ -1,28 +1,23 @@
 #pragma once
 
 #include "bfs_state.h"
+#include "processor/operator/recursive_extend/scan_frontier.h"
 
 namespace kuzu {
 namespace processor {
 
-template<bool TRACK_PATH>
 struct MSBFSMorsel : public BaseBFSMorsel {
 public:
     MSBFSMorsel(uint8_t upperBound, uint8_t lowerBound, common::offset_t maxOffset,
         TargetDstNodes* targetDstNodes)
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, maxOffset{maxOffset},
           dstReachedMask{0llu}, totalSources{0u}, dstLaneCount{0u}, curSrcIdx{0u},
-          hasMoreDst{false}, srcNodeDataChunkSelectedPositions{nullptr}, lastDstOffsetWritten{0u} {
-        visit = new uint64_t[maxOffset + 1]{0llu};
-        seen = new uint64_t[maxOffset + 1]{0llu};
-        next = new uint64_t[maxOffset + 1]{0llu};
-        pathLengths = new uint8_t* [maxOffset + 1] { nullptr };
-        for (auto i = 0u; i <= maxOffset; i++) {
-            pathLengths[i] = new uint8_t[64]{0llu};
-        }
-    }
+          hasMoreDst{false}, srcNodeDataChunkSelectedPositions{nullptr}, lastDstOffsetWritten{0u},
+          visit{nullptr}, seen{nullptr}, next{nullptr}, pathLengths{nullptr} {}
 
     ~MSBFSMorsel() override {
+        if (!visit)
+            return;
         delete[] visit;
         delete[] seen;
         delete[] next;
@@ -32,7 +27,19 @@ public:
         delete[] pathLengths;
     }
 
-    inline bool getRecursiveJoinType() final { return TRACK_PATH; }
+    inline bool getRecursiveJoinType() final { return false; }
+
+    void doMSBFS(ExecutionContext* context, RecursiveJoinVectors* vectors,
+        ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot, common::table_id_t tableID);
+
+    bool extendCurFrontier(ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot,
+        common::table_id_t tableID, const uint64_t* curFrontier, uint64_t* nextFrontier,
+        kuzu::processor::ExecutionContext* context, RecursiveJoinVectors* vectors);
+
+    bool exploreNbrs(ScanFrontier* scanFrontier, PhysicalOperator* recursiveRoot,
+        const uint64_t* curFrontier, uint64_t* nextFrontier, common::nodeID_t parentNode,
+        bool& isBFSActive, kuzu::processor::ExecutionContext* context,
+        RecursiveJoinVectors* vectors);
 
     inline bool isComplete() final {
         /**
@@ -57,11 +64,21 @@ public:
 
     inline void resetState() final {
         BaseBFSMorsel::resetState();
-        memset(visit, 0llu, sizeof(uint64_t) * (maxOffset + 1));
-        memset(seen, 0llu, sizeof(uint64_t) * (maxOffset + 1));
-        memset(next, 0llu, sizeof(uint64_t) * (maxOffset + 1));
-        for (auto i = 0u; i <= maxOffset; i++) {
-            memset(pathLengths[i], 0llu, sizeof(uint8_t) * 64);
+        if (!visit) {
+            visit = new uint64_t[maxOffset + 1]{0llu};
+            seen = new uint64_t[maxOffset + 1]{0llu};
+            next = new uint64_t[maxOffset + 1]{0llu};
+            pathLengths = new uint8_t* [maxOffset + 1] { nullptr };
+            for (auto i = 0u; i <= maxOffset; i++) {
+                pathLengths[i] = new uint8_t[64]{0llu};
+            }
+        } else {
+            memset(visit, 0llu, sizeof(uint64_t) * (maxOffset + 1));
+            memset(seen, 0llu, sizeof(uint64_t) * (maxOffset + 1));
+            memset(next, 0llu, sizeof(uint64_t) * (maxOffset + 1));
+            for (auto i = 0u; i <= maxOffset; i++) {
+                memset(pathLengths[i], 0llu, sizeof(uint8_t) * 64);
+            }
         }
         dstReachedMask = 0llu;
         totalSources = 0u;
@@ -105,6 +122,9 @@ public:
         // Similarly this might be needed to be implemented to keep track midway writing to the
         // Value Vectors.
     }
+
+    bool writePathLengths(common::table_id_t tableId, uint64_t unseenBFSLanes,
+        common::offset_t offset, RecursiveJoinVectors* recursiveJoinVectors);
 
     int64_t writeToVector(common::table_id_t tableID, RecursiveJoinVectors* recursiveJoinVectors);
 

@@ -6,6 +6,7 @@
 #include "bfs_state.h"
 #include "common/query_rel_type.h"
 #include "frontier_scanner.h"
+#include "ms_bfs_morsel.h"
 #include "planner/logical_plan/extend/recursive_join_type.h"
 #include "processor/operator/physical_operator.h"
 #include "processor/operator/result_collector.h"
@@ -124,6 +125,15 @@ private:
     bool computeBFS(ExecutionContext* context);
 
     bool computeMSBFSMorsel(ExecutionContext* context);
+
+    void doMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel);
+
+    bool extendCurFrontierMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
+        uint64_t* curFrontier, uint64_t* nextFrontier);
+
+    bool exploreNbrsMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
+        const uint64_t* curFrontier, uint64_t* nextFrontier, common::offset_t parentOffset,
+        bool& isBFSActive);
 
     bool doBFSnThreadkMorsel(ExecutionContext* context);
 

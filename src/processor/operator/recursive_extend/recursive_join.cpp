@@ -265,10 +265,61 @@ bool RecursiveJoin::computeMSBFSMorsel(kuzu::processor::ExecutionContext* contex
                 return false;
             }
         }
-        msBFSMorsel->doMSBFS(context, vectors.get(), scanFrontier, recursiveRoot.get(),
-            *begin(dataInfo->dstNodeTableIDs));
+        doMSBFS(context, msBFSMorsel);
     } while (msBFSMorsel->isBFSComplete);
     return true;
+}
+
+void RecursiveJoin::doMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel) {
+    uint64_t *curFrontier, *nextFrontier;
+    if (msbfsMorsel->currentLevel % 2) {
+        curFrontier = msbfsMorsel->next;
+        nextFrontier = msbfsMorsel->visit;
+    } else {
+        curFrontier = msbfsMorsel->visit;
+        nextFrontier = msbfsMorsel->next;
+    }
+    if (extendCurFrontierMSBFS(context, msbfsMorsel, curFrontier, nextFrontier)) {
+        msbfsMorsel->updateBFSLevel();
+        for (auto offset = 0u; offset < (msbfsMorsel->maxOffset + 1); offset++) {
+            msbfsMorsel->seen[offset] |= nextFrontier[offset];
+            curFrontier[offset] = 0llu;
+        }
+    } else {
+        msbfsMorsel->isBFSComplete = true;
+    }
+}
+
+bool RecursiveJoin::extendCurFrontierMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
+    uint64_t* curFrontier, uint64_t* nextFrontier) {
+    if (msbfsMorsel->isComplete()) {
+        return false;
+    }
+    bool active = false;
+    for (auto offset = 0u; offset < (msbfsMorsel->maxOffset + 1); offset++) {
+        if (curFrontier[offset]) {
+            exploreNbrsMSBFS(context, msbfsMorsel, curFrontier, nextFrontier, offset, active);
+        }
+    }
+    return active;
+}
+
+bool RecursiveJoin::exploreNbrsMSBFS(ExecutionContext* context, MSBFSMorsel* msbfsMorsel,
+    const uint64_t* curFrontier, uint64_t* nextFrontier, common::offset_t parentOffset,
+    bool& isBFSActive) {
+    scanFrontier->setNodeID(common::nodeID_t{parentOffset, *begin(dataInfo->dstNodeTableIDs)});
+    while (recursiveRoot->getNextTuple(context)) {
+        auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+        for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; i++) {
+            auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
+            auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
+            uint64_t unseen = curFrontier[parentOffset] & ~msbfsMorsel->seen[nodeID.offset];
+            if (unseen) {
+                nextFrontier[nodeID.offset] |= unseen;
+            }
+            isBFSActive |= unseen;
+        }
+    }
 }
 
 bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* context) {

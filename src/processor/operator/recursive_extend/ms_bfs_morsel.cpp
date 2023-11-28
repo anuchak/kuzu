@@ -15,6 +15,12 @@ int64_t MSBFSMorsel::writeToVector(
     auto dstNodeIDVector = recursiveJoinVectors->dstNodeIDVector;
     auto pathLengthVector = recursiveJoinVectors->pathLengthVector;
     auto laneMask = (1llu << dstLaneCount);
+    uint64_t* curFrontier;
+    if (currentLevel % 2) {
+        curFrontier = next;
+    } else {
+        curFrontier = visit;
+    }
     if (hasMoreToWrite()) {
         auto size = 0u;
         auto offset = lastDstOffsetWritten;
@@ -25,14 +31,7 @@ int64_t MSBFSMorsel::writeToVector(
                 offset++;
                 continue;
             }
-            /**
-             * visit | next | laneMask = result
-             * --------------------------------
-             *    0  |   0  |     1    =    0
-             *    0  |   1  |     1    =    1
-             *    1  |   1  |     1    =    0
-             */
-            auto res = (visit[offset] ^ next[offset]) & laneMask;
+            auto res = curFrontier[offset] & laneMask;
             if (res) {
                 dstNodeIDVector->setValue<common::nodeID_t>(
                     size, common::nodeID_t{offset, tableID});
@@ -55,19 +54,14 @@ int64_t MSBFSMorsel::writeToVector(
         auto curSrcPos = srcNodeDataChunkSelectedPositions[curSrcIdx++];
         srcNodeIDVector->state->selVector->selectedPositions[0] = curSrcPos;
         auto srcNodeID = srcNodeIDVector->getValue<common::nodeID_t>(curSrcPos);
+        // TODO (Anurag): This loop can be vectorized (SIMD). Set up an outer loop and inner loop
+        // TODO: of 2048 and inside the loop use SIMD.
         while (size < common::DEFAULT_VECTOR_CAPACITY && offset < (maxOffset + 1)) {
             if (offset == srcNodeID.offset && lowerBound > 0) {
                 offset++;
                 continue;
             }
-            /**
-             * visit | next | laneMask = result
-             * --------------------------------
-             *    0  |   0  |     1    =    0
-             *    0  |   1  |     1    =    1
-             *    1  |   1  |     1    =    0
-             */
-            auto res = (visit[offset] ^ next[offset]) & laneMask;
+            auto res = curFrontier[offset] & laneMask;
             if (res) {
                 dstNodeIDVector->setValue<common::nodeID_t>(
                     size, common::nodeID_t{offset, tableID});

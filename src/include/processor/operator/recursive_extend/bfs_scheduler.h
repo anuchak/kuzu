@@ -28,10 +28,8 @@ public:
         BaseBFSMorsel* bfsMorsel, common::QueryRelType queryRelType,
         planner::RecursiveJoinType recursiveJoinType);
 
-    static void setUpNewBFSSharedState(std::shared_ptr<BFSSharedState>& newBFSSharedState,
-        BaseBFSMorsel* bfsMorsel, FactorizedTableScanMorsel* inputFTableMorsel,
-        common::nodeID_t nodeID, common::QueryRelType queryRelType,
-        planner::RecursiveJoinType recursiveJoinType);
+    void setUpNewBFSSharedState(BaseBFSMorsel* bfsMorsel, FactorizedTableScanMorsel* inputFTableMorsel,
+        common::QueryRelType queryRelType, planner::RecursiveJoinType recursiveJoinType);
 
     uint32_t getNextAvailableSSSPWork();
 

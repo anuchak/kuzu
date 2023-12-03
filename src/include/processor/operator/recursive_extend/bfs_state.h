@@ -317,6 +317,23 @@ public:
     // FOR RETURNING ALL_SHORTEST_PATH / VARIABLE_LENGTH + TRACK_PATH ONLY
     std::vector<edgeListAndLevel*> nodeIDEdgeListAndLevel;
     std::vector<edgeListSegment*> allEdgeListSegments;
+
+    // FOR PARALLEL MS-BFS Implementation - To test reachability (+some returning path length case)
+    // VISIT array stands for the current frontier, visit[offset] set to 1 in any bit position.
+    // SEEN array stands for the globally visited nodes that cannot be explored again.
+    // NEXT array stands for the next frontier, node offsets that will form the next bfs level.
+    common::sel_t* srcNodeDataChunkSelectedPositions; // keep track of the selected positions
+    uint64_t* visit;
+    uint64_t* seen;
+    uint64_t* next;
+
+private:
+    uint64_t dstReachedMask;
+    uint64_t totalSources; // Total sources in 1 MS-BFS Shared State (max is 64 width lane).
+    uint64_t dstLaneCount; // Track lane for which destinations are being written to value vector.
+    bool hasMoreDst; // Track whether more destinations are left to be written from the previous lane's BFS.
+    uint64_t curSrcIdx; // The src idx from the selectedPositions vector for which destinations are being written.
+    uint64_t lastDstOffsetWritten; // The last destination offset which was written to ValueVector.
 };
 
 struct BaseBFSMorsel {

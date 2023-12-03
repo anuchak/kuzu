@@ -75,46 +75,16 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                     return {globalState, NO_WORK_TO_SHARE};
                 }
                 numActiveBFSSharedState++;
+                if (queryRelType == common::QueryRelType::REACHABILITY &&
+                    srcNodeIDVector->state->isFlat()) {
+                    srcNodeIDVector->state->selVector->resetSelectorToUnselected();
+                    srcNodeIDVector->state->setToUnflat();
+                }
                 inputFTableSharedState->getTable()->scan(vectorsToScan,
                     inputFTableMorsel->startTupleIdx, inputFTableMorsel->numTuples,
                     colIndicesToScan);
                 srcNodeIDVector->state->setToFlat();
-                auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(
-                    srcNodeIDVector->state->selVector->selectedPositions[0]);
-                uint32_t newSharedStateIdx = UINT32_MAX;
-                // Find a position for the new SSSP in the list, there are 2 candidates:
-                // 1) the position has a nullptr, add the shared state there
-                // 2) the SSSP is marked MORSEL_COMPLETE, it is complete and can be replaced
-                for (int i = 0; i < activeBFSSharedState.size(); i++) {
-                    if (!activeBFSSharedState[i]) {
-                        newSharedStateIdx = i;
-                        break;
-                    }
-                    activeBFSSharedState[i]->mutex.lock();
-                    if (activeBFSSharedState[i]->isComplete()) {
-                        newSharedStateIdx = i;
-                        activeBFSSharedState[i]->mutex.unlock();
-                        break;
-                    }
-                    activeBFSSharedState[i]->mutex.unlock();
-                }
-                if (newSharedStateIdx == UINT32_MAX || !activeBFSSharedState[newSharedStateIdx]) {
-                    auto newBFSSharedState =
-                        std::make_shared<BFSSharedState>(upperBound, lowerBound, maxOffset);
-                    setUpNewBFSSharedState(newBFSSharedState, bfsMorsel, inputFTableMorsel.get(),
-                        nodeID, queryRelType, recursiveJoinType);
-                    if (newSharedStateIdx != UINT32_MAX) {
-                        activeBFSSharedState[newSharedStateIdx] = newBFSSharedState;
-                    }
-                } else {
-                    /// HOLD LOCK here for BFSSharedState being reused. While resetting an existing
-                    /// BFSSharedState, only this current Thread should have exclusive access to it.
-                    activeBFSSharedState[newSharedStateIdx]->mutex.lock();
-                    setUpNewBFSSharedState(activeBFSSharedState[newSharedStateIdx], bfsMorsel,
-                        inputFTableMorsel.get(), nodeID, queryRelType, recursiveJoinType);
-                    activeBFSSharedState[newSharedStateIdx]->mutex.unlock();
-                }
-                return {IN_PROGRESS, EXTEND_IN_PROGRESS};
+
             } else {
                 return findAvailableSSSP(bfsMorsel);
             }
@@ -124,9 +94,40 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
     }
 }
 
-void MorselDispatcher::setUpNewBFSSharedState(std::shared_ptr<BFSSharedState>& newBFSSharedState,
-    BaseBFSMorsel* bfsMorsel, FactorizedTableScanMorsel* inputFTableMorsel, common::nodeID_t nodeID,
-    common::QueryRelType queryRelType, planner::RecursiveJoinType recursiveJoinType) {
+void MorselDispatcher::setUpNewBFSSharedState(BaseBFSMorsel* bfsMorsel,
+    FactorizedTableScanMorsel* inputFTableMorsel, const common::QueryRelType queryRelType,
+    const planner::RecursiveJoinType recursiveJoinType) {
+    uint32_t newSharedStateIdx = UINT32_MAX;
+    // Find a position for the new SSSP in the list, there are 2 candidates:
+    // 1) the position has a nullptr, add the shared state there
+    // 2) the SSSP is marked MORSEL_COMPLETE, it is complete and can be replaced
+    for (int i = 0; i < activeBFSSharedState.size(); i++) {
+        if (!activeBFSSharedState[i]) {
+            newSharedStateIdx = i;
+            break;
+        }
+        activeBFSSharedState[i]->mutex.lock();
+        if (activeBFSSharedState[i]->isComplete()) {
+            newSharedStateIdx = i;
+            activeBFSSharedState[i]->mutex.unlock();
+            break;
+        }
+        activeBFSSharedState[i]->mutex.unlock();
+    }
+    if (newSharedStateIdx == UINT32_MAX || !activeBFSSharedState[newSharedStateIdx]) {
+        auto newBFSSharedState = std::make_shared<BFSSharedState>(upperBound, lowerBound, maxOffset);
+        // ADD HERE
+        if (newSharedStateIdx != UINT32_MAX) {
+            activeBFSSharedState[newSharedStateIdx] = newBFSSharedState;
+        }
+    } else {
+        /// HOLD LOCK here for BFSSharedState being reused. While resetting an existing
+        /// BFSSharedState, only this current Thread should have exclusive access to it.
+        activeBFSSharedState[newSharedStateIdx]->mutex.lock();
+        // ADD HERE
+        activeBFSSharedState[newSharedStateIdx]->mutex.unlock();
+    }
+
     newBFSSharedState->reset(bfsMorsel->targetDstNodes, queryRelType, recursiveJoinType);
     newBFSSharedState->inputFTableTupleIdx = inputFTableMorsel->startTupleIdx;
     newBFSSharedState->srcOffset = nodeID.offset;

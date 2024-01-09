@@ -31,6 +31,17 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
     nextDstScanStartIdx = 0u;
     inputFTableTupleIdx = 0u;
     pathLengthThreadWriters = std::unordered_set<std::thread::id>();
+    if (queryRelType == common::QueryRelType::WSHORTEST) {
+        if (joinType == planner::RecursiveJoinType::TRACK_NONE) {
+            if (pathCost.empty()) {
+                pathCost = std::vector<int64_t>(visitedNodes.size(), INT64_MAX);
+            } else {
+                std::fill(pathCost.begin(), pathCost.end(), INT64_MAX);
+            }
+        } else {
+            // TODO: Add this later for resetting the vector of parent and edge offsets
+        }
+    }
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         minDistance = 0u;
         if (joinType == planner::RecursiveJoinType::TRACK_NONE) {
@@ -149,7 +160,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
                 localEdgeListSegment.end());
             localEdgeListSegment.resize(0);
         }
-    } else {
+    } else if (queryRelType == common::QueryRelType::VARIABLE_LENGTH) {
         auto varLenPathMorsel = (reinterpret_cast<VariableLengthMorsel<false>*>(bfsMorsel));
         if (!varLenPathMorsel->getLocalEdgeListSegments().empty()) {
             auto& localEdgeListSegment = varLenPathMorsel->getLocalEdgeListSegments();
@@ -198,6 +209,9 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
     bfsLevelNodeOffsets.push_back(srcOffset);
     if (queryRelType == common::QueryRelType::SHORTEST && !srcNodeOffsetAndEdgeOffset.empty()) {
         srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};
+    }
+    if (queryRelType == common::QueryRelType::WSHORTEST) {
+        pathCost[srcOffset] = 0;
     }
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         if (nodeIDEdgeListAndLevel.empty()) {

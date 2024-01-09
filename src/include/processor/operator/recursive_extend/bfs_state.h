@@ -322,6 +322,7 @@ public:
 
     // FOR DOING `Weighted Shortest Path` (Returning path cost + the least cost path)
     std::vector<int64_t> pathCost;
+    std::vector<int64_t> offsetPrevPathCost;
 };
 
 struct BaseBFSMorsel {

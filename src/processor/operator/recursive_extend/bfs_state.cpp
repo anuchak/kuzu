@@ -212,6 +212,7 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
     }
     if (queryRelType == common::QueryRelType::WSHORTEST) {
         pathCost[srcOffset] = 0;
+        offsetPrevPathCost.push_back(0);
     }
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         if (nodeIDEdgeListAndLevel.empty()) {
@@ -254,13 +255,16 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
         /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
         /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
         bfsLevelNodeOffsets.clear();
+        offsetPrevPathCost.clear();
         for (auto i = 0u; i < visitedNodes.size(); i++) {
             if (visitedNodes[i] == VISITED_NEW) {
                 visitedNodes[i] = VISITED;
-                bfsLevelNodeOffsets.push_back(i);
+                bfsLevelNodeOffsets.emplace_back(i);
+                offsetPrevPathCost.emplace_back(pathCost[i]);
             } else if (visitedNodes[i] == VISITED_DST_NEW) {
                 visitedNodes[i] = VISITED_DST;
-                bfsLevelNodeOffsets.push_back(i);
+                bfsLevelNodeOffsets.emplace_back(i);
+                offsetPrevPathCost.emplace_back(pathCost[i]);
             }
         }
     }

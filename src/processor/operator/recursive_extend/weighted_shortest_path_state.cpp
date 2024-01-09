@@ -34,7 +34,7 @@ template<>
 void WeightedShortestPathMorsel<false>::addToLocalNextBFSLevel(
     kuzu::processor::RecursiveJoinVectors* vectors_, uint64_t boundNodeMultiplicity,
     unsigned long boundNodeOffset) {
-    auto boundNodePathCost = bfsSharedState->pathCost[boundNodeOffset];
+    auto boundNodePathCost = bfsSharedState->offsetPrevPathCost[startScanIdx - 1];
     for (auto i = 0u; i < vectors->recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
         auto pos = vectors->recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nbrNodeID = vectors->recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
@@ -79,10 +79,10 @@ void WeightedShortestPathMorsel<false>::addToLocalNextBFSLevel(
              */
             do {
                 nbrNodePathCost = bfsSharedState->pathCost[nbrNodeID.offset];
-                if(nbrNodePathCost < (boundNodePathCost + edgeWeight)) {
+                if (nbrNodePathCost < (boundNodePathCost + edgeWeight)) {
                     break;
                 }
-            } while(!__sync_bool_compare_and_swap(&bfsSharedState->pathCost[nbrNodeID.offset],
+            } while (!__sync_bool_compare_and_swap(&bfsSharedState->pathCost[nbrNodeID.offset],
                 nbrNodePathCost, (boundNodePathCost + edgeWeight)));
         }
     }
@@ -163,7 +163,7 @@ template<>
 int64_t WeightedShortestPathMorsel<true>::writeToVector(
     const std::shared_ptr<FactorizedTableScanSharedState>& inputFTableSharedState,
     std::vector<common::ValueVector*> vectorsToScan, std::vector<ft_col_idx_t> colIndicesToScan,
-    common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
+    common::table_id_t tableID_, std::pair<uint64_t, int64_t> startScanIdxAndSize,
     kuzu::processor::RecursiveJoinVectors* vectors_) {}
 
 } // namespace processor

@@ -38,6 +38,8 @@ static expression_vector rewriteProjectionInWithClause(const expression_vector& 
             auto rel = (RelExpression*)expression.get();
             result.push_back(expression);
             result.push_back(rel->getLengthExpression());
+            if (rel->getRelType() == QueryRelType::WSHORTEST)
+                result.push_back(rel->getCostExpression());
         } else {
             result.push_back(expression);
         }

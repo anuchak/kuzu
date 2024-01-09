@@ -311,9 +311,17 @@ std::shared_ptr<RelExpression> Binder::createRecursiveQueryRel(const parser::Rel
         std::move(dstNode), directionType, relPattern.getRelType());
     auto lengthExpression = expressionBinder.createInternalLengthExpression(*queryRel);
     auto [lowerBound, upperBound] = bindVariableLengthRelBound(relPattern);
-    auto recursiveInfo = std::make_unique<RecursiveInfo>(lowerBound, upperBound, std::move(tmpNode),
-        std::move(tmpNodeCopy), std::move(tmpRel), std::move(lengthExpression),
-        std::move(predicates));
+    std::unique_ptr<RecursiveInfo> recursiveInfo;
+    if (relPattern.getRelType() == QueryRelType::WSHORTEST) {
+        auto costExpression = expressionBinder.createInternalCostExpression(*queryRel);
+        recursiveInfo = std::make_unique<RecursiveInfo>(lowerBound, upperBound, std::move(tmpNode),
+            std::move(tmpNodeCopy), std::move(tmpRel), std::move(lengthExpression),
+            std::move(costExpression), std::move(predicates));
+    } else {
+        recursiveInfo = std::make_unique<RecursiveInfo>(lowerBound, upperBound, std::move(tmpNode),
+            std::move(tmpNodeCopy), std::move(tmpRel), std::move(lengthExpression), nullptr,
+            std::move(predicates));
+    }
     queryRel->setRecursiveInfo(std::move(recursiveInfo));
     bindQueryRelProperties(*queryRel);
     return queryRel;

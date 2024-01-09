@@ -21,6 +21,9 @@ void LogicalRecursiveExtend::computeFlatSchema() {
     copyChildSchema(0);
     schema->insertToGroupAndScope(nbrNode->getInternalIDProperty(), 0);
     schema->insertToGroupAndScope(rel->getLengthExpression(), 0);
+    if (rel->getRelType() == common::QueryRelType::WSHORTEST) {
+        schema->insertToGroupAndScope(rel->getCostExpression(), 0);
+    }
     switch (joinType) {
     case RecursiveJoinType::TRACK_PATH: {
         schema->insertToGroupAndScope(rel, 0);
@@ -37,6 +40,9 @@ void LogicalRecursiveExtend::computeFactorizedSchema() {
     auto nbrGroupPos = schema->createGroup();
     schema->insertToGroupAndScope(nbrNode->getInternalIDProperty(), nbrGroupPos);
     schema->insertToGroupAndScope(rel->getLengthExpression(), nbrGroupPos);
+    if (rel->getRelType() == common::QueryRelType::WSHORTEST) {
+        schema->insertToGroupAndScope(rel->getCostExpression(), nbrGroupPos);
+    }
     switch (joinType) {
     case RecursiveJoinType::TRACK_PATH: {
         schema->insertToGroupAndScope(rel, nbrGroupPos);

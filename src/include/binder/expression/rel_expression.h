@@ -24,14 +24,17 @@ struct RecursiveInfo {
     std::shared_ptr<NodeExpression> nodeCopy;
     std::shared_ptr<RelExpression> rel;
     std::shared_ptr<Expression> lengthExpression;
+    std::shared_ptr<Expression> costExpression;
     expression_vector predicates;
 
     RecursiveInfo(uint64_t lowerBound, uint64_t upperBound, std::shared_ptr<NodeExpression> node,
         std::shared_ptr<NodeExpression> nodeCopy, std::shared_ptr<RelExpression> rel,
-        std::shared_ptr<Expression> lengthExpression, expression_vector predicates)
+        std::shared_ptr<Expression> lengthExpression, std::shared_ptr<Expression> costExpression,
+        expression_vector predicates)
         : lowerBound{lowerBound}, upperBound{upperBound}, node{std::move(node)},
-          nodeCopy{std::move(nodeCopy)}, rel{std::move(rel)},
-          lengthExpression{std::move(lengthExpression)}, predicates{std::move(predicates)} {}
+          nodeCopy{std::move(nodeCopy)}, rel{std::move(rel)}, lengthExpression{std::move(
+                                                                  lengthExpression)},
+          costExpression{std::move(costExpression)}, predicates{std::move(predicates)} {}
 };
 
 class RelExpression : public NodeOrRelExpression {
@@ -71,6 +74,9 @@ public:
     inline size_t getUpperBound() const { return recursiveInfo->upperBound; }
     inline std::shared_ptr<Expression> getLengthExpression() const {
         return recursiveInfo->lengthExpression;
+    }
+    inline std::shared_ptr<Expression> getCostExpression() const {
+        return recursiveInfo->costExpression;
     }
 
     inline bool isSelfLoop() const { return *srcNode == *dstNode; }

@@ -15,6 +15,7 @@ struct RecursiveJoinVectors {
     common::ValueVector* srcNodeIDVector = nullptr;
     common::ValueVector* dstNodeIDVector = nullptr;
     common::ValueVector* pathLengthVector = nullptr;
+    common::ValueVector* pathCostVector = nullptr;
     common::ValueVector* pathVector = nullptr;              // STRUCT(LIST(NODE), LIST(REL))
     common::ValueVector* pathNodesVector = nullptr;         // LIST(NODE)
     common::ValueVector* pathNodesIDDataVector = nullptr;   // INTERNAL_ID
@@ -24,6 +25,7 @@ struct RecursiveJoinVectors {
     common::ValueVector* pathRelsIDDataVector = nullptr;    // INTERNAL_ID
 
     common::ValueVector* recursiveEdgeIDVector = nullptr;
+    common::ValueVector* recursiveEdgePropertyVector = nullptr;
     common::ValueVector* recursiveDstNodeIDVector = nullptr;
 };
 
@@ -317,6 +319,9 @@ public:
     // FOR RETURNING ALL_SHORTEST_PATH / VARIABLE_LENGTH + TRACK_PATH ONLY
     std::vector<edgeListAndLevel*> nodeIDEdgeListAndLevel;
     std::vector<edgeListSegment*> allEdgeListSegments;
+
+    // FOR DOING `Weighted Shortest Path` (Returning path cost + the least cost path)
+    std::vector<int64_t> pathCost;
 };
 
 struct BaseBFSMorsel {
@@ -332,7 +337,7 @@ public:
     inline bool hasBFSSharedState() const { return bfsSharedState != nullptr; }
 
     // Get next node offset to extend from current level.
-    common::nodeID_t getNextNodeID() {
+    virtual common::nodeID_t getNextNodeID() {
         if (nextNodeIdxToExtend == currentFrontier->nodeIDs.size()) {
             return common::nodeID_t{common::INVALID_OFFSET, common::INVALID_TABLE_ID};
         }
@@ -352,11 +357,11 @@ public:
     virtual void markSrc(common::nodeID_t nodeID) = 0;
     virtual void markVisited(common::nodeID_t boundNodeID, common::nodeID_t nbrNodeID,
         common::relID_t relID, uint64_t multiplicity) = 0;
-    inline uint64_t getMultiplicity(common::nodeID_t nodeID) const {
+    virtual inline uint64_t getMultiplicity(common::nodeID_t nodeID) const {
         return currentFrontier->getMultiplicity(nodeID);
     }
 
-    inline void finalizeCurrentLevel() { moveNextLevelAsCurrentLevel(); }
+    virtual inline void finalizeCurrentLevel() { moveNextLevelAsCurrentLevel(); }
     inline size_t getNumFrontiers() const { return frontiers.size(); }
     inline Frontier* getFrontier(common::vector_idx_t idx) const { return frontiers[idx].get(); }
 

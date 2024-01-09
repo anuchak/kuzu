@@ -317,6 +317,7 @@ void QueryPlanner::appendExtendAndFilter(std::shared_ptr<NodeExpression> boundNo
     } break;
     case QueryRelType::VARIABLE_LENGTH:
     case QueryRelType::SHORTEST:
+    case QueryRelType::WSHORTEST:
     case QueryRelType::ALL_SHORTEST: {
         appendRecursiveExtend(boundNode, nbrNode, rel, direction, plan);
     } break;

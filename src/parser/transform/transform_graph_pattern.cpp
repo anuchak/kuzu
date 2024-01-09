@@ -101,6 +101,8 @@ std::unique_ptr<RelPattern> Transformer::transformRelationshipPattern(
             relType = QueryRelType::ALL_SHORTEST;
         } else if (relDetail->oC_RangeLiteral()->SHORTEST()) {
             relType = QueryRelType::SHORTEST;
+        } else if (relDetail->oC_RangeLiteral()->WSHORTEST()) {
+            relType = QueryRelType::WSHORTEST;
         } else {
             relType = QueryRelType::VARIABLE_LENGTH;
         }

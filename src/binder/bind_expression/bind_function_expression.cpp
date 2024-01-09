@@ -141,6 +141,7 @@ std::shared_ptr<Expression> ExpressionBinder::bindMacroExpression(
 // ID(a)              |        a._id
 // LABEL(a)           |        LIST_EXTRACT(offset(a), [table names from catalog])
 // LENGTH(e)          |        e._length
+// COST(e)            |        e._cost
 std::shared_ptr<Expression> ExpressionBinder::rewriteFunctionExpression(
     const parser::ParsedExpression& parsedExpression, const std::string& functionName) {
     if (functionName == ID_FUNC_NAME) {
@@ -156,6 +157,9 @@ std::shared_ptr<Expression> ExpressionBinder::rewriteFunctionExpression(
     } else if (functionName == LENGTH_FUNC_NAME) {
         auto child = bindExpression(*parsedExpression.getChild(0));
         return bindRecursiveJoinLengthFunction(*child);
+    } else if (functionName == COST_FUNC_NAME) {
+        auto child = bindExpression(*parsedExpression.getChild(0));
+        return bindRecursiveJoinCostFunction(*child);
     }
     return nullptr;
 }
@@ -263,12 +267,35 @@ std::unique_ptr<Expression> ExpressionBinder::createInternalLengthExpression(
         InternalKeyword::LENGTH, rel, std::move(propertyIDPerTable), false /* isPrimaryKey */);
 }
 
+std::unique_ptr<Expression> ExpressionBinder::createInternalCostExpression(
+    const Expression& expression) {
+    auto& rel = (RelExpression&)expression;
+    std::unordered_map<table_id_t, property_id_t> propertyIDPerTable;
+    for (auto tableID : rel.getTableIDs()) {
+        propertyIDPerTable.insert({tableID, INVALID_PROPERTY_ID});
+    }
+    return std::make_unique<PropertyExpression>(LogicalType(LogicalTypeID::INT64),
+        InternalKeyword::COST, rel, std::move(propertyIDPerTable), false /* isPrimaryKey */);
+}
+
 std::shared_ptr<Expression> ExpressionBinder::bindRecursiveJoinLengthFunction(
     const Expression& expression) {
     if (expression.getDataType().getLogicalTypeID() != LogicalTypeID::RECURSIVE_REL) {
         return nullptr;
     }
     return ((RelExpression&)expression).getLengthExpression();
+}
+
+// This is a placeholder function for cost function of weighted shortest path recursive join.
+std::shared_ptr<Expression> ExpressionBinder::bindRecursiveJoinCostFunction(
+    const Expression& expression) {
+    if (expression.getDataType().getLogicalTypeID() != LogicalTypeID::RECURSIVE_REL) {
+        return nullptr;
+    }
+    if (((RelExpression&)expression).getRelType() != QueryRelType::WSHORTEST) {
+        return nullptr;
+    }
+    return ((RelExpression&)expression).getCostExpression();
 }
 
 } // namespace binder

@@ -141,6 +141,7 @@ const std::string ENDS_WITH_FUNC_NAME = "ENDS_WITH";
 const std::string LCASE_FUNC_NAME = "LCASE";
 const std::string LEFT_FUNC_NAME = "LEFT";
 const std::string LENGTH_FUNC_NAME = "LENGTH";
+const std::string COST_FUNC_NAME = "COST";
 const std::string LOWER_FUNC_NAME = "LOWER";
 const std::string LPAD_FUNC_NAME = "LPAD";
 const std::string LTRIM_FUNC_NAME = "LTRIM";

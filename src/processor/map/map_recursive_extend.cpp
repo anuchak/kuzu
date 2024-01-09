@@ -54,6 +54,8 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     auto rel = extend->getRel();
     auto recursiveInfo = rel->getRecursiveInfo();
     auto lengthExpression = rel->getLengthExpression();
+    auto costExpression =
+        rel->getRelType() == common::QueryRelType::WSHORTEST ? rel->getCostExpression() : nullptr;
     // Map recursive plan
     auto logicalRecursiveRoot = extend->getRecursiveChild();
     auto recursiveRoot = mapOperator(logicalRecursiveRoot.get());
@@ -64,12 +66,26 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
         recursivePlanSchema->getExpressionPos(*recursiveInfo->nodeCopy->getInternalIDProperty()));
     auto recursiveEdgeIDPos = DataPos(
         recursivePlanSchema->getExpressionPos(*recursiveInfo->rel->getInternalIDProperty()));
+    auto recursiveEdgePropertyPos = DataPos();
+    if (rel->getRelType() == common::QueryRelType::WSHORTEST) {
+        for (auto& property : recursiveInfo->rel->getPropertyExpressions()) {
+            auto expression = (PropertyExpression*)property.get();
+            if (expression->getPropertyName().find("weight") != std::string::npos) {
+                recursiveEdgePropertyPos =
+                    DataPos(recursivePlanSchema->getExpressionPos(*property));
+            }
+        }
+    }
     // Generate RecursiveJoin
     auto outSchema = extend->getSchema();
     auto inSchema = extend->getChild(0)->getSchema();
     auto boundNodeIDPos = DataPos(inSchema->getExpressionPos(*boundNode->getInternalIDProperty()));
     auto nbrNodeIDPos = DataPos(outSchema->getExpressionPos(*nbrNode->getInternalIDProperty()));
     auto lengthPos = DataPos(outSchema->getExpressionPos(*lengthExpression));
+    auto costPos = DataPos();
+    if (rel->getRelType() == common::QueryRelType::WSHORTEST) {
+        costPos = DataPos(outSchema->getExpressionPos(*costExpression));
+    }
     auto expressions = inSchema->getExpressionsInScope();
     auto prevOperator = mapOperator(logicalOperator->getChild(0).get());
     auto resultCollector = appendResultCollector(std::move(prevOperator), expressions, inSchema);
@@ -80,8 +96,9 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
         pathPos = DataPos(outSchema->getExpressionPos(*rel));
     }
     auto dataInfo = std::make_unique<RecursiveJoinDataInfo>(boundNodeIDPos, nbrNodeIDPos,
-        nbrNode->getTableIDsSet(), lengthPos, std::move(recursivePlanResultSetDescriptor),
-        recursiveDstNodeIDPos, recursiveInfo->node->getTableIDsSet(), recursiveEdgeIDPos, pathPos);
+        nbrNode->getTableIDsSet(), lengthPos, costPos, std::move(recursivePlanResultSetDescriptor),
+        recursiveDstNodeIDPos, recursiveInfo->node->getTableIDsSet(), recursiveEdgeIDPos,
+        recursiveEdgePropertyPos, pathPos);
     auto sharedState = createSharedState(*nbrNode, *boundNode, *rel, dataInfo.get(),
         extend->getJoinType(), storageManager, fTableSharedState);
     std::vector<DataPos> outDataPoses;

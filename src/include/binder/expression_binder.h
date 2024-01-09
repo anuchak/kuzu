@@ -77,7 +77,9 @@ private:
     std::shared_ptr<Expression> bindInternalIDExpression(std::shared_ptr<Expression> expression);
     std::shared_ptr<Expression> bindLabelFunction(const Expression& expression);
     std::unique_ptr<Expression> createInternalLengthExpression(const Expression& expression);
+    std::unique_ptr<Expression> createInternalCostExpression(const Expression& expression);
     std::shared_ptr<Expression> bindRecursiveJoinLengthFunction(const Expression& expression);
+    std::shared_ptr<Expression> bindRecursiveJoinCostFunction(const Expression& expression);
     // Parameter expressions.
     std::shared_ptr<Expression> bindParameterExpression(
         const parser::ParsedExpression& parsedExpression);

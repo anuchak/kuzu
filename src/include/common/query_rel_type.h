@@ -10,6 +10,7 @@ enum class QueryRelType : uint8_t {
     VARIABLE_LENGTH = 1,
     SHORTEST = 2,
     ALL_SHORTEST = 3,
+    WSHORTEST = 4,
 };
 
 struct QueryRelTypeUtils {

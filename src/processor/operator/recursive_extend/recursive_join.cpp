@@ -3,6 +3,7 @@
 #include "processor/operator/recursive_extend/all_shortest_path_state.h"
 #include "processor/operator/recursive_extend/scan_frontier.h"
 #include "processor/operator/recursive_extend/variable_length_state.h"
+#include "processor/operator/recursive_extend/weighted_shortest_path_state.h"
 
 using namespace kuzu::common;
 
@@ -33,7 +34,11 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
     vectors->srcNodeIDVector = resultSet->getValueVector(dataInfo->srcNodePos).get();
     vectors->dstNodeIDVector = resultSet->getValueVector(dataInfo->dstNodePos).get();
     vectors->pathLengthVector = resultSet->getValueVector(dataInfo->pathLengthPos).get();
+    if (dataInfo->pathCostPos.dataChunkPos != INVALID_DATA_CHUNK_POS) {
+        vectors->pathCostVector = resultSet->getValueVector(dataInfo->pathCostPos).get();
+    }
     std::vector<std::unique_ptr<BaseFrontierScanner>> scanners;
+    initLocalRecursivePlan(context);
     switch (queryRelType) {
     case QueryRelType::VARIABLE_LENGTH: {
         switch (joinType) {
@@ -76,6 +81,23 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
         } break;
         default:
             throw NotImplementedException("BaseRecursiveJoin::initLocalStateInternal");
+        }
+    } break;
+    case QueryRelType::WSHORTEST: {
+        bool isSingleThread =
+            sharedState->morselDispatcher->getSchedulerType() == SchedulerType::OneThreadOneMorsel;
+        auto maxOffset = sharedState->semiMasks[0]->getNodeTable()->getMaxNodeOffset(transaction);
+        switch (joinType) {
+        case planner::RecursiveJoinType::TRACK_PATH: {
+            // TODO: Add here later after completing returning path cost for wBFS.
+        } break;
+        case planner::RecursiveJoinType::TRACK_NONE: {
+            bfsMorsel =
+                std::make_unique<WeightedShortestPathMorsel<false /* TRACK_PATH */>>(upperBound,
+                    lowerBound, targetDstNodes.get(), isSingleThread, maxOffset, vectors.get());
+        } break;
+        default:
+            throw NotImplementedException("");
         }
     } break;
     case QueryRelType::ALL_SHORTEST: {
@@ -132,7 +154,6 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
             StructVector::getFieldVector(pathRelsDataVector, pathRelsIDFieldIdx).get();
     }
     frontiersScanner = std::make_unique<FrontiersScanner>(std::move(scanners));
-    initLocalRecursivePlan(context);
 }
 
 bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
@@ -169,6 +190,37 @@ bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
  * @return - true if some values were written to the ValueVector, else false
  */
 bool RecursiveJoin::scanOutput() {
+    if (queryRelType == QueryRelType::WSHORTEST) {
+        if (sharedState->getSchedulerType() == SchedulerType::OneThreadOneMorsel) {
+            if (vectors->pathVector != nullptr) {
+                vectors->pathVector->resetAuxiliaryBuffer();
+            }
+            auto tableID = *begin(dataInfo->dstNodeTableIDs);
+            return bfsMorsel->writeToVector(nullptr, vectorsToScan, colIndicesToScan, tableID,
+                {UINT64_MAX, UINT64_MAX}, vectors.get());
+        } else {
+            while (true) {
+                if (!bfsMorsel->hasBFSSharedState()) {
+                    return false;
+                }
+                auto tableID = *begin(dataInfo->dstNodeTableIDs);
+                auto ret = sharedState->writeDstNodeIDAndPathLength(
+                    vectorsToScan, colIndicesToScan, tableID, bfsMorsel, vectors.get());
+                /**
+                 * ret > 0: non-zero path lengths were written to vector, return to parent op
+                 * ret < 0: path length writing is complete, proceed to computeBFS for another
+                 * morsel ret = 0: the distance morsel received was empty, go back to get another
+                 * morsel
+                 */
+                if (ret > 0) {
+                    return true;
+                }
+                if (ret < 0) {
+                    return false;
+                }
+            }
+        }
+    }
     if (sharedState->getSchedulerType() == SchedulerType::OneThreadOneMorsel) {
         common::sel_t offsetVectorSize = 0u;
         common::sel_t nodeIDDataVectorSize = 0u;
@@ -303,12 +355,18 @@ void RecursiveJoin::computeBFSOneThreadOneMorsel(ExecutionContext* context) {
 }
 
 void RecursiveJoin::updateVisitedNodes(common::nodeID_t boundNodeID) {
-    auto boundNodeMultiplicity = bfsMorsel->getMultiplicity(boundNodeID);
-    for (auto i = 0u; i < vectors->recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
-        auto pos = vectors->recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
-        auto nbrNodeID = vectors->recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
-        auto edgeID = vectors->recursiveEdgeIDVector->getValue<common::relID_t>(pos);
-        bfsMorsel->markVisited(boundNodeID, nbrNodeID, edgeID, boundNodeMultiplicity);
+    if (queryRelType == QueryRelType::WSHORTEST) {
+        // Adding dummy arguments, inside the weighted bfs morsel, the neighbours will be marked.
+        bfsMorsel->markVisited(boundNodeID, {UINT64_MAX, UINT64_MAX}, {UINT64_MAX, UINT64_MAX}, 0u);
+    } else {
+        auto boundNodeMultiplicity = bfsMorsel->getMultiplicity(boundNodeID);
+        for (auto i = 0u; i < vectors->recursiveDstNodeIDVector->state->selVector->selectedSize;
+             ++i) {
+            auto pos = vectors->recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
+            auto nbrNodeID = vectors->recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
+            auto edgeID = vectors->recursiveEdgeIDVector->getValue<common::relID_t>(pos);
+            bfsMorsel->markVisited(boundNodeID, nbrNodeID, edgeID, boundNodeMultiplicity);
+        }
     }
 }
 
@@ -325,6 +383,10 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
         localResultSet->getValueVector(dataInfo->recursiveDstNodeIDPos).get();
     vectors->recursiveEdgeIDVector =
         localResultSet->getValueVector(dataInfo->recursiveEdgeIDPos).get();
+    if (dataInfo->recursiveEdgePropertyPos.dataChunkPos != INVALID_DATA_CHUNK_POS) {
+        vectors->recursiveEdgePropertyVector =
+            localResultSet->getValueVector(dataInfo->recursiveEdgePropertyPos).get();
+    }
     recursiveRoot->initLocalState(localResultSet.get(), context);
 }
 

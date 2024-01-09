@@ -55,31 +55,35 @@ struct RecursiveJoinDataInfo {
     DataPos dstNodePos;
     std::unordered_set<common::table_id_t> dstNodeTableIDs;
     DataPos pathLengthPos;
+    DataPos pathCostPos;
     // Recursive join info.
     std::unique_ptr<ResultSetDescriptor> localResultSetDescriptor;
     DataPos recursiveDstNodeIDPos;
     std::unordered_set<common::table_id_t> recursiveDstNodeTableIDs;
     DataPos recursiveEdgeIDPos;
+    DataPos recursiveEdgePropertyPos;
     // Path info
     DataPos pathPos;
 
     RecursiveJoinDataInfo(const DataPos& srcNodePos, const DataPos& dstNodePos,
         std::unordered_set<common::table_id_t> dstNodeTableIDs, const DataPos& pathLengthPos,
-        std::unique_ptr<ResultSetDescriptor> localResultSetDescriptor,
+        const DataPos& pathCostPos, std::unique_ptr<ResultSetDescriptor> localResultSetDescriptor,
         const DataPos& recursiveDstNodeIDPos,
         std::unordered_set<common::table_id_t> recursiveDstNodeTableIDs,
-        const DataPos& recursiveEdgeIDPos, const DataPos& pathPos)
+        const DataPos& recursiveEdgeIDPos, const DataPos& recursiveEdgePropertyPos,
+        const DataPos& pathPos)
         : srcNodePos{srcNodePos}, dstNodePos{dstNodePos},
           dstNodeTableIDs{std::move(dstNodeTableIDs)}, pathLengthPos{pathLengthPos},
-          localResultSetDescriptor{std::move(localResultSetDescriptor)},
+          pathCostPos{pathCostPos}, localResultSetDescriptor{std::move(localResultSetDescriptor)},
           recursiveDstNodeIDPos{recursiveDstNodeIDPos}, recursiveDstNodeTableIDs{std::move(
                                                             recursiveDstNodeTableIDs)},
-          recursiveEdgeIDPos{recursiveEdgeIDPos}, pathPos{pathPos} {}
+          recursiveEdgeIDPos{recursiveEdgeIDPos},
+          recursiveEdgePropertyPos{recursiveEdgePropertyPos}, pathPos{pathPos} {}
 
     inline std::unique_ptr<RecursiveJoinDataInfo> copy() {
         return std::make_unique<RecursiveJoinDataInfo>(srcNodePos, dstNodePos, dstNodeTableIDs,
-            pathLengthPos, localResultSetDescriptor->copy(), recursiveDstNodeIDPos,
-            recursiveDstNodeTableIDs, recursiveEdgeIDPos, pathPos);
+            pathLengthPos, pathCostPos, localResultSetDescriptor->copy(), recursiveDstNodeIDPos,
+            recursiveDstNodeTableIDs, recursiveEdgeIDPos, recursiveEdgePropertyPos, pathPos);
     }
 };
 

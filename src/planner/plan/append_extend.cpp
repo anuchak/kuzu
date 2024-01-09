@@ -107,8 +107,8 @@ void QueryPlanner::appendRecursiveExtend(std::shared_ptr<NodeExpression> boundNo
     appendAccumulate(AccumulateType::REGULAR, plan);
     // Create recursive plan
     auto recursivePlan = std::make_unique<LogicalPlan>();
-    createRecursivePlan(recursiveInfo->node, recursiveInfo->nodeCopy, recursiveInfo->rel, direction,
-        recursiveInfo->predicates, *recursivePlan);
+    createRecursivePlan(recursiveInfo->node, recursiveInfo->nodeCopy, rel, recursiveInfo->rel,
+        direction, recursiveInfo->predicates, *recursivePlan);
     // Create recursive extend
     if (boundNode->getNumTableIDs() > recursiveInfo->node->getNumTableIDs()) {
         appendNodeLabelFilter(
@@ -147,14 +147,29 @@ void QueryPlanner::appendRecursiveExtend(std::shared_ptr<NodeExpression> boundNo
     plan.setLastOperator(std::move(pathPropertyProbe));
 }
 
+// TODO: Currently hardcoding the property to be used as cost for computing weighted shortest path.
+// TODO: The property name that has "weight" in its name is being picked. It should be added as a
+// TODO: parameter in the query and then added in the "recursiveRel" expression parameter.
 void QueryPlanner::createRecursivePlan(std::shared_ptr<NodeExpression> boundNode,
-    std::shared_ptr<NodeExpression> recursiveNode, std::shared_ptr<RelExpression> recursiveRel,
-    ExtendDirection direction, const expression_vector& predicates, LogicalPlan& plan) {
+    std::shared_ptr<NodeExpression> recursiveNode, std::shared_ptr<RelExpression>& relExpression,
+    std::shared_ptr<RelExpression> recursiveRel, ExtendDirection direction,
+    const expression_vector& predicates, LogicalPlan& plan) {
     auto scanFrontier = std::make_shared<LogicalScanFrontier>(boundNode);
     scanFrontier->computeFactorizedSchema();
     plan.setLastOperator(std::move(scanFrontier));
     expression_set propertiesSet;
     propertiesSet.insert(recursiveRel->getInternalIDProperty());
+    // Todo: This is a workaround to ensure we scan the weight property of the edge relationships.
+    // Todo: When we add the weight property to the propertiesSet, while computing schema of the
+    // Todo: operator the properties are added to the scope of the schema.
+    if (relExpression->getRelType() == QueryRelType::WSHORTEST) {
+        for (auto& expression : recursiveRel->getPropertyExpressions()) {
+            auto propertyExpression = (PropertyExpression*)expression.get();
+            if (propertyExpression->getPropertyName().find("weight") != std::string::npos) {
+                propertiesSet.insert(propertyExpression->copy());
+            }
+        }
+    }
     for (auto& predicate : predicates) {
         auto expressionCollector = std::make_unique<binder::ExpressionCollector>();
         for (auto& property : expressionCollector->collectPropertyExpressions(predicate)) {

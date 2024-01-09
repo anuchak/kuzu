@@ -11,6 +11,9 @@ static std::string relToString(const binder::RelExpression& rel) {
     case QueryRelType::SHORTEST: {
         result += "SHORTEST";
     } break;
+    case QueryRelType::WSHORTEST: {
+        result += "WSHORTEST";
+    } break;
     case QueryRelType::ALL_SHORTEST: {
         result += "ALL SHORTEST";
     } break;

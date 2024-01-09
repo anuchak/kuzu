@@ -8,7 +8,8 @@ add_library(kuzu_processor_operator_ver_length_extend
         recursive_join.cpp
         path_property_probe.cpp
         scan_frontier.cpp
-        variable_length_state.cpp)
+        variable_length_state.cpp
+        weighted_shortest_path_state.cpp)
 
 set(ALL_OBJECT_FILES
         ${ALL_OBJECT_FILES} $<TARGET_OBJECTS:kuzu_processor_operator_ver_length_extend>

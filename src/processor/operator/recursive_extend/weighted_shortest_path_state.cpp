@@ -78,17 +78,12 @@ void WeightedShortestPathMorsel<false>::addToLocalNextBFSLevel(
              * If CAS is NOT successful, do a read of the path cost that was JUST updated and retry.
              */
             do {
-                if ((boundNodePathCost + edgeWeight) < nbrNodePathCost) {
-                    if (__sync_bool_compare_and_swap(&bfsSharedState->pathCost[nbrNodeID.offset],
-                            nbrNodePathCost, (boundNodePathCost + edgeWeight))) {
-                        break;
-                    } else {
-                        nbrNodePathCost = bfsSharedState->pathCost[nbrNodeID.offset];
-                    }
-                } else {
+                nbrNodePathCost = bfsSharedState->pathCost[nbrNodeID.offset];
+                if(nbrNodePathCost < (boundNodePathCost + edgeWeight)) {
                     break;
                 }
-            } while (true);
+            } while(!__sync_bool_compare_and_swap(&bfsSharedState->pathCost[nbrNodeID.offset],
+                nbrNodePathCost, (boundNodePathCost + edgeWeight)));
         }
     }
 }

@@ -62,7 +62,8 @@ public:
         wBFSLevelNodes.push_back(nodeID);
         pathCost[nodeID.offset] = 0;
         pathLength[nodeID.offset] = 0;
-        tableID = nodeID.offset;
+        offsetPrevPathCost.push_back(0);
+        tableID = nodeID.tableID;
         if (targetDstNodes->contains(nodeID)) {
             visitedNodes[nodeID.offset] = VISITED_DST;
         } else {
@@ -85,13 +86,16 @@ public:
         nextNodeIdxToExtend = 0u;
         if (currentLevel < upperBound) {
             wBFSLevelNodes.clear();
+            offsetPrevPathCost.clear();
             for (auto i = 0u; i < (maxOffset + 1); i++) {
                 if (visitedNodes[i] == VISITED_NEW) {
                     visitedNodes[i] = VISITED;
                     wBFSLevelNodes.emplace_back(i, tableID);
+                    offsetPrevPathCost.push_back(pathCost[i]);
                 } else if (visitedNodes[i] == VISITED_DST_NEW) {
                     visitedNodes[i] = VISITED_DST;
                     wBFSLevelNodes.emplace_back(i, tableID);
+                    offsetPrevPathCost.push_back(pathCost[i]);
                 }
             }
         }
@@ -140,6 +144,7 @@ private:
     std::vector<uint8_t> visitedNodes;
     std::vector<int64_t> pathCost;
     std::vector<uint8_t> pathLength;
+    std::vector<int64_t> offsetPrevPathCost;
     common::table_id_t tableID; // TEMP - to keep track of the table ID of the node table
     uint64_t prevWriteEndIdx;
 

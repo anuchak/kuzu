@@ -6,7 +6,7 @@ namespace processor {
 template<>
 void WeightedShortestPathMorsel<false>::markVisited(common::nodeID_t boundNodeID,
     common::nodeID_t nbrNodeID, common::relID_t relID, uint64_t multiplicity) {
-    auto boundNodePathCost = pathCost[boundNodeID.offset];
+    auto boundNodePathCost = offsetPrevPathCost[nextNodeIdxToExtend - 1];
     for (auto i = 0u; i < vectors->recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
         auto pos = vectors->recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
         nbrNodeID = vectors->recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);

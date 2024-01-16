@@ -13,7 +13,7 @@ public:
         RecursiveJoinVectors* recursiveJoinVectors)
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, startScanIdx{0u},
           endScanIdx{0u}, tableID{UINT64_MAX}, isSingleThread{isSingleThread}, maxOffset{maxOffset},
-          vectors{recursiveJoinVectors}, prevWriteEndIdx{UINT64_MAX} {}
+          vectors{recursiveJoinVectors}, prevWriteEndIdx{UINT64_MAX}, edgeTableID{UINT64_MAX} {}
 
     ~WeightedShortestPathMorsel() override = default;
 
@@ -42,10 +42,16 @@ public:
             visitedNodes = std::vector<uint8_t>(maxOffset + 1);
             pathCost = std::vector<int64_t>(maxOffset + 1, INT64_MAX);
             pathLength = std::vector<uint8_t>(maxOffset + 1, 0u);
+            srcAndEdgeOffset = std::vector<std::pair<common::offset_t, common::offset_t>>(
+                maxOffset + 1, {UINT64_MAX, UINT64_MAX});
         } else {
             wBFSLevelNodes.clear();
             std::fill(pathCost.begin(), pathCost.end(), INT64_MAX);
             std::fill(pathLength.begin(), pathLength.end(), 0u);
+            for (auto& i : srcAndEdgeOffset) {
+                i.first = UINT64_MAX;
+                i.second = UINT64_MAX;
+            }
         }
         if (totalDestinations == (maxOffset + 1) || totalDestinations == 0u) {
             // All node offsets are destinations hence mark all as not visited destinations.
@@ -138,14 +144,19 @@ public:
         common::table_id_t tableID, std::pair<uint64_t, int64_t> startScanIdxAndSize,
         RecursiveJoinVectors* vectors_) override;
 
+public:
+    std::vector<std::pair<common::offset_t, common::offset_t>*> intermediateSrcEdgeOffset;
+
 private:
     // These are to be used for 1 Thread - 1 Weighted Shortest Path source
     std::vector<common::nodeID_t> wBFSLevelNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<int64_t> pathCost;
     std::vector<uint8_t> pathLength;
+    std::vector<std::pair<common::offset_t, common::offset_t>> srcAndEdgeOffset;
     std::vector<int64_t> offsetPrevPathCost;
-    common::table_id_t tableID; // TEMP - to keep track of the table ID of the node table
+    common::table_id_t tableID;     // TEMP - to keep track of the table ID of the node table
+    common::table_id_t edgeTableID; // TEMP - to keep track of the edge table ID
     uint64_t prevWriteEndIdx;
 
     // These are to be used for n Threads - k Weighted Shortest Path source

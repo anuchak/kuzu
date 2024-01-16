@@ -3,6 +3,7 @@
 #include "common/exception.h"
 #include "processor/operator/recursive_extend/all_shortest_path_state.h"
 #include "processor/operator/recursive_extend/variable_length_state.h"
+#include "processor/operator/recursive_extend/weighted_shortest_path_state.h"
 #include "processor/operator/table_scan/factorized_table_scan.h"
 
 namespace kuzu {
@@ -39,7 +40,20 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
                 std::fill(pathCost.begin(), pathCost.end(), INT64_MAX);
             }
         } else {
-            // TODO: Add this later for resetting the vector of parent and edge offsets
+            /**
+             * Layout of each element is as follows:
+             * (1) each element is of type unsigned int128 type
+             * (2) stores 2 values - upper 64 bits hold pointer to a pair, lower 64 bits store the
+             *                       path cost
+             * (3) default path cost is INT_MAX initially and upper half is 0
+             */
+            auto eachElement = (__int128)INT64_MAX;
+            edgeTableID = UINT64_MAX;
+            if (pathCostAndSrc.empty()) {
+                pathCostAndSrc = std::vector<unsigned __int128>(visitedNodes.size(), eachElement);
+            } else {
+                std::fill(pathCostAndSrc.begin(), pathCostAndSrc.end(), eachElement);
+            }
         }
     }
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
@@ -168,6 +182,15 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
                 localEdgeListSegment.end());
             localEdgeListSegment.resize(0);
         }
+    } else if (queryRelType == common::QueryRelType::WSHORTEST) {
+        auto weightedShortestPathMorsel =
+            (reinterpret_cast<WeightedShortestPathMorsel<false>*>(bfsMorsel));
+        if (!weightedShortestPathMorsel->intermediateSrcEdgeOffset.empty()) {
+            auto& intermediateSrcEdgeOffset = weightedShortestPathMorsel->intermediateSrcEdgeOffset;
+            intermediateSrcAndEdges.insert(intermediateSrcAndEdges.end(),
+                intermediateSrcEdgeOffset.begin(), intermediateSrcEdgeOffset.end());
+            intermediateSrcEdgeOffset.resize(0);
+        }
     }
     if (numThreadsBFSActive == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
         moveNextLevelAsCurrentLevel();
@@ -211,8 +234,15 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
         srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};
     }
     if (queryRelType == common::QueryRelType::WSHORTEST) {
-        pathCost[srcOffset] = 0;
-        offsetPrevPathCost.push_back(0);
+        if (!pathCost.empty()) {
+            pathCost[srcOffset] = 0;
+            offsetPrevPathCost.push_back(0);
+        } else {
+            auto pair = new std::pair<common::offset_t, common::offset_t>(UINT64_MAX, UINT64_MAX);
+            intermediateSrcAndEdges.push_back(pair);
+            pathCostAndSrc[srcOffset] = ((unsigned __int128)pair) << 64;
+            offsetPrevPathCost.push_back(0);
+        }
     }
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         if (nodeIDEdgeListAndLevel.empty()) {
@@ -256,15 +286,29 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
         /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
         bfsLevelNodeOffsets.clear();
         offsetPrevPathCost.clear();
-        for (auto i = 0u; i < visitedNodes.size(); i++) {
-            if (visitedNodes[i] == VISITED_NEW) {
-                visitedNodes[i] = VISITED;
-                bfsLevelNodeOffsets.emplace_back(i);
-                offsetPrevPathCost.emplace_back(pathCost[i]);
-            } else if (visitedNodes[i] == VISITED_DST_NEW) {
-                visitedNodes[i] = VISITED_DST;
-                bfsLevelNodeOffsets.emplace_back(i);
-                offsetPrevPathCost.emplace_back(pathCost[i]);
+        if (!pathCost.empty()) {
+            for (auto i = 0u; i < visitedNodes.size(); i++) {
+                if (visitedNodes[i] == VISITED_NEW) {
+                    visitedNodes[i] = VISITED;
+                    bfsLevelNodeOffsets.emplace_back(i);
+                    offsetPrevPathCost.emplace_back(pathCost[i]);
+                } else if (visitedNodes[i] == VISITED_DST_NEW) {
+                    visitedNodes[i] = VISITED_DST;
+                    bfsLevelNodeOffsets.emplace_back(i);
+                    offsetPrevPathCost.emplace_back(pathCost[i]);
+                }
+            }
+        } else {
+            for (auto i = 0u; i < visitedNodes.size(); i++) {
+                if (visitedNodes[i] == VISITED_NEW) {
+                    visitedNodes[i] = VISITED;
+                    bfsLevelNodeOffsets.emplace_back(i);
+                    offsetPrevPathCost.emplace_back((int64_t)pathCostAndSrc[i]);
+                } else if (visitedNodes[i] == VISITED_DST_NEW) {
+                    visitedNodes[i] = VISITED_DST;
+                    bfsLevelNodeOffsets.emplace_back(i);
+                    offsetPrevPathCost.emplace_back((int64_t)pathCostAndSrc[i]);
+                }
             }
         }
     }

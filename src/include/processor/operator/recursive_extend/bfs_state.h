@@ -261,6 +261,12 @@ public:
                 delete allEdgeListSegment;
             }
         }
+        if (!intermediateSrcAndEdges.empty()) {
+            for (auto& pair : intermediateSrcAndEdges) {
+                delete pair;
+            }
+            intermediateSrcAndEdges.clear();
+        }
     }
 
     void reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType,
@@ -323,6 +329,8 @@ public:
     // FOR DOING `Weighted Shortest Path` (Returning path cost + the least cost path)
     std::vector<int64_t> pathCost;
     std::vector<int64_t> offsetPrevPathCost;
+    std::vector<unsigned __int128> pathCostAndSrc;
+    std::vector<std::pair<common::offset_t, common::offset_t>*> intermediateSrcAndEdges;
 };
 
 struct BaseBFSMorsel {

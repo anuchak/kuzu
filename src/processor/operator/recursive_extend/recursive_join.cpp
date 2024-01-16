@@ -89,7 +89,10 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
         auto maxOffset = sharedState->semiMasks[0]->getNodeTable()->getMaxNodeOffset(transaction);
         switch (joinType) {
         case planner::RecursiveJoinType::TRACK_PATH: {
-            // TODO: Add here later after completing returning path cost for wBFS.
+            vectors->pathVector = resultSet->getValueVector(dataInfo->pathPos).get();
+            bfsMorsel =
+                std::make_unique<WeightedShortestPathMorsel<true /* TRACK_PATH */>>(upperBound,
+                    lowerBound, targetDstNodes.get(), isSingleThread, maxOffset, vectors.get());
         } break;
         case planner::RecursiveJoinType::TRACK_NONE: {
             bfsMorsel =

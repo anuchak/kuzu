@@ -168,6 +168,10 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
             localEdgeListSegment.resize(0);
         }
     }
+    if (isIntersectionFound) {
+        ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
+        return true;
+    }
     bool bfsExtensionComplete = (isForward) ? (nextScanStartIdx == bfsLevelNodeOffsets.size()) :
                                               (nextScanStartIdx == bfsLevelNodeOffsetsBwd.size());
     if (numThreadsBFSActive == 0 && bfsExtensionComplete) {
@@ -322,10 +326,15 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         if (state == NOT_VISITED) {
             __sync_bool_compare_and_swap(
                 &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+        } else if (state == VISITED_DST) {
+            __sync_bool_compare_and_swap(&bfsSharedState->isIntersectionFound, false, true);
+            break;
         } else if (isBFSFwd && (state == VISITED_BWD)) {
             __sync_bool_compare_and_swap(&bfsSharedState->isIntersectionFound, false, true);
+            break;
         } else if (!isBFSFwd && (state == VISITED_FWD)) {
             __sync_bool_compare_and_swap(&bfsSharedState->isIntersectionFound, false, true);
+            break;
         }
     }
 }
@@ -382,12 +391,12 @@ int64_t ShortestPathMorsel<false>::writeToVector(
     while (startScanIdxAndSize.first < endIdx) {
         if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
                 bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
-            (bfsSharedState->currentLevel + bfsSharedState->currentLevelBwd) >=
+            (bfsSharedState->currentLevel + bfsSharedState->currentLevelBwd + 1) >=
                 bfsSharedState->lowerBound) {
             dstNodeIDVector->setValue<common::nodeID_t>(
                 size, common::nodeID_t{startScanIdxAndSize.first, tableID});
             pathLengthVector->setValue<int64_t>(
-                size, bfsSharedState->currentLevel + bfsSharedState->currentLevelBwd);
+                size, bfsSharedState->currentLevel + bfsSharedState->currentLevelBwd + 1);
             size++;
         }
         startScanIdxAndSize.first++;

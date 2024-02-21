@@ -30,6 +30,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
     }
     populateTargetDstNodes();
     vectors = std::make_unique<RecursiveJoinVectors>();
+    vectors->inMemCsr = context->bufferManager->getInMemCSR();
     vectors->srcNodeIDVector = resultSet->getValueVector(dataInfo->srcNodePos).get();
     vectors->dstNodeIDVector = resultSet->getValueVector(dataInfo->dstNodePos).get();
     vectors->pathLengthVector = resultSet->getValueVector(dataInfo->pathLengthPos).get();
@@ -271,7 +272,12 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
     // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
     common::offset_t nodeOffset = bfsMorsel->getNextNodeOffset();
-    uint64_t boundNodeMultiplicity;
+    while (nodeOffset != common::INVALID_OFFSET) {
+        // TEMP - passing the table ID instead of the multiplicity for PoC ONLY.
+        bfsMorsel->addToLocalNextBFSLevel(vectors.get(), 0, nodeOffset);
+        nodeOffset = bfsMorsel->getNextNodeOffset();
+    }
+    /*uint64_t boundNodeMultiplicity;
     while (nodeOffset != common::INVALID_OFFSET) {
         boundNodeMultiplicity = bfsMorsel->getBoundNodeMultiplicity(nodeOffset);
         scanFrontier->setNodeID(common::nodeID_t{nodeOffset, *begin(dataInfo->dstNodeTableIDs)});
@@ -279,7 +285,7 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
             bfsMorsel->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
         }
         nodeOffset = bfsMorsel->getNextNodeOffset();
-    }
+    }*/
 }
 
 // Used for 1T1S scheduling policy, an offset at a time BFS extension is done, and then we check

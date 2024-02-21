@@ -25,6 +25,7 @@ struct RecursiveJoinVectors {
 
     common::ValueVector* recursiveEdgeIDVector = nullptr;
     common::ValueVector* recursiveDstNodeIDVector = nullptr;
+    storage::InMemCSR *inMemCsr = nullptr;
 };
 
 /**

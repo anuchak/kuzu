@@ -13,6 +13,14 @@ class logger;
 namespace kuzu {
 namespace storage {
 
+class InMemCSR {
+public:
+    std::vector<int> csr_v;
+    std::vector<int> csr_e;
+
+    InMemCSR();
+};
+
 // This class keeps state info for pages potentially can be evicted.
 // The page state of a candidate is set to MARKED when it is first enqueued. After enqueued, if the
 // candidate was recently accessed, it is no longer immediately evictable. See the state transition
@@ -169,6 +177,10 @@ public:
     explicit BufferManager(uint64_t bufferPoolSize);
     ~BufferManager() = default;
 
+    inline InMemCSR* getInMemCSR() {
+        return inMemCsr.get();
+    }
+
     uint8_t* pin(BMFileHandle& fileHandle, common::page_idx_t pageIdx,
         PageReadPolicy pageReadPolicy = PageReadPolicy::READ_PAGE);
     void optimisticRead(BMFileHandle& fileHandle, common::page_idx_t pageIdx,
@@ -221,6 +233,7 @@ private:
     }
 
 private:
+    std::unique_ptr<InMemCSR> inMemCsr;
     std::shared_ptr<spdlog::logger> logger;
     std::atomic<uint64_t> usedMemory;
     std::atomic<uint64_t> bufferPoolSize;

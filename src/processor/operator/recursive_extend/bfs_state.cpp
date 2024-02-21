@@ -281,7 +281,25 @@ std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
 template<>
 void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
-    auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
+    auto startIdx = vectors->inMemCsr->csr_v[boundNodeOffset];
+    auto endIdx = (boundNodeOffset == vectors->inMemCsr->csr_v.size() - 1)
+                      ? vectors->inMemCsr->csr_e.size() : vectors->inMemCsr->csr_v[boundNodeOffset + 1];
+    uint64_t nbrOffset;
+    for (auto i = startIdx; i < endIdx; i++) {
+        nbrOffset = vectors->inMemCsr->csr_e[i];
+        auto state = bfsSharedState->visitedNodes[nbrOffset];
+        if (state == NOT_VISITED_DST) {
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nbrOffset], state, VISITED_DST_NEW)) {
+                bfsSharedState->pathLength[nbrOffset] = bfsSharedState->currentLevel + 1;
+                numVisitedDstNodes++;
+            }
+        } else if (state == NOT_VISITED) {
+            __sync_bool_compare_and_swap(
+                &bfsSharedState->visitedNodes[nbrOffset], state, VISITED_NEW);
+        }
+    }
+    /*auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
     for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
         auto pos = recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
         auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
@@ -301,7 +319,7 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
             __sync_bool_compare_and_swap(
                 &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
         }
-    }
+    }*/
 }
 
 template<>

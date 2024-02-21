@@ -1,5 +1,9 @@
 #include "storage/buffer_manager/buffer_manager.h"
 
+#include <fstream>
+#include <iostream>
+#include <string>
+
 #include "common/constants.h"
 #include "common/exception.h"
 #include "spdlog/spdlog.h"
@@ -8,6 +12,55 @@ using namespace kuzu::common;
 
 namespace kuzu {
 namespace storage {
+
+InMemCSR::InMemCSR() {
+    csr_v = std::vector<int>(3604455, 0);
+    csr_e = std::vector<int>(1927482013, 0);
+
+    std::ifstream file("/localdisk5/a8chakra/spotify_dataset/colisten-Spotify_Ligra2.csv");
+    if (!file.is_open()) {
+        std::cerr << "Error opening file!" << std::endl;
+        return;
+    }
+
+    std::string line;
+    int lineCount = 0;
+    int FIRST_ARRAY_START = 4; // The line where the first array ends
+    int SECOND_ARRAY_START = 3604459; // Where CSR neighbours start from
+
+    printf("starting to populate in-memory CSR ...\n");
+    while (std::getline(file, line)) {
+        ++lineCount;
+        if (lineCount >= FIRST_ARRAY_START) {
+            if (lineCount == FIRST_ARRAY_START)
+                std::cout << "Loading into first array:\n";
+            std::istringstream iss(line);
+            int value;
+            if(iss >> value) {
+                csr_v[lineCount - FIRST_ARRAY_START] = value;
+            }
+            if (lineCount == (SECOND_ARRAY_START - 1)) {
+                break;
+            }
+            continue;
+        }
+        std::cout << "Skipping line " << lineCount << "\n";
+    }
+
+    std::cout << "\nLoading into second array:\n";
+    int prevValue = ++lineCount;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        int value;
+        if(iss >> value)
+            csr_e[lineCount++ - prevValue] = value;
+        if (!(lineCount % 10000000)) {
+            printf("currently at %d \n", lineCount);
+        }
+    }
+    printf("completed populating in-memory CSR ...\n");
+}
+
 // In this function, we try to remove as many as possible candidates that are not evictable from the
 // eviction queue until we hit a candidate that is evictable.
 // 1) If the candidate page's version has changed, which means the page was pinned and unpinned, we
@@ -59,6 +112,7 @@ void EvictionQueue::removeCandidatesForFile(kuzu::storage::BMFileHandle& fileHan
 BufferManager::BufferManager(uint64_t bufferPoolSize)
     : logger{LoggerUtils::getLogger(LoggerConstants::LoggerEnum::BUFFER_MANAGER)}, usedMemory{0},
       bufferPoolSize{bufferPoolSize}, numEvictionQueueInsertions{0} {
+    inMemCsr = std::make_unique<InMemCSR>();
     logger->info("Done initializing buffer manager.");
     if (bufferPoolSize < BufferPoolConstants::PAGE_4KB_SIZE) {
         throw BufferManagerException("The given buffer pool size should be at least 4KB.");

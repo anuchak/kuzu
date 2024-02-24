@@ -14,8 +14,26 @@ namespace kuzu {
 namespace storage {
 
 InMemCSR::InMemCSR() {
+    offset2id = std::vector<int>(3604454, 0);
     csr_v = std::vector<int>(3604455, 0);
     csr_e = std::vector<int>(1927482013, 0);
+
+    std::ifstream file0("/localdisk5/a8chakra/spotify_dataset/offset2id");
+    if (!file0.is_open()) {
+        return;
+    }
+
+    std::string line0;
+    int offset = 0;
+    while(std::getline(file0, line0)) {
+        std::istringstream iss(line0);
+        int value;
+        if (iss >> value) {
+            offset2id[offset++] = value;
+        }
+    }
+    printf("Finished loading offset 2 ID map, node offset %d has ID value %d \n", 89, offset2id[89]);
+    file0.close();
 
     std::ifstream file("/localdisk5/a8chakra/spotify_dataset/colisten-Spotify_Ligra2.csv");
     if (!file.is_open()) {

@@ -15,6 +15,7 @@ namespace storage {
 
 class InMemCSR {
 public:
+    std::vector<int> offset2id;
     std::vector<int> csr_v;
     std::vector<int> csr_e;
 

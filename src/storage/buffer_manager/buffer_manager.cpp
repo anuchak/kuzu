@@ -17,7 +17,7 @@ InMemCSR::InMemCSR() {
     csr_v = std::vector<int>(3604454, 0);
     csr_e = std::vector<int>(1927482033, 0);
 
-    std::ifstream file("/localdisk5/a8chakra/spotify_dataset/colisten-Spotify_Ligra2.csv");
+    std::ifstream file("/localdisk5/a8chakra/spotify_dataset/testnewcsr");
     if (!file.is_open()) {
         std::cerr << "Error opening file!" << std::endl;
         return;

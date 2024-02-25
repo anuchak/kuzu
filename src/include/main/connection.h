@@ -91,6 +91,8 @@ public:
      */
     KUZU_API common::SchedulerType getRecursiveJoinBFSPolicy();
 
+    void setBFSMorselSize(uint64_t bfsMorselSize);
+
     /// ADDING THIS HERE FOR TESTING PURPOSE ONLY
     void setMaxActiveBFSSharedState(uint64_t maxActiveBFS);
 

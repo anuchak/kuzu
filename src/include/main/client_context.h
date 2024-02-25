@@ -45,6 +45,8 @@ public:
 
     inline common::SchedulerType getBFSSchedulerType() { return bfsSchedulerType; }
 
+    inline uint64_t getBFSMorselSize() { return bfsMorselSize; }
+
     inline uint64_t getMaxActiveBFSSharedState() { return maxActiveBFSSharedState; }
 
     inline void interrupt() { activeQuery.interrupted = true; }
@@ -66,6 +68,7 @@ private:
 
     uint64_t numThreadsForExecution;
     common::SchedulerType bfsSchedulerType;
+    uint64_t bfsMorselSize;
     /// ADDING THIS FOR EASIER TESTING ONLY
     uint64_t maxActiveBFSSharedState;
     ActiveQuery activeQuery;

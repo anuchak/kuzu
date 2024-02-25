@@ -33,6 +33,7 @@ struct ShellCommand {
     const std::string QUIT = ":quit";
     const std::string THREAD = ":thread";
     const std::string BFS_POLICY = ":bfs_policy";
+    const std::string BFS_MORSEL_SIZE = ":bfs_morsel_size";
     /// ADDING THIS HERE FOR TESTING PURPOSE ONLY
     const std::string MAX_ACTIVE_BFS = ":max_active_bfs";
     const std::string LIST_NODES = ":list_nodes";
@@ -239,6 +240,8 @@ void EmbeddedShell::run() {
             setNumThreads(lineStr.substr(shellCommand.THREAD.length()));
         } else if(lineStr.rfind(shellCommand.BFS_POLICY) == 0) {
             setRecursiveJoinBFSPolicy(lineStr.substr(shellCommand.BFS_POLICY.length()));
+        } else if(lineStr.rfind(shellCommand.BFS_MORSEL_SIZE) == 0) {
+            setBFSMorselSize(lineStr.substr(shellCommand.BFS_MORSEL_SIZE.length()));
         } else if(lineStr.rfind(shellCommand.MAX_ACTIVE_BFS) == 0) {
             setMaxActiveBFSSharedState(lineStr.substr(shellCommand.MAX_ACTIVE_BFS.length()));
         } else if (lineStr.rfind(shellCommand.LIST_NODES) == 0) {
@@ -308,6 +311,12 @@ void EmbeddedShell::setRecursiveJoinBFSPolicy(const std::string& bfsPolicy) {
             printf("Unknown recursive join BFS policy provided, supported types: 1T1S & nTkS.\n");
         }
     } catch (Exception& e) { printf("%s", e.what()); }
+}
+
+void EmbeddedShell::setBFSMorselSize(const std::string& bfsMorselSize) {
+    auto morselSize = stoi(bfsMorselSize);
+    conn->setBFSMorselSize(morselSize);
+    printf("Set BFS Morsel Size to: %d\n", morselSize);
 }
 
 void EmbeddedShell::setMaxActiveBFSSharedState(const std::string& maxActiveBFS) {

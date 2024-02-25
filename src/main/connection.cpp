@@ -72,6 +72,10 @@ void Connection::setRecursiveJoinBFSPolicy(SchedulerType schedulerType) {
     clientContext->bfsSchedulerType = schedulerType;
 }
 
+void Connection::setBFSMorselSize(uint64_t bfsMorselSize) {
+    clientContext->bfsMorselSize = bfsMorselSize;
+}
+
 SchedulerType Connection::getRecursiveJoinBFSPolicy() {
     std::unique_lock<std::mutex> lck{mtx};
     return clientContext->bfsSchedulerType;

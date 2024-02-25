@@ -25,7 +25,7 @@ struct RecursiveJoinVectors {
 
     common::ValueVector* recursiveEdgeIDVector = nullptr;
     common::ValueVector* recursiveDstNodeIDVector = nullptr;
-    storage::InMemCSR *inMemCsr = nullptr;
+    storage::InMemCSR* inMemCsr = nullptr;
 };
 
 /**
@@ -322,9 +322,10 @@ public:
 
 struct BaseBFSMorsel {
 public:
-    BaseBFSMorsel(TargetDstNodes* targetDstNodes, uint8_t upperBound, uint8_t lowerBound)
+    BaseBFSMorsel(TargetDstNodes* targetDstNodes, uint8_t upperBound, uint8_t lowerBound,
+        uint64_t bfsMorselSize)
         : targetDstNodes{targetDstNodes}, upperBound{upperBound}, lowerBound{lowerBound},
-          currentLevel{0u}, bfsSharedState{nullptr} {}
+          bfsMorselSize{bfsMorselSize}, currentLevel{0u}, bfsSharedState{nullptr} {}
 
     virtual ~BaseBFSMorsel() = default;
 
@@ -424,14 +425,16 @@ protected:
 public:
     TargetDstNodes* targetDstNodes;
     BFSSharedState* bfsSharedState;
+    uint64_t bfsMorselSize;
 };
 
 template<bool TRACK_PATH>
 class ShortestPathMorsel : public BaseBFSMorsel {
 public:
-    ShortestPathMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes)
-        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, numVisitedDstNodes{0u},
-          startScanIdx{0u}, endScanIdx{0u} {}
+    ShortestPathMorsel(uint8_t upperBound, uint8_t lowerBound, uint64_t bfsMorselSize,
+        TargetDstNodes* targetDstNodes)
+        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound, bfsMorselSize},
+          numVisitedDstNodes{0u}, startScanIdx{0u}, endScanIdx{0u} {}
 
     ~ShortestPathMorsel() override = default;
 

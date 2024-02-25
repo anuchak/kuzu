@@ -23,6 +23,8 @@ private:
 
     void setRecursiveJoinBFSPolicy(const std::string& bfsPolicy);
 
+    void setBFSMorselSize(const std::string& bfsMorselSize);
+
     void setMaxActiveBFSSharedState(const std::string& maxActiveBFS);
 
     void printNodeSchema(const std::string& tableName);

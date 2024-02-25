@@ -177,9 +177,7 @@ public:
     explicit BufferManager(uint64_t bufferPoolSize);
     ~BufferManager() = default;
 
-    inline InMemCSR* getInMemCSR() {
-        return inMemCsr.get();
-    }
+    inline InMemCSR* getInMemCSR() { return inMemCsr.get(); }
 
     uint8_t* pin(BMFileHandle& fileHandle, common::page_idx_t pageIdx,
         PageReadPolicy pageReadPolicy = PageReadPolicy::READ_PAGE);

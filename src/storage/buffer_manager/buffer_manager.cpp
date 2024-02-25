@@ -25,7 +25,7 @@ InMemCSR::InMemCSR() {
 
     std::string line;
     int lineCount = 0;
-    int FIRST_ARRAY_START = 4; // The line where the first array ends
+    int FIRST_ARRAY_START = 4;        // The line where the first array ends
     int SECOND_ARRAY_START = 3604458; // Where CSR neighbours start from
 
     printf("starting to populate in-memory CSR ...\n");
@@ -36,7 +36,7 @@ InMemCSR::InMemCSR() {
                 std::cout << "Loading into first array:\n";
             std::istringstream iss(line);
             int value;
-            if(iss >> value) {
+            if (iss >> value) {
                 csr_v[lineCount - FIRST_ARRAY_START] = value;
             }
             if (lineCount == (SECOND_ARRAY_START - 1)) {
@@ -52,7 +52,7 @@ InMemCSR::InMemCSR() {
     while (std::getline(file, line)) {
         std::istringstream iss(line);
         int value;
-        if(iss >> value)
+        if (iss >> value)
             csr_e[lineCount++ - prevValue] = value;
         if (!(lineCount % 10000000)) {
             printf("currently at %d \n", lineCount);

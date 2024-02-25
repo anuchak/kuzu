@@ -92,7 +92,8 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                     activeBFSSharedState[newSharedStateIdx]->mutex.unlock();
                 }
                 auto duration = std::chrono::system_clock::now().time_since_epoch();
-                auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                auto millis =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
                 printf("%lu ms is start time \n", millis);
                 return {IN_PROGRESS, EXTEND_IN_PROGRESS};
             } else {

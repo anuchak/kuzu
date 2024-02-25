@@ -103,7 +103,9 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
     case EXTEND_IN_PROGRESS: {
         if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
             numThreadsBFSActive++;
-            auto bfsMorselSize = std::min(256lu, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+            auto bfsMorselSize =
+                std::min(bfsMorsel->bfsMorselSize, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+            printf("giving out bfs morsel of size %lu at level %d\n", bfsMorselSize, currentLevel);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
@@ -285,8 +287,9 @@ template<>
 void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
     auto startIdx = vectors->inMemCsr->csr_v[boundNodeOffset];
-    auto endIdx = (boundNodeOffset == vectors->inMemCsr->csr_v.size() - 1)
-                      ? vectors->inMemCsr->csr_e.size() : vectors->inMemCsr->csr_v[boundNodeOffset + 1];
+    auto endIdx = (boundNodeOffset == vectors->inMemCsr->csr_v.size() - 1) ?
+                      vectors->inMemCsr->csr_e.size() :
+                      vectors->inMemCsr->csr_v[boundNodeOffset + 1];
     uint64_t nbrOffset;
     for (auto i = startIdx; i < endIdx; i++) {
         nbrOffset = vectors->inMemCsr->csr_e[i];

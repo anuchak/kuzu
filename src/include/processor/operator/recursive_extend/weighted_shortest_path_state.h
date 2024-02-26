@@ -78,6 +78,9 @@ public:
         }
         auto top = wpriority_queue.top();
         auto topOffset = top.second;
+        if (visitedNodes[topOffset] == VISITED_DST || visitedNodes[topOffset] == VISITED_DST_NEW) {
+            numVisitedNodes++;
+        }
         wpriority_queue.pop();
         return common::nodeID_t{topOffset, tableID};
     }

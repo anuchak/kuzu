@@ -17,7 +17,6 @@ void WeightedShortestPathMorsel<false>::markVisited(common::nodeID_t boundNodeID
         if ((boundNodePathCost + edgeWeight) < pathCost[nbrNodeID.offset]) {
             if (state == NOT_VISITED_DST || state == VISITED_DST) {
                 visitedNodes[nbrNodeID.offset] = VISITED_DST_NEW;
-                numVisitedNodes++;
             } else if (state == NOT_VISITED || state == VISITED) {
                 visitedNodes[nbrNodeID.offset] = VISITED_NEW;
             }

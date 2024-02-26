@@ -8,7 +8,7 @@ namespace processor {
 template<>
 void WeightedShortestPathMorsel<false>::markVisited(common::nodeID_t boundNodeID,
     common::nodeID_t nbrNodeID, common::relID_t relID, uint64_t multiplicity) {
-    auto boundNodePathCost = offsetPrevPathCost[nextNodeIdxToExtend - 1];
+    auto boundNodePathCost = pathCost[boundNodeID.offset];
     for (auto i = 0u; i < vectors->recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
         auto pos = vectors->recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
         nbrNodeID = vectors->recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
@@ -20,8 +20,10 @@ void WeightedShortestPathMorsel<false>::markVisited(common::nodeID_t boundNodeID
             } else if (state == NOT_VISITED || state == VISITED) {
                 visitedNodes[nbrNodeID.offset] = VISITED_NEW;
             }
+            wpriority_queue.push(
+                std::pair<uint64_t, uint64_t>(boundNodePathCost + edgeWeight, nbrNodeID.offset));
             pathCost[nbrNodeID.offset] = boundNodePathCost + edgeWeight;
-            pathLength[nbrNodeID.offset] = currentLevel + 1;
+            pathLength[nbrNodeID.offset] = pathLength[boundNodeID.offset] + 1;
         }
     }
 }

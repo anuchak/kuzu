@@ -20,12 +20,12 @@ public:
     inline bool getRecursiveJoinType() final { return TRACK_PATH; }
 
     inline bool isComplete() final {
-        if (wBFSLevelNodes.empty()) {
-            prevWriteEndIdx = 0u; // Set the index here to 0 to indicate that we are in write phase
+        if (wpriority_queue.empty()) {
+            prevWriteEndIdx = 0u;
             return true;
         }
         if (isUpperBoundReached()) {
-            prevWriteEndIdx = 0u; // Set the index here to 0 to indicate that we are in write phase
+            prevWriteEndIdx = 0u;
             return true;
         }
         return false;
@@ -42,8 +42,6 @@ public:
             visitedNodes = std::vector<uint8_t>(maxOffset + 1);
             pathCost = std::vector<int64_t>(maxOffset + 1, INT64_MAX);
             pathLength = std::vector<uint8_t>(maxOffset + 1, 0u);
-            srcAndEdgeOffset = std::vector<std::pair<common::offset_t, common::offset_t>>(
-                maxOffset + 1, {UINT64_MAX, UINT64_MAX});
         } else {
             wBFSLevelNodes.clear();
             std::fill(pathCost.begin(), pathCost.end(), INT64_MAX);
@@ -65,10 +63,9 @@ public:
     }
 
     inline void markSrc(common::nodeID_t nodeID) override {
-        wBFSLevelNodes.push_back(nodeID);
+        wpriority_queue.push(std::pair<uint64_t, uint64_t>(0u, nodeID.offset));
         pathCost[nodeID.offset] = 0;
         pathLength[nodeID.offset] = 0;
-        offsetPrevPathCost.push_back(0);
         tableID = nodeID.tableID;
         if (targetDstNodes->contains(nodeID)) {
             visitedNodes[nodeID.offset] = VISITED_DST;
@@ -78,10 +75,13 @@ public:
     }
 
     common::nodeID_t getNextNodeID() override {
-        if (nextNodeIdxToExtend == wBFSLevelNodes.size()) {
-            return common::nodeID_t{common::INVALID_OFFSET, common::INVALID_TABLE_ID};
+        if (wpriority_queue.empty()) {
+            return common::nodeID_t{common::INVALID_OFFSET, common::INVALID_OFFSET};
         }
-        return wBFSLevelNodes[nextNodeIdxToExtend++];
+        auto top = wpriority_queue.top();
+        auto topOffset = top.second;
+        wpriority_queue.pop();
+        return common::nodeID_t{topOffset, tableID};
     }
 
     void markVisited(common::nodeID_t boundNodeID, common::nodeID_t nbrNodeID,
@@ -149,6 +149,12 @@ public:
 
 private:
     // These are to be used for 1 Thread - 1 Weighted Shortest Path source
+
+    // For Dijkstra PoC - we need a priority queue.
+    std::priority_queue<std::pair<uint64_t, uint64_t>, std::vector<std::pair<uint64_t, uint64_t>>,
+        std::greater<std::pair<uint64_t, uint64_t>>>
+        wpriority_queue;
+
     std::vector<common::nodeID_t> wBFSLevelNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<int64_t> pathCost;

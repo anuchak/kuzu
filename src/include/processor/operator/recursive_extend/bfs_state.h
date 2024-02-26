@@ -1,5 +1,6 @@
 #pragma once
 
+#include <queue>
 #include <utility>
 
 #include "common/query_rel_type.h"

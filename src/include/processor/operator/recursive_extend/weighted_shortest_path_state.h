@@ -13,18 +13,16 @@ public:
         RecursiveJoinVectors* recursiveJoinVectors)
         : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, startScanIdx{0u},
           endScanIdx{0u}, tableID{UINT64_MAX}, isSingleThread{isSingleThread}, maxOffset{maxOffset},
-          vectors{recursiveJoinVectors}, prevWriteEndIdx{UINT64_MAX}, edgeTableID{UINT64_MAX} {}
+          numVisitedNodes{0u}, vectors{recursiveJoinVectors}, prevWriteEndIdx{UINT64_MAX},
+          edgeTableID{UINT64_MAX} {}
 
     ~WeightedShortestPathMorsel() override = default;
 
     inline bool getRecursiveJoinType() final { return TRACK_PATH; }
 
     inline bool isComplete() final {
-        if (wpriority_queue.empty()) {
-            prevWriteEndIdx = 0u;
-            return true;
-        }
-        if (isUpperBoundReached()) {
+        if (wpriority_queue.empty() || isUpperBoundReached() ||
+            (numVisitedNodes == targetDstNodes->getNumNodes())) {
             prevWriteEndIdx = 0u;
             return true;
         }
@@ -154,6 +152,7 @@ private:
     std::priority_queue<std::pair<uint64_t, uint64_t>, std::vector<std::pair<uint64_t, uint64_t>>,
         std::greater<std::pair<uint64_t, uint64_t>>>
         wpriority_queue;
+    uint64_t numVisitedNodes;
 
     std::vector<common::nodeID_t> wBFSLevelNodes;
     std::vector<uint8_t> visitedNodes;

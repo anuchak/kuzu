@@ -350,9 +350,6 @@ void RecursiveJoin::computeBFSOneThreadOneMorsel(ExecutionContext* context) {
             while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
                 updateVisitedNodes(boundNodeID);
             }
-        } else {
-            // Otherwise move to the next frontier.
-            bfsMorsel->finalizeCurrentLevel();
         }
     }
 }

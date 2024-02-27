@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bfs_state.h"
+#include <boost/heap/priority_queue.hpp>
 
 namespace kuzu {
 namespace processor {
@@ -152,8 +153,14 @@ private:
     // These are to be used for 1 Thread - 1 Weighted Shortest Path source
 
     // For Dijkstra PoC - we need a priority queue.
-    std::priority_queue<std::pair<uint64_t, uint64_t>, std::vector<std::pair<uint64_t, uint64_t>>,
-        std::greater<std::pair<uint64_t, uint64_t>>>
+    struct greater {
+        bool operator()(const std::pair<uint64_t , uint64_t >& st0,
+            const std::pair<uint64_t , uint64_t >& st1) const {
+            return (st0.first > st1.first);
+        }
+    };
+
+    boost::heap::priority_queue<std::pair<uint64_t, uint64_t>, boost::heap::compare<greater>>
         wpriority_queue;
     uint64_t numVisitedNodes;
 

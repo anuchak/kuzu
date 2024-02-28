@@ -105,7 +105,6 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
             numThreadsBFSActive++;
             auto bfsMorselSize =
                 std::min(bfsMorsel->bfsMorselSize, bfsLevelNodeOffsets.size() - nextScanStartIdx);
-            printf("giving out bfs morsel of size %lu at level %d\n", bfsMorselSize, currentLevel);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
@@ -170,6 +169,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
             return true;
         }
     } else if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+        printf("%lu ms is end time \n", millis);
         ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
         return true;
     }

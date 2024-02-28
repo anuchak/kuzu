@@ -20,11 +20,11 @@ InMemCSR::InMemCSR() {
 
     long pos = 0u;
     for (auto i = 0; i < csr_v.size(); i++) {
-        int num = 0, count = 0, temp;
+        uint64_t num = 0;
+        char temp;
         while ((char)(mmap[pos]) != '\n') {
             temp = mmap[pos++];
-            num = pow(10, count) * num + (temp - 48);
-            count++;
+            num = 10 * num + (temp - 48);
         }
         csr_v[i] = num;
         pos++;
@@ -33,12 +33,11 @@ InMemCSR::InMemCSR() {
 
     auto size = mmap.size();
     for (auto i = 0; i < csr_e.size(); i++) {
-        uint64_t num = 0, count = 0;
+        uint64_t num = 0;
         char temp;
         while ((char)(mmap[pos]) != '\n' && pos != size) {
             temp = mmap[pos++];
             num = 10 * num + (temp - 48);
-            count++;
         }
         if (!(i % 10000000)) {
             printf("finished with %d lines for csr_e file\n", i);

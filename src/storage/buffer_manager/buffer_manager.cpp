@@ -1,7 +1,6 @@
 #include "storage/buffer_manager/buffer_manager.h"
+#include "storage/buffer_manager/mio.h"
 
-#include <fstream>
-#include <iostream>
 #include <string>
 
 #include "common/constants.h"
@@ -14,51 +13,39 @@ namespace kuzu {
 namespace storage {
 
 InMemCSR::InMemCSR() {
+    const int fd = open("/localdisk5/a8chakra/spotify_dataset/testnewcsr2", O_RDONLY);
+    mio::mmap_source mmap(fd, 0, mio::map_entire_file);
     csr_v = std::vector<int>(3604454, 0);
     csr_e = std::vector<int>(1927482033, 0);
 
-    std::ifstream file("/localdisk5/a8chakra/spotify_dataset/testnewcsr");
-    if (!file.is_open()) {
-        std::cerr << "Error opening file!" << std::endl;
-        return;
-    }
-
-    std::string line;
-    int lineCount = 0;
-    int FIRST_ARRAY_START = 4;        // The line where the first array ends
-    int SECOND_ARRAY_START = 3604458; // Where CSR neighbours start from
-
-    printf("starting to populate in-memory CSR ...\n");
-    while (std::getline(file, line)) {
-        ++lineCount;
-        if (lineCount >= FIRST_ARRAY_START) {
-            if (lineCount == FIRST_ARRAY_START)
-                std::cout << "Loading into first array:\n";
-            std::istringstream iss(line);
-            int value;
-            if (iss >> value) {
-                csr_v[lineCount - FIRST_ARRAY_START] = value;
-            }
-            if (lineCount == (SECOND_ARRAY_START - 1)) {
-                break;
-            }
-            continue;
+    long pos = 0u;
+    for (auto i = 0; i < csr_v.size(); i++) {
+        int num = 0, count = 0, temp;
+        while ((char)(mmap[pos]) != '\n') {
+            temp = mmap[pos++];
+            num = pow(10, count) * num + (temp - 48);
+            count++;
         }
-        std::cout << "Skipping line " << lineCount << "\n";
+        csr_v[i] = num;
+        pos++;
     }
+    printf("finished mapping csr_v file\n");
 
-    std::cout << "\nLoading into second array:\n";
-    int prevValue = ++lineCount;
-    while (std::getline(file, line)) {
-        std::istringstream iss(line);
-        int value;
-        if (iss >> value)
-            csr_e[lineCount++ - prevValue] = value;
-        if (!(lineCount % 10000000)) {
-            printf("currently at %d \n", lineCount);
+    auto size = mmap.size();
+    for (auto i = 0; i < csr_e.size(); i++) {
+        int num = 0, count = 0, temp;
+        while ((char)(mmap[pos]) != '\n' && pos != size) {
+            temp = mmap[pos++];
+            num = pow(10, count) * num + (temp - 48);
+            count++;
         }
+        if (!(i % 10000000)) {
+            printf("finished with %d lines for csr_e file\n", i);
+        }
+        csr_e[i] = num;
+        pos++;
     }
-    printf("completed populating in-memory CSR ...\n");
+    printf("finished mapping csr_e file\n");
 }
 
 // In this function, we try to remove as many as possible candidates that are not evictable from the

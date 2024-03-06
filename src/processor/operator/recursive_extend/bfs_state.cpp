@@ -103,8 +103,7 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
     case EXTEND_IN_PROGRESS: {
         if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
             numThreadsBFSActive++;
-            auto bfsMorselSize =
-                std::min(bfsMorsel->bfsMorselSize, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+            auto bfsMorselSize = std::min(bfsMorsel->bfsMorselSize, bfsLevelNodeOffsets.size() - nextScanStartIdx);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
@@ -160,7 +159,13 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
         }
     }
     if (numThreadsBFSActive == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
+        auto duration0 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis0 = std::chrono::duration_cast<std::chrono::milliseconds>(duration0).count();
+        printf("%lu ms is level %d end time \n", millis0, currentLevel);
         moveNextLevelAsCurrentLevel();
+        duration0 = std::chrono::system_clock::now().time_since_epoch();
+        millis0 = std::chrono::duration_cast<std::chrono::milliseconds>(duration0).count();
+        printf("%lu ms is level %d start time, total nodes: %d\n", millis0, currentLevel, bfsLevelNodeOffsets.size());
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
             auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
@@ -297,6 +302,12 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         nbrOffset = vectors->inMemCsr->csr_e[i];
         auto state = bfsSharedState->visitedNodes[nbrOffset];
         if (state == NOT_VISITED_DST) {
+            __atomic_store_n(&bfsSharedState->visitedNodes[nbrOffset], VISITED_DST_NEW, __ATOMIC_SEQ_CST);
+        }
+        if (state == NOT_VISITED) {
+            __atomic_store_n(&bfsSharedState->visitedNodes[nbrOffset], VISITED_NEW, __ATOMIC_SEQ_CST);
+        }
+        /*if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
                     &bfsSharedState->visitedNodes[nbrOffset], state, VISITED_DST_NEW)) {
                 bfsSharedState->pathLength[nbrOffset] = bfsSharedState->currentLevel + 1;
@@ -305,7 +316,7 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
         } else if (state == NOT_VISITED) {
             __sync_bool_compare_and_swap(
                 &bfsSharedState->visitedNodes[nbrOffset], state, VISITED_NEW);
-        }
+        }*/
     }
     /*auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
     for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {

@@ -47,6 +47,14 @@ InMemCSR::InMemCSR() {
     }
     printf("finished mapping csr_e file\n");
     mmap.unmap();
+
+    for(auto i = 0u; i < csr_v.size(); i++) {
+        auto startIdx = csr_v[i];
+        auto endIdx = (i == csr_v.size() - 1) ? csr_e.size() : csr_v[i+1];
+        std::sort(csr_e.begin() + startIdx, csr_e.begin() + endIdx);
+    }
+
+    printf("finished sorting CSR in place of csr_e ...\n");
 }
 
 // In this function, we try to remove as many as possible candidates that are not evictable from the

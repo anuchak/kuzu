@@ -13,9 +13,7 @@ void CSRIndexBuild::initGlobalStateInternal(kuzu::processor::ExecutionContext* c
     auto scanNodeID = (ScanNodeID*)child;
     auto nodeTable = scanNodeID->getSharedState()->getTableState(0)->getTable();
     auto maxNodeOffset = nodeTable->getMaxNodeOffset(context->transaction);
-    csr_v = std::vector<csrEntry*>(maxNodeOffset + 1, nullptr);
-    // initialisation of common node table ID not done
-    // initialisation of common rel table ID not done
+    csrSharedState->csr_v = std::vector<csrEntry*>(maxNodeOffset + 1, nullptr);
 }
 
 void CSRIndexBuild::initLocalStateInternal(
@@ -26,6 +24,7 @@ void CSRIndexBuild::initLocalStateInternal(
 }
 
 void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) {
+    auto& csr_v = csrSharedState->csr_v;
     while (children[0]->getNextTuple(context)) {
         auto pos = boundNodeVector->state->selVector->selectedPositions[0];
         auto boundNode = boundNodeVector->getValue<common::nodeID_t>(pos);

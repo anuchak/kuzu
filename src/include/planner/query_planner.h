@@ -181,7 +181,7 @@ private:
     void appendRecursiveExtend(std::shared_ptr<NodeExpression> boundNode,
         std::shared_ptr<NodeExpression> nbrNode, std::shared_ptr<RelExpression> rel,
         ExtendDirection direction, LogicalPlan& plan);
-    void createRecursivePlan(std::shared_ptr<NodeExpression> boundNode,
+    void createCSRIndexPlan(std::shared_ptr<NodeExpression> boundNode,
         std::shared_ptr<NodeExpression> recursiveNode, std::shared_ptr<RelExpression> recursiveRel,
         ExtendDirection direction, const expression_vector& predicates, LogicalPlan& plan);
     void createPathNodePropertyScanPlan(

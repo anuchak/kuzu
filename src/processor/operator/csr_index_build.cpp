@@ -60,7 +60,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto duration2 = std::chrono::system_clock::now().time_since_epoch();
     auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
-    double totalInMB = (((totalSizeAllocated / 1024) / 1024));
+    double totalInMB = ((((double) totalSizeAllocated / (double) 1024) / (double) 1024));
     printf("Thread %s finished at %lu, total time taken %lu ms, total nodes %lu, total size %lf\n",
         oss.str().c_str(), millis2, (millis2 - millis1), totalNodes, totalInMB);
 }

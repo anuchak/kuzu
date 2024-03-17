@@ -134,6 +134,9 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
     }
     frontiersScanner = std::make_unique<FrontiersScanner>(std::move(scanners));
     initLocalRecursivePlan(context);
+    std::ostringstream oss;
+    oss << std::this_thread::get_id();
+    printf("Thread %s starting from recursive join operator ...\n", oss.str().c_str());
 }
 
 bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {

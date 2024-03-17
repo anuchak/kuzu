@@ -9,13 +9,22 @@ namespace processor {
 // each entry of "csr_v" vector will be a pointer to an entry of this type
 // size of each csrEntry (total neighbours being stored) will be
 struct csrEntry {
-    std::vector<common::offset_t> nbrNodeOffsets;
-    std::vector<common::offset_t> relIDOffsets;
+    common::offset_t* nbrNodeOffsets;
+    common::offset_t* relIDOffsets;
     csrEntry* next;
+    size_t blockSize;
 
-    explicit csrEntry(size_t blockSize)
-        : nbrNodeOffsets{std::vector<common::offset_t>(blockSize, 0u)},
-          relIDOffsets{std::vector<common::offset_t>(blockSize, 0u)}, next{nullptr} {}
+    explicit csrEntry(size_t blockSize) {
+        nbrNodeOffsets = new common::offset_t[blockSize];
+        relIDOffsets = new common::offset_t[blockSize];
+        next = nullptr;
+        this->blockSize = blockSize;
+    }
+
+    ~csrEntry() {
+        delete[] nbrNodeOffsets;
+        delete[] relIDOffsets;
+    }
 };
 
 struct csrIndexSharedState {

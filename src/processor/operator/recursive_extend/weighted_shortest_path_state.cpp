@@ -57,14 +57,46 @@ void WeightedShortestPathMorsel<false>::addToLocalNextBFSLevel(
     kuzu::processor::RecursiveJoinVectors* vectors_, uint64_t boundNodeMultiplicity,
     unsigned long boundNodeOffset) {
     auto boundNodePathCost = bfsSharedState->offsetPrevPathCost[startScanIdx - 1];
-    for (auto i = 0u; i < vectors->recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {
-        auto pos = vectors->recursiveDstNodeIDVector->state->selVector->selectedPositions[i];
-        auto nbrNodeID = vectors->recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
-        auto edgeWeight = vectors->recursiveEdgePropertyVector->getValue<int64_t>(pos);
-        auto state = bfsSharedState->visitedNodes[nbrNodeID.offset];
-        auto nbrNodePathCost = bfsSharedState->pathCost[nbrNodeID.offset];
-        if ((boundNodePathCost + edgeWeight) < nbrNodePathCost) {
-            /**
+    auto& csr_v = vectors->csrSharedState->csr_v;
+    auto csrEntry = csr_v[boundNodeOffset];
+    while (csrEntry) {
+        for (auto i = 0; i < csrEntry->blockSize; i++) {
+            auto state = bfsSharedState->visitedNodes[csrEntry->nbrNodeOffsets[i]];
+            auto edgeWeight = csrEntry->relWeightProperties[i];
+            auto nbrNodePathCost = bfsSharedState->pathCost[csrEntry->nbrNodeOffsets[i]];
+            if ((boundNodePathCost + edgeWeight) < nbrNodePathCost) {
+                if (state == NOT_VISITED_DST || state == VISITED_DST) {
+                    uint8_t newState = VISITED_DST_NEW;
+                    __atomic_store(&bfsSharedState->visitedNodes[csrEntry->nbrNodeOffsets[i]],
+                        &newState, __ATOMIC_RELAXED);
+                } else if (state == NOT_VISITED || state == VISITED) {
+                    uint8_t newState = VISITED_NEW;
+                    __atomic_store(&bfsSharedState->visitedNodes[csrEntry->nbrNodeOffsets[i]],
+                        &newState, __ATOMIC_RELAXED);
+                }
+                uint8_t newLength = bfsSharedState->currentLevel + 1;
+                __atomic_store(&bfsSharedState->pathLength[csrEntry->nbrNodeOffsets[i]], &newLength,
+                    __ATOMIC_RELAXED);
+                do {
+                    nbrNodePathCost = bfsSharedState->pathCost[csrEntry->nbrNodeOffsets[i]];
+                    if (nbrNodePathCost < (boundNodePathCost + edgeWeight)) {
+                        break;
+                    }
+                } while (!__sync_bool_compare_and_swap(
+                    &bfsSharedState->pathCost[csrEntry->nbrNodeOffsets[i]], nbrNodePathCost,
+                    (boundNodePathCost + edgeWeight)));
+            }
+        }
+        csrEntry = csrEntry->next;
+    }
+    /*for (auto i = 0u; i < vectors->recursiveDstNodeIDVector->state->selVector->selectedSize; ++i)
+       { auto pos = vectors->recursiveDstNodeIDVector->state->selVector->selectedPositions[i]; auto
+       nbrNodeID = vectors->recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos); auto
+       edgeWeight = vectors->recursiveEdgePropertyVector->getValue<int64_t>(pos); auto state =
+       bfsSharedState->visitedNodes[nbrNodeID.offset]; auto nbrNodePathCost =
+       bfsSharedState->pathCost[nbrNodeID.offset]; if ((boundNodePathCost + edgeWeight) <
+       nbrNodePathCost) {
+            *//**
              * Main Logic for parallel Bellman Ford:
              * ------------------------------------
              *
@@ -81,7 +113,7 @@ void WeightedShortestPathMorsel<false>::addToLocalNextBFSLevel(
              * (2) has to be done using a CAS-loop since if a thread failed with the CAS, we need
              * to reread the pathCost[nbrNodeID] again and check if the cost is lesser or not.
              *
-             */
+             *//*
             if (state == NOT_VISITED_DST || state == VISITED_DST) {
                 uint8_t newState = VISITED_DST_NEW;
                 __atomic_store(
@@ -94,11 +126,11 @@ void WeightedShortestPathMorsel<false>::addToLocalNextBFSLevel(
             uint8_t newLength = bfsSharedState->currentLevel + 1;
             __atomic_store(
                 &bfsSharedState->pathLength[nbrNodeID.offset], &newLength, __ATOMIC_RELAXED);
-            /**
+            *//**
              * First, confirm that new path cost is lower than already existing path cost.
              * If yes, try to do the CAS operation. If successful, then exit from infinite loop.
              * If CAS is NOT successful, do a read of the path cost that was JUST updated and retry.
-             */
+             *//*
             do {
                 nbrNodePathCost = bfsSharedState->pathCost[nbrNodeID.offset];
                 if (nbrNodePathCost < (boundNodePathCost + edgeWeight)) {
@@ -107,7 +139,7 @@ void WeightedShortestPathMorsel<false>::addToLocalNextBFSLevel(
             } while (!__sync_bool_compare_and_swap(&bfsSharedState->pathCost[nbrNodeID.offset],
                 nbrNodePathCost, (boundNodePathCost + edgeWeight)));
         }
-    }
+    }*/
 }
 
 template<>

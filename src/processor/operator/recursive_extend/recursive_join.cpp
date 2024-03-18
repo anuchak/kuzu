@@ -34,6 +34,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
     vectors->srcNodeIDVector = resultSet->getValueVector(dataInfo->srcNodePos).get();
     vectors->dstNodeIDVector = resultSet->getValueVector(dataInfo->dstNodePos).get();
     vectors->pathLengthVector = resultSet->getValueVector(dataInfo->pathLengthPos).get();
+    vectors->csrSharedState = sharedState->csrSharedState;
     if (dataInfo->pathCostPos.dataChunkPos != INVALID_DATA_CHUNK_POS) {
         vectors->pathCostVector = resultSet->getValueVector(dataInfo->pathCostPos).get();
     }
@@ -157,6 +158,9 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
             StructVector::getFieldVector(pathRelsDataVector, pathRelsIDFieldIdx).get();
     }
     frontiersScanner = std::make_unique<FrontiersScanner>(std::move(scanners));
+    std::ostringstream oss;
+    oss << std::this_thread::get_id();
+    printf("Thread %s starting from recursive join operator ...\n", oss.str().c_str());
 }
 
 bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
@@ -329,10 +333,10 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     uint64_t boundNodeMultiplicity;
     while (nodeOffset != common::INVALID_OFFSET) {
         boundNodeMultiplicity = bfsMorsel->getBoundNodeMultiplicity(nodeOffset);
-        scanFrontier->setNodeID(common::nodeID_t{nodeOffset, *begin(dataInfo->dstNodeTableIDs)});
-        while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
-            bfsMorsel->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
-        }
+        // scanFrontier->setNodeID(common::nodeID_t{nodeOffset, *begin(dataInfo->dstNodeTableIDs)});
+        // while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
+        bfsMorsel->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
+        // }
         nodeOffset = bfsMorsel->getNextNodeOffset();
     }
 }
@@ -346,10 +350,10 @@ void RecursiveJoin::computeBFSOneThreadOneMorsel(ExecutionContext* context) {
         auto boundNodeID = bfsMorsel->getNextNodeID();
         if (boundNodeID.offset != common::INVALID_OFFSET) {
             // Found a starting node from current frontier.
-            scanFrontier->setNodeID(boundNodeID);
-            while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
-                updateVisitedNodes(boundNodeID);
-            }
+            // scanFrontier->setNodeID(boundNodeID);
+            // while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
+            updateVisitedNodes(boundNodeID);
+            // }
         } else {
             // Otherwise move to the next frontier.
             bfsMorsel->finalizeCurrentLevel();
@@ -374,7 +378,7 @@ void RecursiveJoin::updateVisitedNodes(common::nodeID_t boundNodeID) {
 }
 
 void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
-    auto op = recursiveRoot.get();
+    /*auto op = recursiveRoot.get();
     while (!op->isSource()) {
         assert(op->getNumChildren() == 1);
         op = op->getChild(0);
@@ -390,7 +394,7 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
         vectors->recursiveEdgePropertyVector =
             localResultSet->getValueVector(dataInfo->recursiveEdgePropertyPos).get();
     }
-    recursiveRoot->initLocalState(localResultSet.get(), context);
+    recursiveRoot->initLocalState(localResultSet.get(), context);*/
 }
 
 void RecursiveJoin::populateTargetDstNodes() {
@@ -412,12 +416,12 @@ void RecursiveJoin::populateTargetDstNodes() {
         }
     }
     targetDstNodes = std::make_unique<TargetDstNodes>(numTargetNodes, std::move(targetNodeIDs));
-    for (auto tableID : dataInfo->recursiveDstNodeTableIDs) {
+    /*for (auto tableID : dataInfo->recursiveDstNodeTableIDs) {
         if (!dataInfo->dstNodeTableIDs.contains(tableID)) {
             targetDstNodes->setTableIDFilter(dataInfo->dstNodeTableIDs);
             return;
         }
-    }
+    }*/
 }
 
 } // namespace processor

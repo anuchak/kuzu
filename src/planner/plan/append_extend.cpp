@@ -1,8 +1,10 @@
 #include "binder/expression_visitor.h"
 #include "planner/join_order/cost_model.h"
+#include "planner/logical_plan/extend/logical_csr_build.h"
 #include "planner/logical_plan/extend/logical_extend.h"
 #include "planner/logical_plan/extend/logical_recursive_extend.h"
 #include "planner/logical_plan/logical_node_label_filter.h"
+#include "planner/logical_plan/scan/logical_scan_node.h"
 #include "planner/query_planner.h"
 
 using namespace kuzu::common;
@@ -106,16 +108,19 @@ void QueryPlanner::appendRecursiveExtend(std::shared_ptr<NodeExpression> boundNo
     auto recursiveInfo = rel->getRecursiveInfo();
     appendAccumulate(AccumulateType::REGULAR, plan);
     // Create recursive plan
-    auto recursivePlan = std::make_unique<LogicalPlan>();
-    createRecursivePlan(recursiveInfo->node, recursiveInfo->nodeCopy, rel, recursiveInfo->rel,
-        direction, recursiveInfo->predicates, *recursivePlan);
+    // auto recursivePlan = std::make_unique<LogicalPlan>();
+
+    // CREATE THE CSR INDEX CREATION PLAN HERE, INSTEAD OF RECURSIVE SUB-PLAN
+    auto csrIndexPlan = std::make_unique<LogicalPlan>();
+    createCSRIndexPlan(recursiveInfo->node, recursiveInfo->nodeCopy, rel, recursiveInfo->rel,
+        direction, recursiveInfo->predicates, *csrIndexPlan);
     // Create recursive extend
     if (boundNode->getNumTableIDs() > recursiveInfo->node->getNumTableIDs()) {
         appendNodeLabelFilter(
             boundNode->getInternalIDProperty(), recursiveInfo->node->getTableIDsSet(), plan);
     }
     auto extend = std::make_shared<LogicalRecursiveExtend>(boundNode, nbrNode, rel, direction,
-        RecursiveJoinType::TRACK_PATH, plan.getLastOperator(), recursivePlan->getLastOperator());
+        RecursiveJoinType::TRACK_PATH, plan.getLastOperator(), csrIndexPlan->getLastOperator());
     appendFlattens(extend->getGroupsPosToFlatten(), plan);
     extend->setChild(0, plan.getLastOperator());
     extend->computeFactorizedSchema();
@@ -150,13 +155,19 @@ void QueryPlanner::appendRecursiveExtend(std::shared_ptr<NodeExpression> boundNo
 // TODO: Currently hardcoding the property to be used as cost for computing weighted shortest path.
 // TODO: The property name that has "weight" in its name is being picked. It should be added as a
 // TODO: parameter in the query and then added in the "recursiveRel" expression parameter.
-void QueryPlanner::createRecursivePlan(std::shared_ptr<NodeExpression> boundNode,
+// CHANGING THIS FUNCTION TO ENABLE CSR BUILDING PLAN INSTEAD OF RECURSIVE SUBPLAN
+// Plan will be ScanNode -> ScanRelList -> CSRBuild and this plan will be a child
+void QueryPlanner::createCSRIndexPlan(std::shared_ptr<NodeExpression> boundNode,
     std::shared_ptr<NodeExpression> recursiveNode, std::shared_ptr<RelExpression>& relExpression,
     std::shared_ptr<RelExpression> recursiveRel, ExtendDirection direction,
     const expression_vector& predicates, LogicalPlan& plan) {
-    auto scanFrontier = std::make_shared<LogicalScanFrontier>(boundNode);
-    scanFrontier->computeFactorizedSchema();
-    plan.setLastOperator(std::move(scanFrontier));
+    // Create a scan operator for bound node (src)
+    auto scan = std::make_shared<LogicalScanNode>(boundNode);
+    scan->computeFactorizedSchema();
+    plan.setCardinality(cardinalityEstimator->estimateScanNode(scan.get()));
+    plan.setLastOperator(std::move(scan));
+
+    // Create a scan rel (extend) operator for bound node (src) to generate the nbr nodes
     expression_set propertiesSet;
     propertiesSet.insert(recursiveRel->getInternalIDProperty());
     // Todo: This is a workaround to ensure we scan the weight property of the edge relationships.
@@ -182,6 +193,11 @@ void QueryPlanner::createRecursivePlan(std::shared_ptr<NodeExpression> boundNode
     }
     appendNonRecursiveExtend(boundNode, recursiveNode, recursiveRel, direction, properties, plan);
     appendFilters(predicates, plan);
+
+    // Create the CSR Build operator that builds the CSR Index
+    auto logicalCSRBuild = std::make_unique<LogicalCSRBuild>(LogicalOperatorType::CSR_BUILD,
+        boundNode, recursiveNode, recursiveRel, direction, plan.getLastOperator());
+    plan.setLastOperator(std::move(logicalCSRBuild));
 }
 
 void QueryPlanner::createPathNodePropertyScanPlan(

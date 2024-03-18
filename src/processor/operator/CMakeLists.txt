@@ -13,6 +13,7 @@ add_subdirectory(macro)
 add_library(kuzu_processor_operator
         OBJECT
         cross_product.cpp
+        csr_index_build.cpp
         filter.cpp
         filtering_operator.cpp
         flatten.cpp

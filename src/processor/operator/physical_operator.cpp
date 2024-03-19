@@ -38,6 +38,9 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::CREATE_MACRO: {
         return "CREATE_MACRO";
     }
+    case PhysicalOperatorType::CSR_INDEX_BUILD: {
+        return "CSR_INDEX_BUILD";
+    }
     case PhysicalOperatorType::READER: {
         return "READER";
     }

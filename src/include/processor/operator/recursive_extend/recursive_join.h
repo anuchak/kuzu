@@ -129,6 +129,9 @@ public:
     bool getNextTuplesInternal(ExecutionContext* context) final;
 
     inline std::unique_ptr<PhysicalOperator> clone() final {
+        std::ostringstream oss;
+        oss << std::this_thread::get_id();
+        printf("Thread %s is creating a clone of the recursive join operator ...\n", oss.str().c_str());
         return std::make_unique<RecursiveJoin>(lowerBound, upperBound, queryRelType, joinType,
             sharedState, dataInfo->copy(), vectorsToScanPos, colIndicesToScan, children[0]->clone(),
             id, paramsString);

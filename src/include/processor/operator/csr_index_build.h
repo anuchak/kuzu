@@ -36,6 +36,8 @@ struct csrIndexSharedState {
     csrIndexSharedState() : csr_v{std::vector<csrEntry*>()} {}
 
     ~csrIndexSharedState() {
+        auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
         for (auto temp : csr_v) {
             while (temp) {
                 auto next = temp->next;
@@ -43,6 +45,9 @@ struct csrIndexSharedState {
                 temp = next;
             }
         }
+        auto duration2 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
+        printf("Total time taken to free memory ... %lu ms\n", millis2 - millis1);
     }
 };
 

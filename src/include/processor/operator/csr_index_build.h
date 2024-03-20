@@ -50,10 +50,11 @@ public:
         DataPos& boundNodeVectorPos, DataPos& nbrNodeVectorPos, DataPos& relIDVectorPos,
         std::shared_ptr<csrIndexSharedState>& csrIndexSharedState,
         std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
-        : Sink{std::move(resultSetDescriptor), operatorType, std::move(child), id, paramsString},
-          csrSharedState{csrIndexSharedState}, commonNodeTableID{commonNodeTableID},
-          commonEdgeTableID{commonEdgeTableID}, boundNodeVectorPos{boundNodeVectorPos},
-          nbrNodeVectorPos{nbrNodeVectorPos}, relIDVectorPos{relIDVectorPos} {}
+        : Sink{std::move(resultSetDescriptor), PhysicalOperatorType::CSR_INDEX_BUILD,
+              std::move(child), id, paramsString}, csrSharedState{csrIndexSharedState},
+          commonNodeTableID{commonNodeTableID}, commonEdgeTableID{commonEdgeTableID},
+          boundNodeVectorPos{boundNodeVectorPos}, nbrNodeVectorPos{nbrNodeVectorPos},
+          relIDVectorPos{relIDVectorPos} {}
 
     void initGlobalStateInternal(ExecutionContext* context) final;
 

@@ -59,6 +59,9 @@ std::string PhysicalOperatorUtils::operatorTypeToString(PhysicalOperatorType ope
     case PhysicalOperatorType::CROSS_PRODUCT: {
         return "CROSS_PRODUCT";
     }
+    case PhysicalOperatorType::CSR_INDEX_BUILD: {
+        return "CSR_INDEX_BUILD";
+    }
     case PhysicalOperatorType::DELETE_NODE: {
         return "DELETE_NODE";
     }

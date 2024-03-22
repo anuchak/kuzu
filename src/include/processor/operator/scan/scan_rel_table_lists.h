@@ -19,6 +19,11 @@ public:
 
     bool getNextTuplesInternal(ExecutionContext* context) final;
 
+    // ADDING THIS HERE, PROPER APPROACH (?) WOULD BE TO GET THE STATISTICS BEFORE THE EXECUTION.
+    inline uint64_t getRelTableTuples() {
+        return scanInfo->relStats->getNumTuples();
+    }
+
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return make_unique<ScanRelTableLists>(
             scanInfo->copy(), posInfo->copy(), children[0]->clone(), id, paramsString);

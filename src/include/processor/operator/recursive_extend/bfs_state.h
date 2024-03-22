@@ -288,7 +288,7 @@ public:
     SSSPLocalState ssspLocalState;
     uint8_t currentLevel;
     uint64_t nextScanStartIdx;
-
+    uint64_t startTimeInMillis;
     // Visited state
     uint64_t numVisitedNodes;
     std::vector<uint8_t> visitedNodes;

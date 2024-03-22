@@ -80,6 +80,9 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                         std::make_shared<BFSSharedState>(upperBound, lowerBound, maxOffset);
                     setUpNewBFSSharedState(newBFSSharedState, bfsMorsel, inputFTableMorsel.get(),
                         nodeID, queryRelType, recursiveJoinType);
+                    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                    auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+                    newBFSSharedState->startTimeInMillis = millis1;
                     if (newSharedStateIdx != UINT32_MAX) {
                         activeBFSSharedState[newSharedStateIdx] = newBFSSharedState;
                     }
@@ -89,6 +92,9 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                     activeBFSSharedState[newSharedStateIdx]->mutex.lock();
                     setUpNewBFSSharedState(activeBFSSharedState[newSharedStateIdx], bfsMorsel,
                         inputFTableMorsel.get(), nodeID, queryRelType, recursiveJoinType);
+                    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                    auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+                    activeBFSSharedState[newSharedStateIdx]->startTimeInMillis = millis1;
                     activeBFSSharedState[newSharedStateIdx]->mutex.unlock();
                 }
                 return {IN_PROGRESS, EXTEND_IN_PROGRESS};
@@ -216,6 +222,9 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
         bfsSharedState->mutex.lock();
         numActiveBFSSharedState--;
         bfsSharedState->ssspLocalState = MORSEL_COMPLETE;
+        auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+        printf("BFS src %lu finished in %lu millis\n", bfsSharedState->srcOffset, millis1 - bfsSharedState->startTimeInMillis);
         bfsSharedState->mutex.unlock();
         // If all SSSP have been completed indicated by count (numActiveBFSSharedState == 0) and no
         // more SSSP are available indicated by state IN_PROGRESS_ALL_SRC_SCANNED then global state

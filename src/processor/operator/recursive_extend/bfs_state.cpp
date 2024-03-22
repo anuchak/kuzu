@@ -14,6 +14,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
     currentLevel = 0u;
     nextScanStartIdx = 0u;
     numVisitedNodes = 0u;
+    startTimeInMillis = 0u;
     auto totalDestinations = targetDstNodes->getNumNodes();
     if (totalDestinations == (maxOffset + 1) || totalDestinations == 0u) {
         // All node offsets are destinations hence mark all as not visited destinations.

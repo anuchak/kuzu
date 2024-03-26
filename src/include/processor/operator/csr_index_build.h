@@ -6,39 +6,20 @@
 namespace kuzu {
 namespace processor {
 
-// each entry of "csr_v" vector will be a pointer to an entry of this type
-// size of each csrEntry (total neighbours being stored) will be
-struct csrEntry {
-    common::offset_t* nbrNodeOffsets;
-    common::offset_t* relIDOffsets;
-    csrEntry* next;
-    size_t blockSize;
+#define MORSEL_SIZE 64
 
-    explicit csrEntry(size_t blockSize) {
-        nbrNodeOffsets = new common::offset_t[blockSize];
-        relIDOffsets = new common::offset_t[blockSize];
-        next = nullptr;
-        this->blockSize = blockSize;
-    }
-
-    ~csrEntry() {
-        delete[] nbrNodeOffsets;
-        delete[] relIDOffsets;
-    }
+struct CSREntry {
+    uint64_t csr_v[MORSEL_SIZE + 1];
+    std::vector<common::offset_t> nbrNodeOffsets;
+    std::vector<common::offset_t> relIDOffsets;
 };
 
 struct csrIndexSharedState {
-    std::vector<csrEntry*> csr_v; // stores a pointer to the csrEntry struct
-
-    csrIndexSharedState() : csr_v{std::vector<csrEntry*>()} {}
+    std::vector<CSREntry*> csr; // stores a pointer to the CSREntry struct
 
     ~csrIndexSharedState() {
-        for (auto temp : csr_v) {
-            while (temp) {
-                auto next = temp->next;
-                delete temp;
-                temp = next;
-            }
+        for(auto &entry : csr) {
+            free(entry);
         }
     }
 };
@@ -52,9 +33,9 @@ public:
         std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : Sink{std::move(resultSetDescriptor), PhysicalOperatorType::CSR_INDEX_BUILD,
               std::move(child), id, paramsString}, csrSharedState{csrIndexSharedState},
-          commonNodeTableID{commonNodeTableID}, commonEdgeTableID{commonEdgeTableID},
-          boundNodeVectorPos{boundNodeVectorPos}, nbrNodeVectorPos{nbrNodeVectorPos},
-          relIDVectorPos{relIDVectorPos} {}
+          lastCSREntryHandled{nullptr}, commonNodeTableID{commonNodeTableID},
+          commonEdgeTableID{commonEdgeTableID}, boundNodeVectorPos{boundNodeVectorPos},
+          nbrNodeVectorPos{nbrNodeVectorPos}, relIDVectorPos{relIDVectorPos} {}
 
     void initGlobalStateInternal(ExecutionContext* context) final;
 
@@ -74,6 +55,11 @@ private:
     common::table_id_t commonNodeTableID;
     common::table_id_t commonEdgeTableID;
     std::shared_ptr<csrIndexSharedState> csrSharedState;
+
+    // use this to determine when to sum up the csr_v vector
+    // basically we keep summing at (offset + 1) position the total no. of neighbours
+    // at the end we need to sum from position 1 to 65 to update neighbour ranges
+    CSREntry *lastCSREntryHandled;
 
     DataPos boundNodeVectorPos;           // constructor
     common::ValueVector* boundNodeVector; // initLocalStateInternal

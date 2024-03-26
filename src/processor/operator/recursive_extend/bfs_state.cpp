@@ -282,25 +282,25 @@ std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
 template<>
 void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
-    auto& csr_v = vectors->csrSharedState->csr_v;
-    auto csrEntry = csr_v[boundNodeOffset];
-    while (csrEntry) {
-        for (auto i = 0; i < csrEntry->blockSize; i++) {
-            auto state = bfsSharedState->visitedNodes[csrEntry->nbrNodeOffsets[i]];
-            if (state == NOT_VISITED_DST) {
-                if (__sync_bool_compare_and_swap(
-                        &bfsSharedState->visitedNodes[csrEntry->nbrNodeOffsets[i]], state,
-                        VISITED_DST_NEW)) {
-                    bfsSharedState->pathLength[csrEntry->nbrNodeOffsets[i]] =
-                        bfsSharedState->currentLevel + 1;
-                    numVisitedDstNodes++;
-                }
-            } else if (state == NOT_VISITED) {
-                __sync_bool_compare_and_swap(
-                    &bfsSharedState->visitedNodes[csrEntry->nbrNodeOffsets[i]], state, VISITED_NEW);
+    auto& csr = vectors->csrSharedState->csr;
+    auto csrEntry = csr[boundNodeOffset >> 6]; // divide it by 64
+    if (!csrEntry) {
+        return ;
+    }
+    auto posInCSR = boundNodeOffset & 0x3F; // remainder on division by 64
+    for (auto i = csrEntry->csr_v[posInCSR]; i < csrEntry->csr_v[posInCSR + 1]; i++) {
+        auto nbrOffset = csrEntry->nbrNodeOffsets[i];
+        auto state = bfsSharedState->visitedNodes[nbrOffset];
+        if (state == NOT_VISITED_DST) {
+            if (__sync_bool_compare_and_swap(
+                    &bfsSharedState->visitedNodes[nbrOffset], state, VISITED_DST_NEW)) {
+                bfsSharedState->pathLength[nbrOffset] = bfsSharedState->currentLevel + 1;
+                numVisitedDstNodes++;
             }
+        } else if (state == NOT_VISITED) {
+            __sync_bool_compare_and_swap(
+                &bfsSharedState->visitedNodes[nbrOffset], state, VISITED_NEW);
         }
-        csrEntry = csrEntry->next;
     }
     /*auto recursiveDstNodeIDVector = vectors->recursiveDstNodeIDVector;
     for (auto i = 0u; i < recursiveDstNodeIDVector->state->selVector->selectedSize; ++i) {

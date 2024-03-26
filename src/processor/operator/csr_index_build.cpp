@@ -13,7 +13,8 @@ void CSRIndexBuild::initGlobalStateInternal(kuzu::processor::ExecutionContext* c
     auto scanNodeID = (ScanNodeID*)child;
     auto nodeTable = scanNodeID->getSharedState()->getTableState(0)->getTable();
     auto maxNodeOffset = nodeTable->getMaxNodeOffset(context->transaction);
-    csrSharedState->csr_v = std::vector<csrEntry*>(maxNodeOffset + 1, nullptr);
+    size_t totalSize = std::ceil( (double)(maxNodeOffset + 1) / MORSEL_SIZE);
+    csrSharedState->csr = std::vector<CSREntry*>(totalSize, nullptr);
 }
 
 void CSRIndexBuild::initLocalStateInternal(
@@ -29,31 +30,40 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
     std::ostringstream oss;
     oss << std::this_thread::get_id();
     printf("Thread %s starting at %ld\n", oss.str().c_str(), millis1);
-    auto& csr_v = csrSharedState->csr_v;
+    auto& csr = csrSharedState->csr;
     uint64_t totalNodes = 0;
     uint64_t totalSizeAllocated = 0;
     while (children[0]->getNextTuple(context)) {
         auto pos = boundNodeVector->state->selVector->selectedPositions[0];
         auto boundNode = boundNodeVector->getValue<common::nodeID_t>(pos);
         auto totalNbrOffsets = nbrNodeVector->state->selVector->selectedSize;
-        if (!csr_v[boundNode.offset]) {
-            totalNodes++;
-            csr_v[boundNode.offset] = new csrEntry(totalNbrOffsets);
-            totalSizeAllocated +=
-                (sizeof(csrEntry) + 2 * totalNbrOffsets * sizeof(common::offset_t));
-        } else {
-            auto newCSREntry = new csrEntry(totalNbrOffsets);
-            totalSizeAllocated +=
-                (sizeof(csrEntry) + 2 * totalNbrOffsets * sizeof(common::offset_t));
-            newCSREntry->next = csr_v[boundNode.offset];
-            __atomic_store_n(&csr_v[boundNode.offset], newCSREntry, __ATOMIC_RELAXED);
+        auto csrPos = (boundNode.offset >> 6);
+        auto &entry = csr[csrPos];
+        if (!entry) {
+            auto newEntry = new CSREntry();
+            __atomic_store_n(&csr[csrPos], newEntry, __ATOMIC_RELAXED);
+            totalSizeAllocated += (sizeof(CSREntry) + 8); // add size of struct + ptr to struct
+            if (lastCSREntryHandled) {
+                for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
+                    lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
+                }
+                // add size of all (edge id + rel id) in previous csr entry handled
+                totalSizeAllocated += (lastCSREntryHandled->nbrNodeOffsets.capacity() * 2 * 8);
+            }
+            lastCSREntryHandled = entry;
         }
         for (auto i = 0u; i < totalNbrOffsets; i++) {
             pos = nbrNodeVector->state->selVector->selectedPositions[i];
             auto nbrNode = nbrNodeVector->getValue<common::nodeID_t>(pos);
             auto relID = relIDVector->getValue<common::relID_t>(pos);
-            csr_v[boundNode.offset]->nbrNodeOffsets[i] = nbrNode.offset;
-            csr_v[boundNode.offset]->relIDOffsets[i] = relID.offset;
+            entry->nbrNodeOffsets.push_back(nbrNode.offset);
+            entry->relIDOffsets.push_back(relID.offset);
+        }
+        entry->csr_v[(boundNode.offset & 0x3F) + 1] += totalNbrOffsets;
+    }
+    if (lastCSREntryHandled) {
+        for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
+            lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
         }
     }
     // If this causes performance problems, switch to memory_order_acq_rel

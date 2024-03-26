@@ -19,7 +19,7 @@ struct csrIndexSharedState {
 
     ~csrIndexSharedState() {
         for(auto &entry : csr) {
-            free(entry);
+            delete entry;
         }
     }
 };

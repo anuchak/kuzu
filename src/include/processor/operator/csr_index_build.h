@@ -6,9 +6,9 @@
 namespace kuzu {
 namespace processor {
 
-#define MORSEL_SIZE 128
+#define MORSEL_SIZE 64
 #define RIGHT_SHIFT (uint64_t) log2(MORSEL_SIZE)
-#define OFFSET_DIV 0x7F
+#define OFFSET_DIV 0x3F
 
 struct CSREntry {
     uint64_t csr_v[MORSEL_SIZE + 1]{0};

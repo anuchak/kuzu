@@ -6,10 +6,12 @@
 namespace kuzu {
 namespace processor {
 
-#define MORSEL_SIZE 64
+#define MORSEL_SIZE 128
+#define RIGHT_SHIFT (uint64_t) log2(MORSEL_SIZE)
+#define OFFSET_DIV 0x7F
 
 struct CSREntry {
-    uint64_t csr_v[MORSEL_SIZE + 1];
+    uint64_t csr_v[MORSEL_SIZE + 1]{0};
     std::vector<common::offset_t> nbrNodeOffsets;
     std::vector<common::offset_t> relIDOffsets;
 };

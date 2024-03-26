@@ -37,12 +37,13 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
         auto pos = boundNodeVector->state->selVector->selectedPositions[0];
         auto boundNode = boundNodeVector->getValue<common::nodeID_t>(pos);
         auto totalNbrOffsets = nbrNodeVector->state->selVector->selectedSize;
-        auto csrPos = (boundNode.offset >> 6);
+        auto csrPos = (boundNode.offset >> RIGHT_SHIFT);
         auto &entry = csr[csrPos];
         if (!entry) {
             auto newEntry = new CSREntry();
             __atomic_store_n(&csr[csrPos], newEntry, __ATOMIC_RELAXED);
             totalSizeAllocated += (sizeof(CSREntry) + 8); // add size of struct + ptr to struct
+            totalNodes += boundNodeVector->state->getOriginalSize();
             if (lastCSREntryHandled) {
                 for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
                     lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
@@ -59,12 +60,14 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
             entry->nbrNodeOffsets.push_back(nbrNode.offset);
             entry->relIDOffsets.push_back(relID.offset);
         }
-        entry->csr_v[(boundNode.offset & 0x3F) + 1] += totalNbrOffsets;
+        entry->csr_v[(boundNode.offset & OFFSET_DIV) + 1] += totalNbrOffsets;
     }
     if (lastCSREntryHandled) {
         for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
             lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
         }
+        // add size of all (edge id + rel id) in previous csr entry handled
+        totalSizeAllocated += (lastCSREntryHandled->nbrNodeOffsets.capacity() * 2 * 8);
     }
     // If this causes performance problems, switch to memory_order_acq_rel
     std::atomic_thread_fence(std::memory_order_seq_cst);

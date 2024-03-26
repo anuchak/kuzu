@@ -283,11 +283,11 @@ template<>
 void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity, unsigned long boundNodeOffset) {
     auto& csr = vectors->csrSharedState->csr;
-    auto csrEntry = csr[boundNodeOffset >> 6]; // divide it by 64
+    auto csrEntry = csr[boundNodeOffset >> RIGHT_SHIFT]; // divide it by 64
     if (!csrEntry) {
         return ;
     }
-    auto posInCSR = boundNodeOffset & 0x3F; // remainder on division by 64
+    auto posInCSR = boundNodeOffset & OFFSET_DIV; // remainder on division by 64
     for (auto i = csrEntry->csr_v[posInCSR]; i < csrEntry->csr_v[posInCSR + 1]; i++) {
         auto nbrOffset = csrEntry->nbrNodeOffsets[i];
         auto state = bfsSharedState->visitedNodes[nbrOffset];

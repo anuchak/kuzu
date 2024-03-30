@@ -224,7 +224,9 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
         bfsSharedState->ssspLocalState = MORSEL_COMPLETE;
         auto duration1 = std::chrono::system_clock::now().time_since_epoch();
         auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
-        printf("BFS src %lu finished in %lu millis\n", bfsSharedState->srcOffset, millis1 - bfsSharedState->startTimeInMillis);
+        printf("BFS src %lu finished in %lu millis | started at %lu ms | ended at %lu ms \n",
+            bfsSharedState->srcOffset, millis1 - bfsSharedState->startTimeInMillis,
+            bfsSharedState->startTimeInMillis, millis1);
         bfsSharedState->mutex.unlock();
         // If all SSSP have been completed indicated by count (numActiveBFSSharedState == 0) and no
         // more SSSP are available indicated by state IN_PROGRESS_ALL_SRC_SCANNED then global state

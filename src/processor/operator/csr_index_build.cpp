@@ -49,16 +49,21 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
                     lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
                 }
                 // add size of all (edge id + rel id) in previous csr entry handled
-                totalSizeAllocated += (lastCSREntryHandled->nbrNodeOffsets.capacity() * 2 * 8);
+                totalSizeAllocated += (lastCSREntryHandled->blockSize * 2 * 8);
             }
             lastCSREntryHandled = entry;
+            currBlockSizeUsed = 0u;
+        }
+        if (entry->blockSize < (currBlockSizeUsed + totalNbrOffsets)) {
+            entry->resize();
         }
         for (auto i = 0u; i < totalNbrOffsets; i++) {
             pos = nbrNodeVector->state->selVector->selectedPositions[i];
             auto nbrNode = nbrNodeVector->getValue<common::nodeID_t>(pos);
             auto relID = relIDVector->getValue<common::relID_t>(pos);
-            entry->nbrNodeOffsets.push_back(nbrNode.offset);
-            entry->relIDOffsets.push_back(relID.offset);
+            entry->nbrNodeOffsets[currBlockSizeUsed] = nbrNode.offset;
+            entry->relIDOffsets[currBlockSizeUsed] = relID.offset;
+            currBlockSizeUsed++;
         }
         entry->csr_v[(boundNode.offset & OFFSET_DIV) + 1] += totalNbrOffsets;
     }
@@ -67,7 +72,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
             lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
         }
         // add size of all (edge id + rel id) in previous csr entry handled
-        totalSizeAllocated += (lastCSREntryHandled->nbrNodeOffsets.capacity() * 2 * 8);
+        totalSizeAllocated += (lastCSREntryHandled->blockSize * 2 * 8);
     }
     // If this causes performance problems, switch to memory_order_acq_rel
     std::atomic_thread_fence(std::memory_order_seq_cst);

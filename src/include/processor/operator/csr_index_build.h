@@ -12,8 +12,37 @@ namespace processor {
 
 struct CSREntry {
     uint64_t csr_v[MORSEL_SIZE + 1]{0};
-    std::vector<common::offset_t> nbrNodeOffsets;
-    std::vector<common::offset_t> relIDOffsets;
+    common::offset_t *nbrNodeOffsets;
+    common::offset_t *relIDOffsets;
+    uint64_t blockSize;
+
+    CSREntry() {
+        nbrNodeOffsets = new common::offset_t [2048 * MORSEL_SIZE];
+        relIDOffsets = new common::offset_t [2048 * MORSEL_SIZE];
+        blockSize = 2048 * MORSEL_SIZE;
+    }
+
+    void resize() {
+        blockSize = std::ceil((double) blockSize * 1.5);
+        auto newNbrNodeOffsets = new uint64_t[blockSize];
+        std::memcpy(newNbrNodeOffsets, nbrNodeOffsets, sizeof(uint64_t) * blockSize);
+        delete [] nbrNodeOffsets;
+        auto newRelIDOffsets = new uint64_t[blockSize];
+        std::memcpy(newRelIDOffsets, relIDOffsets, sizeof(uint64_t) * blockSize);
+        delete[] relIDOffsets;
+    }
+
+    ~CSREntry() {
+        auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+        printf("starting to release back memory ...\n");
+        delete[] nbrNodeOffsets;
+        delete[] relIDOffsets;
+        auto duration2 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
+        printf("time taken to free memory %lu ms\n", millis2 - millis1);
+    }
+
 };
 
 struct csrIndexSharedState {
@@ -62,6 +91,9 @@ private:
     // basically we keep summing at (offset + 1) position the total no. of neighbours
     // at the end we need to sum from position 1 to 65 to update neighbour ranges
     CSREntry *lastCSREntryHandled;
+    // track how much of the block has been used to write neighbour offsets
+    // when blockSize < (currBlockSizeUsed + next value vector size)
+    uint64_t currBlockSizeUsed;
 
     DataPos boundNodeVectorPos;           // constructor
     common::ValueVector* boundNodeVector; // initLocalStateInternal

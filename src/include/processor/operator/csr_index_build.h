@@ -27,9 +27,11 @@ struct CSREntry {
         auto newNbrNodeOffsets = new uint64_t[blockSize];
         std::memcpy(newNbrNodeOffsets, nbrNodeOffsets, sizeof(uint64_t) * blockSize);
         delete [] nbrNodeOffsets;
+        nbrNodeOffsets = newNbrNodeOffsets;
         auto newRelIDOffsets = new uint64_t[blockSize];
         std::memcpy(newRelIDOffsets, relIDOffsets, sizeof(uint64_t) * blockSize);
         delete[] relIDOffsets;
+        relIDOffsets = newRelIDOffsets;
     }
 
     ~CSREntry() {

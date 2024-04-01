@@ -24,7 +24,7 @@ struct CSREntry {
 
     void resize() {
         auto oldBlockSize = blockSize;
-        blockSize = std::ceil((double) oldBlockSize * 1.5);
+        blockSize = std::ceil((double) oldBlockSize * 2);
 
         auto newNbrNodeOffsets = new uint64_t[blockSize];
         std::memcpy(newNbrNodeOffsets, nbrNodeOffsets, sizeof(uint64_t) * oldBlockSize);
@@ -81,9 +81,9 @@ public:
         std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
         : Sink{std::move(resultSetDescriptor), PhysicalOperatorType::CSR_INDEX_BUILD,
               std::move(child), id, paramsString}, csrSharedState{csrIndexSharedState},
-          lastCSREntryHandled{nullptr}, commonNodeTableID{commonNodeTableID},
-          commonEdgeTableID{commonEdgeTableID}, boundNodeVectorPos{boundNodeVectorPos},
-          nbrNodeVectorPos{nbrNodeVectorPos}, relIDVectorPos{relIDVectorPos} {}
+          commonNodeTableID{commonNodeTableID}, commonEdgeTableID{commonEdgeTableID},
+          boundNodeVectorPos{boundNodeVectorPos}, nbrNodeVectorPos{nbrNodeVectorPos},
+          relIDVectorPos{relIDVectorPos} {}
 
     void initGlobalStateInternal(ExecutionContext* context) final;
 
@@ -103,14 +103,6 @@ private:
     common::table_id_t commonNodeTableID;
     common::table_id_t commonEdgeTableID;
     std::shared_ptr<csrIndexSharedState> csrSharedState;
-
-    // use this to determine when to sum up the csr_v vector
-    // basically we keep summing at (offset + 1) position the total no. of neighbours
-    // at the end we need to sum from position 1 to 65 to update neighbour ranges
-    CSREntry *lastCSREntryHandled;
-    // track how much of the block has been used to write neighbour offsets
-    // when blockSize < (currBlockSizeUsed + next value vector size)
-    uint64_t currBlockSizeUsed;
 
     DataPos boundNodeVectorPos;           // constructor
     common::ValueVector* boundNodeVector; // initLocalStateInternal

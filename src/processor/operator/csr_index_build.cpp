@@ -32,15 +32,18 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
     printf("Thread %s starting at %ld\n", oss.str().c_str(), millis1);
     auto& csr = csrSharedState->csr;
     int totalResize = 0;
+    int totalNbrsHandled = 0;
     while (children[0]->getNextTuple(context)) {
         auto pos = boundNodeVector->state->selVector->selectedPositions[0];
         auto boundNode = boundNodeVector->getValue<common::nodeID_t>(pos);
         auto totalNbrOffsets = nbrNodeVector->state->selVector->selectedSize;
         auto csrPos = (boundNode.offset >> RIGHT_SHIFT);
         auto &entry = csr[csrPos];
+        // If encountering a new group for the 1st time, create a new CSR Entry.
         if (!entry) {
             auto newEntry = new CSREntry();
             __atomic_store_n(&csr[csrPos], newEntry, __ATOMIC_RELAXED);
+            // Sum up the cs_v array to get the range of neighbours for each offset.
             if (lastCSREntryHandled) {
                 for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
                     lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
@@ -49,6 +52,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
             lastCSREntryHandled = entry;
             currBlockSizeUsed = 0u;
         }
+        // Resizing logic
         if (entry->blockSize < (currBlockSizeUsed + totalNbrOffsets)) {
             entry->resize();
             totalResize++;
@@ -62,6 +66,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
             currBlockSizeUsed++;
         }
         entry->csr_v[(boundNode.offset & OFFSET_DIV) + 1] += totalNbrOffsets;
+        totalNbrsHandled += totalNbrOffsets;
     }
     if (lastCSREntryHandled) {
         for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
@@ -72,8 +77,9 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto duration2 = std::chrono::system_clock::now().time_since_epoch();
     auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
-    printf("Thread %s finished at %lu, total time taken %lu ms, no. of resize requests %d\n",
-        oss.str().c_str(), millis2, (millis2 - millis1), totalResize);
+    printf("Thread %s finished at %lu, total time taken %lu ms, no. of resize requests %d,"
+           " total neighbours: %d \n", oss.str().c_str(), millis2, (millis2 - millis1), totalResize,
+        totalNbrsHandled);
 }
 
 } // namespace processor

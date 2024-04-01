@@ -31,8 +31,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
     oss << std::this_thread::get_id();
     printf("Thread %s starting at %ld\n", oss.str().c_str(), millis1);
     auto& csr = csrSharedState->csr;
-    uint64_t totalNodes = 0;
-    uint64_t totalSizeAllocated = 0;
+    int totalResize = 0;
     while (children[0]->getNextTuple(context)) {
         auto pos = boundNodeVector->state->selVector->selectedPositions[0];
         auto boundNode = boundNodeVector->getValue<common::nodeID_t>(pos);
@@ -42,20 +41,17 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
         if (!entry) {
             auto newEntry = new CSREntry();
             __atomic_store_n(&csr[csrPos], newEntry, __ATOMIC_RELAXED);
-            totalSizeAllocated += (sizeof(CSREntry) + 8); // add size of struct + ptr to struct
-            totalNodes += boundNodeVector->state->getOriginalSize();
             if (lastCSREntryHandled) {
                 for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
                     lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
                 }
-                // add size of all (edge id + rel id) in previous csr entry handled
-                totalSizeAllocated += (lastCSREntryHandled->blockSize * 2 * 8);
             }
             lastCSREntryHandled = entry;
             currBlockSizeUsed = 0u;
         }
         if (entry->blockSize < (currBlockSizeUsed + totalNbrOffsets)) {
             entry->resize();
+            totalResize++;
         }
         for (auto i = 0u; i < totalNbrOffsets; i++) {
             pos = nbrNodeVector->state->selVector->selectedPositions[i];
@@ -71,16 +67,13 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
         for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
             lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
         }
-        // add size of all (edge id + rel id) in previous csr entry handled
-        totalSizeAllocated += (lastCSREntryHandled->blockSize * 2 * 8);
     }
     // If this causes performance problems, switch to memory_order_acq_rel
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto duration2 = std::chrono::system_clock::now().time_since_epoch();
     auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
-    double totalInMB = ((((double) totalSizeAllocated / (double) 1024) / (double) 1024));
-    printf("Thread %s finished at %lu, total time taken %lu ms, total nodes %lu, total size %lf\n",
-        oss.str().c_str(), millis2, (millis2 - millis1), totalNodes, totalInMB);
+    printf("Thread %s finished at %lu, total time taken %lu ms, no. of resize requests %d\n",
+        oss.str().c_str(), millis2, (millis2 - millis1), totalResize);
 }
 
 } // namespace processor

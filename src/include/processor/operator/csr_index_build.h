@@ -23,26 +23,25 @@ struct CSREntry {
     }
 
     void resize() {
-        blockSize = std::ceil((double) blockSize * 1.5);
+        auto oldBlockSize = blockSize;
+        blockSize = std::ceil((double) oldBlockSize * 1.5);
+
         auto newNbrNodeOffsets = new uint64_t[blockSize];
-        std::memcpy(newNbrNodeOffsets, nbrNodeOffsets, sizeof(uint64_t) * blockSize);
-        delete [] nbrNodeOffsets;
+        std::memcpy(newNbrNodeOffsets, nbrNodeOffsets, sizeof(uint64_t) * oldBlockSize);
+        auto temp = nbrNodeOffsets;
         nbrNodeOffsets = newNbrNodeOffsets;
+        delete [] temp;
+
         auto newRelIDOffsets = new uint64_t[blockSize];
-        std::memcpy(newRelIDOffsets, relIDOffsets, sizeof(uint64_t) * blockSize);
-        delete[] relIDOffsets;
+        std::memcpy(newRelIDOffsets, relIDOffsets, sizeof(uint64_t) * oldBlockSize);
+        auto temp1 = relIDOffsets;
         relIDOffsets = newRelIDOffsets;
+        delete [] temp1;
     }
 
     ~CSREntry() {
-        auto duration1 = std::chrono::system_clock::now().time_since_epoch();
-        auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
-        printf("starting to release back memory ...\n");
         delete[] nbrNodeOffsets;
         delete[] relIDOffsets;
-        auto duration2 = std::chrono::system_clock::now().time_since_epoch();
-        auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
-        printf("time taken to free memory %lu ms\n", millis2 - millis1);
     }
 
 };
@@ -51,9 +50,24 @@ struct csrIndexSharedState {
     std::vector<CSREntry*> csr; // stores a pointer to the CSREntry struct
 
     ~csrIndexSharedState() {
-        for(auto &entry : csr) {
-            delete entry;
+        auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+        printf("starting to release back memory ...\n");
+        auto totalMemoryAllocated = 0lu;
+        auto totalMemoryActuallyUsed = 0lu;
+        for (auto &entry : csr) {
+            if (entry) {
+                totalMemoryAllocated += sizeof(CSREntry) + 8;
+                totalMemoryAllocated += (entry->blockSize * 8 * 2);
+                totalMemoryActuallyUsed += sizeof(CSREntry) + 8 +
+                                           (entry->csr_v[MORSEL_SIZE] * 8 * 2);
+            }
         }
+        auto duration2 = std::chrono::system_clock::now().time_since_epoch();
+        auto millis2 = std::chrono::duration_cast<std::chrono::milliseconds>(duration2).count();
+        printf("time taken to free memory %lu ms\n", millis2 - millis1);
+        printf("total memory allocated: %lu bytes | total memory actually used: %lu bytes\n",
+            totalMemoryAllocated, totalMemoryActuallyUsed);
     }
 };
 

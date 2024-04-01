@@ -61,6 +61,7 @@ struct csrIndexSharedState {
                 totalMemoryAllocated += (entry->blockSize * 8 * 2);
                 totalMemoryActuallyUsed += sizeof(CSREntry) + 8 +
                                            (entry->csr_v[MORSEL_SIZE] * 8 * 2);
+                delete entry;
             }
         }
         auto duration2 = std::chrono::system_clock::now().time_since_epoch();

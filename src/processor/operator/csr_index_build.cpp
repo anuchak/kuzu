@@ -36,7 +36,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
     // use this to determine when to sum up the csr_v vector
     // basically we keep summing at (offset + 1) position the total no. of neighbours
     // at the end we need to sum from position 1 to 65 to update neighbour ranges
-    MorselCSR* lastMorselCSRHandled;
+    MorselCSR* lastMorselCSRHandled = nullptr;
     // track how much of the block has been used to write neighbour offsets
     // when blockSize < (currBlockSizeUsed + next value vector size)
     uint64_t currBlockSizeUsed;

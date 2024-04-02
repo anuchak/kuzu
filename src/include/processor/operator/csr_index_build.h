@@ -2,6 +2,7 @@
 
 #include "processor/operator/physical_operator.h"
 #include "processor/operator/sink.h"
+#include <immintrin.h> // Include Intel Intrinsics header
 
 namespace kuzu {
 namespace processor {
@@ -10,36 +11,58 @@ namespace processor {
 #define RIGHT_SHIFT (uint64_t) log2(MORSEL_SIZE)
 #define OFFSET_DIV 0x3F
 
-struct CSREntry {
+struct MorselCSR {
     uint64_t csr_v[MORSEL_SIZE + 1]{0};
     common::offset_t *nbrNodeOffsets;
     common::offset_t *relIDOffsets;
     uint64_t blockSize;
 
-    CSREntry() {
-        nbrNodeOffsets = new common::offset_t [2048 * MORSEL_SIZE];
-        relIDOffsets = new common::offset_t [2048 * MORSEL_SIZE];
+    MorselCSR() {
+        posix_memalign((void **)(&nbrNodeOffsets), 32, 2048 * MORSEL_SIZE * sizeof(uint64_t));
+        posix_memalign((void **)(&relIDOffsets), 32, 2048 * MORSEL_SIZE * sizeof(uint64_t));
         blockSize = 2048 * MORSEL_SIZE;
+    }
+
+    static void memcpy_simd(const void* src, void* dest, size_t size) {
+        // Cast the source and destination pointers to the appropriate data types
+        const char* src_ptr = static_cast<const char*>(src);
+        char* dest_ptr = static_cast<char*>(dest);
+
+        // Iterate over the memory block in 256-bit (32-byte) chunks
+        for (size_t i = 0; i < size; i += 32) {
+            // Load 256 bits (32 bytes) from source into a SIMD register
+            __m256i chunk = _mm256_load_si256(reinterpret_cast<const __m256i*>(src_ptr + i));
+            // Store the loaded data to destination
+            _mm256_store_si256(reinterpret_cast<__m256i*>(dest_ptr + i), chunk);
+        }
+
+        // copy the remainder of the array from src to dst, subtract remainder from size to get pos
+        // this is done in case the array's size is not an exact multiple of 32
+        for (size_t i = size - (size % 32); i < size; ++i) {
+            dest_ptr[i] = src_ptr[i];
+        }
     }
 
     void resize() {
         auto oldBlockSize = blockSize;
         blockSize = std::ceil((double) oldBlockSize * 2);
 
-        auto newNbrNodeOffsets = new uint64_t[blockSize];
-        std::memcpy(newNbrNodeOffsets, nbrNodeOffsets, sizeof(uint64_t) * oldBlockSize);
+        common::offset_t *newNbrNodeOffsets;
+        posix_memalign((void **)(&newNbrNodeOffsets), 32, blockSize * sizeof(uint64_t));
+        memcpy_simd(nbrNodeOffsets, newNbrNodeOffsets, oldBlockSize * sizeof(uint64_t));
         auto temp = nbrNodeOffsets;
         nbrNodeOffsets = newNbrNodeOffsets;
         delete [] temp;
 
-        auto newRelIDOffsets = new uint64_t[blockSize];
-        std::memcpy(newRelIDOffsets, relIDOffsets, sizeof(uint64_t) * oldBlockSize);
+        common::offset_t *newRelIDOffsets;
+        posix_memalign((void **)(&newRelIDOffsets), 32, blockSize * sizeof(uint64_t));
+        memcpy_simd(relIDOffsets, newRelIDOffsets, oldBlockSize * sizeof(uint64_t));
         auto temp1 = relIDOffsets;
         relIDOffsets = newRelIDOffsets;
         delete [] temp1;
     }
 
-    ~CSREntry() {
+    ~MorselCSR() {
         delete[] nbrNodeOffsets;
         delete[] relIDOffsets;
     }
@@ -47,7 +70,7 @@ struct CSREntry {
 };
 
 struct csrIndexSharedState {
-    std::vector<CSREntry*> csr; // stores a pointer to the CSREntry struct
+    std::vector<MorselCSR*> csr; // stores a pointer to the CSREntry struct
 
     ~csrIndexSharedState() {
         auto duration1 = std::chrono::system_clock::now().time_since_epoch();
@@ -57,9 +80,9 @@ struct csrIndexSharedState {
         auto totalMemoryActuallyUsed = 0lu;
         for (auto &entry : csr) {
             if (entry) {
-                totalMemoryAllocated += sizeof(CSREntry) + 8;
+                totalMemoryAllocated += sizeof(MorselCSR) + 8;
                 totalMemoryAllocated += (entry->blockSize * 8 * 2);
-                totalMemoryActuallyUsed += sizeof(CSREntry) + 8 +
+                totalMemoryActuallyUsed += sizeof(MorselCSR) + 8 +
                                            (entry->csr_v[MORSEL_SIZE] * 8 * 2);
                 delete entry;
             }

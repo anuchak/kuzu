@@ -14,7 +14,7 @@ void CSRIndexBuild::initGlobalStateInternal(kuzu::processor::ExecutionContext* c
     auto nodeTable = scanNodeID->getSharedState()->getTableState(0)->getTable();
     auto maxNodeOffset = nodeTable->getMaxNodeOffset(context->transaction);
     size_t totalSize = std::ceil( (double)(maxNodeOffset + 1) / MORSEL_SIZE);
-    csrSharedState->csr = std::vector<CSREntry*>(totalSize, nullptr);
+    csrSharedState->csr = std::vector<MorselCSR*>(totalSize, nullptr);
 }
 
 void CSRIndexBuild::initLocalStateInternal(
@@ -36,7 +36,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
     // use this to determine when to sum up the csr_v vector
     // basically we keep summing at (offset + 1) position the total no. of neighbours
     // at the end we need to sum from position 1 to 65 to update neighbour ranges
-    CSREntry *lastCSREntryHandled;
+    MorselCSR* lastMorselCSRHandled;
     // track how much of the block has been used to write neighbour offsets
     // when blockSize < (currBlockSizeUsed + next value vector size)
     uint64_t currBlockSizeUsed;
@@ -45,39 +45,39 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
         auto boundNode = boundNodeVector->getValue<common::nodeID_t>(pos);
         auto totalNbrOffsets = nbrNodeVector->state->selVector->selectedSize;
         auto csrPos = (boundNode.offset >> RIGHT_SHIFT);
-        auto &entry = csr[csrPos];
+        auto & morselCSR = csr[csrPos];
         // If encountering a new group for the 1st time, create a new CSR Entry.
-        if (!entry) {
-            auto newEntry = new CSREntry();
+        if (!morselCSR) {
+            auto newEntry = new MorselCSR();
             __atomic_store_n(&csr[csrPos], newEntry, __ATOMIC_RELAXED);
             // Sum up the cs_v array to get the range of neighbours for each offset.
-            if (lastCSREntryHandled) {
+            if (lastMorselCSRHandled) {
                 for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
-                    lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
+                    lastMorselCSRHandled->csr_v[i] += lastMorselCSRHandled->csr_v[i-1];
                 }
             }
-            lastCSREntryHandled = entry;
+            lastMorselCSRHandled = morselCSR;
             currBlockSizeUsed = 0u;
         }
         // Resizing logic
-        if (entry->blockSize < (currBlockSizeUsed + totalNbrOffsets)) {
-            entry->resize();
+        if (morselCSR->blockSize < (currBlockSizeUsed + totalNbrOffsets)) {
+            morselCSR->resize();
             totalResize++;
         }
         for (auto i = 0u; i < totalNbrOffsets; i++) {
             pos = nbrNodeVector->state->selVector->selectedPositions[i];
             auto nbrNode = nbrNodeVector->getValue<common::nodeID_t>(pos);
             auto relID = relIDVector->getValue<common::relID_t>(pos);
-            entry->nbrNodeOffsets[currBlockSizeUsed] = nbrNode.offset;
-            entry->relIDOffsets[currBlockSizeUsed] = relID.offset;
+            morselCSR->nbrNodeOffsets[currBlockSizeUsed] = nbrNode.offset;
+            morselCSR->relIDOffsets[currBlockSizeUsed] = relID.offset;
             currBlockSizeUsed++;
         }
-        entry->csr_v[(boundNode.offset & OFFSET_DIV) + 1] += totalNbrOffsets;
+        morselCSR->csr_v[(boundNode.offset & OFFSET_DIV) + 1] += totalNbrOffsets;
         totalNbrsHandled += totalNbrOffsets;
     }
-    if (lastCSREntryHandled) {
+    if (lastMorselCSRHandled) {
         for(auto i = 1; i < (MORSEL_SIZE + 1); i++) {
-            lastCSREntryHandled->csr_v[i] += lastCSREntryHandled->csr_v[i-1];
+            lastMorselCSRHandled->csr_v[i] += lastMorselCSRHandled->csr_v[i-1];
         }
     }
     // If this causes performance problems, switch to memory_order_acq_rel

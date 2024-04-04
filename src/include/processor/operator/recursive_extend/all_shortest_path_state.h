@@ -8,8 +8,9 @@ namespace processor {
 template<bool TRACK_PATH>
 struct AllShortestPathMorsel : public BaseBFSMorsel {
 public:
-    AllShortestPathMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes)
-        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound}, minDistance{0},
+    AllShortestPathMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes,
+        uint64_t bfsMorselSize)
+        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound, bfsMorselSize}, minDistance{0},
           numVisitedDstNodes{0}, prevDistMorselStartEndIdx{0u, 0u},
           localEdgeListSegment{std::vector<edgeListSegment*>()}, hasMorePathToWrite{false} {}
 

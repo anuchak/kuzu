@@ -34,20 +34,21 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
     vectors->dstNodeIDVector = resultSet->getValueVector(dataInfo->dstNodePos).get();
     vectors->pathLengthVector = resultSet->getValueVector(dataInfo->pathLengthPos).get();
     std::vector<std::unique_ptr<BaseFrontierScanner>> scanners;
+    auto bfsMorselSize = context->clientContext->getBFSMorselSize();
     switch (queryRelType) {
     case QueryRelType::VARIABLE_LENGTH: {
         switch (joinType) {
         case planner::RecursiveJoinType::TRACK_PATH: {
             vectors->pathVector = resultSet->getValueVector(dataInfo->pathPos).get();
             bfsMorsel = std::make_unique<VariableLengthMorsel<true /* TRACK_PATH */>>(
-                upperBound, lowerBound, targetDstNodes.get());
+                upperBound, lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(std::make_unique<PathScanner>(targetDstNodes.get(), i));
             }
         } break;
         case planner::RecursiveJoinType::TRACK_NONE: {
             bfsMorsel = std::make_unique<VariableLengthMorsel<false /* TRACK_PATH */>>(
-                upperBound, lowerBound, targetDstNodes.get());
+                upperBound, lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(
                     std::make_unique<DstNodeWithMultiplicityScanner>(targetDstNodes.get(), i));
@@ -62,14 +63,14 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
         case planner::RecursiveJoinType::TRACK_PATH: {
             vectors->pathVector = resultSet->getValueVector(dataInfo->pathPos).get();
             bfsMorsel = std::make_unique<ShortestPathMorsel<true /* TRACK_PATH */>>(
-                upperBound, lowerBound, targetDstNodes.get());
+                upperBound, lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(std::make_unique<PathScanner>(targetDstNodes.get(), i));
             }
         } break;
         case planner::RecursiveJoinType::TRACK_NONE: {
             bfsMorsel = std::make_unique<ShortestPathMorsel<false /* TRACK_PATH */>>(
-                upperBound, lowerBound, targetDstNodes.get());
+                upperBound, lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(std::make_unique<DstNodeScanner>(targetDstNodes.get(), i));
             }
@@ -83,14 +84,14 @@ void RecursiveJoin::initLocalStateInternal(ResultSet* resultSet_, ExecutionConte
         case planner::RecursiveJoinType::TRACK_PATH: {
             vectors->pathVector = resultSet->getValueVector(dataInfo->pathPos).get();
             bfsMorsel = std::make_unique<AllShortestPathMorsel<true /* TRACK_PATH */>>(
-                upperBound, lowerBound, targetDstNodes.get());
+                upperBound, lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(std::make_unique<PathScanner>(targetDstNodes.get(), i));
             }
         } break;
         case planner::RecursiveJoinType::TRACK_NONE: {
             bfsMorsel = std::make_unique<AllShortestPathMorsel<false /* TRACK_PATH */>>(
-                upperBound, lowerBound, targetDstNodes.get());
+                upperBound, lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(
                     std::make_unique<DstNodeWithMultiplicityScanner>(targetDstNodes.get(), i));

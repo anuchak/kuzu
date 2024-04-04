@@ -25,6 +25,8 @@ private:
 
     void setMaxActiveBFSSharedState(const std::string& maxActiveBFS);
 
+    void setRecursiveJoinBFSMorselSize(const std::string& recursiveJoinBFSMorselSize);
+
     void printNodeSchema(const std::string& tableName);
     void printRelSchema(const std::string& tableName);
 

@@ -94,6 +94,8 @@ public:
     /// ADDING THIS HERE FOR TESTING PURPOSE ONLY
     void setMaxActiveBFSSharedState(uint64_t maxActiveBFS);
 
+    void setRecursiveJoinBFSMorselSize(uint64_t recursiveJoinBFSMorselSize_);
+
     /**
      * @brief Executes the given query and returns the result.
      * @param query The query to execute.

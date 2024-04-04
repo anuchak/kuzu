@@ -47,6 +47,8 @@ public:
 
     inline uint64_t getMaxActiveBFSSharedState() { return maxActiveBFSSharedState; }
 
+    inline uint64_t getBFSMorselSize() { return recursiveJoinBFSMorselSize; }
+
     inline void interrupt() { activeQuery.interrupted = true; }
 
     bool isInterrupted() const { return activeQuery.interrupted; }
@@ -68,6 +70,7 @@ private:
     common::SchedulerType bfsSchedulerType;
     /// ADDING THIS FOR EASIER TESTING ONLY
     uint64_t maxActiveBFSSharedState;
+    uint64_t recursiveJoinBFSMorselSize;
     ActiveQuery activeQuery;
     uint64_t timeoutInMS;
     uint32_t varLengthExtendMaxDepth;

@@ -81,6 +81,10 @@ void Connection::setMaxActiveBFSSharedState(uint64_t maxActiveBFS) {
     clientContext->maxActiveBFSSharedState = maxActiveBFS;
 }
 
+void Connection::setRecursiveJoinBFSMorselSize(uint64_t recursiveJoinBFSMorselSize_) {
+    clientContext->recursiveJoinBFSMorselSize = recursiveJoinBFSMorselSize_;
+}
+
 std::unique_ptr<PreparedStatement> Connection::prepare(const std::string& query) {
     std::unique_lock<std::mutex> lck{mtx};
     return prepareNoLock(query);

@@ -35,6 +35,7 @@ struct ShellCommand {
     const std::string BFS_POLICY = ":bfs_policy";
     /// ADDING THIS HERE FOR TESTING PURPOSE ONLY
     const std::string MAX_ACTIVE_BFS = ":max_active_bfs";
+    const std::string BFS_MORSEL_SIZE = ":bfs_morsel_size";
     const std::string LIST_NODES = ":list_nodes";
     const std::string LIST_RELS = ":list_rels";
     const std::string SHOW_NODE = ":show_node";
@@ -42,7 +43,8 @@ struct ShellCommand {
     const std::string LOGGING_LEVEL = ":logging_level";
     const std::string QUERY_TIMEOUT = ":timeout";
     const std::vector<std::string> commandList = {HELP, CLEAR, QUIT, THREAD, BFS_POLICY,
-        MAX_ACTIVE_BFS, LIST_NODES, LIST_RELS, SHOW_NODE, SHOW_REL, LOGGING_LEVEL, QUERY_TIMEOUT};
+        MAX_ACTIVE_BFS, BFS_MORSEL_SIZE, LIST_NODES, LIST_RELS, SHOW_NODE, SHOW_REL, LOGGING_LEVEL,
+        QUERY_TIMEOUT};
 } shellCommand;
 
 const char* TAB = "    ";
@@ -241,6 +243,8 @@ void EmbeddedShell::run() {
             setRecursiveJoinBFSPolicy(lineStr.substr(shellCommand.BFS_POLICY.length()));
         } else if(lineStr.rfind(shellCommand.MAX_ACTIVE_BFS) == 0) {
             setMaxActiveBFSSharedState(lineStr.substr(shellCommand.MAX_ACTIVE_BFS.length()));
+        } else if(lineStr.rfind(shellCommand.BFS_MORSEL_SIZE) == 0) {
+            setRecursiveJoinBFSMorselSize(lineStr.substr(shellCommand.BFS_MORSEL_SIZE.length()));
         } else if (lineStr.rfind(shellCommand.LIST_NODES) == 0) {
             printf("%s", conn->getNodeTableNames().c_str());
         } else if (lineStr.rfind(shellCommand.LIST_RELS) == 0) {
@@ -314,6 +318,12 @@ void EmbeddedShell::setMaxActiveBFSSharedState(const std::string& maxActiveBFS) 
     auto maxActiveBFS_ = stoi(maxActiveBFS);
     conn->setMaxActiveBFSSharedState(maxActiveBFS_);
     printf("Set Max Active BFS to: %d\n", maxActiveBFS_);
+}
+
+void EmbeddedShell::setRecursiveJoinBFSMorselSize(const std::string& recursiveJoinBFSMorselSize) {
+    auto recursiveJoinBFSMorselSize_ = stoi(recursiveJoinBFSMorselSize);
+    conn->setRecursiveJoinBFSMorselSize(recursiveJoinBFSMorselSize_);
+    printf("Setting Recursive Join BFS Morsel size to: %d\n", recursiveJoinBFSMorselSize_);
 }
 
 void EmbeddedShell::printNodeSchema(const std::string& tableName) {

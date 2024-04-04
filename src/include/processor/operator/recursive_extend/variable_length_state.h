@@ -7,8 +7,9 @@ namespace processor {
 
 template<bool TRACK_PATH>
 struct VariableLengthMorsel : public BaseBFSMorsel {
-    VariableLengthMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes)
-        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound},
+    VariableLengthMorsel(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes,
+        uint64_t bfsMorselSize)
+        : BaseBFSMorsel{targetDstNodes, upperBound, lowerBound, bfsMorselSize},
           localEdgeListSegment{std::vector<edgeListSegment*>()}, hasMorePathToWrite{false} {}
     ~VariableLengthMorsel() override = default;
 

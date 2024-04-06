@@ -12,40 +12,26 @@ void VariableLengthMorsel<false>::addToLocalNextBFSLevel(
         auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST || state == VISITED_DST) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW);
+            __atomic_store_n(
+                &bfsSharedState->visitedNodes[nodeID.offset], VISITED_DST_NEW, __ATOMIC_RELAXED);
         } else if (state == NOT_VISITED || state == VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            __atomic_store_n(
+                &bfsSharedState->visitedNodes[nodeID.offset], VISITED_NEW, __ATOMIC_RELAXED);
         }
-        auto member = bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset];
-        if (!member) {
-            auto entry = new multiplicityAndLevel(
-                boundNodeMultiplicity, bfsSharedState->currentLevel + 1, nullptr);
+        auto entry = bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset];
+        if (!entry || (entry->bfsLevel <= bfsSharedState->currentLevel)) {
+            auto newEntry = new multiplicityAndLevel(
+                boundNodeMultiplicity, bfsSharedState->currentLevel + 1, entry);
             if (__sync_bool_compare_and_swap(
-                    &bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset], member, entry)) {
+                    &bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset], entry, newEntry)) {
                 // no need to do anything, current thread was successful
             } else {
-                delete entry;
-                member = bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset];
-                member->multiplicity.fetch_add(boundNodeMultiplicity, std::memory_order_relaxed);
+                delete newEntry;
+                entry = bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset];
+                entry->multiplicity.fetch_add(boundNodeMultiplicity, std::memory_order_relaxed);
             }
         } else {
-            if (member->bfsLevel != bfsSharedState->currentLevel + 1) {
-                auto entry = new multiplicityAndLevel(
-                    boundNodeMultiplicity, bfsSharedState->currentLevel + 1, member);
-                if (__sync_bool_compare_and_swap(
-                        &bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset], member, entry)) {
-                    // no need to do anything, current thread was successful
-                } else {
-                    delete entry;
-                    member = bfsSharedState->nodeIDMultiplicityToLevel[nodeID.offset];
-                    member->multiplicity.fetch_add(
-                        boundNodeMultiplicity, std::memory_order_relaxed);
-                }
-            } else {
-                member->multiplicity.fetch_add(boundNodeMultiplicity, std::memory_order_relaxed);
-            }
+            entry->multiplicity.fetch_add(boundNodeMultiplicity, std::memory_order_relaxed);
         }
     }
 }
@@ -67,11 +53,11 @@ void VariableLengthMorsel<true>::addToLocalNextBFSLevel(
         auto nodeID = recursiveDstNodeIDVector->getValue<common::nodeID_t>(pos);
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST || state == VISITED_DST) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW);
+            __atomic_store_n(
+                &bfsSharedState->visitedNodes[nodeID.offset], VISITED_DST_NEW, __ATOMIC_RELAXED);
         } else if (state == NOT_VISITED || state == VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
+            __atomic_store_n(
+                &bfsSharedState->visitedNodes[nodeID.offset], VISITED_NEW, __ATOMIC_RELAXED);
         }
         auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
         if (!entry || (entry->bfsLevel <= bfsSharedState->currentLevel)) {
@@ -156,6 +142,14 @@ int64_t VariableLengthMorsel<false>::writeToVector(
                     entry = entry->next;
                     delete temp;
                 }
+            }
+        } else {
+            auto entry = bfsSharedState->nodeIDMultiplicityToLevel[startScanIdxAndSize.first];
+            multiplicityAndLevel* temp;
+            while (entry) {
+                temp = entry;
+                entry = entry->next;
+                delete temp;
             }
         }
         if (!exitOuterLoop) {

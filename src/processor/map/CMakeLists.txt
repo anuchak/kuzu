@@ -14,6 +14,7 @@ add_library(kuzu_processor_mapper
         map_create.cpp
         map_create_macro.cpp
         map_cross_product.cpp
+        map_csr_build.cpp
         map_ddl.cpp
         map_delete.cpp
         map_distinct.cpp

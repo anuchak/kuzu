@@ -5,6 +5,7 @@
 #include "common/query_rel_type.h"
 #include "frontier.h"
 #include "planner/logical_plan/extend/recursive_join_type.h"
+#include "processor/operator/csr_index_build.h"
 #include "processor/operator/mask.h"
 #include "processor/operator/table_scan/factorized_table_scan.h"
 
@@ -25,6 +26,9 @@ struct RecursiveJoinVectors {
 
     common::ValueVector* recursiveEdgeIDVector = nullptr;
     common::ValueVector* recursiveDstNodeIDVector = nullptr;
+
+    // ADDING THE CSR INDEX SHARED STATE HERE, FOR READING THE NEIGHBOURS OF THE SRC NODE
+    std::shared_ptr<csrIndexSharedState> csrSharedState;
 };
 
 /**
@@ -284,7 +288,7 @@ public:
     SSSPLocalState ssspLocalState;
     uint8_t currentLevel;
     uint64_t nextScanStartIdx;
-
+    uint64_t startTimeInMillis;
     // Visited state
     uint64_t numVisitedNodes;
     std::vector<uint8_t> visitedNodes;

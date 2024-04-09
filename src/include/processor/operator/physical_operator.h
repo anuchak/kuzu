@@ -23,6 +23,7 @@ enum class PhysicalOperatorType : uint8_t {
     CREATE_REL_TABLE,
     CREATE_RDF_GRAPH,
     CROSS_PRODUCT,
+    CSR_INDEX_BUILD,
     DELETE_NODE,
     DELETE_REL,
     DROP_PROPERTY,

@@ -25,7 +25,7 @@ static std::shared_ptr<RecursiveJoinSharedState> createSharedState(
     }
     std::shared_ptr<MorselDispatcher> morselDispatcher;
     bool isSingleLabel = boundNode.getTableIDs().size() == 1 && nbrNode.getTableIDs().size() == 1 &&
-                         dataInfo->recursiveDstNodeTableIDs.size() == 1;
+                         rel.getTableIDs().size() == 1;
     auto maxNodeOffsetsPerTable =
         storageManager.getNodesStore().getNodesStatisticsAndDeletedIDs().getMaxNodeOffsetPerTable();
     auto maxNodeOffset = maxNodeOffsetsPerTable.at(nbrNode.getTableIDs()[0]);
@@ -52,18 +52,17 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     auto boundNode = extend->getBoundNode();
     auto nbrNode = extend->getNbrNode();
     auto rel = extend->getRel();
-    auto recursiveInfo = rel->getRecursiveInfo();
     auto lengthExpression = rel->getLengthExpression();
     // Map recursive plan
     auto logicalRecursiveRoot = extend->getRecursiveChild();
-    auto recursiveRoot = mapOperator(logicalRecursiveRoot.get());
-    auto recursivePlanSchema = logicalRecursiveRoot->getSchema();
+    auto csrIndexBuild = mapOperator(logicalRecursiveRoot.get());
+    /*auto recursivePlanSchema = logicalRecursiveRoot->getSchema();
     auto recursivePlanResultSetDescriptor =
         std::make_unique<ResultSetDescriptor>(recursivePlanSchema);
     auto recursiveDstNodeIDPos = DataPos(
         recursivePlanSchema->getExpressionPos(*recursiveInfo->nodeCopy->getInternalIDProperty()));
     auto recursiveEdgeIDPos = DataPos(
-        recursivePlanSchema->getExpressionPos(*recursiveInfo->rel->getInternalIDProperty()));
+        recursivePlanSchema->getExpressionPos(*recursiveInfo->rel->getInternalIDProperty()));*/
     // Generate RecursiveJoin
     auto outSchema = extend->getSchema();
     auto inSchema = extend->getChild(0)->getSchema();
@@ -80,10 +79,12 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
         pathPos = DataPos(outSchema->getExpressionPos(*rel));
     }
     auto dataInfo = std::make_unique<RecursiveJoinDataInfo>(boundNodeIDPos, nbrNodeIDPos,
-        nbrNode->getTableIDsSet(), lengthPos, std::move(recursivePlanResultSetDescriptor),
-        recursiveDstNodeIDPos, recursiveInfo->node->getTableIDsSet(), recursiveEdgeIDPos, pathPos);
+        nbrNode->getTableIDsSet(), lengthPos, /*std::move(recursivePlanResultSetDescriptor),
+        recursiveDstNodeIDPos, recursiveInfo->node->getTableIDsSet(), recursiveEdgeIDPos,*/
+        pathPos);
     auto sharedState = createSharedState(*nbrNode, *boundNode, *rel, dataInfo.get(),
         extend->getJoinType(), storageManager, fTableSharedState);
+    sharedState->csrSharedState = ((CSRIndexBuild*)(csrIndexBuild.get()))->getCSRSharedState();
     std::vector<DataPos> outDataPoses;
     std::vector<uint32_t> colIndicesToScan;
     for (auto i = 0u; i < expressions.size(); ++i) {
@@ -92,8 +93,8 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(
     }
     return std::make_unique<RecursiveJoin>(rel->getLowerBound(), rel->getUpperBound(),
         rel->getRelType(), extend->getJoinType(), sharedState, std::move(dataInfo), outDataPoses,
-        colIndicesToScan, std::move(resultCollector), getOperatorID(),
-        extend->getExpressionsForPrinting(), std::move(recursiveRoot));
+        colIndicesToScan, std::move(resultCollector), std::move(csrIndexBuild), getOperatorID(),
+        extend->getExpressionsForPrinting());
 }
 
 } // namespace processor

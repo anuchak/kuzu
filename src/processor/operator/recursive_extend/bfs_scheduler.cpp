@@ -81,7 +81,8 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                     setUpNewBFSSharedState(newBFSSharedState, bfsMorsel, inputFTableMorsel.get(),
                         nodeID, queryRelType, recursiveJoinType);
                     auto duration1 = std::chrono::system_clock::now().time_since_epoch();
-                    auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+                    auto millis1 =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     newBFSSharedState->startTimeInMillis = millis1;
                     if (newSharedStateIdx != UINT32_MAX) {
                         activeBFSSharedState[newSharedStateIdx] = newBFSSharedState;
@@ -93,7 +94,8 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                     setUpNewBFSSharedState(activeBFSSharedState[newSharedStateIdx], bfsMorsel,
                         inputFTableMorsel.get(), nodeID, queryRelType, recursiveJoinType);
                     auto duration1 = std::chrono::system_clock::now().time_since_epoch();
-                    auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+                    auto millis1 =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     activeBFSSharedState[newSharedStateIdx]->startTimeInMillis = millis1;
                     activeBFSSharedState[newSharedStateIdx]->mutex.unlock();
                 }

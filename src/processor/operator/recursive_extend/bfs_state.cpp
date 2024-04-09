@@ -285,7 +285,7 @@ void ShortestPathMorsel<false>::addToLocalNextBFSLevel(
     auto& csr = vectors->csrSharedState->csr;
     auto csrEntry = csr[boundNodeOffset >> RIGHT_SHIFT]; // divide it by 64
     if (!csrEntry) {
-        return ;
+        return;
     }
     auto posInCSR = boundNodeOffset & OFFSET_DIV; // remainder on division by 64
     for (auto i = csrEntry->csr_v[posInCSR]; i < csrEntry->csr_v[posInCSR + 1]; i++) {

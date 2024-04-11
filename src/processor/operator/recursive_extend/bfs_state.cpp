@@ -12,6 +12,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
     planner::RecursiveJoinType joinType) {
     ssspLocalState = EXTEND_IN_PROGRESS;
     currentLevel = 0u;
+    startTimeInMillis = 0u;
     nextScanStartIdx = 0u;
     numVisitedNodes = 0u;
     auto totalDestinations = targetDstNodes->getNumNodes();
@@ -162,6 +163,11 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelT
     if (numThreadsBFSActive == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
         moveNextLevelAsCurrentLevel();
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            printf("BFS Time taken for source: %lu is %lu millis\n", srcOffset,
+                millis - startTimeInMillis);
+            startTimeInMillis = millis;
             ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
             return true;
         }

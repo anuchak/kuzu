@@ -282,6 +282,7 @@ public:
 public:
     std::mutex mutex;
     SSSPLocalState ssspLocalState;
+    uint64_t startTimeInMillis;
     uint8_t currentLevel;
     uint64_t nextScanStartIdx;
 

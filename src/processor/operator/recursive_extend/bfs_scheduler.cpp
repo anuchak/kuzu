@@ -210,6 +210,8 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
      * For the [0, -1] case, the thread will mark the BFSSharedState as MORSEL_COMPLETE.
      */
     if (startScanIdxAndSize.first == UINT64_MAX && startScanIdxAndSize.second == INT64_MAX) {
+        // Don't hold the reference if no work present in this BFS Shared State.
+        baseBfsMorsel->bfsSharedState = nullptr;
         return -1;
     }
     if (startScanIdxAndSize.second == -1) {

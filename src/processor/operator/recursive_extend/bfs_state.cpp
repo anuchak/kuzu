@@ -99,8 +99,12 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
         return NO_WORK_TO_SHARE;
     }
     case PATH_LENGTH_WRITE_IN_PROGRESS: {
-        bfsMorsel->bfsSharedState = this;
-        return PATH_LENGTH_WRITE_IN_PROGRESS;
+        if (nextDstScanStartIdx < visitedNodes.size()) {
+            bfsMorsel->bfsSharedState = this;
+            return PATH_LENGTH_WRITE_IN_PROGRESS;
+        } else {
+            return NO_WORK_TO_SHARE;
+        }
     }
     case EXTEND_IN_PROGRESS: {
         if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
@@ -119,17 +123,6 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSMorsel* bfsMorsel) {
         throw common::RuntimeException(
             &"Unknown local state encountered inside BFSSharedState: "[ssspLocalState]);
     }
-}
-
-bool BFSSharedState::hasWork() const {
-    if (ssspLocalState == EXTEND_IN_PROGRESS && nextScanStartIdx < bfsLevelNodeOffsets.size()) {
-        return true;
-    }
-    if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
-        nextDstScanStartIdx < visitedNodes.size()) {
-        return true;
-    }
-    return false;
 }
 
 bool BFSSharedState::finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelType queryRelType) {
@@ -258,6 +251,14 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
     }
 }
 
+/**
+ * All the plausible cases:
+ *
+ * (1) thread comes in, gets a morsel
+ * (2) thread comes in, doesn't get a morsel, deletes its thread id, exits <--- // thread should NOT come back again
+ * (3) thread comes in, doesn't get a morsel, thread id already deleted, exits <--- // this should NOT happen at all
+ * (4) thread comes in, doesn't get a morsel, delete its thread id, marks it as complete, exits
+ */
 std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
     std::unique_lock lck{mutex};
     if (ssspLocalState != PATH_LENGTH_WRITE_IN_PROGRESS) {

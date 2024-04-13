@@ -266,8 +266,6 @@ public:
 
     SSSPLocalState getBFSMorsel(BaseBFSMorsel* bfsMorsel);
 
-    bool hasWork() const;
-
     bool finishBFSMorsel(BaseBFSMorsel* bfsMorsel, common::QueryRelType queryRelType);
 
     // If BFS has completed.

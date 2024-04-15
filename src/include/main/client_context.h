@@ -49,9 +49,9 @@ public:
 
     inline uint64_t getBFSMorselSize() { return recursiveJoinBFSMorselSize; }
 
-    inline void interrupt() { activeQuery.interrupted = true; }
+    inline void interrupt() { activeQuery.interrupted.store(true, std::memory_order_relaxed); }
 
-    bool isInterrupted() const { return activeQuery.interrupted; }
+    bool isInterrupted() const { return activeQuery.interrupted.load(std::memory_order_relaxed); }
 
     inline bool isTimeOut() {
         return isTimeOutEnabled() && activeQuery.timer.getElapsedTimeInMS() > timeoutInMS;

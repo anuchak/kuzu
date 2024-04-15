@@ -260,6 +260,9 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
         } else {
             std::this_thread::sleep_for(
                 std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+            if (context->clientContext->isInterrupted()) {
+                throw common::InterruptException{};
+            }
         }
     }
 }

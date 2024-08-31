@@ -1,56 +1,67 @@
 #pragma once
 
-#include "processor/operator/order_by/order_by.h"
+#include "processor/operator/order_by/sort_state.h"
 #include "processor/operator/physical_operator.h"
 
 namespace kuzu {
 namespace processor {
 
-struct MergedKeyBlockScanState {
-    bool scanSingleTuple;
-    uint32_t nextTupleIdxToReadInMergedKeyBlock;
-    std::shared_ptr<MergedKeyBlocks> mergedKeyBlock;
-    uint32_t tupleIdxAndFactorizedTableIdxOffset;
-    std::vector<uint32_t> colsToScan;
-    std::unique_ptr<uint8_t*[]> tuplesToRead;
-    std::unique_ptr<BlockPtrInfo> blockPtrInfo;
+struct OrderByScanLocalState {
+    std::vector<common::ValueVector*> vectorsToRead;
+    std::unique_ptr<PayloadScanner> payloadScanner;
+    uint64_t numTuples;
+    uint64_t numTuplesRead;
+
+    void init(std::vector<DataPos>& outVectorPos, SortSharedState& sharedState,
+        ResultSet& resultSet);
+
+    // NOLINTNEXTLINE(readability-make-member-function-const): Updates vectorsToRead.
+    uint64_t scan() {
+        uint64_t tuplesRead = payloadScanner->scan(vectorsToRead);
+        numTuplesRead += tuplesRead;
+        return tuplesRead;
+    }
 };
 
 // To preserve the ordering of tuples, the orderByScan operator will only
 // be executed in single-thread mode.
 class OrderByScan : public PhysicalOperator {
+    static constexpr PhysicalOperatorType type_ = PhysicalOperatorType::ORDER_BY_SCAN;
+
 public:
-    OrderByScan(std::vector<DataPos> outVectorPos,
-        std::shared_ptr<SharedFactorizedTablesAndSortedKeyBlocks> sharedState,
-        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
-        : PhysicalOperator{PhysicalOperatorType::ORDER_BY_SCAN, std::move(child), id, paramsString},
-          outVectorPos{std::move(outVectorPos)}, sharedState{std::move(sharedState)} {}
+    OrderByScan(std::vector<DataPos> outVectorPos, std::shared_ptr<SortSharedState> sharedState,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        std::unique_ptr<OPPrintInfo> printInfo)
+        : PhysicalOperator{type_, std::move(child), id, std::move(printInfo)},
+          outVectorPos{std::move(outVectorPos)},
+          localState{std::make_unique<OrderByScanLocalState>()},
+          sharedState{std::move(sharedState)} {}
 
     // This constructor is used for cloning only.
-    OrderByScan(std::vector<DataPos> outVectorPos,
-        std::shared_ptr<SharedFactorizedTablesAndSortedKeyBlocks> sharedState, uint32_t id,
-        const std::string& paramsString)
-        : PhysicalOperator{PhysicalOperatorType::ORDER_BY_SCAN, id, paramsString},
-          outVectorPos{std::move(outVectorPos)}, sharedState{std::move(sharedState)} {}
+    OrderByScan(std::vector<DataPos> outVectorPos, std::shared_ptr<SortSharedState> sharedState,
+        uint32_t id, std::unique_ptr<OPPrintInfo> printInfo)
+        : PhysicalOperator{type_, id, std::move(printInfo)}, outVectorPos{std::move(outVectorPos)},
+          localState{std::make_unique<OrderByScanLocalState>()},
+          sharedState{std::move(sharedState)} {}
 
-    inline bool isSource() const override { return true; }
+    bool isSource() const final { return true; }
+    // Ordered table should be scanned in single-thread mode.
+    bool isParallel() const final { return false; }
 
-    void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
+    bool getNextTuplesInternal(ExecutionContext* context) final;
 
-    bool getNextTuplesInternal(ExecutionContext* context) override;
+    void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) final;
 
-    std::unique_ptr<PhysicalOperator> clone() override {
-        return std::make_unique<OrderByScan>(outVectorPos, sharedState, id, paramsString);
+    std::unique_ptr<PhysicalOperator> clone() final {
+        return std::make_unique<OrderByScan>(outVectorPos, sharedState, id, printInfo->copy());
     }
 
-private:
-    void initMergedKeyBlockScanState();
+    double getProgress(ExecutionContext* context) const override;
 
 private:
     std::vector<DataPos> outVectorPos;
-    std::shared_ptr<SharedFactorizedTablesAndSortedKeyBlocks> sharedState;
-    std::vector<common::ValueVector*> vectorsToRead;
-    std::unique_ptr<MergedKeyBlockScanState> mergedKeyBlockScanState;
+    std::unique_ptr<OrderByScanLocalState> localState;
+    std::shared_ptr<SortSharedState> sharedState;
 };
 
 } // namespace processor

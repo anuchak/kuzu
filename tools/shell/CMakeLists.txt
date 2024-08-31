@@ -1,15 +1,21 @@
-cmake_minimum_required(VERSION 3.2)
-
-project(kuzu_shell)
-
-set(CMAKE_CXX_STANDARD 20)
-
-include_directories(../../src/include ./include ../../third_party/taywee_args/include)
-link_directories(../../build/release/src)
-
+include_directories(include ${PROJECT_SOURCE_DIR}/third_party/taywee_args/include)
 add_executable(kuzu_shell
         embedded_shell.cpp
         linenoise.cpp
         shell_runner.cpp)
+if (NOT MSVC)
+        # On Windows, rename the executable to kuzu.exe will cause an error
+        # "multiple rules generate src/kuzu.lib", so we do not set the output 
+        # name for MSVC.
+        set_target_properties(kuzu_shell PROPERTIES OUTPUT_NAME kuzu)
+endif()
 
 target_link_libraries(kuzu_shell kuzu)
+if (ENABLE_BACKTRACES)
+        target_link_libraries(kuzu_shell register_backtrace_signal_handler)
+endif()
+if (MSVC)
+        target_link_libraries(kuzu_shell ws2_32)
+endif()
+
+install(TARGETS kuzu_shell)

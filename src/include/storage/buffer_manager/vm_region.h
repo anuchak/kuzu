@@ -25,9 +25,17 @@ public:
     // Use `MADV_DONTNEED` to release physical memory associated with this frame.
     void releaseFrame(common::frame_idx_t frameIdx);
 
+    // Returns true if the memory address is within the reserved virtual memory region
+    bool contains(const uint8_t* address) const {
+        return address >= region && address < region + getMaxRegionSize();
+    }
+#ifdef _WIN32
+    uint8_t* getFrame(common::frame_idx_t frameIdx);
+#else
     inline uint8_t* getFrame(common::frame_idx_t frameIdx) {
         return region + ((std::uint64_t)frameIdx * frameSize);
     }
+#endif
 
 private:
     inline uint64_t getMaxRegionSize() const {

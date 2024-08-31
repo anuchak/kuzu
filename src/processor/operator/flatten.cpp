@@ -5,30 +5,31 @@ using namespace kuzu::common;
 namespace kuzu {
 namespace processor {
 
-void Flatten::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
-    dataChunkToFlatten = resultSet->dataChunks[dataChunkToFlattenPos];
-    currentSelVector->resetSelectorToValuePosBufferWithSize(1 /* size */);
+void Flatten::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* /*context*/) {
+    dataChunkState = resultSet->dataChunks[dataChunkToFlattenPos]->state.get();
+    currentSelVector->setToFiltered(1 /* size */);
+    localState = std::make_unique<FlattenLocalState>();
 }
 
 bool Flatten::getNextTuplesInternal(ExecutionContext* context) {
-    if (isCurrIdxInitialOrLast()) {
-        dataChunkToFlatten->state->currIdx = -1;
-        restoreSelVector(dataChunkToFlatten->state->selVector);
+    if (localState->currentIdx == localState->sizeToFlatten) {
+        dataChunkState->setToUnflat(); // TODO(Xiyang): this should be part of restore/save
+        restoreSelVector(*dataChunkState);
         if (!children[0]->getNextTuple(context)) {
             return false;
         }
-        saveSelVector(dataChunkToFlatten->state->selVector);
+        localState->currentIdx = 0;
+        localState->sizeToFlatten = dataChunkState->getSelVector().getSelSize();
+        saveSelVector(*dataChunkState);
+        dataChunkState->setToFlat();
     }
-    dataChunkToFlatten->state->currIdx++;
-    currentSelVector->selectedPositions[0] =
-        prevSelVector->selectedPositions[dataChunkToFlatten->state->currIdx];
+    sel_t selPos = prevSelVector->operator[](localState->currentIdx++);
+    currentSelVector->operator[](0) = selPos;
     metrics->numOutputTuple.incrementByOne();
     return true;
 }
 
-void Flatten::resetToCurrentSelVector(std::shared_ptr<SelectionVector>& selVector) {
-    selVector = currentSelVector;
-}
+void Flatten::resetCurrentSelVector(const SelectionVector&) {}
 
 } // namespace processor
 } // namespace kuzu

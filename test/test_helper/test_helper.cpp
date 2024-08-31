@@ -1,8 +1,8 @@
 #include "test_helper/test_helper.h"
 
+#include <chrono>
 #include <fstream>
 
-#include "json.hpp"
 #include "spdlog/spdlog.h"
 
 using namespace kuzu::common;
@@ -12,8 +12,9 @@ using namespace kuzu::main;
 namespace kuzu {
 namespace testing {
 
-std::vector<std::unique_ptr<TestQueryConfig>> TestHelper::parseTestFile(
-    const std::string& path, bool checkOutputOrder) {
+// Deprecated
+std::vector<std::unique_ptr<TestQueryConfig>> TestHelper::parseTestFile(const std::string& path,
+    bool checkOutputOrder) {
     std::vector<std::unique_ptr<TestQueryConfig>> result;
     if (access(path.c_str(), 0) != 0) {
         throw Exception("Test file not exists! [" + path + "].");
@@ -25,7 +26,7 @@ std::vector<std::unique_ptr<TestQueryConfig>> TestHelper::parseTestFile(
     }
     std::ifstream ifs(path);
     std::string line;
-    TestQueryConfig* currentConfig;
+    TestQueryConfig* currentConfig = nullptr;
     while (getline(ifs, line)) {
         if (line.starts_with("-NAME")) {
             auto config = std::make_unique<TestQueryConfig>();
@@ -55,31 +56,8 @@ std::vector<std::unique_ptr<TestQueryConfig>> TestHelper::parseTestFile(
     return result;
 }
 
-bool TestHelper::testQueries(
-    std::vector<std::unique_ptr<TestQueryConfig>>& configs, Connection& conn) {
-    spdlog::set_level(spdlog::level::info);
-    auto numPassedQueries = 0u;
-    std::vector<uint64_t> failedQueries;
-    for (auto i = 0u; i < configs.size(); i++) {
-        if (testQuery(configs[i].get(), conn)) {
-            numPassedQueries++;
-        } else {
-            failedQueries.push_back(i);
-        }
-    }
-    spdlog::info("SUMMARY:");
-    if (failedQueries.empty()) {
-        spdlog::info("ALL QUERIES PASSED.");
-    } else {
-        for (auto& idx : failedQueries) {
-            spdlog::info("QUERY {} NOT PASSED.", configs[idx]->name);
-        }
-    }
-    return numPassedQueries == configs.size();
-}
-
-std::vector<std::string> TestHelper::convertResultToString(
-    QueryResult& queryResult, bool checkOutputOrder) {
+std::vector<std::string> TestHelper::convertResultToString(QueryResult& queryResult,
+    bool checkOutputOrder) {
     std::vector<std::string> actualOutput;
     while (queryResult.hasNext()) {
         auto tuple = queryResult.getNext();
@@ -97,52 +75,11 @@ void TestHelper::initializeConnection(TestQueryConfig* config, Connection& conn)
     conn.setMaxNumThreadForExec(config->numThreads);
 }
 
-bool TestHelper::testQuery(TestQueryConfig* config, Connection& conn) {
-    initializeConnection(config, conn);
-    std::unique_ptr<PreparedStatement> preparedStatement;
-    if (config->encodedJoin.empty()) {
-        preparedStatement = conn.prepareNoLock(config->query, config->enumerate);
-    } else {
-        preparedStatement =
-            conn.prepareNoLock(config->query, true /* enumerate*/, config->encodedJoin);
-    }
-    if (!preparedStatement->isSuccess()) {
-        spdlog::error(preparedStatement->getErrorMessage());
-        return false;
-    }
-    auto numPlans = preparedStatement->logicalPlans.size();
-    if (numPlans == 0) {
-        spdlog::error("Query {} has no plans" + config->name);
-        return false;
-    }
-    auto numPassedPlans = 0u;
-    for (auto i = 0u; i < numPlans; ++i) {
-        auto planStr = preparedStatement->logicalPlans[i]->toString();
-        auto result = conn.executeAndAutoCommitIfNecessaryNoLock(preparedStatement.get(), i);
-        assert(result->isSuccess());
-        std::vector<std::string> resultTuples =
-            convertResultToString(*result, config->checkOutputOrder);
-        if (resultTuples.size() == result->getNumTuples() &&
-            resultTuples == config->expectedTuples) {
-            spdlog::info(
-                "PLAN{} PASSED in {}ms.", i, result->getQuerySummary()->getExecutionTime());
-            numPassedPlans++;
-        } else {
-            spdlog::error("PLAN{} NOT PASSED.", i);
-            spdlog::info("PLAN: \n{}", planStr);
-            spdlog::info("RESULT: \n");
-            for (auto& tuple : resultTuples) {
-                spdlog::info(tuple);
-            }
-        }
-    }
-    spdlog::info("{}/{} plans passed.", numPassedPlans, numPlans);
-    return numPassedPlans == numPlans;
-}
-
-std::unique_ptr<planner::LogicalPlan> TestHelper::getLogicalPlan(
-    const std::string& query, kuzu::main::Connection& conn) {
-    return std::move(conn.prepare(query)->logicalPlans[0]);
+std::string TestHelper::getMillisecondsSuffix() {
+    uint64_t ms = duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch())
+                      .count();
+    return std::to_string(ms);
 }
 
 } // namespace testing

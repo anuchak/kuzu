@@ -1,62 +1,48 @@
 #include "processor/processor_task.h"
 
+#include "main/settings.h"
+
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace processor {
+
+ProcessorTask::ProcessorTask(Sink* sink, ExecutionContext* executionContext)
+    : Task{executionContext->clientContext->getCurrentSetting(main::ThreadsSetting::name)
+               .getValue<uint64_t>()},
+      sharedStateInitialized{false}, sink{sink}, executionContext{executionContext} {}
 
 void ProcessorTask::run() {
     // We need the lock when cloning because multiple threads can be accessing to clone,
     // which is not thread safe
-    common::lock_t lck{mtx};
+    lock_t lck{mtx};
+    if (!sharedStateInitialized) {
+        sink->initGlobalState(executionContext);
+        sharedStateInitialized = true;
+    }
     auto clonedPipelineRoot = sink->clone();
     lck.unlock();
     auto currentSink = (Sink*)clonedPipelineRoot.get();
-    auto resultSet = populateResultSet(currentSink, executionContext->memoryManager);
+    auto resultSet =
+        populateResultSet(currentSink, executionContext->clientContext->getMemoryManager());
     currentSink->execute(resultSet.get(), executionContext);
 }
 
 void ProcessorTask::finalizeIfNecessary() {
+    auto resultSet = populateResultSet(sink, executionContext->clientContext->getMemoryManager());
+    sink->initLocalState(resultSet.get(), executionContext);
+    executionContext->clientContext->getProgressBar()->finishPipeline(executionContext->queryID);
     sink->finalize(executionContext);
 }
 
-static void addStructFieldsVectors(common::ValueVector* structVector, common::DataChunk* dataChunk,
+std::unique_ptr<ResultSet> ProcessorTask::populateResultSet(Sink* op,
     storage::MemoryManager* memoryManager) {
-    auto structTypeInfo =
-        reinterpret_cast<common::StructTypeInfo*>(structVector->dataType.getExtraTypeInfo());
-    for (auto& childType : structTypeInfo->getChildrenTypes()) {
-        auto childVector = std::make_shared<common::ValueVector>(*childType, memoryManager);
-        childVector->state = dataChunk->state;
-        common::StructVector::addChildVector(structVector, childVector);
-    }
-}
-
-std::unique_ptr<ResultSet> ProcessorTask::populateResultSet(
-    Sink* op, storage::MemoryManager* memoryManager) {
     auto resultSetDescriptor = op->getResultSetDescriptor();
     if (resultSetDescriptor == nullptr) {
         // Some pipeline does not need a resultSet, e.g. OrderByMerge
         return nullptr;
     }
-    auto numDataChunks = resultSetDescriptor->getNumDataChunks();
-    auto resultSet = std::make_unique<ResultSet>(numDataChunks);
-    for (auto i = 0u; i < numDataChunks; ++i) {
-        auto dataChunkDescriptor = resultSetDescriptor->getDataChunkDescriptor(i);
-        auto numValueVectors = dataChunkDescriptor->getNumValueVectors();
-        auto dataChunk = std::make_unique<common::DataChunk>(numValueVectors);
-        if (dataChunkDescriptor->isSingleState()) {
-            dataChunk->state = common::DataChunkState::getSingleValueDataChunkState();
-        }
-        for (auto j = 0u; j < dataChunkDescriptor->getNumValueVectors(); ++j) {
-            auto expression = dataChunkDescriptor->getExpression(j);
-            auto vector =
-                std::make_shared<common::ValueVector>(expression->dataType, memoryManager);
-            if (vector->dataType.getTypeID() == common::STRUCT) {
-                addStructFieldsVectors(vector.get(), dataChunk.get(), memoryManager);
-            }
-            dataChunk->insert(j, std::move(vector));
-        }
-        resultSet->insert(i, std::move(dataChunk));
-    }
-    return resultSet;
+    return std::make_unique<ResultSet>(resultSetDescriptor, memoryManager);
 }
 
 } // namespace processor

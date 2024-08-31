@@ -30,7 +30,6 @@ TEST_F(TinySnbReadTest, Match) {
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/one_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/two_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/three_hop.test"));
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/four_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/multi_query_part.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/multi_label.test"));
 }
@@ -39,8 +38,6 @@ TEST_F(TinySnbReadTest, Filter) {
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/node.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/one_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/two_hop.test"));
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/four_hop.test"));
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/five_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/multi_query_part.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/multi_label.test"));
 }
@@ -110,13 +107,6 @@ TEST_F(TinySnbReadTest, Unwind) {
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/unwind/unwind.test"));
 }
 
-TEST_F(TinySnbReadTest, VarLengthExtendTests) {
-    runTest(TestHelper::appendKuzuRootPath(
-        "test/test_files/tinysnb/var_length_extend/var_length_adj_list_extend.test"));
-    runTest(TestHelper::appendKuzuRootPath(
-        "test/test_files/tinysnb/var_length_extend/var_length_column_extend.test"));
-}
-
 TEST_F(OneDimNpyReadTest, Match) {
     runTest(TestHelper::appendKuzuRootPath("test/test_files/npy-1d/match.test"));
 }
@@ -145,7 +135,6 @@ TEST_F(TinySnbSerialReadTest, Match) {
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/one_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/two_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/three_hop.test"));
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/four_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/multi_query_part.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/match/multi_label.test"));
 }
@@ -154,8 +143,6 @@ TEST_F(TinySnbSerialReadTest, Filter) {
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/node.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/one_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/two_hop.test"));
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/four_hop.test"));
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/five_hop.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/multi_query_part.test"));
     runTest(TestHelper::appendKuzuRootPath("test/test_files/tinysnb/filter/multi_label.test"));
 }

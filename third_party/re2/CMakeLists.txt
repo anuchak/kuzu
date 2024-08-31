@@ -12,6 +12,10 @@ if(POLICY CMP0063)
     cmake_policy(SET CMP0063 NEW)
 endif()
 
+if(POLICY CMP0069)
+    cmake_policy(SET CMP0069 NEW)
+endif()
+
 project(RE2 CXX)
 
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
@@ -92,7 +96,3 @@ add_library(re2 STATIC ${RE2_SOURCES})
 target_include_directories(
         re2
         PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
-
-install(TARGETS re2
-        LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
-        ARCHIVE DESTINATION "${INSTALL_LIB_DIR}")

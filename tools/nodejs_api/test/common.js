@@ -4,10 +4,19 @@ global.expect = chai.expect;
 chai.should();
 chai.config.includeStack = true;
 
-process.env.NODE_ENV = "test";
-global.kuzu = require("../build/kuzu");
+const TEST_INSTALLED = process.env.TEST_INSTALLED || false;
+if (TEST_INSTALLED) {
+  global.kuzu = require("kuzu");
+  global.kuzuPath = require.resolve("kuzu");
+  console.log("Testing installed version @", kuzuPath);
+} else {
+  global.kuzu = require("../build/");
+  global.kuzuPath = require.resolve("../build/");
+  console.log("Testing locally built version @", kuzuPath);
+}
 
 const tmp = require("tmp");
+const fs = require("fs/promises");
 const initTests = async () => {
   const dbPath = await new Promise((resolve, reject) => {
     tmp.dir({ unsafeCleanup: true }, (err, path, _) => {
@@ -20,32 +29,53 @@ const initTests = async () => {
 
   const db = new kuzu.Database(dbPath, 1 << 28 /* 256MB */);
   const conn = new kuzu.Connection(db, 4);
-  await conn.execute(`CREATE NODE TABLE person (ID INT64, fName STRING, 
-                      gender INT64, isStudent BOOLEAN, isWorker BOOLEAN, 
-                      age INT64, eyeSight DOUBLE, birthdate DATE, 
-                      registerTime TIMESTAMP, lastJobDuration INTERVAL, 
-                      workedHours INT64[], usedNames STRING[], 
-                      courseScoresPerTerm INT64[][], grades INT64[], 
-                      height DOUBLE, PRIMARY KEY (ID))`);
-  await conn.execute(`CREATE REL TABLE knows (FROM person TO person, 
-                      date DATE, meetTime TIMESTAMP, validInterval INTERVAL, 
-                      comments STRING[], MANY_MANY);`);
-  await conn.execute(`CREATE NODE TABLE organisation (ID INT64, name STRING, 
-                      orgCode INT64, mark DOUBLE, score INT64, history STRING, 
-                      licenseValidInterval INTERVAL, rating DOUBLE, 
-                      PRIMARY KEY (ID))`);
-  await conn.execute(`CREATE REL TABLE workAt (FROM person TO organisation, 
-                      year INT64, listdec DOUBLE[], height DOUBLE, MANY_ONE)`);
 
-  await conn.execute(
-    `COPY person FROM "../../dataset/tinysnb/vPerson.csv" (HEADER=true)`
+  const schema = (await fs.readFile("../../dataset/tinysnb/schema.cypher"))
+    .toString()
+    .split("\n");
+  for (const line of schema) {
+    if (line.trim().length === 0) {
+      continue;
+    }
+    await conn.query(line);
+  }
+
+  const copy = (await fs.readFile("../../dataset/tinysnb/copy.cypher"))
+    .toString()
+    .split("\n");
+
+  for (const line of copy) {
+    if (line.trim().length === 0) {
+      continue;
+    }
+    const statement = line.replace("dataset/tinysnb", "../../dataset/tinysnb");
+    await conn.query(statement);
+  }
+
+  await conn.query(
+    "create node table moviesSerial (ID SERIAL, name STRING, length INT32, note STRING, PRIMARY KEY (ID))"
   );
-  await conn.execute(`COPY knows FROM "../../dataset/tinysnb/eKnows.csv"`);
-  await conn.execute(
-    `COPY organisation FROM "../../dataset/tinysnb/vOrganisation.csv"`
+  await conn.query(
+    'copy moviesSerial from "../../dataset/tinysnb-serial/vMovies.csv"'
   );
-  await conn.execute(`COPY workAt FROM "../../dataset/tinysnb/eWorkAt.csv"`);
-  global.dbPath = dbPath
+
+  const rdfSchema = await fs.readFile(
+    "../../dataset/rdf/rdf_variant/schema.cypher"
+  );
+  const rdfCopy = await fs.readFile(
+    "../../dataset/rdf/rdf_variant/copy.cypher"
+  );
+  for (const file of [rdfSchema, rdfCopy]) {
+    const lines = file.toString().split("\n");
+    for (const line of lines) {
+      if (line.trim().length === 0) {
+        continue;
+      }
+      await conn.query(line);
+    }
+  }
+
+  global.dbPath = dbPath;
   global.db = db;
   global.conn = conn;
 };

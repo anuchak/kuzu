@@ -1,0 +1,17 @@
+-DATASET CSV ldbc-sf01
+--
+
+-CASE DeleteLikeComment1
+-STATEMENT MATCH (n:Person)-[e:likes_Comment]->(m:Comment) WHERE n.id=6597069767457 RETURN COUNT(*);
+---- 1
+66
+-STATEMENT MATCH (n:Person)-[e:likes_Comment]->(m:Comment) WHERE n.id=6597069767457 AND m.id=412317167195 DELETE e;
+---- ok
+-STATEMENT MATCH (n:Person)-[e:likes_Comment]->(m:Comment) WHERE n.id=6597069767457 RETURN COUNT(*);
+---- 1
+65
+-STATEMENT MATCH (n:Person)-[e:likes_Comment]->(m:Comment) WHERE n.id=6597069767457 DELETE e;
+---- ok
+-STATEMENT MATCH (n:Person)-[e:likes_Comment]->(m:Comment) WHERE n.id=6597069767457 RETURN COUNT(*);
+---- 1
+0

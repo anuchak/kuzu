@@ -1,27 +1,43 @@
 #pragma once
 
-#include <memory>
-
 #include "binder/expression/expression.h"
-#include "common/clause_type.h"
+#include "common/enums/clause_type.h"
 
 namespace kuzu {
 namespace binder {
 
 class BoundReadingClause {
-
 public:
     explicit BoundReadingClause(common::ClauseType clauseType) : clauseType{clauseType} {}
+    DELETE_COPY_DEFAULT_MOVE(BoundReadingClause);
     virtual ~BoundReadingClause() = default;
 
     common::ClauseType getClauseType() const { return clauseType; }
 
-    inline virtual expression_vector getSubPropertyExpressions() const = 0;
+    void setPredicate(std::shared_ptr<Expression> predicate_) { predicate = std::move(predicate_); }
+    bool hasPredicate() const { return predicate != nullptr; }
+    std::shared_ptr<Expression> getPredicate() const { return predicate; }
+    expression_vector getConjunctivePredicates() const {
+        return hasPredicate() ? predicate->splitOnAND() : expression_vector{};
+    }
 
-    inline virtual std::unique_ptr<BoundReadingClause> copy() = 0;
+    template<class TARGET>
+    TARGET& cast() {
+        return common::ku_dynamic_cast<BoundReadingClause&, TARGET&>(*this);
+    }
+    template<class TARGET>
+    const TARGET& constCast() const {
+        return common::ku_dynamic_cast<const BoundReadingClause&, const TARGET&>(*this);
+    }
+    template<class TARGET>
+    const TARGET* constPtrCast() const {
+        return common::ku_dynamic_cast<const BoundReadingClause*, const TARGET*>(this);
+    }
 
 private:
     common::ClauseType clauseType;
+    // Predicate in WHERE clause
+    std::shared_ptr<Expression> predicate;
 };
 } // namespace binder
 } // namespace kuzu

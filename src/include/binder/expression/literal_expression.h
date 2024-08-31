@@ -1,30 +1,31 @@
 #pragma once
 
-#include "common/types/value.h"
+#include "common/types/value/value.h"
 #include "expression.h"
 
 namespace kuzu {
 namespace binder {
 
-class LiteralExpression : public Expression {
+class LiteralExpression final : public Expression {
 public:
-    LiteralExpression(std::unique_ptr<common::Value> value, const std::string& uniqueName)
-        : Expression{common::LITERAL, value->getDataType(), uniqueName}, value{std::move(value)} {}
+    LiteralExpression(common::Value value, const std::string& uniqueName)
+        : Expression{common::ExpressionType::LITERAL, value.getDataType().copy(), uniqueName},
+          value{std::move(value)} {}
 
-    inline bool isNull() const { return value->isNull(); }
+    bool isNull() const { return value.isNull(); }
 
-    inline void setDataType(const common::DataType& targetType) {
-        assert(dataType.typeID == common::ANY && isNull());
-        dataType = targetType;
-        value->setDataType(targetType);
+    void cast(const common::LogicalType& type) override;
+
+    common::Value getValue() const { return value; }
+
+    std::string toStringInternal() const override { return value.toString(); }
+
+    std::unique_ptr<Expression> copy() const override {
+        return std::make_unique<LiteralExpression>(value, uniqueName);
     }
 
-    inline common::Value* getValue() const { return value.get(); }
-
-    std::string toString() const override { return value->toString(); }
-
 public:
-    std::unique_ptr<common::Value> value;
+    common::Value value;
 };
 
 } // namespace binder

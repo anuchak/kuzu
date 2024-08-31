@@ -6,7 +6,8 @@
 namespace kuzu {
 namespace processor {
 
-class SimpleAggregateSharedState : public BaseAggregateSharedState {
+// NOLINTNEXTLINE(cppcoreguidelines-virtual-class-destructor): This is a final class.
+class SimpleAggregateSharedState final : public BaseAggregateSharedState {
 public:
     explicit SimpleAggregateSharedState(
         const std::vector<std::unique_ptr<function::AggregateFunction>>& aggregateFunctions);
@@ -19,7 +20,7 @@ public:
 
     std::pair<uint64_t, uint64_t> getNextRangeToRead() override;
 
-    inline function::AggregateState* getAggregateState(uint64_t idx) {
+    function::AggregateState* getAggregateState(uint64_t idx) {
         return globalAggregateStates[idx].get();
     }
 
@@ -27,28 +28,43 @@ private:
     std::vector<std::unique_ptr<function::AggregateState>> globalAggregateStates;
 };
 
+struct SimpleAggregatePrintInfo final : OPPrintInfo {
+    binder::expression_vector aggregates;
+
+    explicit SimpleAggregatePrintInfo(binder::expression_vector aggregates)
+        : aggregates{std::move(aggregates)} {}
+    SimpleAggregatePrintInfo(const SimpleAggregatePrintInfo& other)
+        : OPPrintInfo{other}, aggregates{other.aggregates} {}
+
+    std::string toString() const override;
+
+    std::unique_ptr<OPPrintInfo> copy() const override {
+        return std::make_unique<SimpleAggregatePrintInfo>(*this);
+    }
+};
+
 class SimpleAggregate : public BaseAggregate {
 public:
     SimpleAggregate(std::unique_ptr<ResultSetDescriptor> resultSetDescriptor,
         std::shared_ptr<SimpleAggregateSharedState> sharedState,
         std::vector<std::unique_ptr<function::AggregateFunction>> aggregateFunctions,
-        std::vector<std::unique_ptr<AggregateInputInfo>> aggregateInputInfos,
-        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
+        std::vector<AggregateInfo> aggInfos, std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        std::unique_ptr<OPPrintInfo> printInfo)
         : BaseAggregate{std::move(resultSetDescriptor), std::move(aggregateFunctions),
-              std::move(aggregateInputInfos), std::move(child), id, paramsString},
+              std::move(aggInfos), std::move(child), id, std::move(printInfo)},
           sharedState{std::move(sharedState)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
     void executeInternal(ExecutionContext* context) override;
 
-    inline void finalize(ExecutionContext* context) override {
+    inline void finalize(ExecutionContext* /*context*/) override {
         sharedState->finalizeAggregateStates();
     }
 
     inline std::unique_ptr<PhysicalOperator> clone() override {
         return make_unique<SimpleAggregate>(resultSetDescriptor->copy(), sharedState,
-            cloneAggFunctions(), cloneAggInputInfos(), children[0]->clone(), id, paramsString);
+            cloneAggFunctions(), copyVector(aggInfos), children[0]->clone(), id, printInfo->copy());
     }
 
 private:

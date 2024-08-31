@@ -6,8 +6,19 @@ namespace common {
 std::shared_ptr<DataChunkState> DataChunkState::getSingleValueDataChunkState() {
     auto state = std::make_shared<DataChunkState>(1);
     state->initOriginalAndSelectedSize(1);
-    state->currIdx = 0;
+    state->setToFlat();
     return state;
+}
+
+void DataChunkState::slice(offset_t offset) {
+    // NOTE: this operation has performance penalty. Ideally we should directly modify selVector
+    // instead of creating a new one.
+    auto slicedSelVector = std::make_shared<SelectionVector>(DEFAULT_VECTOR_CAPACITY);
+    for (auto i = 0u; i < selVector->getSelSize() - offset; i++) {
+        slicedSelVector->getMultableBuffer()[i] = selVector->operator[](i + offset);
+    }
+    slicedSelVector->setToFiltered(selVector->getSelSize() - offset);
+    selVector = std::move(slicedSelVector);
 }
 
 const sel_t SelectionVector::INCREMENTAL_SELECTED_POS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,

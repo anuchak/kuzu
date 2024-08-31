@@ -1,3 +1,5 @@
+#pragma once
+
 #include "logical_operator_visitor.h"
 
 namespace kuzu {
@@ -5,40 +7,46 @@ namespace optimizer {
 
 class LogicalOperatorCollector : public LogicalOperatorVisitor {
 public:
-    ~LogicalOperatorCollector() = default;
+    ~LogicalOperatorCollector() override = default;
 
     void collect(planner::LogicalOperator* op);
 
-    inline bool hasOperators() const { return !ops.empty(); }
-    inline std::vector<planner::LogicalOperator*> getOperators() const { return ops; }
+    bool hasOperators() const { return !ops.empty(); }
+    std::vector<planner::LogicalOperator*> getOperators() const { return ops; }
 
 protected:
     std::vector<planner::LogicalOperator*> ops;
 };
 
-class LogicalFlattenCollector : public LogicalOperatorCollector {
+class LogicalFlattenCollector final : public LogicalOperatorCollector {
 protected:
     void visitFlatten(planner::LogicalOperator* op) override { ops.push_back(op); }
 };
 
-class LogicalFilterCollector : public LogicalOperatorCollector {
+class LogicalFilterCollector final : public LogicalOperatorCollector {
 protected:
     void visitFilter(planner::LogicalOperator* op) override { ops.push_back(op); }
 };
 
-class LogicalScanNodeCollector : public LogicalOperatorCollector {
+class LogicalScanNodeTableCollector final : public LogicalOperatorCollector {
 protected:
-    void visitScanNode(planner::LogicalOperator* op) override { ops.push_back(op); }
+    void visitScanNodeTable(planner::LogicalOperator* op) override { ops.push_back(op); }
 };
 
-class LogicalIndexScanNodeCollector : public LogicalOperatorCollector {
+// TODO(Xiyang): Rename me.
+class LogicalIndexScanNodeCollector final : public LogicalOperatorCollector {
 protected:
-    void visitIndexScanNode(planner::LogicalOperator* op) override { ops.push_back(op); }
+    void visitScanNodeTable(planner::LogicalOperator* op) override;
 };
 
-class LogicalRecursiveExtendCollector : public LogicalOperatorCollector {
+class LogicalRecursiveExtendCollector final : public LogicalOperatorCollector {
 protected:
     void visitRecursiveExtend(planner::LogicalOperator* op) override { ops.push_back(op); }
+};
+
+class LogicalGDSCallCollector final : public LogicalOperatorCollector {
+protected:
+    void visitGDSCall(planner::LogicalOperator* op) override { ops.push_back(op); }
 };
 
 } // namespace optimizer

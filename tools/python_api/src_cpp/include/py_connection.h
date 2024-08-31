@@ -1,9 +1,13 @@
 #pragma once
 
+#include "main/storage_driver.h"
 #include "py_database.h"
 #include "py_prepared_statement.h"
 #include "py_query_result.h"
-#include "main/storage_driver.h"
+
+using kuzu::common::LogicalType;
+using kuzu::common::LogicalTypeID;
+using kuzu::common::Value;
 
 class PyConnection {
 
@@ -12,21 +16,18 @@ public:
 
     explicit PyConnection(PyDatabase* pyDatabase, uint64_t numThreads);
 
+    void close();
+
     ~PyConnection() = default;
 
     void setQueryTimeout(uint64_t timeoutInMS);
 
-    std::unique_ptr<PyQueryResult> execute(PyPreparedStatement* preparedStatement, py::list params);
+    std::unique_ptr<PyQueryResult> execute(PyPreparedStatement* preparedStatement,
+        const py::dict& params);
+
+    std::unique_ptr<PyQueryResult> query(const std::string& statement);
 
     void setMaxNumThreadForExec(uint64_t numThreads);
-
-    py::str getNodePropertyNames(const std::string& tableName);
-
-    py::str getNodeTableNames();
-
-    py::str getRelPropertyNames(const std::string& tableName);
-
-    py::str getRelTableNames();
 
     PyPreparedStatement prepare(const std::string& query);
 
@@ -38,16 +39,21 @@ public:
         const std::string& srcTableName, const std::string& relName,
         const std::string& dstTableName, size_t queryBatchSize);
 
-private:
-    std::unordered_map<std::string, std::shared_ptr<kuzu::common::Value>> transformPythonParameters(
-        py::list params);
+    static bool isPandasDataframe(const py::object& object);
+    static bool isPolarsDataframe(const py::object& object);
+    static bool isPyArrowTable(const py::object& object);
 
-    std::pair<std::string, std::shared_ptr<kuzu::common::Value>> transformPythonParameter(
-        py::tuple param);
+    void createScalarFunction(const std::string& name, const py::function& udf,
+        const py::list& params, const std::string& retval, bool defaultNull, bool catchExceptions);
+    void removeScalarFunction(const std::string& name);
 
-    kuzu::common::Value transformPythonValue(py::handle val);
+    static Value transformPythonValue(const py::handle& val);
+    static Value transformPythonValueAs(const py::handle& val, const LogicalType& type);
 
 private:
     std::unique_ptr<StorageDriver> storageDriver;
     std::unique_ptr<Connection> conn;
+
+    static std::unique_ptr<PyQueryResult> checkAndWrapQueryResult(
+        std::unique_ptr<QueryResult>& queryResult);
 };

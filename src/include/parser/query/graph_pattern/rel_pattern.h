@@ -1,40 +1,48 @@
 #pragma once
 
-#include "common/query_rel_type.h"
+#include "common/copy_constructors.h"
+#include "common/enums/query_rel_type.h"
 #include "node_pattern.h"
 
 namespace kuzu {
 namespace parser {
 
-enum ArrowDirection : uint8_t { LEFT = 0, RIGHT = 1 };
+enum class ArrowDirection : uint8_t { LEFT = 0, RIGHT = 1, BOTH = 2 };
 
-/**
- * RelationshipPattern represents "-[relName:RelTableName+]-"
- */
+struct RecursiveRelPatternInfo {
+    std::string lowerBound;
+    std::string upperBound;
+    std::string relName;
+    std::string nodeName;
+    std::unique_ptr<ParsedExpression> whereExpression = nullptr;
+    bool hasProjection = false;
+    parsed_expr_vector relProjectionList;
+    parsed_expr_vector nodeProjectionList;
+
+    RecursiveRelPatternInfo() = default;
+    DELETE_COPY_DEFAULT_MOVE(RecursiveRelPatternInfo);
+};
+
 class RelPattern : public NodePattern {
 public:
     RelPattern(std::string name, std::vector<std::string> tableNames, common::QueryRelType relType,
-        std::string lowerBound, std::string upperBound, ArrowDirection arrowDirection,
-        std::vector<std::pair<std::string, std::unique_ptr<ParsedExpression>>> propertyKeyValPairs)
+        ArrowDirection arrowDirection, std::vector<s_parsed_expr_pair> propertyKeyValPairs,
+        RecursiveRelPatternInfo recursiveInfo)
         : NodePattern{std::move(name), std::move(tableNames), std::move(propertyKeyValPairs)},
-          relType{relType}, lowerBound{std::move(lowerBound)}, upperBound{std::move(upperBound)},
-          arrowDirection{arrowDirection} {}
-
-    ~RelPattern() override = default;
+          relType{relType}, arrowDirection{arrowDirection},
+          recursiveInfo{std::move(recursiveInfo)} {}
+    DELETE_COPY_DEFAULT_MOVE(RelPattern);
 
     inline common::QueryRelType getRelType() const { return relType; }
 
-    inline std::string getLowerBound() const { return lowerBound; }
-
-    inline std::string getUpperBound() const { return upperBound; }
-
     inline ArrowDirection getDirection() const { return arrowDirection; }
+
+    inline const RecursiveRelPatternInfo* getRecursiveInfo() const { return &recursiveInfo; }
 
 private:
     common::QueryRelType relType;
-    std::string lowerBound;
-    std::string upperBound;
     ArrowDirection arrowDirection;
+    RecursiveRelPatternInfo recursiveInfo;
 };
 
 } // namespace parser

@@ -1,20 +1,18 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .connection import Connection
+
+
 class PreparedStatement:
     """
-    A prepared statement is a parameterized query which can avoid planning the 
+    A prepared statement is a parameterized query which can avoid planning the
     same query for repeated execution.
-
-    Methods
-    -------
-
-    is_success()
-        Check if the prepared statement is successfully prepared.
-
-    get_error_message()
-        Get the error message if the query is not prepared successfully.
-
     """
 
-    def __init__(self, connection, query):
+    def __init__(self, connection: Connection, query: str):
         """
         Parameters
         ----------
@@ -23,10 +21,9 @@ class PreparedStatement:
         query : str
             Query to prepare.
         """
-
         self._prepared_statement = connection._connection.prepare(query)
 
-    def is_success(self):
+    def is_success(self) -> bool:
         """
         Check if the prepared statement is successfully prepared.
 
@@ -35,10 +32,9 @@ class PreparedStatement:
         bool
             True if the prepared statement is successfully prepared.
         """
-
         return self._prepared_statement.is_success()
 
-    def get_error_message(self):
+    def get_error_message(self) -> str:
         """
         Get the error message if the query is not prepared successfully.
 
@@ -47,5 +43,4 @@ class PreparedStatement:
         str
             Error message.
         """
-
         return self._prepared_statement.get_error_message()

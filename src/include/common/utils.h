@@ -1,70 +1,57 @@
 #pragma once
 
-#include <algorithm>
-#include <cassert>
-#include <cstring>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <thread>
+#include <cstdint>
+#include <limits>
 #include <vector>
 
-#include "common/constants.h"
-#include "exception.h"
-
-namespace spdlog {
-class logger;
-}
+#include "common/assert.h"
+#include "common/numeric_utils.h"
+#include "common/types/int128_t.h"
 
 namespace kuzu {
 namespace common {
 
-class LoggerUtils {
-public:
-    // Note: create logger is not thread safe.
-    static void createLogger(LoggerConstants::LoggerEnum loggerEnum);
-    static std::shared_ptr<spdlog::logger> getLogger(LoggerConstants::LoggerEnum loggerEnum);
-    static void dropLogger(LoggerConstants::LoggerEnum loggerEnum);
-
-private:
-    static std::string getLoggerName(LoggerConstants::LoggerEnum loggerEnum);
-};
-
-template<typename FROM, typename TO>
-std::unique_ptr<TO> ku_static_unique_pointer_cast(std::unique_ptr<FROM>&& old) {
-    return std::unique_ptr<TO>{static_cast<TO*>(old.release())};
-}
-template<class FROM, class TO>
-std::shared_ptr<TO> ku_reinterpret_pointer_cast(const std::shared_ptr<FROM>& r) {
-    return std::shared_ptr<TO>(
-        r, reinterpret_cast<typename std::shared_ptr<TO>::element_type*>(r.get()));
-}
-
 class BitmaskUtils {
-
 public:
-    static inline uint64_t all1sMaskForLeastSignificantBits(uint64_t numBits) {
-        assert(numBits <= 64);
-        return numBits == 64 ? UINT64_MAX : ((uint64_t)1 << numBits) - 1;
+    template<typename T>
+        requires std::integral<T>
+    static T all1sMaskForLeastSignificantBits(uint32_t numBits) {
+        KU_ASSERT(numBits <= 64);
+        using U = numeric_utils::MakeUnSignedT<T>;
+        return (T)(numBits == (sizeof(U) * 8) ? std::numeric_limits<U>::max() :
+                                                static_cast<U>(((U)1 << numBits) - 1));
+    }
+
+    // constructs all 1s mask while avoiding overflow/underflow for int128
+    template<typename T>
+        requires std::same_as<std::remove_cvref_t<T>, int128_t>
+    static T all1sMaskForLeastSignificantBits(uint32_t numBits) {
+        static constexpr uint8_t numBitsInT = sizeof(T) * 8;
+
+        // use ~T(1) instead of ~T(0) to avoid sign-bit filling
+        const T fullMask = ~(T(1) << (numBitsInT - 1));
+
+        const size_t numBitsToDiscard = (numBitsInT - 1 - numBits);
+        return (fullMask >> numBitsToDiscard);
     }
 };
 
-static uint64_t nextPowerOfTwo(uint64_t v) {
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v |= v >> 32;
-    v++;
-    return v;
-}
+uint64_t nextPowerOfTwo(uint64_t v);
+uint64_t prevPowerOfTwo(uint64_t v);
 
-static bool isLittleEndian() {
-    // Little endian arch stores the least significant value in the lower bytes.
-    int testNumber = 1;
-    return *(uint8_t*)&testNumber == 1;
+bool isLittleEndian();
+
+template<typename T>
+bool integerFitsIn(int64_t val);
+
+template<typename T>
+std::vector<T> copyVector(const std::vector<T>& objects) {
+    std::vector<T> result;
+    result.reserve(objects.size());
+    for (auto& object : objects) {
+        result.push_back(object->copy());
+    }
+    return result;
 }
 
 } // namespace common

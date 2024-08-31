@@ -1,95 +1,277 @@
-.PHONY: release debug test benchmark all alldebug arrow clean clean-external clean-all
+.PHONY: \
+	release debug all alldebug \
+	test lcov \
+	java nodejs python rust \
+	javatest nodejstest pytest rusttest \
+	benchmark example \
+	clangd tidy clangd-diagnostics \
+	install \
+	clean-extension clean-python-api clean-java clean \
+	extension-test shell-test
 
-GENERATOR=
-FORCE_COLOR=
-NUM_THREADS=
-SANITIZER_FLAG=
-ROOT_DIR=$(PWD)
+.ONESHELL:
+.SHELLFLAGS = -ec
 
-ifndef $(NUM_THREADS)
-	NUM_THREADS=1
+CLANGD_DIAGNOSTIC_INSTANCES ?= 4
+NUM_THREADS ?= 1
+PREFIX ?= install
+TEST_JOBS ?= 10
+
+export CMAKE_BUILD_PARALLEL_LEVEL=$(NUM_THREADS)
+
+ifeq ($(OS),Windows_NT)
+	GEN ?= Ninja
+	SHELL := cmd.exe
+	.SHELLFLAGS := /c
 endif
 
-ifeq ($(GEN),ninja)
-	GENERATOR=-G "Ninja"
-	FORCE_COLOR=-DFORCE_COLORED_OUTPUT=1
+ifdef GEN
+	CMAKE_FLAGS += -G "$(GEN)"
 endif
 
-ifeq ($(ASAN), 1)
-	SANITIZER_FLAG=-DENABLE_ADDRESS_SANITIZER=TRUE -DENABLE_THREAD_SANITIZER=FALSE -DENABLE_UBSAN=FALSE
+ifdef ASAN
+	CMAKE_FLAGS += -DENABLE_ADDRESS_SANITIZER=$(ASAN)
 endif
-ifeq ($(TSAN), 1)
-	SANITIZER_FLAG=-DENABLE_ADDRESS_SANITIZER=FALSE -DENABLE_THREAD_SANITIZER=TRUE -DENABLE_UBSAN=FALSE
+ifdef TSAN
+	CMAKE_FLAGS += -DENABLE_THREAD_SANITIZER=$(TSAN)
 endif
-ifeq ($(UBSAN), 1)
-	SANITIZER_FLAG=-DENABLE_ADDRESS_SANITIZER=FALSE -DENABLE_THREAD_SANITIZER=TRUE -DENABLE_UBSAN=TRUE
+ifdef UBSAN
+	CMAKE_FLAGS += -DENABLE_UBSAN=$(UBSAN)
 endif
 
-arrow:
-	cd external && \
-	mkdir -p build && \
-	cd build && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Release ../ && \
-	cmake --build . --config Release -- -j $(NUM_THREADS)
+ifdef RUNTIME_CHECKS
+	CMAKE_FLAGS += -DENABLE_RUNTIME_CHECKS=$(RUNTIME_CHECKS)
+endif
+ifdef WERROR
+	CMAKE_FLAGS += -DENABLE_WERROR=$(WERROR)
+endif
+ifdef LTO
+	CMAKE_FLAGS += -DENABLE_LTO=$(LTO)
+endif
 
-release: arrow
-	mkdir -p build/release && \
-	cd build/release && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Release ../.. && \
-	cmake --build . --config Release -- -j $(NUM_THREADS)
+ifdef SKIP_SINGLE_FILE_HEADER
+	CMAKE_FLAGS += -DBUILD_SINGLE_FILE_HEADER=FALSE
+endif
 
-debug: arrow
-	mkdir -p build/debug && \
-	cd build/debug && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Debug ../.. && \
-	cmake --build . --config Debug -- -j $(NUM_THREADS)
+# Must be first in the Makefile so that it is the default target.
+release:
+	$(call run-cmake-release,)
 
-all: arrow
-	mkdir -p build/release && \
-	cd build/release && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=TRUE -DBUILD_BENCHMARK=TRUE ../.. && \
-	cmake --build . --config Release -- -j $(NUM_THREADS)
+relwithdebinfo:
+	$(call run-cmake-relwithdebinfo,)
 
-alldebug: arrow
-	mkdir -p build/debug && \
-	cd build/debug && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=TRUE -DBUILD_BENCHMARK=TRUE ../.. && \
-	cmake --build . --config Debug -- -j $(NUM_THREADS)
+debug:
+	$(call run-cmake-debug,)
 
-benchmark: arrow
-	mkdir -p build/release && \
-	cd build/release && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Release -DBUILD_BENCHMARK=TRUE ../.. && \
-	cmake --build . --config Release -- -j $(NUM_THREADS)
+allconfig:
+	$(call config-cmake-release, \
+		-DBUILD_BENCHMARK=TRUE \
+		-DBUILD_EXAMPLES=TRUE \
+		-DBUILD_EXTENSIONS="httpfs;duckdb;postgres;sqlite" \
+		-DBUILD_JAVA=TRUE \
+		-DBUILD_NODEJS=TRUE \
+		-DBUILD_PYTHON=TRUE \
+		-DBUILD_SHELL=TRUE \
+		-DBUILD_TESTS=TRUE \
+	)
 
-test: arrow
-	mkdir -p build/release && \
-	cd build/release && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=TRUE ../.. && \
-	cmake --build . --config Release -- -j $(NUM_THREADS)
-	cd $(ROOT_DIR)/build/release/test && \
-	ctest
+all: allconfig
+	$(call build-cmake-release)
 
-lcov: arrow
-	mkdir -p build/release && \
-	cd build/release && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(SANITIZER_FLAG) -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=TRUE -DBUILD_LCOV=TRUE ../.. && \
-	cmake --build . --config Release -- -j $(NUM_THREADS)
-	cd $(ROOT_DIR)/build/release/test && \
-	ctest
+alldebug:
+	$(call run-cmake-debug, \
+		-DBUILD_BENCHMARK=TRUE \
+		-DBUILD_EXAMPLES=TRUE \
+		-DBUILD_EXTENSIONS="httpfs;duckdb;postgres;sqlite" \
+		-DBUILD_JAVA=TRUE \
+		-DBUILD_NODEJS=TRUE \
+		-DBUILD_PYTHON=TRUE \
+		-DBUILD_SHELL=TRUE \
+		-DBUILD_TESTS=TRUE \
+	)
 
-pytest: arrow
-	$(MAKE) release
-	cd $(ROOT_DIR)/tools/python_api/test && \
-	python3 -m pytest -v test_main.py
+
+# Main tests
+test:
+	$(call run-cmake-relwithdebinfo, -DBUILD_TESTS=TRUE -DENABLE_BACKTRACES=TRUE)
+	ctest --test-dir build/relwithdebinfo/test --output-on-failure -j ${TEST_JOBS}
+
+lcov:
+	$(call run-cmake-release, -DBUILD_TESTS=TRUE -DBUILD_LCOV=TRUE)
+	ctest --test-dir build/release/test --output-on-failure -j ${TEST_JOBS}
+
+
+# Language APIs
+
+# Required for clangd-related tools.
+java_native_header:
+	cmake --build build/release --target kuzu_java
+
+java:
+	$(call run-cmake-release, -DBUILD_JAVA=TRUE)
+
+nodejs:
+	$(call run-cmake-release, -DBUILD_NODEJS=TRUE)
+
+python:
+	$(call run-cmake-release, -DBUILD_PYTHON=TRUE)
+
+python-debug:
+	$(call run-cmake-debug, -DBUILD_PYTHON=TRUE)
+
+rust:
+ifeq ($(OS),Windows_NT)
+	set CFLAGS=/MDd
+	set CXXFLAGS=/MDd /std:c++20
+	set CARGO_BUILD_JOBS=$(NUM_THREADS)
+else
+	export CARGO_BUILD_JOBS=$(NUM_THREADS)
+endif
+	cd tools/rust_api && cargo build --all-features
+
+
+# Language API tests
+javatest: java
+	cmake -E make_directory tools/java_api/build/test
+ifeq ($(OS),Windows_NT)
+	cd tools/java_api &&\
+	javac -d build/test -cp ".;build/kuzu_java.jar;third_party/junit-platform-console-standalone-1.9.3.jar" src/test/java/com/kuzudb/test/*.java &&\
+	java -jar third_party/junit-platform-console-standalone-1.9.3.jar -cp ".;build/kuzu_java.jar;build/test/" --scan-classpath --include-package=com.kuzudb.java_test --details=verbose
+else
+	cd tools/java_api &&\
+	javac -d build/test -cp ".:build/kuzu_java.jar:third_party/junit-platform-console-standalone-1.9.3.jar" src/test/java/com/kuzudb/test/*.java &&\
+	java -jar third_party/junit-platform-console-standalone-1.9.3.jar -cp ".:build/kuzu_java.jar:build/test/" --scan-classpath --include-package=com.kuzudb.java_test --details=verbose
+endif
+
+nodejstest: nodejs
+	cd tools/nodejs_api && npm test
+
+pytest: python
+	cmake -E env PYTHONPATH=tools/python_api/build python3 -m pytest -vv tools/python_api/test
+
+pytest-debug: python-debug
+	cmake -E env PYTHONPATH=tools/python_api/build python3 -m pytest -vv tools/python_api/test
+
+rusttest: rust
+	cd tools/rust_api && cargo test --profile=relwithdebinfo --locked --all-features -- --test-threads=12
+
+# Other misc build targets
+benchmark:
+	$(call run-cmake-release, -DBUILD_BENCHMARK=TRUE)
+
+example:
+	$(call run-cmake-release, -DBUILD_EXAMPLES=TRUE)
+
+extension-test-build:
+	$(call run-cmake-release, \
+		-DBUILD_EXTENSIONS="httpfs;duckdb;postgres;sqlite" \
+		-DBUILD_EXTENSION_TESTS=TRUE \
+		-DENABLE_ADDRESS_SANITIZER=TRUE \
+	)
+
+extension-test: extension-test-build
+	ctest --test-dir build/release/extension --output-on-failure -j ${TEST_JOBS}
+	aws s3 rm s3://kuzu-dataset-us/${RUN_ID}/ --recursive
+
+extension-debug:
+	$(call run-cmake-debug, \
+		-DBUILD_EXTENSIONS="httpfs;duckdb;postgres;sqlite" \
+		-DBUILD_KUZU=FALSE \
+	)
+
+extension-release:
+	$(call run-cmake-release, \
+		-DBUILD_EXTENSIONS="httpfs;duckdb;postgres" \
+		-DBUILD_KUZU=FALSE \
+	)
+
+shell-test:
+	$(call run-cmake-relwithdebinfo, \
+		-DBUILD_SHELL=TRUE \
+	)
+	cd tools/shell/test && python3 -m pytest -v
+
+# Clang-related tools and checks
+
+# Must build the java native header to avoid missing includes. Pipe character
+# `|` ensures these targets build in this order, even in the presence of
+# parallelism.
+tidy: | allconfig java_native_header
+	run-clang-tidy -p build/release -quiet -j $(NUM_THREADS) \
+		"^$(realpath src)|$(realpath extension)|$(realpath tools)/(?!shell/linenoise.cpp)"
+
+tidy-analyzer: | allconfig java_native_header
+	run-clang-tidy -config-file .clang-tidy-analyzer -p build/release -quiet -j $(NUM_THREADS) \
+		"^$(realpath src)|$(realpath extension)|$(realpath tools)/(?!shell/linenoise.cpp)"
+
+clangd-diagnostics: | allconfig java_native_header
+	find src -name *.h -or -name *.cpp | xargs \
+		./scripts/get-clangd-diagnostics.py --compile-commands-dir build/release \
+		-j $(NUM_THREADS) --instances $(CLANGD_DIAGNOSTIC_INSTANCES)
+
+
+# Installation
+install:
+	cmake --install build/release --prefix $(PREFIX)
+
+
+# Cleaning
+clean-extension:
+	cmake -E rm -rf extension/httpfs/build
+	cmake -E rm -rf extension/duckdb/build
+	cmake -E rm -rf extension/postgres/build
+	cmake -E rm -rf extension/sqlite/build
 
 clean-python-api:
-	rm -rf tools/python_api/build
+	cmake -E rm -rf tools/python_api/build
 
-clean-external:
-	rm -rf external/build
+clean-java:
+	cmake -E rm -rf tools/java_api/build
 
-clean: clean-python-api
-	rm -rf build
+clean: clean-extension clean-python-api clean-java
+	cmake -E rm -rf build
 
-clean-all: clean-external clean
+
+# Utils
+define config-cmake
+	cmake -B build/$1 $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=$2 $3 .
+endef
+
+define build-cmake
+	cmake --build build/$1 --config $2
+endef
+
+define run-cmake
+	$(call config-cmake,$1,$2,$3)
+	$(call build-cmake,$1,$2)
+endef
+
+define run-cmake-debug
+	$(call run-cmake,debug,Debug,$1)
+endef
+
+define build-cmake-release
+	$(call build-cmake,release,Release,$1)
+endef
+
+define build-cmake-relwithdebinfo
+	$(call build-cmake,relwithdebinfo,RelWithDebInfo,$1)
+endef
+
+define config-cmake-release
+	$(call config-cmake,release,Release,$1)
+endef
+
+define config-cmake-relwithdebinfo
+	$(call config-cmake,relwithdebinfo,RelWithDebInfo,$1)
+endef
+
+define run-cmake-release
+	$(call config-cmake-release,$1)
+	$(call build-cmake-release,$1)
+endef
+
+define run-cmake-relwithdebinfo
+	$(call config-cmake-relwithdebinfo,$1)
+	$(call build-cmake-relwithdebinfo,$1)
+endef

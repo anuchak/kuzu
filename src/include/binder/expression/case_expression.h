@@ -9,20 +9,20 @@ struct CaseAlternative {
     std::shared_ptr<Expression> whenExpression;
     std::shared_ptr<Expression> thenExpression;
 
-    CaseAlternative(
-        std::shared_ptr<Expression> whenExpression, std::shared_ptr<Expression> thenExpression)
+    CaseAlternative(std::shared_ptr<Expression> whenExpression,
+        std::shared_ptr<Expression> thenExpression)
         : whenExpression{std::move(whenExpression)}, thenExpression{std::move(thenExpression)} {}
 };
 
 class CaseExpression : public Expression {
 public:
-    CaseExpression(common::DataType dataType, std::shared_ptr<Expression> elseExpression,
+    CaseExpression(common::LogicalType dataType, std::shared_ptr<Expression> elseExpression,
         const std::string& name)
-        : Expression{common::CASE_ELSE, std::move(dataType), name}, elseExpression{std::move(
-                                                                        elseExpression)} {}
+        : Expression{common::ExpressionType::CASE_ELSE, std::move(dataType), name},
+          elseExpression{std::move(elseExpression)} {}
 
-    inline void addCaseAlternative(
-        std::shared_ptr<Expression> when, std::shared_ptr<Expression> then) {
+    inline void addCaseAlternative(std::shared_ptr<Expression> when,
+        std::shared_ptr<Expression> then) {
         caseAlternatives.push_back(make_unique<CaseAlternative>(std::move(when), std::move(then)));
     }
     inline size_t getNumCaseAlternatives() const { return caseAlternatives.size(); }
@@ -32,9 +32,7 @@ public:
 
     inline std::shared_ptr<Expression> getElseExpression() const { return elseExpression; }
 
-    expression_vector getChildren() const override;
-
-    std::string toString() const override;
+    std::string toStringInternal() const final;
 
 private:
     std::vector<std::unique_ptr<CaseAlternative>> caseAlternatives;

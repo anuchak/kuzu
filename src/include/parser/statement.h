@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common/statement_type.h"
+#include "common/cast.h"
+#include "common/enums/statement_type.h"
 
 namespace kuzu {
 namespace parser {
@@ -11,19 +12,32 @@ public:
 
     virtual ~Statement() = default;
 
-    inline common::StatementType getStatementType() const { return statementType; }
+    common::StatementType getStatementType() const { return statementType; }
 
-    inline void enableExplain() { explain = true; }
-    inline bool isExplain() const { return explain; }
+    bool requireTx() {
+        switch (statementType) {
+        case common::StatementType::TRANSACTION:
+            return false;
+        default:
+            return true;
+        }
+    }
 
-    inline void enableProfile() { profile = true; }
-    inline bool isProfile() const { return profile; }
+    template<class TARGET>
+    TARGET& cast() {
+        return common::ku_dynamic_cast<Statement&, TARGET&>(*this);
+    }
+    template<class TARGET>
+    const TARGET& constCast() const {
+        return common::ku_dynamic_cast<const Statement&, const TARGET&>(*this);
+    }
+    template<class TARGET>
+    const TARGET* constPtrCast() const {
+        return common::ku_dynamic_cast<const Statement*, const TARGET*>(this);
+    }
 
 private:
     common::StatementType statementType;
-    // If explain is enabled, we do not execute query but return physical plan only.
-    bool explain = false;
-    bool profile = false;
 };
 
 } // namespace parser

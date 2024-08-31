@@ -1,32 +1,34 @@
 #include "common/types/ku_string.h"
 
-#include <cstring>
-
 namespace kuzu {
 namespace common {
+
+ku_string_t::ku_string_t(const char* value, uint64_t length) : len(length) {
+    if (isShortString(length)) {
+        memcpy(prefix, value, length);
+        return;
+    }
+    overflowPtr = (uint64_t)(value);
+    memcpy(prefix, value, PREFIX_LENGTH);
+}
 
 void ku_string_t::set(const std::string& value) {
     set(value.data(), value.length());
 }
 
 void ku_string_t::set(const char* value, uint64_t length) {
-    this->len = length;
     if (length <= SHORT_STR_LENGTH) {
-        memcpy(prefix, value, length);
+        setShortString(value, length);
     } else {
-        memcpy(prefix, value, PREFIX_LENGTH);
-        memcpy(reinterpret_cast<char*>(overflowPtr), value, length);
+        setLongString(value, length);
     }
 }
 
 void ku_string_t::set(const ku_string_t& value) {
-    this->len = value.len;
     if (value.len <= SHORT_STR_LENGTH) {
-        memcpy(prefix, value.prefix, value.len);
+        setShortString(value);
     } else {
-        memcpy(prefix, value.prefix, PREFIX_LENGTH);
-        memcpy(reinterpret_cast<char*>(overflowPtr), reinterpret_cast<char*>(value.overflowPtr),
-            value.len);
+        setLongString(value);
     }
 }
 
@@ -35,10 +37,14 @@ std::string ku_string_t::getAsShortString() const {
 }
 
 std::string ku_string_t::getAsString() const {
+    return std::string(getAsStringView());
+}
+
+std::string_view ku_string_t::getAsStringView() const {
     if (len <= SHORT_STR_LENGTH) {
-        return getAsShortString();
+        return std::string_view((char*)prefix, len);
     } else {
-        return std::string(reinterpret_cast<char*>(overflowPtr), len);
+        return std::string_view(reinterpret_cast<char*>(overflowPtr), len);
     }
 }
 

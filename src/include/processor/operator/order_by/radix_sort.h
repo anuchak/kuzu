@@ -2,8 +2,6 @@
 
 #include <queue>
 
-#include "common/constants.h"
-#include "common/vector/value_vector.h"
 #include "processor/operator/order_by/key_block_merger.h"
 #include "processor/operator/order_by/order_by_key_encoder.h"
 #include "processor/result/factorized_table.h"
@@ -26,14 +24,18 @@ public:
 // seen so far. If there are tie tuples, it will compare the overflow ptr of strings. For subsequent
 // columns, the algorithm only calls radixSort on tie tuples.
 class RadixSort {
+private:
+    static constexpr uint16_t COUNTING_ARRAY_SIZE = 256;
+    static constexpr uint64_t DATA_BLOCK_SIZE = common::BufferPoolConstants::PAGE_256KB_SIZE;
+
 public:
     RadixSort(storage::MemoryManager* memoryManager, FactorizedTable& factorizedTable,
         OrderByKeyEncoder& orderByKeyEncoder, std::vector<StrKeyColInfo> strKeyColsInfo)
-        : tmpSortingResultBlock{std::make_unique<DataBlock>(memoryManager)},
-          tmpTuplePtrSortingBlock{std::make_unique<DataBlock>(memoryManager)},
+        : tmpSortingResultBlock{std::make_unique<DataBlock>(memoryManager, DATA_BLOCK_SIZE)},
+          tmpTuplePtrSortingBlock{std::make_unique<DataBlock>(memoryManager, DATA_BLOCK_SIZE)},
           factorizedTable{factorizedTable}, strKeyColsInfo{std::move(strKeyColsInfo)},
-          numBytesPerTuple{orderByKeyEncoder.getNumBytesPerTuple()}, numBytesToRadixSort{
-                                                                         numBytesPerTuple - 8} {}
+          numBytesPerTuple{orderByKeyEncoder.getNumBytesPerTuple()},
+          numBytesToRadixSort{numBytesPerTuple - 8} {}
 
     void sortSingleKeyBlock(const DataBlock& keyBlock);
 
@@ -42,7 +44,7 @@ private:
         uint32_t numBytesToSort);
 
     std::vector<TieRange> findTies(uint8_t* keyBlockPtr, uint32_t numTuplesToFindTies,
-        uint32_t numBytesToSort, uint32_t baseTupleIdx);
+        uint32_t numBytesToSort, uint32_t baseTupleIdx) const;
 
     void fillTmpTuplePtrSortingBlock(TieRange& keyBlockTie, uint8_t* keyBlockPtr);
 

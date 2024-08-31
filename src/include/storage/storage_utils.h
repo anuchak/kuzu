@@ -1,14 +1,12 @@
 #pragma once
 
+#include <cmath>
 #include <string>
-#include <utility>
 
-#include "catalog/catalog_structs.h"
 #include "common/constants.h"
-#include "common/file_utils.h"
+#include "common/file_system/virtual_file_system.h"
 #include "common/null_mask.h"
-#include "common/types/types_include.h"
-#include "common/utils.h"
+#include "common/types/types.h"
 #include "storage/wal/wal_record.h"
 
 namespace kuzu {
@@ -16,27 +14,17 @@ namespace storage {
 
 class StorageManager;
 
-struct StorageStructureIDAndFName {
-    StorageStructureIDAndFName(StorageStructureID storageStructureID, std::string fName)
-        : storageStructureID{storageStructureID}, fName{std::move(fName)} {};
-    StorageStructureID storageStructureID;
+struct DBFileIDAndName {
+    DBFileIDAndName(DBFileID dbFileID, std::string fName)
+        : dbFileID{dbFileID}, fName{std::move(fName)} {};
+    DBFileID dbFileID;
     std::string fName;
 };
 
-struct PageByteCursor {
-    PageByteCursor(common::page_idx_t pageIdx, uint16_t offsetInPage)
-        : pageIdx{pageIdx}, offsetInPage{offsetInPage} {};
-    PageByteCursor() : PageByteCursor{UINT32_MAX, UINT16_MAX} {};
-
-    common::page_idx_t pageIdx;
-    uint16_t offsetInPage;
-};
-
-struct PageElementCursor {
-
-    PageElementCursor(common::page_idx_t pageIdx, uint16_t posInPage)
+struct PageCursor {
+    PageCursor(common::page_idx_t pageIdx, uint16_t posInPage)
         : pageIdx{pageIdx}, elemPosInPage{posInPage} {};
-    PageElementCursor() : PageElementCursor{UINT32_MAX, UINT16_MAX} {};
+    PageCursor() : PageCursor{UINT32_MAX, UINT16_MAX} {};
 
     inline void nextPage() {
         pageIdx++;
@@ -44,190 +32,125 @@ struct PageElementCursor {
     }
 
     common::page_idx_t pageIdx;
-    uint16_t elemPosInPage;
+    // Larger than necessary, but PageCursor is directly written to disk
+    // and adding an explicit padding field messes with structured bindings
+    uint32_t elemPosInPage;
 };
-
-struct CursorUtils {
-    inline static common::page_idx_t getPageIdx(common::offset_t offset, uint64_t numBytesInAPage) {
-        return (common::page_idx_t)(offset / numBytesInAPage);
-    }
-
-    inline static PageElementCursor getPageElementCursor(
-        common::offset_t offset, uint64_t numElementsInAPage) {
-        return PageElementCursor{
-            getPageIdx(offset, numElementsInAPage), (uint16_t)(offset % numElementsInAPage)};
-    }
-};
+static_assert(std::has_unique_object_representations_v<PageCursor>);
 
 struct PageUtils {
-
-    static uint32_t getNumElementsInAPage(uint32_t elementSize, bool hasNull);
+    static constexpr uint32_t getNumElementsInAPage(uint32_t elementSize, bool hasNull) {
+        KU_ASSERT(elementSize > 0);
+        auto numBytesPerNullEntry = common::NullMask::NUM_BITS_PER_NULL_ENTRY >> 3;
+        auto numNullEntries =
+            hasNull ?
+                (uint32_t)ceil((double)common::BufferPoolConstants::PAGE_4KB_SIZE /
+                               (double)(((uint64_t)elementSize
+                                            << common::NullMask::NUM_BITS_PER_NULL_ENTRY_LOG2) +
+                                        numBytesPerNullEntry)) :
+                0;
+        return (common::BufferPoolConstants::PAGE_4KB_SIZE -
+                   (numNullEntries * numBytesPerNullEntry)) /
+               elementSize;
+    }
 
     // This function returns the page pageIdx of the page where element will be found and the pos of
     // the element in the page as the offset.
-    static inline PageElementCursor getPageElementCursorForPos(
-        const uint64_t& elementPos, const uint32_t numElementsPerPage) {
-        assert((elementPos / numElementsPerPage) < UINT32_MAX);
-        return PageElementCursor{(common::page_idx_t)(elementPos / numElementsPerPage),
+    static inline PageCursor getPageCursorForPos(uint64_t elementPos, uint32_t numElementsPerPage) {
+        KU_ASSERT((elementPos / numElementsPerPage) < UINT32_MAX);
+        return PageCursor{(common::page_idx_t)(elementPos / numElementsPerPage),
             (uint16_t)(elementPos % numElementsPerPage)};
     }
 };
 
 class StorageUtils {
-
 public:
-    static std::string getNodeIndexFName(const std::string& directory,
-        const common::table_id_t& tableID, common::DBFileType dbFileType);
+    enum class ColumnType {
+        DEFAULT = 0,
+        INDEX = 1,  // This is used for index columns in STRING columns.
+        OFFSET = 2, // This is used for offset columns in LIST and STRING columns.
+        DATA = 3,   // This is used for data columns in LIST and STRING columns.
+        CSR_OFFSET = 4,
+        CSR_LENGTH = 5,
+        STRUCT_CHILD = 6,
+        NULL_MASK = 7,
+    };
 
-    static std::string getNodePropertyColumnFName(const std::string& directory,
-        const common::table_id_t& tableID, uint32_t propertyID, common::DBFileType dbFileType);
-
-    static std::string appendStructFieldName(std::string filePath, std::string structFieldName);
-
-    static inline StorageStructureIDAndFName getNodePropertyColumnStructureIDAndFName(
-        const std::string& directory, const catalog::Property& property) {
-        auto fName = getNodePropertyColumnFName(
-            directory, property.tableID, property.propertyID, common::DBFileType::ORIGINAL);
-        return {StorageStructureID::newNodePropertyColumnID(property.tableID, property.propertyID),
-            fName};
+    // TODO: Constrain T1 and T2 to numerics.
+    template<typename T1, typename T2>
+    static uint64_t divideAndRoundUpTo(T1 v1, T2 v2) {
+        return std::ceil((double)v1 / (double)v2);
     }
 
-    static inline StorageStructureIDAndFName getNodeIndexIDAndFName(
+    static std::string getColumnName(const std::string& propertyName, ColumnType type,
+        const std::string& prefix);
+
+    static inline common::offset_t getStartOffsetOfNodeGroup(
+        common::node_group_idx_t nodeGroupIdx) {
+        return nodeGroupIdx << common::StorageConstants::NODE_GROUP_SIZE_LOG2;
+    }
+    static inline common::node_group_idx_t getNodeGroupIdx(common::offset_t nodeOffset) {
+        return nodeOffset >> common::StorageConstants::NODE_GROUP_SIZE_LOG2;
+    }
+    static inline std::pair<common::node_group_idx_t, common::offset_t>
+    getNodeGroupIdxAndOffsetInChunk(common::offset_t nodeOffset) {
+        auto nodeGroupIdx = getNodeGroupIdx(nodeOffset);
+        auto offsetInChunk = nodeOffset - getStartOffsetOfNodeGroup(nodeGroupIdx);
+        return std::make_pair(nodeGroupIdx, offsetInChunk);
+    }
+
+    static std::string getNodeIndexFName(const common::VirtualFileSystem* vfs,
+        const std::string& directory, const common::table_id_t& tableID,
+        common::FileVersionType dbFileType);
+
+    static inline std::string getDataFName(common::VirtualFileSystem* vfs,
+        const std::string& directory) {
+        return vfs->joinPath(directory, common::StorageConstants::DATA_FILE_NAME);
+    }
+
+    static inline std::string getMetadataFName(common::VirtualFileSystem* vfs,
+        const std::string& directory) {
+        return vfs->joinPath(directory, common::StorageConstants::METADATA_FILE_NAME);
+    }
+
+    static inline DBFileIDAndName getNodeIndexIDAndFName(common::VirtualFileSystem* vfs,
         const std::string& directory, common::table_id_t tableID) {
-        auto fName = getNodeIndexFName(directory, tableID, common::DBFileType::ORIGINAL);
-        return {StorageStructureID::newNodeIndexID(tableID), fName};
-    }
-
-    // Returns the StorageStructureIDAndFName for the "base" lists structure/file. Callers need to
-    // modify it to obtain versions for METADATA and HEADERS structures/files.
-    static inline StorageStructureIDAndFName getAdjListsStructureIDAndFName(
-        const std::string& directory, common::table_id_t relTableID, common::RelDirection dir) {
-        auto fName = getAdjListsFName(directory, relTableID, dir, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(
-            StorageStructureID::newAdjListsID(relTableID, dir, ListFileType::BASE_LISTS), fName);
-    }
-
-    // Returns the StorageStructureIDAndFName for the "base" lists structure/file. Callers need to
-    // modify it to obtain versions for METADATA and HEADERS structures/files.
-    static inline StorageStructureIDAndFName getRelPropertyListsStructureIDAndFName(
-        const std::string& directory, common::table_id_t relTableID, common::RelDirection dir,
-        const catalog::Property& property) {
-        auto fName = getRelPropertyListsFName(
-            directory, relTableID, dir, property.propertyID, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(StorageStructureID::newRelPropertyListsID(relTableID, dir,
-                                              property.propertyID, ListFileType::BASE_LISTS),
-            fName);
-    }
-
-    static std::string getAdjColumnFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
-        common::DBFileType dbFileType);
-
-    static inline StorageStructureIDAndFName getAdjColumnStructureIDAndFName(
-        const std::string& directory, const common::table_id_t& relTableID,
-        const common::RelDirection& relDirection) {
-        auto fName =
-            getAdjColumnFName(directory, relTableID, relDirection, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(
-            StorageStructureID::newAdjColumnID(relTableID, relDirection), fName);
-    }
-
-    static std::string getAdjListsFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
-        common::DBFileType dbFileType);
-
-    static std::string getRelPropertyColumnFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
-        uint32_t propertyID, common::DBFileType dbFileType);
-
-    static inline StorageStructureIDAndFName getRelPropertyColumnStructureIDAndFName(
-        const std::string& directory, const common::table_id_t& relTableID,
-        const common::RelDirection& relDirection, uint32_t propertyID) {
-        auto fName = getRelPropertyColumnFName(
-            directory, relTableID, relDirection, propertyID, common::DBFileType::ORIGINAL);
-        return StorageStructureIDAndFName(
-            StorageStructureID::newRelPropertyColumnID(relTableID, relDirection, propertyID),
-            fName);
-    }
-
-    static std::string getRelPropertyListsFName(const std::string& directory,
-        const common::table_id_t& relTableID, const common::RelDirection& relDirection,
-        uint32_t propertyID, common::DBFileType dbFileType);
-
-    static inline std::string getListHeadersFName(std::string baseListFName) {
-        return appendSuffixOrInsertBeforeWALSuffix(std::move(baseListFName), ".headers");
-    }
-
-    static inline std::string getListMetadataFName(std::string baseListFName) {
-        return appendSuffixOrInsertBeforeWALSuffix(std::move(baseListFName), ".metadata");
+        auto fName = getNodeIndexFName(vfs, directory, tableID, common::FileVersionType::ORIGINAL);
+        return {DBFileID::newPKIndexFileID(tableID), fName};
     }
 
     static inline std::string getOverflowFileName(const std::string& fName) {
-        return appendSuffixOrInsertBeforeWALSuffix(
-            fName, common::StorageConstants::OVERFLOW_FILE_SUFFIX);
-    }
-
-    static inline void overwriteNodesStatisticsAndDeletedIDsFileWithVersionFromWAL(
-        const std::string& directory) {
-        common::FileUtils::overwriteFile(
-            getNodesStatisticsAndDeletedIDsFilePath(directory, common::DBFileType::WAL_VERSION),
-            getNodesStatisticsAndDeletedIDsFilePath(directory, common::DBFileType::ORIGINAL));
+        return appendSuffixOrInsertBeforeWALSuffix(fName,
+            common::StorageConstants::OVERFLOW_FILE_SUFFIX);
     }
 
     static inline std::string getNodesStatisticsAndDeletedIDsFilePath(
-        const std::string& directory, common::DBFileType dbFileType) {
-        return common::FileUtils::joinPath(
-            directory, dbFileType == common::DBFileType::ORIGINAL ?
-                           common::StorageConstants::NODES_STATISTICS_AND_DELETED_IDS_FILE_NAME :
-                           common::StorageConstants::NODES_STATISTICS_FILE_NAME_FOR_WAL);
+        common::VirtualFileSystem* vfs, const std::string& directory,
+        common::FileVersionType dbFileType) {
+        return vfs->joinPath(directory,
+            dbFileType == common::FileVersionType::ORIGINAL ?
+                common::StorageConstants::NODES_STATISTICS_AND_DELETED_IDS_FILE_NAME :
+                common::StorageConstants::NODES_STATISTICS_FILE_NAME_FOR_WAL);
     }
 
-    static inline void overwriteRelsStatisticsFileWithVersionFromWAL(const std::string& directory) {
-        common::FileUtils::overwriteFile(
-            getRelsStatisticsFilePath(directory, common::DBFileType::WAL_VERSION),
-            getRelsStatisticsFilePath(directory, common::DBFileType::ORIGINAL));
+    static inline std::string getRelsStatisticsFilePath(common::VirtualFileSystem* vfs,
+        const std::string& directory, common::FileVersionType dbFileType) {
+        return vfs->joinPath(directory,
+            dbFileType == common::FileVersionType::ORIGINAL ?
+                common::StorageConstants::RELS_METADATA_FILE_NAME :
+                common::StorageConstants::RELS_METADATA_FILE_NAME_FOR_WAL);
     }
 
-    static inline std::string getRelsStatisticsFilePath(
-        const std::string& directory, common::DBFileType dbFileType) {
-        return common::FileUtils::joinPath(
-            directory, dbFileType == common::DBFileType::ORIGINAL ?
-                           common::StorageConstants::RELS_METADATA_FILE_NAME :
-                           common::StorageConstants::RELS_METADATA_FILE_NAME_FOR_WAL);
+    static inline std::string getCatalogFilePath(common::VirtualFileSystem* vfs,
+        const std::string& directory, common::FileVersionType dbFileType) {
+        return vfs->joinPath(directory, dbFileType == common::FileVersionType::ORIGINAL ?
+                                            common::StorageConstants::CATALOG_FILE_NAME :
+                                            common::StorageConstants::CATALOG_FILE_NAME_FOR_WAL);
     }
 
-    static inline uint64_t getNumChunks(common::offset_t numNodes) {
-        auto numChunks = StorageUtils::getListChunkIdx(numNodes);
-        if (0 != (numNodes & (common::ListsMetadataConstants::LISTS_CHUNK_SIZE - 1))) {
-            numChunks++;
-        }
-        return numChunks;
-    }
-
-    static inline uint64_t getListChunkIdx(common::offset_t nodeOffset) {
-        return nodeOffset >> common::ListsMetadataConstants::LISTS_CHUNK_SIZE_LOG_2;
-    }
-
-    static inline common::offset_t getChunkIdxBeginNodeOffset(uint64_t chunkIdx) {
-        return chunkIdx << common::ListsMetadataConstants::LISTS_CHUNK_SIZE_LOG_2;
-    }
-
-    static inline common::offset_t getChunkIdxEndNodeOffsetInclusive(uint64_t chunkIdx) {
-        return ((chunkIdx + 1) << common::ListsMetadataConstants::LISTS_CHUNK_SIZE_LOG_2) - 1;
-    }
-
-    static inline void overwriteCatalogFileWithVersionFromWAL(const std::string& directory) {
-        common::FileUtils::overwriteFile(
-            getCatalogFilePath(directory, common::DBFileType::WAL_VERSION),
-            getCatalogFilePath(directory, common::DBFileType::ORIGINAL));
-    }
-
-    static inline std::string getCatalogFilePath(
-        const std::string& directory, common::DBFileType dbFileType) {
-        return common::FileUtils::joinPath(
-            directory, dbFileType == common::DBFileType::ORIGINAL ?
-                           common::StorageConstants::CATALOG_FILE_NAME :
-                           common::StorageConstants::CATALOG_FILE_NAME_FOR_WAL);
+    static inline std::string getLockFilePath(common::VirtualFileSystem* vfs,
+        const std::string& directory) {
+        return vfs->joinPath(directory, common::StorageConstants::LOCK_FILE_NAME);
     }
 
     // Note: This is a relatively slow function because of division and mod and making std::pair.
@@ -236,58 +159,37 @@ public:
         return std::make_pair(i / divisor, i % divisor);
     }
 
-    static inline void removeAllWALFiles(const std::string& directory) {
-        for (auto& folderIter : std::filesystem::directory_iterator(directory)) {
-            if (folderIter.path().extension() == common::StorageConstants::WAL_FILE_SUFFIX) {
-                std::filesystem::remove(folderIter.path());
-            }
-        }
+    static inline void removeCatalogAndStatsWALFiles(const std::string& directory,
+        common::VirtualFileSystem* vfs) {
+        vfs->removeFileIfExists(
+            StorageUtils::getCatalogFilePath(vfs, directory, common::FileVersionType::WAL_VERSION));
+        vfs->removeFileIfExists(StorageUtils::getNodesStatisticsAndDeletedIDsFilePath(vfs,
+            directory, common::FileVersionType::WAL_VERSION));
+        vfs->removeFileIfExists(StorageUtils::getRelsStatisticsFilePath(vfs, directory,
+            common::FileVersionType::WAL_VERSION));
     }
 
-    static inline std::string appendWALFileSuffixIfNecessary(
-        const std::string& fileName, common::DBFileType dbFileType) {
-        return dbFileType == common::DBFileType::WAL_VERSION ? appendWALFileSuffix(fileName) :
-                                                               fileName;
+    static inline std::string appendWALFileSuffixIfNecessary(const std::string& fileName,
+        common::FileVersionType fileVersionType) {
+        return fileVersionType == common::FileVersionType::WAL_VERSION ?
+                   appendWALFileSuffix(fileName) :
+                   fileName;
     }
 
     static inline std::string appendWALFileSuffix(const std::string& fileName) {
-        assert(fileName.find(common::StorageConstants::WAL_FILE_SUFFIX) == std::string::npos);
+        KU_ASSERT(fileName.find(common::StorageConstants::WAL_FILE_SUFFIX) == std::string::npos);
         return fileName + common::StorageConstants::WAL_FILE_SUFFIX;
     }
 
-    static std::unique_ptr<common::FileInfo> getFileInfoForReadWrite(
-        const std::string& directory, StorageStructureID storageStructureID);
+    static std::unique_ptr<common::FileInfo> getFileInfoForReadWrite(const std::string& directory,
+        DBFileID dbFileID, common::VirtualFileSystem* vfs);
 
-    static std::string getColumnFName(
-        const std::string& directory, StorageStructureID storageStructureID);
-
-    static std::string getListFName(
-        const std::string& directory, StorageStructureID storageStructureID);
-
-    static void createFileForNodePropertyWithDefaultVal(common::table_id_t tableID,
-        const std::string& directory, const catalog::Property& property, uint8_t* defaultVal,
-        bool isDefaultValNull, uint64_t numNodes);
-
-    static void createFileForRelPropertyWithDefaultVal(catalog::RelTableSchema* tableSchema,
-        const catalog::Property& property, uint8_t* defaultVal, bool isDefaultValNull,
-        StorageManager& storageManager);
-
-    static void initializeListsHeaders(const catalog::RelTableSchema* relTableSchema,
-        uint64_t numNodesInTable, const std::string& directory, common::RelDirection relDirection);
+    static uint32_t getDataTypeSize(const common::LogicalType& type);
+    static uint32_t getDataTypeSize(common::PhysicalTypeID type);
 
 private:
-    static std::string appendSuffixOrInsertBeforeWALSuffix(
-        std::string fileName, std::string suffix);
-
-    static void createFileForRelColumnPropertyWithDefaultVal(common::table_id_t relTableID,
-        common::table_id_t boundTableID, common::RelDirection direction,
-        const catalog::Property& property, uint8_t* defaultVal, bool isDefaultValNull,
-        StorageManager& storageManager);
-
-    static void createFileForRelListsPropertyWithDefaultVal(common::table_id_t relTableID,
-        common::table_id_t boundTableID, common::RelDirection direction,
-        const catalog::Property& property, uint8_t* defaultVal, bool isDefaultValNull,
-        StorageManager& storageManager);
+    static std::string appendSuffixOrInsertBeforeWALSuffix(const std::string& fileName,
+        const std::string& suffix);
 };
 
 } // namespace storage

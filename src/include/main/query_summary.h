@@ -1,9 +1,7 @@
 #pragma once
 
 #include "common/api.h"
-#include "json_fwd.hpp"
 #include "kuzu_fwd.h"
-#include "plan_printer.h"
 
 namespace kuzu {
 namespace main {
@@ -13,43 +11,36 @@ namespace main {
  */
 struct PreparedSummary {
     double compilingTime = 0;
-    bool isExplain = false;
-    bool isProfile = false;
+    common::StatementType statementType;
 };
 
 /**
  * @brief QuerySummary stores the execution time, plan, compiling time and query options of a query.
  */
 class QuerySummary {
-    friend class Connection;
+    friend class ClientContext;
     friend class benchmark::Benchmark;
 
 public:
     /**
-     * @return query compiling time.
+     * @return query compiling time in milliseconds.
      */
     KUZU_API double getCompilingTime() const;
     /**
-     * @return query execution time.
+     * @return query execution time in milliseconds.
      */
     KUZU_API double getExecutionTime() const;
-    bool getIsExplain() const;
-    bool getIsProfile() const;
-    std::ostringstream& getPlanAsOstream();
-    /**
-     * @return physical plan for query in string format.
-     */
-    KUZU_API std::string getPlan();
+
     void setPreparedSummary(PreparedSummary preparedSummary_);
 
-private:
-    nlohmann::json& printPlanToJson();
+    /**
+     * @return true if the query is executed with EXPLAIN.
+     */
+    bool isExplain() const;
 
 private:
     double executionTime = 0;
     PreparedSummary preparedSummary;
-    std::unique_ptr<nlohmann::json> planInJson;
-    std::ostringstream planInOstream;
 };
 
 } // namespace main

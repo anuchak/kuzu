@@ -7,17 +7,14 @@ namespace kuzu {
 namespace parser {
 
 class UnwindClause : public ReadingClause {
-
 public:
-    explicit UnwindClause(std::unique_ptr<ParsedExpression> expression, std::string listAlias)
-        : ReadingClause{common::ClauseType::UNWIND},
-          expression{std::move(expression)}, alias{std::move(listAlias)} {}
+    UnwindClause(std::unique_ptr<ParsedExpression> expression, std::string listAlias)
+        : ReadingClause{common::ClauseType::UNWIND}, expression{std::move(expression)},
+          alias{std::move(listAlias)} {}
 
-    ~UnwindClause() override = default;
+    const ParsedExpression* getExpression() const { return expression.get(); }
 
-    inline ParsedExpression* getExpression() const { return expression.get(); }
-
-    inline std::string getAlias() const { return alias; }
+    std::string getAlias() const { return alias; }
 
 private:
     std::unique_ptr<ParsedExpression> expression;

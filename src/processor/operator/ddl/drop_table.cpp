@@ -1,20 +1,20 @@
 #include "processor/operator/ddl/drop_table.h"
 
-#include "common/string_utils.h"
+#include "catalog/catalog.h"
+#include "common/string_format.h"
 
+using namespace kuzu::catalog;
 using namespace kuzu::common;
 
 namespace kuzu {
 namespace processor {
 
-void DropTable::executeDDLInternal() {
-    catalog->dropTableSchema(tableID);
+void DropTable::executeDDLInternal(ExecutionContext* context) {
+    context->clientContext->getCatalog()->dropTableSchema(context->clientContext->getTx(), tableID);
 }
 
 std::string DropTable::getOutputMsg() {
-    auto tableSchema = catalog->getReadOnlyVersion()->getTableSchema(tableID);
-    return StringUtils::string_format("{}Table: {} has been dropped.",
-        tableSchema->isNodeTable ? "Node" : "Rel", tableSchema->tableName);
+    return stringFormat("Table: {} has been dropped.", tableName);
 }
 
 } // namespace processor

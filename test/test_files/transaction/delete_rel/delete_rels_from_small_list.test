@@ -1,0 +1,67 @@
+-DATASET CSV rel-update-tests
+--
+
+-CASE deleteRelsFromSmallListCommitNormalExecution
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-BATCH_STATEMENTS <FILE:>delete_rels_from_small_list.cypher
+---- ok
+-STATEMENT COMMIT
+---- ok 
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-STATEMENT MATCH (p:person)-[e:knows]->(:person) WHERE p.ID  = 0 RETURN e.length
+---- 2289
+<FILE>:delete_rels_from_small_list_commit.txt
+-STATEMENT COMMIT;
+---- ok
+
+
+-CASE deleteRelsFromSmallListCommitRecovery
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-BATCH_STATEMENTS <FILE:>delete_rels_from_small_list.cypher
+---- ok
+-STATEMENT COMMIT_SKIP_CHECKPOINT
+---- ok 
+-RELOADDB
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-STATEMENT MATCH (p:person)-[e:knows]->(:person) WHERE p.ID  = 0 RETURN e.length
+---- 2289
+<FILE>:delete_rels_from_small_list_commit.txt
+-STATEMENT COMMIT;
+---- ok
+
+
+-CASE deleteRelsFromSmallListRollbackNormalExecution
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-BATCH_STATEMENTS <FILE:>delete_rels_from_small_list.cypher
+---- ok
+-STATEMENT Rollback
+---- ok 
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-STATEMENT MATCH (p:person)-[e:knows]->(:person) WHERE p.ID  = 0 RETURN e.length
+---- 2300
+<FILE>:delete_rels.txt
+-STATEMENT COMMIT;
+---- ok
+
+
+-CASE deleteRelsFromSmallListRollbackRecovery
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-BATCH_STATEMENTS <FILE:>delete_rels_from_small_list.cypher
+---- ok
+-STATEMENT ROLLBACK_SKIP_CHECKPOINT
+---- ok 
+-RELOADDB
+-STATEMENT BEGIN TRANSACTION
+---- ok
+-STATEMENT MATCH (p:person)-[e:knows]->(:person) WHERE p.ID  = 0 RETURN e.length
+---- 2300
+<FILE>:delete_rels.txt
+-STATEMENT COMMIT;
+---- ok

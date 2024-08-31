@@ -17,7 +17,8 @@ struct StrKeyColInfo {
           isAscOrder{isAscOrder} {}
 
     inline uint32_t getEncodingSize() const {
-        return OrderByKeyEncoder::getEncodingSize(common::DataType(common::STRING));
+        return OrderByKeyEncoder::getEncodingSize(
+            common::LogicalType(common::LogicalTypeID::STRING));
     }
 
     uint32_t colOffsetInFT;
@@ -26,15 +27,18 @@ struct StrKeyColInfo {
 };
 
 class MergedKeyBlocks {
+private:
+    static constexpr uint64_t DATA_BLOCK_SIZE = common::BufferPoolConstants::PAGE_256KB_SIZE;
+
 public:
-    MergedKeyBlocks(
-        uint32_t numBytesPerTuple, uint64_t numTuples, storage::MemoryManager* memoryManager);
+    MergedKeyBlocks(uint32_t numBytesPerTuple, uint64_t numTuples,
+        storage::MemoryManager* memoryManager);
 
     // This constructor is used to convert a dataBlock to a MergedKeyBlocks.
     MergedKeyBlocks(uint32_t numBytesPerTuple, std::shared_ptr<DataBlock> keyBlock);
 
     inline uint8_t* getTuple(uint64_t tupleIdx) const {
-        assert(tupleIdx < numTuples);
+        KU_ASSERT(tupleIdx < numTuples);
         return keyBlocks[tupleIdx / numTuplesPerBlock]->getData() +
                numBytesPerTuple * (tupleIdx % numTuplesPerBlock);
     }
@@ -46,12 +50,12 @@ public:
     inline uint32_t getNumTuplesPerBlock() const { return numTuplesPerBlock; }
 
     inline uint8_t* getKeyBlockBuffer(uint32_t idx) const {
-        assert(idx < keyBlocks.size());
+        KU_ASSERT(idx < keyBlocks.size());
         return keyBlocks[idx]->getData();
     }
 
-    uint8_t* getBlockEndTuplePtr(
-        uint32_t blockIdx, uint64_t endTupleIdx, uint32_t endTupleBlockIdx) const;
+    uint8_t* getBlockEndTuplePtr(uint32_t blockIdx, uint64_t endTupleIdx,
+        uint32_t endTupleBlockIdx) const;
 
 private:
     uint32_t numBytesPerTuple;
@@ -62,22 +66,7 @@ private:
 };
 
 struct BlockPtrInfo {
-    inline BlockPtrInfo(
-        uint64_t startTupleIdx, uint64_t endTupleIdx, std::shared_ptr<MergedKeyBlocks>& keyBlocks)
-        : keyBlocks{keyBlocks}, curBlockIdx{startTupleIdx / keyBlocks->getNumTuplesPerBlock()},
-          endBlockIdx{endTupleIdx == 0 ? 0 : (endTupleIdx - 1) / keyBlocks->getNumTuplesPerBlock()},
-          endTupleIdx{endTupleIdx} {
-        if (startTupleIdx == endTupleIdx) {
-            curTuplePtr = nullptr;
-            endTuplePtr = nullptr;
-            curBlockEndTuplePtr = nullptr;
-        } else {
-            curTuplePtr = keyBlocks->getTuple(startTupleIdx);
-            endTuplePtr = keyBlocks->getBlockEndTuplePtr(endBlockIdx, endTupleIdx, endBlockIdx);
-            curBlockEndTuplePtr =
-                keyBlocks->getBlockEndTuplePtr(curBlockIdx, endTupleIdx, endBlockIdx);
-        }
-    }
+    BlockPtrInfo(uint64_t startTupleIdx, uint64_t endTupleIdx, MergedKeyBlocks* keyBlocks);
 
     inline bool hasMoreTuplesToRead() const { return curTuplePtr != endTuplePtr; }
 
@@ -89,7 +78,7 @@ struct BlockPtrInfo {
 
     void updateTuplePtrIfNecessary();
 
-    std::shared_ptr<MergedKeyBlocks>& keyBlocks;
+    MergedKeyBlocks* keyBlocks;
     uint8_t* curTuplePtr;
     uint64_t curBlockIdx;
     uint64_t endBlockIdx;
@@ -100,9 +89,9 @@ struct BlockPtrInfo {
 
 class KeyBlockMerger {
 public:
-    explicit KeyBlockMerger(std::vector<std::shared_ptr<FactorizedTable>>& factorizedTables,
+    explicit KeyBlockMerger(std::vector<FactorizedTable*> factorizedTables,
         std::vector<StrKeyColInfo>& strKeyColsInfo, uint32_t numBytesPerTuple)
-        : factorizedTables{factorizedTables}, strKeyColsInfo{strKeyColsInfo},
+        : factorizedTables{std::move(factorizedTables)}, strKeyColsInfo{strKeyColsInfo},
           numBytesPerTuple{numBytesPerTuple}, numBytesToCompare{numBytesPerTuple - 8},
           hasStringCol{!strKeyColsInfo.empty()} {}
 
@@ -122,7 +111,7 @@ private:
     // FactorizedTables[i] stores all order_by columns encoded and sorted by the ith thread.
     // MergeSort uses factorizedTable to access the full contents of the string key columns
     // when resolving ties.
-    std::vector<std::shared_ptr<FactorizedTable>>& factorizedTables;
+    std::vector<FactorizedTable*> factorizedTables;
     // We also store the colIdxInFactorizedTable, colOffsetInEncodedKeyBlock, isAscOrder, isStrCol
     // for each string column. So, we don't need to compute them again during merge sort.
     std::vector<StrKeyColInfo>& strKeyColsInfo;
@@ -149,7 +138,7 @@ public:
     }
 
 private:
-    uint64_t findRightKeyBlockIdx(uint8_t* leftEndTuplePtr);
+    uint64_t findRightKeyBlockIdx(uint8_t* leftEndTuplePtr) const;
 
 public:
     static const uint32_t batch_size = 10000;
@@ -199,15 +188,15 @@ public:
     // This function is used to initialize the columns of keyBlockMergeTaskDispatcher based on
     // sharedFactorizedTablesAndSortedKeyBlocks.
     void init(storage::MemoryManager* memoryManager,
-        std::shared_ptr<std::queue<std::shared_ptr<MergedKeyBlocks>>> sortedKeyBlocks,
-        std::vector<std::shared_ptr<FactorizedTable>>& factorizedTables,
-        std::vector<StrKeyColInfo>& strKeyColsInfo, uint64_t numBytesPerTuple);
+        std::queue<std::shared_ptr<MergedKeyBlocks>>* sortedKeyBlocks,
+        std::vector<FactorizedTable*> factorizedTables, std::vector<StrKeyColInfo>& strKeyColsInfo,
+        uint64_t numBytesPerTuple);
 
 private:
     std::mutex mtx;
 
     storage::MemoryManager* memoryManager;
-    std::shared_ptr<std::queue<std::shared_ptr<MergedKeyBlocks>>> sortedKeyBlocks;
+    std::queue<std::shared_ptr<MergedKeyBlocks>>* sortedKeyBlocks;
     std::vector<std::shared_ptr<KeyBlockMergeTask>> activeKeyBlockMergeTasks;
     std::unique_ptr<KeyBlockMerger> keyBlockMerger;
 };

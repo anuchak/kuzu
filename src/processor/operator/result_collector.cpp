@@ -6,58 +6,77 @@ using namespace kuzu::storage;
 namespace kuzu {
 namespace processor {
 
-void FTableSharedState::initTable(
-    MemoryManager* memoryManager, std::unique_ptr<FactorizedTableSchema> tableSchema) {
-    assert(table == nullptr);
-    nextTupleIdxToScan = 0u;
-    table = std::make_unique<FactorizedTable>(memoryManager, std::move(tableSchema));
-}
-
-std::unique_ptr<FTableScanMorsel> FTableSharedState::getMorsel(uint64_t maxMorselSize) {
-    std::lock_guard<std::mutex> lck{mtx};
-    auto numTuplesToScan = std::min(maxMorselSize, table->getNumTuples() - nextTupleIdxToScan);
-    auto morsel =
-        std::make_unique<FTableScanMorsel>(table.get(), nextTupleIdxToScan, numTuplesToScan);
-    nextTupleIdxToScan += numTuplesToScan;
-    return morsel;
+std::string ResultCollectorPrintInfo::toString() const {
+    std::string result = "";
+    if (accumulateType == AccumulateType::OPTIONAL_) {
+        result += "Type: " + AccumulateTypeUtil::toString(accumulateType) + ".\n";
+    }
+    result += "Expressions: ";
+    for (auto& expr : expressions) {
+        result += expr->toString();
+        if (&expr != &expressions.back()) {
+            result += ", ";
+        }
+    }
+    return result;
 }
 
 void ResultCollector::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
-    for (auto [dataPos, _] : payloadsPosAndType) {
-        auto vector =
-            resultSet->dataChunks[dataPos.dataChunkPos]->valueVectors[dataPos.valueVectorPos];
-        vectorsToCollect.push_back(vector.get());
+    payloadVectors.reserve(info.payloadPositions.size());
+    for (auto& pos : info.payloadPositions) {
+        auto vec = resultSet->getValueVector(pos).get();
+        payloadVectors.push_back(vec);
+        payloadAndMarkVectors.push_back(vec);
     }
-    localTable = std::make_unique<FactorizedTable>(context->memoryManager, populateTableSchema());
+    if (info.accumulateType == AccumulateType::OPTIONAL_) {
+        markVector = std::make_unique<ValueVector>(LogicalType::BOOL(),
+            context->clientContext->getMemoryManager());
+        markVector->state = DataChunkState::getSingleValueDataChunkState();
+        markVector->setValue<bool>(0, true);
+        payloadAndMarkVectors.push_back(markVector.get());
+    }
+    localTable = std::make_unique<FactorizedTable>(context->clientContext->getMemoryManager(),
+        info.tableSchema.copy());
 }
 
 void ResultCollector::executeInternal(ExecutionContext* context) {
     while (children[0]->getNextTuple(context)) {
-        if (!vectorsToCollect.empty()) {
+        if (!payloadVectors.empty()) {
             for (auto i = 0u; i < resultSet->multiplicity; i++) {
-                localTable->append(vectorsToCollect);
+                localTable->append(payloadAndMarkVectors);
             }
         }
     }
-    if (!vectorsToCollect.empty()) {
+    if (!payloadVectors.empty()) {
         sharedState->mergeLocalTable(*localTable);
     }
 }
 
-void ResultCollector::initGlobalStateInternal(ExecutionContext* context) {
-    sharedState->initTable(context->memoryManager, populateTableSchema());
-}
-
-std::unique_ptr<FactorizedTableSchema> ResultCollector::populateTableSchema() {
-    std::unique_ptr<FactorizedTableSchema> tableSchema = std::make_unique<FactorizedTableSchema>();
-    for (auto i = 0u; i < payloadsPosAndType.size(); ++i) {
-        auto [dataPos, dataType] = payloadsPosAndType[i];
-        tableSchema->appendColumn(
-            std::make_unique<ColumnSchema>(!isPayloadFlat[i], dataPos.dataChunkPos,
-                isPayloadFlat[i] ? Types::getDataTypeSize(dataType) :
-                                   (uint32_t)sizeof(overflow_value_t)));
+void ResultCollector::finalize(ExecutionContext* /*context*/) {
+    switch (info.accumulateType) {
+    case AccumulateType::OPTIONAL_: {
+        // We should remove currIdx completely as some of the code still relies on currIdx = -1 to
+        // check if the state if unFlat or not. This should no longer be necessary.
+        // TODO(Ziyi): add an interface in factorized table
+        auto table = sharedState->getTable();
+        auto tableSchema = table->getTableSchema();
+        for (auto i = 0u; i < payloadVectors.size(); ++i) {
+            auto columnSchema = tableSchema->getColumn(i);
+            if (columnSchema->isFlat()) {
+                payloadVectors[i]->state->setToFlat();
+            }
+        }
+        if (table->isEmpty()) {
+            for (auto& vector : payloadVectors) {
+                vector->setAsSingleNullEntry();
+            }
+            markVector->setValue<bool>(0, false);
+            table->append(payloadAndMarkVectors);
+        }
     }
-    return tableSchema;
+    default:
+        break;
+    }
 }
 
 } // namespace processor

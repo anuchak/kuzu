@@ -1,26 +1,30 @@
 #pragma once
 
-#include "base_evaluator.h"
+#include "expression_evaluator.h"
 
 namespace kuzu {
+namespace main {
+class ClientContext;
+}
+
 namespace evaluator {
 
-class ReferenceExpressionEvaluator : public BaseExpressionEvaluator {
+class ReferenceExpressionEvaluator : public ExpressionEvaluator {
 public:
     explicit ReferenceExpressionEvaluator(const processor::DataPos& vectorPos, bool isResultFlat)
-        : BaseExpressionEvaluator{isResultFlat}, vectorPos{vectorPos} {}
+        : ExpressionEvaluator{isResultFlat}, vectorPos{vectorPos} {}
 
     inline void evaluate() override {}
 
     bool select(common::SelectionVector& selVector) override;
 
-    inline std::unique_ptr<BaseExpressionEvaluator> clone() override {
+    inline std::unique_ptr<ExpressionEvaluator> clone() override {
         return std::make_unique<ReferenceExpressionEvaluator>(vectorPos, isResultFlat_);
     }
 
 protected:
-    inline void resolveResultVector(
-        const processor::ResultSet& resultSet, storage::MemoryManager* memoryManager) override {
+    inline void resolveResultVector(const processor::ResultSet& resultSet,
+        storage::MemoryManager* /*memoryManager*/) override {
         resultVector =
             resultSet.dataChunks[vectorPos.dataChunkPos]->valueVectors[vectorPos.valueVectorPos];
     }

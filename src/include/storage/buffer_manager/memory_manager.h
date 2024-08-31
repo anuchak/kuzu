@@ -6,20 +6,32 @@
 #include <stack>
 
 #include "common/constants.h"
-#include "storage/buffer_manager/buffer_manager.h"
+#include "common/types/types.h"
+#include <span>
 
 namespace kuzu {
+namespace main {
+class ClientContext;
+}
+
+namespace common {
+class VirtualFileSystem;
+}
+
 namespace storage {
 
 class MemoryAllocator;
+class BMFileHandle;
+class BufferManager;
 
 class MemoryBuffer {
 public:
-    MemoryBuffer(MemoryAllocator* allocator, common::page_idx_t blockIdx, uint8_t* buffer);
+    MemoryBuffer(MemoryAllocator* allocator, common::page_idx_t blockIdx, uint8_t* buffer,
+        uint64_t size = common::BufferPoolConstants::PAGE_256KB_SIZE);
     ~MemoryBuffer();
 
 public:
-    uint8_t* buffer;
+    std::span<uint8_t> buffer;
     common::page_idx_t pageIdx;
     MemoryAllocator* allocator;
 };
@@ -28,17 +40,19 @@ class MemoryAllocator {
     friend class MemoryBuffer;
 
 public:
-    explicit MemoryAllocator(BufferManager* bm);
+    MemoryAllocator(BufferManager* bm, common::VirtualFileSystem* vfs,
+        main::ClientContext* context);
+
     ~MemoryAllocator();
 
-    std::unique_ptr<MemoryBuffer> allocateBuffer(bool initializeToZero = false);
+    std::unique_ptr<MemoryBuffer> allocateBuffer(bool initializeToZero, uint64_t size);
     inline common::page_offset_t getPageSize() const { return pageSize; }
 
 private:
-    void freeBlock(common::page_idx_t pageIdx);
+    void freeBlock(common::page_idx_t pageIdx, std::span<uint8_t> buffer);
 
 private:
-    std::unique_ptr<BMFileHandle> fh;
+    BMFileHandle* fh;
     BufferManager* bm;
     common::page_offset_t pageSize;
     std::stack<common::page_idx_t> freePages;
@@ -62,14 +76,17 @@ private:
  */
 class MemoryManager {
 public:
-    explicit MemoryManager(BufferManager* bm) : bm{bm} {
-        allocator = std::make_unique<MemoryAllocator>(bm);
+    explicit MemoryManager(BufferManager* bm, common::VirtualFileSystem* vfs,
+        main::ClientContext* context)
+        : bm{bm} {
+        allocator = std::make_unique<MemoryAllocator>(bm, vfs, context);
     }
 
-    inline std::unique_ptr<MemoryBuffer> allocateBuffer(bool initializeToZero = false) {
-        return allocator->allocateBuffer(initializeToZero);
+    std::unique_ptr<MemoryBuffer> allocateBuffer(bool initializeToZero = false,
+        uint64_t size = common::BufferPoolConstants::PAGE_256KB_SIZE) {
+        return allocator->allocateBuffer(initializeToZero, size);
     }
-    inline BufferManager* getBufferManager() const { return bm; }
+    BufferManager* getBufferManager() const { return bm; }
 
 private:
     BufferManager* bm;

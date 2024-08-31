@@ -1,6 +1,6 @@
 #include "planner/subplans_table.h"
 
-#include "common/assert.h"
+using namespace kuzu::binder;
 
 namespace kuzu {
 namespace planner {
@@ -8,8 +8,7 @@ namespace planner {
 SubgraphPlans::SubgraphPlans(const kuzu::binder::SubqueryGraph& subqueryGraph) {
     for (auto i = 0u; i < subqueryGraph.queryGraph.getNumQueryNodes(); ++i) {
         if (subqueryGraph.queryNodesSelector[i]) {
-            nodeIDsToEncode.push_back(
-                subqueryGraph.queryGraph.getQueryNode(i)->getInternalIDProperty());
+            nodeIDsToEncode.push_back(subqueryGraph.queryGraph.getQueryNode(i)->getInternalID());
         }
     }
     maxCost = UINT64_MAX;
@@ -46,7 +45,7 @@ std::bitset<MAX_NUM_QUERY_VARIABLES> SubgraphPlans::encodePlan(const LogicalPlan
     auto schema = plan.getSchema();
     std::bitset<MAX_NUM_QUERY_VARIABLES> result;
     result.reset();
-    for (auto i = 0; i < nodeIDsToEncode.size(); ++i) {
+    for (auto i = 0u; i < nodeIDsToEncode.size(); ++i) {
         result[i] = schema->getGroup(schema->getGroupPos(*nodeIDsToEncode[i]))->isFlat();
     }
     return result;
@@ -60,8 +59,8 @@ std::vector<SubqueryGraph> DPLevel::getSubqueryGraphs() {
     return result;
 }
 
-void DPLevel::addPlan(
-    const kuzu::binder::SubqueryGraph& subqueryGraph, std::unique_ptr<LogicalPlan> plan) {
+void DPLevel::addPlan(const kuzu::binder::SubqueryGraph& subqueryGraph,
+    std::unique_ptr<LogicalPlan> plan) {
     if (subgraph2Plans.size() > MAX_NUM_SUBGRAPH) {
         return;
     }
@@ -92,7 +91,7 @@ bool SubPlansTable::containSubgraphPlans(const SubqueryGraph& subqueryGraph) con
 std::vector<std::unique_ptr<LogicalPlan>>& SubPlansTable::getSubgraphPlans(
     const SubqueryGraph& subqueryGraph) {
     auto dpLevel = getDPLevel(subqueryGraph);
-    assert(dpLevel->contains(subqueryGraph));
+    KU_ASSERT(dpLevel->contains(subqueryGraph));
     return dpLevel->getSubgraphPlans(subqueryGraph)->getPlans();
 }
 

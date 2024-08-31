@@ -1,6 +1,4 @@
 #include "binder/binder.h"
-#include "binder/query/reading_clause/bound_unwind_clause.h"
-#include "parser/query/reading_clause/unwind_clause.h"
 
 using namespace kuzu::common;
 using namespace kuzu::parser;
@@ -11,49 +9,20 @@ namespace binder {
 std::unique_ptr<BoundReadingClause> Binder::bindReadingClause(const ReadingClause& readingClause) {
     switch (readingClause.getClauseType()) {
     case ClauseType::MATCH: {
-        return bindMatchClause((MatchClause&)readingClause);
+        return bindMatchClause(readingClause);
     }
     case ClauseType::UNWIND: {
-        return bindUnwindClause((UnwindClause&)readingClause);
+        return bindUnwindClause(readingClause);
+    }
+    case ClauseType::IN_QUERY_CALL: {
+        return bindInQueryCall(readingClause);
+    }
+    case ClauseType::LOAD_FROM: {
+        return bindLoadFrom(readingClause);
     }
     default:
-        throw NotImplementedException("bindReadingClause().");
+        KU_UNREACHABLE;
     }
-}
-
-std::unique_ptr<BoundReadingClause> Binder::bindMatchClause(const ReadingClause& readingClause) {
-    auto& matchClause = (MatchClause&)readingClause;
-    auto prevVariablesInScope = variablesInScope;
-    auto [queryGraphCollection, propertyCollection] =
-        bindGraphPattern(matchClause.getPatternElements());
-    auto boundMatchClause =
-        make_unique<BoundMatchClause>(std::move(queryGraphCollection), matchClause.getIsOptional());
-    std::shared_ptr<Expression> whereExpression;
-    if (matchClause.hasWhereClause()) {
-        whereExpression = bindWhereExpression(*matchClause.getWhereClause());
-    }
-    // Rewrite key value pairs in MATCH clause as predicate
-    for (auto& keyValPairs : propertyCollection->getAllPropertyKeyValPairs()) {
-        auto predicate = expressionBinder.bindComparisonExpression(
-            EQUALS, expression_vector{keyValPairs.first, keyValPairs.second});
-        if (whereExpression != nullptr) {
-            whereExpression = expressionBinder.bindBooleanExpression(
-                AND, expression_vector{whereExpression, predicate});
-        } else {
-            whereExpression = predicate;
-        }
-    }
-    boundMatchClause->setWhereExpression(std::move(whereExpression));
-    return boundMatchClause;
-}
-
-std::unique_ptr<BoundReadingClause> Binder::bindUnwindClause(const ReadingClause& readingClause) {
-    auto& unwindClause = (UnwindClause&)readingClause;
-    auto boundExpression = expressionBinder.bindExpression(*unwindClause.getExpression());
-    boundExpression = ExpressionBinder::implicitCastIfNecessary(boundExpression, VAR_LIST);
-    auto aliasExpression =
-        createVariable(unwindClause.getAlias(), *boundExpression->dataType.getChildType());
-    return make_unique<BoundUnwindClause>(std::move(boundExpression), std::move(aliasExpression));
 }
 
 } // namespace binder

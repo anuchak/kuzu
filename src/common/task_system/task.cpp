@@ -5,20 +5,43 @@ namespace common {
 
 Task::Task(uint64_t maxNumThreads) : maxNumThreads{maxNumThreads} {}
 
-bool Task::registerThread() {
+/*
+ * If registered threads is 0, try to register, return true if successful
+ */
+bool Task::tryRegisterIfUnregistered() {
     lock_t lck{mtx};
-    if (!hasExceptionNoLock() && canRegisterInternalNoLock()) {
+    if (numThreadsRegistered > 0) {
+        return false;
+    }
+    if (!hasExceptionNoLock() && canRegisterNoLock()) {
         numThreadsRegistered++;
         return true;
     }
     return false;
 }
 
-void Task::deRegisterThreadAndFinalizeTaskIfNecessary() {
+bool Task::registerThread() {
+    lock_t lck{mtx};
+    if (!hasExceptionNoLock() && canRegisterNoLock()) {
+        numThreadsRegistered++;
+        return true;
+    }
+    return false;
+}
+
+void Task::deRegisterThreadAndFinalizeTask() {
     lock_t lck{mtx};
     ++numThreadsFinished;
     if (!hasExceptionNoLock() && isCompletedNoLock()) {
-        finalizeIfNecessary();
+        try {
+            finalizeIfNecessary();
+        } catch (std::exception& e) {
+            setExceptionNoLock(std::current_exception());
+        }
+    }
+    if (isCompletedNoLock()) {
+        lck.unlock();
+        cv.notify_all();
     }
 }
 

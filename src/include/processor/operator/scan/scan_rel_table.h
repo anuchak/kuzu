@@ -1,28 +1,56 @@
 #pragma once
 
-#include "processor/operator/physical_operator.h"
+#include "processor/operator/scan/scan_table.h"
+#include "storage/predicate/column_predicate.h"
 #include "storage/store/rel_table.h"
 
 namespace kuzu {
 namespace processor {
 
-class ScanRelTable : public PhysicalOperator {
-protected:
-    ScanRelTable(const DataPos& inNodeIDVectorPos, std::vector<DataPos> outputVectorsPos,
-        PhysicalOperatorType operatorType, std::unique_ptr<PhysicalOperator> child, uint32_t id,
-        const std::string& paramsString)
-        : PhysicalOperator{operatorType, std::move(child), id, paramsString},
-          inNodeIDVectorPos{inNodeIDVectorPos}, outputVectorsPos{std::move(outputVectorsPos)} {}
+struct ScanRelTableInfo {
+    storage::RelTable* table;
+    common::RelDataDirection direction;
+    std::vector<common::column_id_t> columnIDs;
+    std::vector<storage::ColumnPredicateSet> columnPredicates;
+
+    std::unique_ptr<storage::RelTableScanState> localScanState;
+
+    ScanRelTableInfo(storage::RelTable* table, common::RelDataDirection direction,
+        std::vector<common::column_id_t> columnIDs,
+        std::vector<storage::ColumnPredicateSet> columnPredicates)
+        : table{table}, direction{direction}, columnIDs{std::move(columnIDs)},
+          columnPredicates{std::move(columnPredicates)} {}
+    EXPLICIT_COPY_DEFAULT_MOVE(ScanRelTableInfo);
+
+    void initScanState();
+
+private:
+    ScanRelTableInfo(const ScanRelTableInfo& other)
+        : table{other.table}, direction{other.direction}, columnIDs{other.columnIDs},
+          columnPredicates{copyVector(other.columnPredicates)} {}
+};
+
+class ScanRelTable : public ScanTable {
+    static constexpr PhysicalOperatorType type_ = PhysicalOperatorType::SCAN_REL_TABLE;
+
+public:
+    ScanRelTable(ScanTableInfo info, ScanRelTableInfo relInfo,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        std::unique_ptr<OPPrintInfo> printInfo)
+        : ScanTable{type_, std::move(info), std::move(child), id, std::move(printInfo)},
+          relInfo{std::move(relInfo)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
+    bool getNextTuplesInternal(ExecutionContext* context) override;
+
+    std::unique_ptr<PhysicalOperator> clone() override {
+        return std::make_unique<ScanRelTable>(info.copy(), relInfo.copy(), children[0]->clone(), id,
+            printInfo->copy());
+    }
+
 protected:
-    // vector positions
-    DataPos inNodeIDVectorPos;
-    std::vector<DataPos> outputVectorsPos;
-    // vectors
-    common::ValueVector* inNodeIDVector;
-    std::vector<common::ValueVector*> outputVectors;
+    ScanRelTableInfo relInfo;
 };
 
 } // namespace processor

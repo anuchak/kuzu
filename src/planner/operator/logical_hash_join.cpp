@@ -1,8 +1,11 @@
-#include "planner/logical_plan/logical_operator/logical_hash_join.h"
+#include "planner/operator/logical_hash_join.h"
 
-#include "planner/logical_plan/logical_operator/flatten_resolver.h"
-#include "planner/logical_plan/logical_operator/logical_scan_node.h"
-#include "planner/logical_plan/logical_operator/sink_util.h"
+#include "common/cast.h"
+#include "planner/operator/factorization/flatten_resolver.h"
+#include "planner/operator/factorization/sink_util.h"
+#include "planner/operator/scan/logical_scan_node_table.h"
+
+using namespace kuzu::common;
 
 namespace kuzu {
 namespace planner {
@@ -13,8 +16,8 @@ f_group_pos_set LogicalHashJoin::getGroupsPosToFlattenOnProbeSide() {
         return result;
     }
     auto probeSchema = children[0]->getSchema();
-    for (auto& joinNodeID : joinNodeIDs) {
-        result.insert(probeSchema->getGroupPos(*joinNodeID));
+    for (auto& [probeKey, buildKey] : joinConditions) {
+        result.insert(probeSchema->getGroupPos(*probeKey));
     }
     return result;
 }
@@ -22,8 +25,8 @@ f_group_pos_set LogicalHashJoin::getGroupsPosToFlattenOnProbeSide() {
 f_group_pos_set LogicalHashJoin::getGroupsPosToFlattenOnBuildSide() {
     auto buildSchema = children[1]->getSchema();
     f_group_pos_set joinNodesGroupPos;
-    for (auto& joinNodeID : joinNodeIDs) {
-        joinNodesGroupPos.insert(buildSchema->getGroupPos(*joinNodeID));
+    for (auto& [probeKey, buildKey] : joinConditions) {
+        joinNodesGroupPos.insert(buildSchema->getGroupPos(*buildKey));
     }
     return factorization::FlattenAllButOne::getGroupsPosToFlatten(joinNodesGroupPos, buildSchema);
 }
@@ -33,32 +36,28 @@ void LogicalHashJoin::computeFactorizedSchema() {
     auto buildSchema = children[1]->getSchema();
     schema = probeSchema->copy();
     switch (joinType) {
-    case common::JoinType::INNER:
-    case common::JoinType::LEFT: {
-        // resolve key groups
-        std::unordered_map<f_group_pos, std::unordered_set<std::string>> keyGroupPosToKeys;
-        for (auto& joinNodeID : joinNodeIDs) {
-            auto groupPos = buildSchema->getGroupPos(*joinNodeID);
-            if (!keyGroupPosToKeys.contains(groupPos)) {
-                keyGroupPosToKeys.insert({groupPos, std::unordered_set<std::string>()});
+    case JoinType::INNER:
+    case JoinType::LEFT:
+    case JoinType::COUNT: {
+        // Populate group position mapping
+        std::unordered_map<f_group_pos, f_group_pos> buildToProbeKeyGroupPositionMap;
+        for (auto& [probeKey, buildKey] : joinConditions) {
+            auto probeKeyGroupPos = probeSchema->getGroupPos(*probeKey);
+            auto buildKeyGroupPos = buildSchema->getGroupPos(*buildKey);
+            if (!buildToProbeKeyGroupPositionMap.contains(buildKeyGroupPos)) {
+                buildToProbeKeyGroupPositionMap.insert({buildKeyGroupPos, probeKeyGroupPos});
             }
-            keyGroupPosToKeys.at(groupPos).insert(joinNodeID->getUniqueName());
         }
-        // resolve expressions to materialize in each group
-        auto expressionsToMaterializePerGroup =
-            SchemaUtils::getExpressionsPerGroup(getExpressionsToMaterialize(), *buildSchema);
+        // Resolve expressions to materialize in each group
         binder::expression_vector expressionsToMaterializeInNonKeyGroups;
-        for (auto i = 0; i < buildSchema->getNumGroups(); ++i) {
-            auto expressions = expressionsToMaterializePerGroup[i];
-            bool isKeyGroup = keyGroupPosToKeys.contains(i);
+        for (auto groupIdx = 0u; groupIdx < buildSchema->getNumGroups(); ++groupIdx) {
+            auto expressions = buildSchema->getExpressionsInScope(groupIdx);
+            bool isKeyGroup = buildToProbeKeyGroupPositionMap.contains(groupIdx);
             if (isKeyGroup) { // merge key group
-                auto keys = keyGroupPosToKeys.at(i);
-                auto resultGroupPos = schema->getGroupPos(*keys.begin());
+                auto probeKeyGroupPos = buildToProbeKeyGroupPositionMap.at(groupIdx);
                 for (auto& expression : expressions) {
-                    if (keys.contains(expression->getUniqueName())) {
-                        continue;
-                    }
-                    schema->insertToGroupAndScope(expression, resultGroupPos);
+                    // Join key may repeat for internal ID based joins
+                    schema->insertToGroupAndScopeMayRepeat(expression, probeKeyGroupPos);
                 }
             } else {
                 for (auto& expression : expressions) {
@@ -66,13 +65,17 @@ void LogicalHashJoin::computeFactorizedSchema() {
                 }
             }
         }
-        SinkOperatorUtil::mergeSchema(
-            *buildSchema, expressionsToMaterializeInNonKeyGroups, *schema);
+        SinkOperatorUtil::mergeSchema(*buildSchema, expressionsToMaterializeInNonKeyGroups,
+            *schema);
+        if (mark != nullptr) {
+            auto groupPos = schema->getGroupPos(*joinConditions[0].first);
+            schema->insertToGroupAndScope(mark, groupPos);
+        }
     } break;
-    case common::JoinType::MARK: {
+    case JoinType::MARK: {
         std::unordered_set<f_group_pos> probeSideKeyGroupPositions;
-        for (auto& joinNodeID : joinNodeIDs) {
-            probeSideKeyGroupPositions.insert(probeSchema->getGroupPos(*joinNodeID));
+        for (auto& [probeKey, buildKey] : joinConditions) {
+            probeSideKeyGroupPositions.insert(probeSchema->getGroupPos(*probeKey));
         }
         if (probeSideKeyGroupPositions.size() > 1) {
             SchemaUtils::validateNoUnFlatGroup(probeSideKeyGroupPositions, *probeSchema);
@@ -81,7 +84,7 @@ void LogicalHashJoin::computeFactorizedSchema() {
         schema->insertToGroupAndScope(mark, markPos);
     } break;
     default:
-        throw common::NotImplementedException("HashJoin::computeFactorizedSchema()");
+        KU_UNREACHABLE;
     }
 }
 
@@ -90,50 +93,88 @@ void LogicalHashJoin::computeFlatSchema() {
     auto buildSchema = children[1]->getSchema();
     schema = probeSchema->copy();
     switch (joinType) {
-    case common::JoinType::INNER:
-    case common::JoinType::LEFT: {
-        auto joinKeysSet = binder::expression_set{joinNodeIDs.begin(), joinNodeIDs.end()};
+    case JoinType::INNER:
+    case JoinType::LEFT:
+    case JoinType::COUNT: {
         for (auto& expression : buildSchema->getExpressionsInScope()) {
-            if (joinKeysSet.contains(expression)) {
-                continue;
-            }
-            schema->insertToGroupAndScope(expression, 0);
+            // Join key may repeat for internal ID based joins.
+            schema->insertToGroupAndScopeMayRepeat(expression, 0);
+        }
+        if (mark != nullptr) {
+            schema->insertToGroupAndScope(mark, 0);
         }
     } break;
-    case common::JoinType::MARK: {
+    case JoinType::MARK: {
         schema->insertToGroupAndScope(mark, 0);
     } break;
     default:
-        throw common::NotImplementedException("HashJoin::computeFlatSchema()");
+        KU_UNREACHABLE;
     }
+}
+
+std::string LogicalHashJoin::getExpressionsForPrinting() const {
+    if (isNodeIDOnlyJoin()) {
+        return binder::ExpressionUtil::toStringOrdered(getJoinNodeIDs());
+    }
+    return binder::ExpressionUtil::toString(joinConditions);
 }
 
 binder::expression_vector LogicalHashJoin::getExpressionsToMaterialize() const {
     switch (joinType) {
-    case common::JoinType::INNER:
-    case common::JoinType::LEFT: {
+    case JoinType::INNER:
+    case JoinType::LEFT:
+    case JoinType::COUNT: {
         return children[1]->getSchema()->getExpressionsInScope();
     }
-    case common::JoinType::MARK: {
+    case JoinType::MARK: {
         return binder::expression_vector{};
     }
     default:
-        throw common::NotImplementedException("HashJoin::getExpressionsToMaterialize");
+        KU_UNREACHABLE;
     }
+}
+
+std::unique_ptr<LogicalOperator> LogicalHashJoin::copy() {
+    auto op = std::make_unique<LogicalHashJoin>(joinConditions, joinType, mark, children[0]->copy(),
+        children[1]->copy());
+    op->sipInfo = sipInfo;
+    return op;
+}
+
+bool LogicalHashJoin::isNodeIDOnlyJoin() const {
+    for (auto& [probeKey, buildKey] : joinConditions) {
+        if (probeKey->getUniqueName() != buildKey->getUniqueName() ||
+            probeKey->getDataType().getLogicalTypeID() != common::LogicalTypeID::INTERNAL_ID) {
+            return false;
+        }
+    }
+    return true;
+}
+
+binder::expression_vector LogicalHashJoin::getJoinNodeIDs() const {
+    binder::expression_vector result;
+    KU_ASSERT(isNodeIDOnlyJoin());
+    for (auto& [probeKey, _] : joinConditions) {
+        result.push_back(probeKey);
+    }
+    return result;
 }
 
 bool LogicalHashJoin::requireFlatProbeKeys() {
     // Flatten for multiple join keys.
-    if (joinNodeIDs.size() > 1) {
+    if (joinConditions.size() > 1) {
         return true;
     }
     // Flatten for left join.
-    // TODO(Guodong): fix this.
-    if (joinType == common::JoinType::LEFT) {
+    if (joinType == JoinType::LEFT || joinType == JoinType::COUNT) {
+        return true; // TODO(Guodong): fix this. We shouldn't require flatten.
+    }
+    auto& [probeKey, buildKey] = joinConditions[0];
+    // Flatten for non-ID-based join.
+    if (probeKey->dataType.getLogicalTypeID() != LogicalTypeID::INTERNAL_ID) {
         return true;
     }
-    auto joinNodeID = joinNodeIDs[0].get();
-    return !isJoinKeyUniqueOnBuildSide(*joinNodeID);
+    return !isJoinKeyUniqueOnBuildSide(*buildKey);
 }
 
 bool LogicalHashJoin::isJoinKeyUniqueOnBuildSide(const binder::Expression& joinNodeID) {
@@ -154,11 +195,11 @@ bool LogicalHashJoin::isJoinKeyUniqueOnBuildSide(const binder::Expression& joinN
         }
         op = op->getChild(0).get();
     }
-    if (op->getOperatorType() != LogicalOperatorType::SCAN_NODE) {
+    if (op->getOperatorType() != LogicalOperatorType::SCAN_NODE_TABLE) {
         return false;
     }
-    auto scanNodeID = (LogicalScanNode*)op;
-    if (scanNodeID->getNode()->getInternalIDPropertyName() != joinNodeID.getUniqueName()) {
+    auto scan = ku_dynamic_cast<LogicalOperator*, LogicalScanNodeTable*>(op);
+    if (scan->getNodeID()->getUniqueName() != joinNodeID.getUniqueName()) {
         return false;
     }
     return true;

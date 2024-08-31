@@ -7,11 +7,20 @@ namespace binder {
 
 class VariableExpression : public Expression {
 public:
-    VariableExpression(common::DataType dataType, std::string uniqueName, std::string variableName)
-        : Expression{common::VARIABLE, dataType, std::move(uniqueName)}, variableName{std::move(
-                                                                             variableName)} {}
+    VariableExpression(common::LogicalType dataType, std::string uniqueName,
+        std::string variableName)
+        : Expression{common::ExpressionType::VARIABLE, std::move(dataType), std::move(uniqueName)},
+          variableName{std::move(variableName)} {}
 
-    std::string toString() const override { return variableName; }
+    std::string getVariableName() const { return variableName; }
+
+    void cast(const common::LogicalType& type) override;
+
+    std::string toStringInternal() const final { return variableName; }
+
+    std::unique_ptr<Expression> copy() const final {
+        return std::make_unique<VariableExpression>(dataType.copy(), uniqueName, variableName);
+    }
 
 private:
     std::string variableName;

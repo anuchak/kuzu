@@ -1,11 +1,10 @@
 #pragma once
 
 #include <chrono>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
-#include "exception.h"
+#include "common/assert.h"
+#include "exception/exception.h"
 
 namespace kuzu {
 namespace common {
@@ -23,7 +22,7 @@ public:
         finished = true;
     }
 
-    double getDuration() {
+    double getDuration() const {
         if (finished) {
             auto duration = stopTime - startTime;
             return (double)std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
@@ -31,10 +30,12 @@ public:
         throw Exception("Timer is still running.");
     }
 
-    int64_t getElapsedTimeInMS() {
+    uint64_t getElapsedTimeInMS() const {
         auto now = std::chrono::high_resolution_clock::now();
         auto duration = now - startTime;
-        return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        auto count = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        KU_ASSERT(count >= 0);
+        return count;
     }
 
 private:

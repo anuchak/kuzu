@@ -1,0 +1,14 @@
+CREATE NODE TABLE Person(ID INT64, firstName STRING, lastName STRING, gender STRING, birthday DATE, creationDate TIMESTAMP, locationIP STRING, browserUsed STRING, PRIMARY KEY(ID));
+CREATE REL TABLE knows(FROM Person TO Person, creationDate TIMESTAMP, MANY_MANY);
+MATCH (a)-[b:knows* SHORTEST]->(c) RETURN b._length;
+MATCH (a:Person)-[r:knows* SHORTEST 1..30]->(b:Person) WHERE a.ID = 94 RETURN r._length;
+:clear
+MATCH (a:Person)-[r:knows* SHORTEST 1..30]->(b:Person) WHERE a.ID = 94 RETURN r._length;
+EXPLAIN MATCH (a:Person)-[r:knows* SHORTEST 1..30]->(b:Person) WHERE a.ID = 94 RETURN r._length;
+EXPLAIN MATCH (a:Person)-[r:knows* SHORTEST 1..30]->(b:Person) WHERE a.ID < 100 RETURN r._length;
+EXPLAIN MATCH (a:Person)-[r:knows* SHORTEST 1..30]->(b:Person) WHERE a.ID < 100 AND b.ID > 1000 RETURN r._length;
+EXPLAIN MATCH (a:Person), (b:Person) WHERE a.fName = b.lastName return *;
+:help
+:show_node Person
+EXPLAIN MATCH (a:Person), (b:Person) WHERE a.firstName = b.lastName return *;
+EXPLAIN MATCH (a:Person)-[r:knows* SHORTEST 1..30]->(b:Person) WHERE a.ID < 100 RETURN r._length;

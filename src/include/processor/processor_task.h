@@ -7,18 +7,32 @@ namespace kuzu {
 namespace processor {
 
 class ProcessorTask : public common::Task {
+    friend class QueryProcessor;
+
 public:
-    ProcessorTask(Sink* sink, ExecutionContext* executionContext)
-        : Task{executionContext->numThreads}, sink{sink}, executionContext{executionContext} {}
+    ProcessorTask(Sink* sink, ExecutionContext* executionContext);
 
     void run() override;
     void finalizeIfNecessary() override;
 
-private:
-    static std::unique_ptr<ResultSet> populateResultSet(
-        Sink* op, storage::MemoryManager* memoryManager);
+    inline void setSharedStateInitialized() { sharedStateInitialized = true; }
+
+    inline void setNumberOfTaskThreads(uint64_t threads) {
+        maxNumThreads = threads;
+    }
+
+    inline uint64_t getWorkNoLock() override {
+        return sink->getWork() / numThreadsRegistered;
+    }
+
+    inline Sink* getSink() { return sink; }
 
 private:
+    static std::unique_ptr<ResultSet> populateResultSet(Sink* op,
+        storage::MemoryManager* memoryManager);
+
+private:
+    bool sharedStateInitialized;
     Sink* sink;
     ExecutionContext* executionContext;
 };

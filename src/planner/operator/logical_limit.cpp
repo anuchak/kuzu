@@ -1,7 +1,20 @@
-#include "planner/logical_plan/logical_operator/logical_limit.h"
+#include "planner/operator/logical_limit.h"
+
+#include "planner/operator/factorization/flatten_resolver.h"
 
 namespace kuzu {
 namespace planner {
+
+std::string LogicalLimit::getExpressionsForPrinting() const {
+    std::string result;
+    if (hasSkipNum()) {
+        result += "SKIP " + std::to_string(skipNum) + "\n";
+    }
+    if (hasLimitNum()) {
+        result += "LIMIT " + std::to_string(limitNum) + "\n";
+    }
+    return result;
+}
 
 f_group_pos_set LogicalLimit::getGroupsPosToFlatten() {
     auto childSchema = children[0]->getSchema();

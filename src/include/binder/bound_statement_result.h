@@ -8,43 +8,27 @@ namespace binder {
 class BoundStatementResult {
 public:
     BoundStatementResult() = default;
-    BoundStatementResult(
-        expression_vector columns, std::vector<expression_vector> expressionsToCollectPerColumn)
-        : columns{std::move(columns)}, expressionsToCollectPerColumn{
-                                           std::move(expressionsToCollectPerColumn)} {}
+    explicit BoundStatementResult(expression_vector columns) : columns{std::move(columns)} {}
+    EXPLICIT_COPY_DEFAULT_MOVE(BoundStatementResult);
 
-    static std::unique_ptr<BoundStatementResult> createEmptyResult() {
-        return std::make_unique<BoundStatementResult>();
-    }
+    static BoundStatementResult createEmptyResult() { return BoundStatementResult(); }
 
-    static std::unique_ptr<BoundStatementResult> createSingleStringColumnResult();
+    static BoundStatementResult createSingleStringColumnResult(
+        const std::string& columnName = "result");
 
-    inline void addColumn(
-        std::shared_ptr<Expression> column, expression_vector expressionToCollect) {
-        columns.push_back(std::move(column));
-        expressionsToCollectPerColumn.push_back(std::move(expressionToCollect));
-    }
-    inline expression_vector getColumns() const { return columns; }
-    inline std::vector<expression_vector> getExpressionsToCollectPerColumn() const {
-        return expressionsToCollectPerColumn;
-    }
+    void addColumn(std::shared_ptr<Expression> column) { columns.push_back(std::move(column)); }
+    expression_vector getColumns() const { return columns; }
 
-    expression_vector getExpressionsToCollect();
-
-    inline std::shared_ptr<Expression> getSingleExpressionToCollect() {
-        auto expressionsToCollect = getExpressionsToCollect();
-        assert(expressionsToCollect.size() == 1);
-        return expressionsToCollect[0];
-    }
-
-    inline std::unique_ptr<BoundStatementResult> copy() {
-        return std::make_unique<BoundStatementResult>(columns, expressionsToCollectPerColumn);
+    std::shared_ptr<Expression> getSingleColumnExpr() const {
+        KU_ASSERT(columns.size() == 1);
+        return columns[0];
     }
 
 private:
+    BoundStatementResult(const BoundStatementResult& other) : columns{other.columns} {}
+
+private:
     expression_vector columns;
-    // for node and rel column, we need collect multiple properties and aggregate in json format.
-    std::vector<expression_vector> expressionsToCollectPerColumn;
 };
 
 } // namespace binder

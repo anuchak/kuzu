@@ -1,25 +1,20 @@
 #pragma once
 
-#include <vector>
-
-#include "parser/ddl/ddl.h"
+#include "create_table_info.h"
+#include "parser/statement.h"
 
 namespace kuzu {
 namespace parser {
 
-class CreateTable : public DDL {
+class CreateTable final : public Statement {
 public:
-    explicit CreateTable(common::StatementType statementType, std::string tableName,
-        std::vector<std::pair<std::string, std::string>> propertyNameDataTypes)
-        : DDL{statementType, std::move(tableName)}, propertyNameDataTypes{
-                                                        std::move(propertyNameDataTypes)} {}
+    explicit CreateTable(CreateTableInfo info)
+        : Statement{common::StatementType::CREATE_TABLE}, info{std::move(info)} {}
 
-    inline std::vector<std::pair<std::string, std::string>> getPropertyNameDataTypes() const {
-        return propertyNameDataTypes;
-    }
+    inline const CreateTableInfo* getInfo() const { return &info; }
 
-protected:
-    std::vector<std::pair<std::string, std::string>> propertyNameDataTypes;
+private:
+    CreateTableInfo info;
 };
 
 } // namespace parser

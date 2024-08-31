@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <utility>
 
 #include "common/types/types.h"
@@ -8,10 +7,10 @@
 namespace kuzu {
 namespace processor {
 
-using data_chunk_pos_t = common::vector_idx_t;
-constexpr data_chunk_pos_t INVALID_DATA_CHUNK_POS = common::INVALID_VECTOR_IDX;
-using value_vector_pos_t = common::vector_idx_t;
-constexpr value_vector_pos_t INVALID_VALUE_VECTOR_POS = common::INVALID_VECTOR_IDX;
+using data_chunk_pos_t = common::idx_t;
+constexpr data_chunk_pos_t INVALID_DATA_CHUNK_POS = common::INVALID_IDX;
+using value_vector_pos_t = common::idx_t;
+constexpr value_vector_pos_t INVALID_VALUE_VECTOR_POS = common::INVALID_IDX;
 
 struct DataPos {
     data_chunk_pos_t dataChunkPos;
@@ -23,7 +22,10 @@ struct DataPos {
     explicit DataPos(std::pair<data_chunk_pos_t, value_vector_pos_t> pos)
         : dataChunkPos{pos.first}, valueVectorPos{pos.second} {}
 
-    DataPos(const DataPos& other) : DataPos(other.dataChunkPos, other.valueVectorPos) {}
+    static DataPos getInvalidPos() { return DataPos(); }
+    bool isValid() const {
+        return dataChunkPos != INVALID_DATA_CHUNK_POS && valueVectorPos != INVALID_VALUE_VECTOR_POS;
+    }
 
     inline bool operator==(const DataPos& rhs) const {
         return (dataChunkPos == rhs.dataChunkPos) && (valueVectorPos == rhs.valueVectorPos);

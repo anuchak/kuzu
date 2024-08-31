@@ -1,7 +1,13 @@
 #pragma once
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "common/api.h"
 #include "kuzu_fwd.h"
+#include "parser/statement.h"
 #include "query_summary.h"
 
 namespace kuzu {
@@ -13,17 +19,14 @@ namespace main {
  */
 class PreparedStatement {
     friend class Connection;
+    friend class ClientContext;
     friend class testing::TestHelper;
+    friend class testing::TestRunner;
     friend class testing::TinySnbDDLTest;
     friend class testing::TinySnbCopyCSVTransactionTest;
 
 public:
-    /**
-     * @brief DDL and COPY statements are automatically wrapped in a transaction and committed.
-     * As such, they cannot be part of an active transaction.
-     * @return the prepared statement is allowed to be part of an active transaction.
-     */
-    KUZU_API bool allowActiveTransaction() const;
+    bool isTransactionStatement() const;
     /**
      * @return the query is prepared successfully or not.
      */
@@ -37,10 +40,16 @@ public:
      */
     KUZU_API bool isReadOnly() const;
 
-    std::vector<std::shared_ptr<binder::Expression>> getExpressionsToCollect();
+    inline std::unordered_map<std::string, std::shared_ptr<common::Value>> getParameterMap() {
+        return parameterMap;
+    }
+
+    KUZU_API ~PreparedStatement();
 
 private:
-    common::StatementType statementType;
+    bool isProfile();
+
+private:
     bool success = true;
     bool readOnly = false;
     std::string errMsg;
@@ -48,6 +57,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<common::Value>> parameterMap;
     std::unique_ptr<binder::BoundStatementResult> statementResult;
     std::vector<std::unique_ptr<planner::LogicalPlan>> logicalPlans;
+    std::shared_ptr<parser::Statement> parsedStatement;
 };
 
 } // namespace main

@@ -1,22 +1,22 @@
 #pragma once
 
-#include "bound_ddl.h"
-#include "catalog/catalog_structs.h"
+#include "binder/bound_statement.h"
+#include "bound_create_table_info.h"
 
 namespace kuzu {
 namespace binder {
 
-class BoundCreateTable : public BoundDDL {
-
+class BoundCreateTable final : public BoundStatement {
 public:
-    explicit BoundCreateTable(common::StatementType statementType, std::string tableName,
-        std::vector<catalog::Property> properties)
-        : BoundDDL{statementType, std::move(tableName)}, properties{std::move(properties)} {}
+    explicit BoundCreateTable(BoundCreateTableInfo info)
+        : BoundStatement{common::StatementType::CREATE_TABLE,
+              BoundStatementResult::createSingleStringColumnResult()},
+          info{std::move(info)} {}
 
-    inline std::vector<catalog::Property> getProperties() const { return properties; }
+    inline const BoundCreateTableInfo* getInfo() const { return &info; }
 
 private:
-    std::vector<catalog::Property> properties;
+    BoundCreateTableInfo info;
 };
 
 } // namespace binder

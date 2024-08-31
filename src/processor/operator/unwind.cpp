@@ -6,8 +6,11 @@ namespace kuzu {
 namespace processor {
 
 void Unwind::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
-    expressionEvaluator->init(*resultSet, context->memoryManager);
+    expressionEvaluator->init(*resultSet, context->clientContext);
     outValueVector = resultSet->getValueVector(outDataPos);
+    if (idPos.isValid()) {
+        idVector = resultSet->getValueVector(idPos).get();
+    }
 }
 
 bool Unwind::hasMoreToRead() const {
@@ -15,21 +18,25 @@ bool Unwind::hasMoreToRead() const {
 }
 
 void Unwind::copyTuplesToOutVector(uint64_t startPos, uint64_t endPos) const {
-    auto listValues = common::ListVector::getListValuesWithOffset(
-        expressionEvaluator->resultVector.get(), listEntry, startPos);
-    auto listDataVector =
-        common::ListVector::getDataVector(expressionEvaluator->resultVector.get());
-    for (auto pos = startPos; pos < endPos; pos++) {
-        common::ValueVectorUtils::copyValue(
-            outValueVector->getData() + outValueVector->getNumBytesPerValue() * (pos - startPos),
-            *outValueVector, listValues, *listDataVector);
-        listValues += listDataVector->getNumBytesPerValue();
+    auto listDataVector = ListVector::getDataVector(expressionEvaluator->resultVector.get());
+    auto listPos = listEntry.offset + startPos;
+    for (auto i = 0u; i < endPos - startPos; i++) {
+        outValueVector->copyFromVectorData(i, listDataVector, listPos++);
+    }
+    if (idVector != nullptr) {
+        KU_ASSERT(listDataVector->dataType.getLogicalTypeID() == common::LogicalTypeID::NODE);
+        auto idFieldVector = StructVector::getFieldVector(listDataVector, 0);
+        listPos = listEntry.offset + startPos;
+        for (auto i = 0u; i < endPos - startPos; i++) {
+            idVector->copyFromVectorData(i, idFieldVector.get(), listPos++);
+        }
     }
 }
 
 bool Unwind::getNextTuplesInternal(ExecutionContext* context) {
     if (hasMoreToRead()) {
-        auto totalElementsCopy = std::min(DEFAULT_VECTOR_CAPACITY, listEntry.size - startIndex);
+        auto totalElementsCopy =
+            std::min(DEFAULT_VECTOR_CAPACITY, (uint64_t)listEntry.size - startIndex);
         copyTuplesToOutVector(startIndex, (totalElementsCopy + startIndex));
         startIndex += totalElementsCopy;
         outValueVector->state->initOriginalAndSelectedSize(totalElementsCopy);
@@ -40,18 +47,18 @@ bool Unwind::getNextTuplesInternal(ExecutionContext* context) {
             return false;
         }
         expressionEvaluator->evaluate();
-        auto pos = expressionEvaluator->resultVector->state->selVector->selectedPositions[0];
+        auto pos = expressionEvaluator->resultVector->state->getSelVector()[0];
         if (expressionEvaluator->resultVector->isNull(pos)) {
-            outValueVector->state->selVector->selectedSize = 0;
+            outValueVector->state->getSelVectorUnsafe().setSelSize(0);
             continue;
         }
-        listEntry = expressionEvaluator->resultVector->getValue<common::list_entry_t>(pos);
+        listEntry = expressionEvaluator->resultVector->getValue<list_entry_t>(pos);
         startIndex = 0;
-        auto totalElementsCopy = std::min(DEFAULT_VECTOR_CAPACITY, listEntry.size);
+        auto totalElementsCopy = std::min(DEFAULT_VECTOR_CAPACITY, (uint64_t)listEntry.size);
         copyTuplesToOutVector(0, totalElementsCopy);
         startIndex += totalElementsCopy;
         outValueVector->state->initOriginalAndSelectedSize(startIndex);
-    } while (outValueVector->state->selVector->selectedSize == 0);
+    } while (outValueVector->state->getSelVector().getSelSize() == 0);
     return true;
 }
 

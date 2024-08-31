@@ -1,87 +1,109 @@
-#include "common/expression_type.h"
+#include "common/enums/expression_type.h"
 
-#include "common/exception.h"
+#include "common/assert.h"
+#include "function/comparison/vector_comparison_functions.h"
+
+using namespace kuzu::function;
 
 namespace kuzu {
 namespace common {
 
-bool isExpressionUnary(ExpressionType type) {
-    return NOT == type || IS_NULL == type || IS_NOT_NULL == type;
+bool ExpressionTypeUtil::isUnary(ExpressionType type) {
+    return ExpressionType::NOT == type || ExpressionType::IS_NULL == type ||
+           ExpressionType::IS_NOT_NULL == type;
 }
 
-bool isExpressionBinary(ExpressionType type) {
-    return isExpressionComparison(type) || OR == type || XOR == type || AND == type;
+bool ExpressionTypeUtil::isBinary(ExpressionType type) {
+    return isComparison(type) || ExpressionType::OR == type || ExpressionType::XOR == type ||
+           ExpressionType::AND == type;
 }
 
-bool isExpressionBoolConnection(ExpressionType type) {
-    return OR == type || XOR == type || AND == type || NOT == type;
+bool ExpressionTypeUtil::isBoolean(ExpressionType type) {
+    return ExpressionType::OR == type || ExpressionType::XOR == type ||
+           ExpressionType::AND == type || ExpressionType::NOT == type;
 }
 
-bool isExpressionComparison(ExpressionType type) {
-    return EQUALS == type || NOT_EQUALS == type || GREATER_THAN == type ||
-           GREATER_THAN_EQUALS == type || LESS_THAN == type || LESS_THAN_EQUALS == type;
+bool ExpressionTypeUtil::isComparison(ExpressionType type) {
+    return ExpressionType::EQUALS == type || ExpressionType::NOT_EQUALS == type ||
+           ExpressionType::GREATER_THAN == type || ExpressionType::GREATER_THAN_EQUALS == type ||
+           ExpressionType::LESS_THAN == type || ExpressionType::LESS_THAN_EQUALS == type;
 }
 
-bool isExpressionNullOperator(ExpressionType type) {
-    return IS_NULL == type || IS_NOT_NULL == type;
+bool ExpressionTypeUtil::isNullOperator(ExpressionType type) {
+    return ExpressionType::IS_NULL == type || ExpressionType::IS_NOT_NULL == type;
 }
 
-bool isExpressionLiteral(ExpressionType type) {
-    return LITERAL == type;
-}
-
-bool isExpressionAggregate(ExpressionType type) {
-    return AGGREGATE_FUNCTION == type;
-}
-
-bool isExpressionSubquery(ExpressionType type) {
-    return EXISTENTIAL_SUBQUERY == type;
-}
-
-std::string expressionTypeToString(ExpressionType type) {
+ExpressionType ExpressionTypeUtil::reverseComparisonDirection(ExpressionType type) {
+    KU_ASSERT(isComparison(type));
     switch (type) {
-    case OR:
-        return "OR";
-    case XOR:
-        return "XOR";
-    case AND:
-        return "AND";
-    case NOT:
-        return "NOT";
-    case EQUALS:
-        return EQUALS_FUNC_NAME;
-    case NOT_EQUALS:
-        return NOT_EQUALS_FUNC_NAME;
-    case GREATER_THAN:
-        return GREATER_THAN_FUNC_NAME;
-    case GREATER_THAN_EQUALS:
-        return GREATER_THAN_EQUALS_FUNC_NAME;
-    case LESS_THAN:
-        return LESS_THAN_FUNC_NAME;
-    case LESS_THAN_EQUALS:
-        return LESS_THAN_EQUALS_FUNC_NAME;
-    case IS_NULL:
-        return "IS_NULL";
-    case IS_NOT_NULL:
-        return "IS_NOT_NULL";
-    case PROPERTY:
-        return "PROPERTY";
-    case LITERAL:
-        return "LITERAL";
-    case VARIABLE:
-        return "VARIABLE";
-    case PARAMETER:
-        return "PARAMETER";
-    case FUNCTION:
-        return "FUNCTION";
-    case AGGREGATE_FUNCTION:
-        return "AGGREGATE_FUNCTION";
-    case EXISTENTIAL_SUBQUERY:
-        return "EXISTENTIAL_SUBQUERY";
+    case ExpressionType::GREATER_THAN:
+        return ExpressionType::LESS_THAN;
+    case ExpressionType::GREATER_THAN_EQUALS:
+        return ExpressionType::LESS_THAN_EQUALS;
+    case ExpressionType::LESS_THAN:
+        return ExpressionType::GREATER_THAN;
+    case ExpressionType::LESS_THAN_EQUALS:
+        return ExpressionType::GREATER_THAN_EQUALS;
     default:
-        throw NotImplementedException("Cannot convert expression type to string");
+        return type;
     }
 }
+
+// LCOV_EXCL_START
+std::string ExpressionTypeUtil::toString(ExpressionType type) {
+    switch (type) {
+    case ExpressionType::OR:
+        return "OR";
+    case ExpressionType::XOR:
+        return "XOR";
+    case ExpressionType::AND:
+        return "AND";
+    case ExpressionType::NOT:
+        return "NOT";
+    case ExpressionType::EQUALS:
+        return EqualsFunction::name;
+    case ExpressionType::NOT_EQUALS:
+        return NotEqualsFunction::name;
+    case ExpressionType::GREATER_THAN:
+        return GreaterThanFunction::name;
+    case ExpressionType::GREATER_THAN_EQUALS:
+        return GreaterThanEqualsFunction::name;
+    case ExpressionType::LESS_THAN:
+        return LessThanFunction::name;
+    case ExpressionType::LESS_THAN_EQUALS:
+        return LessThanEqualsFunction::name;
+    case ExpressionType::IS_NULL:
+        return "IS_NULL";
+    case ExpressionType::IS_NOT_NULL:
+        return "IS_NOT_NULL";
+    case ExpressionType::PROPERTY:
+        return "PROPERTY";
+    case ExpressionType::LITERAL:
+        return "LITERAL";
+    case ExpressionType::STAR:
+        return "STAR";
+    case ExpressionType::VARIABLE:
+        return "VARIABLE";
+    case ExpressionType::PATH:
+        return "PATH";
+    case ExpressionType::PATTERN:
+        return "PATTERN";
+    case ExpressionType::PARAMETER:
+        return "PARAMETER";
+    case ExpressionType::FUNCTION:
+        return "SCALAR_FUNCTION";
+    case ExpressionType::AGGREGATE_FUNCTION:
+        return "AGGREGATE_FUNCTION";
+    case ExpressionType::SUBQUERY:
+        return "SUBQUERY";
+    case ExpressionType::GRAPH:
+        return "GRAPH";
+    default:
+        KU_UNREACHABLE;
+    }
+    return "";
+}
+// LCOV_EXCL_STOP
 
 } // namespace common
 } // namespace kuzu

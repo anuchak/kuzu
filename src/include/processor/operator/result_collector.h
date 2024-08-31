@@ -1,81 +1,96 @@
 #pragma once
 
+#include "common/enums/accumulate_type.h"
 #include "processor/operator/sink.h"
 #include "processor/result/factorized_table.h"
 
 namespace kuzu {
 namespace processor {
 
-struct FTableScanMorsel {
-
-    FTableScanMorsel(FactorizedTable* table, uint64_t startTupleIdx, uint64_t numTuples)
-        : table{table}, startTupleIdx{startTupleIdx}, numTuples{numTuples} {}
-
-    FactorizedTable* table;
-    uint64_t startTupleIdx;
-    uint64_t numTuples;
-};
-
-class FTableSharedState {
+class ResultCollectorSharedState {
 public:
-    void initTable(
-        storage::MemoryManager* memoryManager, std::unique_ptr<FactorizedTableSchema> tableSchema);
+    explicit ResultCollectorSharedState(std::shared_ptr<FactorizedTable> table)
+        : table{std::move(table)} {}
 
-    inline void mergeLocalTable(FactorizedTable& localTable) {
-        std::lock_guard<std::mutex> lck{mtx};
+    void mergeLocalTable(FactorizedTable& localTable) {
+        std::unique_lock lck{mtx};
         table->merge(localTable);
     }
 
-    inline std::shared_ptr<FactorizedTable> getTable() { return table; }
-
-    inline uint64_t getMaxMorselSize() {
-        std::lock_guard<std::mutex> lck{mtx};
-        return table->hasUnflatCol() ? 1 : common::DEFAULT_VECTOR_CAPACITY;
-    }
-    std::unique_ptr<FTableScanMorsel> getMorsel(uint64_t maxMorselSize);
+    std::shared_ptr<FactorizedTable> getTable() { return table; }
 
 private:
     std::mutex mtx;
     std::shared_ptr<FactorizedTable> table;
+};
 
-    uint64_t nextTupleIdxToScan = 0u;
+struct ResultCollectorInfo {
+    common::AccumulateType accumulateType;
+    FactorizedTableSchema tableSchema;
+    std::vector<DataPos> payloadPositions;
+
+    ResultCollectorInfo(common::AccumulateType accumulateType, FactorizedTableSchema tableSchema,
+        std::vector<DataPos> payloadPositions)
+        : accumulateType{accumulateType}, tableSchema{std::move(tableSchema)},
+          payloadPositions{std::move(payloadPositions)} {}
+    EXPLICIT_COPY_DEFAULT_MOVE(ResultCollectorInfo);
+
+private:
+    ResultCollectorInfo(const ResultCollectorInfo& other)
+        : accumulateType{other.accumulateType}, tableSchema{other.tableSchema.copy()},
+          payloadPositions{other.payloadPositions} {}
+};
+
+struct ResultCollectorPrintInfo final : OPPrintInfo {
+    binder::expression_vector expressions;
+    common::AccumulateType accumulateType;
+
+    ResultCollectorPrintInfo(binder::expression_vector expressions,
+        common::AccumulateType accumulateType)
+        : expressions{std::move(expressions)}, accumulateType{accumulateType} {}
+    ResultCollectorPrintInfo(const ResultCollectorPrintInfo& other)
+        : OPPrintInfo{other}, expressions{other.expressions}, accumulateType{other.accumulateType} {
+    }
+
+    std::string toString() const override;
+
+    std::unique_ptr<OPPrintInfo> copy() const override {
+        return std::make_unique<ResultCollectorPrintInfo>(*this);
+    }
 };
 
 class ResultCollector : public Sink {
+    static constexpr PhysicalOperatorType type_ = PhysicalOperatorType::RESULT_COLLECTOR;
+
 public:
     ResultCollector(std::unique_ptr<ResultSetDescriptor> resultSetDescriptor,
-        std::vector<std::pair<DataPos, common::DataType>> payloadsPosAndType,
-        std::vector<bool> isPayloadFlat, std::shared_ptr<FTableSharedState> sharedState,
-        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
-        : Sink{std::move(resultSetDescriptor), PhysicalOperatorType::RESULT_COLLECTOR,
-              std::move(child), id, paramsString},
-          payloadsPosAndType{std::move(payloadsPosAndType)},
-          isPayloadFlat{std::move(isPayloadFlat)}, sharedState{std::move(sharedState)} {}
+        ResultCollectorInfo info, std::shared_ptr<ResultCollectorSharedState> sharedState,
+        std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        std::unique_ptr<OPPrintInfo> printInfo)
+        : Sink{std::move(resultSetDescriptor), type_, std::move(child), id, std::move(printInfo)},
+          info{std::move(info)}, sharedState{std::move(sharedState)} {}
 
-    void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
+    void executeInternal(ExecutionContext* context) final;
 
-    void executeInternal(ExecutionContext* context) override;
+    void finalize(ExecutionContext* context) final;
 
-    std::unique_ptr<PhysicalOperator> clone() override {
-        return make_unique<ResultCollector>(resultSetDescriptor->copy(), payloadsPosAndType,
-            isPayloadFlat, sharedState, children[0]->clone(), id, paramsString);
-    }
+    std::shared_ptr<FactorizedTable> getResultFactorizedTable() { return sharedState->getTable(); }
 
-    inline std::shared_ptr<FTableSharedState> getSharedState() { return sharedState; }
-    inline std::shared_ptr<FactorizedTable> getResultFactorizedTable() {
-        return sharedState->getTable();
+    std::unique_ptr<PhysicalOperator> clone() final {
+        return make_unique<ResultCollector>(resultSetDescriptor->copy(), info.copy(), sharedState,
+            children[0]->clone(), id, printInfo->copy());
     }
 
 private:
-    void initGlobalStateInternal(ExecutionContext* context) override;
-
-    std::unique_ptr<FactorizedTableSchema> populateTableSchema();
+    void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) final;
 
 private:
-    std::vector<std::pair<DataPos, common::DataType>> payloadsPosAndType;
-    std::vector<bool> isPayloadFlat;
-    std::vector<common::ValueVector*> vectorsToCollect;
-    std::shared_ptr<FTableSharedState> sharedState;
+    ResultCollectorInfo info;
+    std::shared_ptr<ResultCollectorSharedState> sharedState;
+    std::vector<common::ValueVector*> payloadVectors;
+    std::vector<common::ValueVector*> payloadAndMarkVectors;
+
+    std::unique_ptr<common::ValueVector> markVector;
     std::unique_ptr<FactorizedTable> localTable;
 };
 

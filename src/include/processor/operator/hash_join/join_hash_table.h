@@ -1,8 +1,6 @@
 #pragma once
 
-#include "common/utils.h"
-#include "function/hash/hash_operations.h"
-#include "processor/operator/base_hash_table.h"
+#include "processor/result/base_hash_table.h"
 #include "storage/buffer_manager/memory_manager.h"
 
 namespace kuzu {
@@ -10,50 +8,64 @@ namespace processor {
 
 class JoinHashTable : public BaseHashTable {
 public:
-    JoinHashTable(storage::MemoryManager& memoryManager, uint64_t numKeyColumns,
-        std::unique_ptr<FactorizedTableSchema> tableSchema);
+    JoinHashTable(storage::MemoryManager& memoryManager, common::logical_type_vec_t keyTypes,
+        FactorizedTableSchema tableSchema);
 
-    virtual ~JoinHashTable() = default;
+    void appendVectors(const std::vector<common::ValueVector*>& keyVectors,
+        const std::vector<common::ValueVector*>& payloadVectors, common::DataChunkState* keyState);
+    void appendVector(common::ValueVector* vector,
+        const std::vector<BlockAppendingInfo>& appendInfos, ft_col_idx_t colIdx);
 
-    virtual void append(const std::vector<common::ValueVector*>& vectorsToAppend);
+    // Used in worst-case optimal join
+    void appendVectorWithSorting(common::ValueVector* keyVector,
+        std::vector<common::ValueVector*> payloadVectors);
+
     void allocateHashSlots(uint64_t numTuples);
     void buildHashSlots();
 
-    void probe(const std::vector<common::ValueVector*>& keyVectors, common::ValueVector* hashVector,
-        common::ValueVector* tmpHashVector, uint8_t** probedTuples);
+    void probe(const std::vector<common::ValueVector*>& keyVectors, common::ValueVector& hashVector,
+        common::SelectionVector& hashSelVec, common::ValueVector& tmpHashResultVector,
+        uint8_t** probedTuples);
+    // All key vectors must be flat. Thus input is a tuple, multiple matches can be found for the
+    // given key tuple.
+    common::sel_t matchFlatKeys(const std::vector<common::ValueVector*>& keyVectors,
+        uint8_t** probedTuples, uint8_t** matchedTuples);
+    // Input is multiple tuples, at most one match exist for each key.
+    common::sel_t matchUnFlatKey(common::ValueVector* keyVector, uint8_t** probedTuples,
+        uint8_t** matchedTuples, common::SelectionVector& matchedTuplesSelVector);
 
-    inline void lookup(std::vector<common::ValueVector*>& vectors,
-        std::vector<uint32_t>& colIdxesToScan, uint8_t** tuplesToRead, uint64_t startPos,
-        uint64_t numTuplesToRead) {
+    void lookup(std::vector<common::ValueVector*>& vectors, std::vector<uint32_t>& colIdxesToScan,
+        uint8_t** tuplesToRead, uint64_t startPos, uint64_t numTuplesToRead) {
         factorizedTable->lookup(vectors, colIdxesToScan, tuplesToRead, startPos, numTuplesToRead);
     }
-    inline void merge(JoinHashTable& other) { factorizedTable->merge(*other.factorizedTable); }
-    inline uint64_t getNumTuples() { return factorizedTable->getNumTuples(); }
-    inline uint8_t** getPrevTuple(const uint8_t* tuple) const {
-        return (uint8_t**)(tuple + colOffsetOfPrevPtrInTuple);
+    void merge(JoinHashTable& other) { factorizedTable->merge(*other.factorizedTable); }
+    uint64_t getNumTuples() { return factorizedTable->getNumTuples(); }
+    uint8_t** getPrevTuple(const uint8_t* tuple) const {
+        return (uint8_t**)(tuple + prevPtrColOffset);
     }
-    inline uint8_t* getTupleForHash(common::hash_t hash) {
+    uint8_t* getTupleForHash(common::hash_t hash) {
         auto slotIdx = getSlotIdxForHash(hash);
         return ((uint8_t**)(hashSlotsBlocks[slotIdx >> numSlotsPerBlockLog2]
                                 ->getData()))[slotIdx & slotIdxInBlockMask];
     }
-    inline FactorizedTable* getFactorizedTable() { return factorizedTable.get(); }
-    inline const FactorizedTableSchema* getTableSchema() {
-        return factorizedTable->getTableSchema();
-    }
+    FactorizedTable* getFactorizedTable() { return factorizedTable.get(); }
+    const FactorizedTableSchema* getTableSchema() { return factorizedTable->getTableSchema(); }
 
-protected:
-    uint8_t** findHashSlot(common::nodeID_t* nodeIDs) const;
+private:
+    uint8_t** findHashSlot(const uint8_t* tuple) const;
     // This function returns the pointer that previously stored in the same slot.
     uint8_t* insertEntry(uint8_t* tuple) const;
 
-    // This function returns a boolean flag indicating if there is non-null keys after discarding.
-    static bool discardNullFromKeys(
-        const std::vector<common::ValueVector*>& vectors, uint32_t numKeyVectors);
+    // Join hash table assumes all keys to be flat.
+    void computeVectorHashes(std::vector<common::ValueVector*> keyVectors);
+
+    common::offset_t getHashValueColOffset() const;
 
 private:
-    uint64_t numKeyColumns;
-    uint64_t colOffsetOfPrevPtrInTuple;
+    static constexpr uint64_t PREV_PTR_COL_IDX = 1;
+    static constexpr uint64_t HASH_COL_IDX = 2;
+    const FactorizedTableSchema* tableSchema;
+    uint64_t prevPtrColOffset;
 };
 
 } // namespace processor

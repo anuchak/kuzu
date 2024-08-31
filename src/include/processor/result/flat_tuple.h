@@ -1,7 +1,12 @@
 #pragma once
 
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "common/api.h"
-#include "common/types/value.h"
+#include "common/types/value/value.h"
 
 namespace kuzu {
 namespace processor {
@@ -16,15 +21,15 @@ public:
     /**
      * @return number of values in the FlatTuple.
      */
-    KUZU_API uint32_t len();
+    KUZU_API uint32_t len() const;
 
     /**
      * @param idx value index to get.
      * @return the value stored at idx.
      */
-    KUZU_API common::Value* getValue(uint32_t idx);
+    KUZU_API common::Value* getValue(uint32_t idx) const;
 
-    std::string toString();
+    KUZU_API std::string toString();
 
     /**
      * @param colsWidth The length of each column

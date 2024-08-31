@@ -1,7 +1,7 @@
-#include "planner/logical_plan/logical_operator/logical_aggregate.h"
+#include "planner/operator/logical_aggregate.h"
 
 #include "binder/expression/function_expression.h"
-#include "planner/logical_plan/logical_operator/flatten_resolver.h"
+#include "planner/operator/factorization/flatten_resolver.h"
 
 namespace kuzu {
 namespace planner {
@@ -11,28 +11,18 @@ using namespace factorization;
 void LogicalAggregate::computeFactorizedSchema() {
     createEmptySchema();
     auto groupPos = schema->createGroup();
-    for (auto& expression : expressionsToGroupBy) {
-        schema->insertToGroupAndScope(expression, groupPos);
-    }
-    for (auto& expression : expressionsToAggregate) {
-        schema->insertToGroupAndScope(expression, groupPos);
-    }
+    insertAllExpressionsToGroupAndScope(groupPos);
 }
 
 void LogicalAggregate::computeFlatSchema() {
     createEmptySchema();
     schema->createGroup();
-    for (auto& expression : expressionsToGroupBy) {
-        schema->insertToGroupAndScope(expression, 0);
-    }
-    for (auto& expression : expressionsToAggregate) {
-        schema->insertToGroupAndScope(expression, 0);
-    }
+    insertAllExpressionsToGroupAndScope(0 /* groupPos */);
 }
 
 f_group_pos_set LogicalAggregate::getGroupsPosToFlattenForGroupBy() {
     f_group_pos_set dependentGroupsPos;
-    for (auto& expression : expressionsToGroupBy) {
+    for (auto& expression : getAllKeys()) {
         for (auto groupPos : children[0]->getSchema()->getDependentGroupsPos(expression)) {
             dependentGroupsPos.insert(groupPos);
         }
@@ -40,15 +30,15 @@ f_group_pos_set LogicalAggregate::getGroupsPosToFlattenForGroupBy() {
     if (hasDistinctAggregate()) {
         return FlattenAll::getGroupsPosToFlatten(dependentGroupsPos, children[0]->getSchema());
     } else {
-        return FlattenAllButOne::getGroupsPosToFlatten(
-            dependentGroupsPos, children[0]->getSchema());
+        return FlattenAllButOne::getGroupsPosToFlatten(dependentGroupsPos,
+            children[0]->getSchema());
     }
 }
 
 f_group_pos_set LogicalAggregate::getGroupsPosToFlattenForAggregate() {
     if (hasDistinctAggregate()) {
         f_group_pos_set dependentGroupsPos;
-        for (auto& expression : expressionsToAggregate) {
+        for (auto& expression : aggregates) {
             for (auto groupPos : children[0]->getSchema()->getDependentGroupsPos(expression)) {
                 dependentGroupsPos.insert(groupPos);
             }
@@ -60,11 +50,14 @@ f_group_pos_set LogicalAggregate::getGroupsPosToFlattenForAggregate() {
 
 std::string LogicalAggregate::getExpressionsForPrinting() const {
     std::string result = "Group By [";
-    for (auto& expression : expressionsToGroupBy) {
+    for (auto& expression : keys) {
+        result += expression->toString() + ", ";
+    }
+    for (auto& expression : dependentKeys) {
         result += expression->toString() + ", ";
     }
     result += "], Aggregate [";
-    for (auto& expression : expressionsToAggregate) {
+    for (auto& expression : aggregates) {
         result += expression->toString() + ", ";
     }
     result += "]";
@@ -72,13 +65,25 @@ std::string LogicalAggregate::getExpressionsForPrinting() const {
 }
 
 bool LogicalAggregate::hasDistinctAggregate() {
-    for (auto& expressionToAggregate : expressionsToAggregate) {
-        auto& functionExpression = (binder::AggregateFunctionExpression&)*expressionToAggregate;
-        if (functionExpression.isDistinct()) {
+    for (auto& expression : aggregates) {
+        auto funcExpr = expression->constPtrCast<binder::AggregateFunctionExpression>();
+        if (funcExpr->isDistinct()) {
             return true;
         }
     }
     return false;
+}
+
+void LogicalAggregate::insertAllExpressionsToGroupAndScope(f_group_pos groupPos) {
+    for (auto& expression : keys) {
+        schema->insertToGroupAndScopeMayRepeat(expression, groupPos);
+    }
+    for (auto& expression : dependentKeys) {
+        schema->insertToGroupAndScopeMayRepeat(expression, groupPos);
+    }
+    for (auto& expression : aggregates) {
+        schema->insertToGroupAndScopeMayRepeat(expression, groupPos);
+    }
 }
 
 } // namespace planner

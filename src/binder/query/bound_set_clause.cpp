@@ -1,30 +1,26 @@
 #include "binder/query/updating_clause/bound_set_clause.h"
 
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace binder {
 
-expression_vector BoundSetClause::getPropertiesToRead() const {
-    expression_vector result;
-    for (auto& setNodeProperty : setNodeProperties) {
-        for (auto& property : setNodeProperty->getSetItem().second->getSubPropertyExpressions()) {
-            result.push_back(property);
+bool BoundSetClause::hasInfo(const std::function<bool(const BoundSetPropertyInfo&)>& check) const {
+    for (auto& info : infos) {
+        if (check(info)) {
+            return true;
         }
     }
-    for (auto& setRelProperty : setRelProperties) {
-        for (auto& property : setRelProperty->getSetItem().second->getSubPropertyExpressions()) {
-            result.push_back(property);
-        }
-    }
-    return result;
+    return false;
 }
 
-std::unique_ptr<BoundUpdatingClause> BoundSetClause::copy() {
-    auto result = std::make_unique<BoundSetClause>();
-    for (auto& setNodeProperty : setNodeProperties) {
-        result->addSetNodeProperty(setNodeProperty->copy());
-    }
-    for (auto& setRelProperty : setRelProperties) {
-        result->addSetRelProperty(setRelProperty->copy());
+std::vector<BoundSetPropertyInfo> BoundSetClause::getInfos(
+    const std::function<bool(const BoundSetPropertyInfo&)>& check) const {
+    std::vector<BoundSetPropertyInfo> result;
+    for (auto& info : infos) {
+        if (check(info)) {
+            result.push_back(info.copy());
+        }
     }
     return result;
 }

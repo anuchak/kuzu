@@ -1,7 +1,9 @@
 #pragma once
 
+#include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <utility>
 #include <vector>
 
 namespace kuzu {
@@ -22,6 +24,7 @@ using lock_t = std::unique_lock<std::mutex>;
  * finalizeIfNecessary(). See ProcessorTask for an example of this.
  */
 class Task {
+    friend class TaskScheduler;
 
 public:
     explicit Task(uint64_t maxNumThreads);
@@ -32,21 +35,11 @@ public:
     //     already acquired. So do not attempt to acquire the task lock inside. If needed we can
     //     make the deregister function release the lock before calling finalize and drop this
     //     assumption.
-    virtual void finalizeIfNecessary(){};
+    virtual void finalizeIfNecessary() {};
 
     void addChildTask(std::unique_ptr<Task> child) {
         child->parent = this;
         children.push_back(std::move(child));
-    }
-
-    inline bool isCompletedOrHasException() {
-        lock_t lck{mtx};
-        return hasExceptionNoLock() || isCompletedNoLock();
-    }
-
-    inline bool isCompleted() {
-        lock_t lck{mtx};
-        return isCompletedNoLock();
     }
 
     inline bool isCompletedSuccessfully() {
@@ -60,15 +53,15 @@ public:
 
     inline void setSingleThreadedTask() { maxNumThreads = 1; }
 
+    bool tryRegisterIfUnregistered();
+
     bool registerThread();
 
-    void deRegisterThreadAndFinalizeTaskIfNecessary();
+    void deRegisterThreadAndFinalizeTask();
 
     inline void setException(std::exception_ptr exceptionPtr) {
         lock_t lck{mtx};
-        if (this->exceptionsPtr == nullptr) {
-            this->exceptionsPtr = exceptionPtr;
-        }
+        setExceptionNoLock(std::move(exceptionPtr));
     }
 
     inline bool hasException() {
@@ -81,20 +74,30 @@ public:
         return exceptionsPtr;
     }
 
+    inline bool hasExceptionNoLock() const { return exceptionsPtr != nullptr; }
+
+    virtual inline uint64_t getWorkNoLock() = 0;
+
 private:
-    bool canRegisterInternalNoLock() const {
+    bool canRegisterNoLock() const {
         return 0 == numThreadsFinished && maxNumThreads > numThreadsRegistered;
     }
 
-    inline bool hasExceptionNoLock() const { return exceptionsPtr != nullptr; }
+    inline void setExceptionNoLock(std::exception_ptr exceptionPtr) {
+        if (exceptionsPtr == nullptr) {
+            exceptionsPtr = std::move(exceptionPtr);
+        }
+    }
 
 public:
+    // TODO: temporary, make parallelUtils a friend class to get access to this task lock
+    std::mutex mtx;
     Task* parent = nullptr;
     std::vector<std::shared_ptr<Task>>
         children; // Dependency tasks that needs to be executed first.
 
 protected:
-    std::mutex mtx;
+    std::condition_variable cv;
     uint64_t maxNumThreads, numThreadsFinished{0}, numThreadsRegistered{0};
     std::exception_ptr exceptionsPtr = nullptr;
     uint64_t ID;

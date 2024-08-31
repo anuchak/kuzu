@@ -1,6 +1,7 @@
 #include "benchmark_runner.h"
 
 #include <filesystem>
+#include <fstream>
 
 #include "spdlog/spdlog.h"
 
@@ -9,12 +10,13 @@ using namespace kuzu::main;
 namespace kuzu {
 namespace benchmark {
 
-const std::string BENCHMARK_SUFFIX = ".benchmark";
+const char* BENCHMARK_SUFFIX = ".benchmark";
 
-BenchmarkRunner::BenchmarkRunner(
-    const std::string& datasetPath, std::unique_ptr<BenchmarkConfig> config)
+BenchmarkRunner::BenchmarkRunner(const std::string& datasetPath,
+    std::unique_ptr<BenchmarkConfig> config)
     : config{std::move(config)} {
-    database = std::make_unique<Database>(datasetPath, SystemConfig(this->config->bufferPoolSize));
+    database = std::make_unique<Database>(datasetPath,
+        SystemConfig(this->config->bufferPoolSize, this->config->numThreads));
     spdlog::set_level(spdlog::level::debug);
 }
 
@@ -23,7 +25,7 @@ void BenchmarkRunner::registerBenchmarks(const std::string& path) {
         registerBenchmark(path);
     } else if (std::filesystem::is_directory(path)) {
         for (auto& f : std::filesystem::directory_iterator(path)) {
-            registerBenchmark(f.path());
+            registerBenchmark(f.path().string());
         }
     }
 }
@@ -31,10 +33,12 @@ void BenchmarkRunner::registerBenchmarks(const std::string& path) {
 void BenchmarkRunner::runAllBenchmarks() {
     for (auto& benchmark : benchmarks) {
         try {
-            runBenchmark(benchmark.get());
+            runBenchmark( // NOLINT(clang-analyzer-optin.cplusplus.UninitializedObject): spdlog has
+                          // an unitialized object.
+                benchmark.get());
         } catch (std::exception& e) {
-            spdlog::error(
-                "Error encountered while running benchmark {}: {}.", benchmark->name, e.what());
+            spdlog::error("Error encountered while running benchmark {}: {}.", benchmark->name,
+                e.what());
         }
     }
 }
@@ -47,8 +51,8 @@ void BenchmarkRunner::registerBenchmark(const std::string& path) {
     }
 }
 
-double BenchmarkRunner::computeAverageOfLastRuns(
-    const double* runTimes, const int& len, const int& lastRunsToAverage) {
+double BenchmarkRunner::computeAverageOfLastRuns(const double* runTimes, const int& len,
+    const int& lastRunsToAverage) {
     double sum = 0;
     for (int i = len - lastRunsToAverage; i < len; ++i) {
         sum += runTimes[i];
@@ -57,21 +61,35 @@ double BenchmarkRunner::computeAverageOfLastRuns(
 }
 
 void BenchmarkRunner::runBenchmark(Benchmark* benchmark) const {
-    spdlog::info("Running benchmark {} with {} thread", benchmark->name, config->numThreads);
+    spdlog::info(
+        "Running benchmark {} with {} thread", // NOLINT(clang-analyzer-optin.cplusplus.UninitializedObject):
+                                               // spdlog has an unitialized object.
+        benchmark->name, config->numThreads);
     for (auto i = 0u; i < config->numWarmups; ++i) {
         spdlog::info("Warm up");
         benchmark->run();
     }
-    double runTimes[config->numRuns];
+    profileQueryIfEnabled(benchmark);
+    std::vector<double> runTimes(config->numRuns);
     for (auto i = 0u; i < config->numRuns; ++i) {
         auto queryResult = benchmark->run();
         benchmark->log(i + 1, *queryResult);
         runTimes[i] = queryResult->getQuerySummary()->getExecutionTime();
     }
-    spdlog::info("Time Taken (Average of Last " + std::to_string(config->numRuns) +
-                 " runs) (ms): " +
-                 std::to_string(computeAverageOfLastRuns(
-                     runTimes, config->numRuns, config->numRuns /* numRunsToAverage */)));
+    spdlog::info("Time Taken (Average of Last {} runs) (ms): {}", config->numRuns,
+        computeAverageOfLastRuns(&runTimes[0], config->numRuns,
+            config->numRuns /* numRunsToAverage */));
+}
+
+void BenchmarkRunner::profileQueryIfEnabled(Benchmark* benchmark) const {
+    if (config->enableProfile && !config->outputPath.empty()) {
+        auto profileInfo = benchmark->runWithProfile();
+        std::ofstream profileFile(config->outputPath + "/" + benchmark->name + "_profile.txt",
+            std::ios_base::app);
+        profileFile << profileInfo->getNext()->toString() << '\n';
+        profileFile.flush();
+        profileFile.close();
+    }
 }
 
 } // namespace benchmark

@@ -1,7 +1,8 @@
-#include "planner/logical_plan/logical_operator/logical_order_by.h"
+#include "planner/operator/logical_order_by.h"
 
-#include "planner/logical_plan/logical_operator/flatten_resolver.h"
-#include "planner/logical_plan/logical_operator/sink_util.h"
+#include "binder/expression/expression_util.h"
+#include "planner/operator/factorization/flatten_resolver.h"
+#include "planner/operator/factorization/sink_util.h"
 
 namespace kuzu {
 namespace planner {
@@ -35,8 +36,8 @@ f_group_pos_set LogicalOrderBy::getGroupsPosToFlatten() {
 
 void LogicalOrderBy::computeFactorizedSchema() {
     createEmptySchema();
-    SinkOperatorUtil::recomputeSchema(
-        *children[0]->getSchema(), getExpressionsToMaterialize(), *schema);
+    auto childSchema = children[0]->getSchema();
+    SinkOperatorUtil::recomputeSchema(*childSchema, childSchema->getExpressionsInScope(), *schema);
 }
 
 void LogicalOrderBy::computeFlatSchema() {
@@ -45,6 +46,15 @@ void LogicalOrderBy::computeFlatSchema() {
     for (auto& expression : children[0]->getSchema()->getExpressionsInScope()) {
         schema->insertToScope(expression, 0);
     }
+}
+
+std::string LogicalOrderBy::getExpressionsForPrinting() const {
+    auto result = binder::ExpressionUtil::toString(expressionsToOrderBy) + " ";
+    if (hasLimitNum()) {
+        result += "SKIP " + std::to_string(skipNum) + " ";
+        result += "LIMIT " + std::to_string(limitNum);
+    }
+    return result;
 }
 
 } // namespace planner

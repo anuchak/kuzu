@@ -1,54 +1,96 @@
 #pragma once
 
-#include "processor/operator/scan/scan_columns.h"
+#include "processor/operator/scan/scan_table.h"
+#include "storage/predicate/column_predicate.h"
 #include "storage/store/node_table.h"
 
 namespace kuzu {
 namespace processor {
 
-class ScanSingleNodeTable : public ScanColumns {
+class ScanNodeTableSharedState {
 public:
-    ScanSingleNodeTable(const DataPos& inVectorPos, std::vector<DataPos> outVectorsPos,
-        storage::NodeTable* table, std::vector<uint32_t> propertyColumnIds,
-        std::unique_ptr<PhysicalOperator> prevOperator, uint32_t id,
-        const std::string& paramsString)
-        : ScanColumns{inVectorPos, std::move(outVectorsPos), std::move(prevOperator), id,
-              paramsString},
-          table{table}, propertyColumnIds{std::move(propertyColumnIds)} {}
+    explicit ScanNodeTableSharedState(std::unique_ptr<NodeVectorLevelSemiMask> semiMask)
+        : table{nullptr}, currentCommittedGroupIdx{common::INVALID_NODE_GROUP_IDX},
+          nextCommittedGroupIdx{common::INVALID_NODE_GROUP_IDX}, currentNodeGroupVectorIdx{0u},
+          totalNodeGroupVectors{0u}, currentUnCommittedGroupIdx{common::INVALID_NODE_GROUP_IDX},
+          numCommittedNodeGroups{0}, semiMask{std::move(semiMask)} {};
 
-    bool getNextTuplesInternal(ExecutionContext* context) override;
+    void initialize(transaction::Transaction* transaction, storage::NodeTable* table);
 
-    inline std::unique_ptr<PhysicalOperator> clone() override {
-        return make_unique<ScanSingleNodeTable>(inputNodeIDVectorPos, outPropertyVectorsPos, table,
-            propertyColumnIds, children[0]->clone(), id, paramsString);
-    }
+    void nextMorsel(transaction::Transaction* txn, storage::NodeTableScanState& scanState);
+
+    inline storage::NodeTable* getNodeTable() const { return table; }
+
+    NodeSemiMask* getSemiMask() const { return semiMask.get(); }
 
 private:
+    std::mutex mtx;
     storage::NodeTable* table;
-    std::vector<uint32_t> propertyColumnIds;
+    common::node_group_idx_t currentCommittedGroupIdx;
+    common::node_group_idx_t nextCommittedGroupIdx;
+    uint64_t currentNodeGroupVectorIdx;
+    uint64_t totalNodeGroupVectors;
+    common::node_group_idx_t currentUnCommittedGroupIdx;
+    common::node_group_idx_t numCommittedNodeGroups;
+    std::vector<storage::LocalNodeGroup*> localNodeGroups;
+    std::unique_ptr<NodeVectorLevelSemiMask> semiMask;
 };
 
-class ScanMultiNodeTables : public ScanColumns {
+struct ScanNodeTableInfo {
+    storage::NodeTable* table;
+    std::vector<common::column_id_t> columnIDs;
+    std::vector<storage::ColumnPredicateSet> columnPredicates;
+
+    std::unique_ptr<storage::NodeTableScanState> localScanState;
+
+    ScanNodeTableInfo(storage::NodeTable* table, std::vector<common::column_id_t> columnIDs,
+        std::vector<storage::ColumnPredicateSet> columnPredicates)
+        : table{table}, columnIDs{std::move(columnIDs)},
+          columnPredicates{std::move(columnPredicates)} {}
+    EXPLICIT_COPY_DEFAULT_MOVE(ScanNodeTableInfo);
+
+    void initScanState(NodeSemiMask* semiMask);
+
+private:
+    ScanNodeTableInfo(const ScanNodeTableInfo& other)
+        : table{other.table}, columnIDs{other.columnIDs},
+          columnPredicates{copyVector(other.columnPredicates)} {}
+};
+
+class ScanNodeTable final : public ScanTable {
+    static constexpr PhysicalOperatorType type_ = PhysicalOperatorType::SCAN_NODE_TABLE;
+
 public:
-    ScanMultiNodeTables(const DataPos& inVectorPos, std::vector<DataPos> outVectorsPos,
-        std::unordered_map<common::table_id_t, storage::NodeTable*> tables,
-        std::unordered_map<common::table_id_t, std::vector<uint32_t>> tableIDToScanColumnIds,
-        std::unique_ptr<PhysicalOperator> prevOperator, uint32_t id,
-        const std::string& paramsString)
-        : ScanColumns{inVectorPos, std::move(outVectorsPos), std::move(prevOperator), id,
-              paramsString},
-          tables{std::move(tables)}, tableIDToScanColumnIds{std::move(tableIDToScanColumnIds)} {}
+    ScanNodeTable(ScanTableInfo info, std::vector<ScanNodeTableInfo> nodeInfos,
+        std::vector<std::shared_ptr<ScanNodeTableSharedState>> sharedStates, uint32_t id,
+        std::unique_ptr<OPPrintInfo> printInfo)
+        : ScanTable{type_, std::move(info), id, std::move(printInfo)}, currentTableIdx{0},
+          nodeInfos{std::move(nodeInfos)}, sharedStates{std::move(sharedStates)} {
+        KU_ASSERT(this->nodeInfos.size() == this->sharedStates.size());
+    }
+
+    std::vector<NodeSemiMask*> getSemiMasks();
+
+    bool isSource() const override { return true; }
+
+    void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
     bool getNextTuplesInternal(ExecutionContext* context) override;
 
-    inline std::unique_ptr<PhysicalOperator> clone() override {
-        return make_unique<ScanMultiNodeTables>(inputNodeIDVectorPos, outPropertyVectorsPos, tables,
-            tableIDToScanColumnIds, children[0]->clone(), id, paramsString);
+    const ScanNodeTableSharedState& getSharedState(common::idx_t idx) const {
+        KU_ASSERT(idx < sharedStates.size());
+        return *sharedStates[idx];
     }
 
+    std::unique_ptr<PhysicalOperator> clone() override;
+
 private:
-    std::unordered_map<common::table_id_t, storage::NodeTable*> tables;
-    std::unordered_map<common::table_id_t, std::vector<uint32_t>> tableIDToScanColumnIds;
+    void initGlobalStateInternal(ExecutionContext* context) override;
+
+private:
+    common::idx_t currentTableIdx;
+    std::vector<ScanNodeTableInfo> nodeInfos;
+    std::vector<std::shared_ptr<ScanNodeTableSharedState>> sharedStates;
 };
 
 } // namespace processor

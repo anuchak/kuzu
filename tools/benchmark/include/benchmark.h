@@ -15,12 +15,13 @@ public:
     Benchmark(const std::string& benchmarkPath, main::Database* database, BenchmarkConfig& config);
 
     std::unique_ptr<main::QueryResult> run() const;
+    std::unique_ptr<main::QueryResult> runWithProfile() const;
     void log(uint32_t runNum, main::QueryResult& queryResult) const;
 
 private:
     void loadBenchmark(const std::string& benchmarkPath);
-    void logQueryInfo(
-        std::ofstream& log, uint32_t runNum, std::vector<std::string>& actualOutput) const;
+    void logQueryInfo(std::ofstream& log, uint32_t runNum,
+        std::vector<std::string>& actualOutput) const;
     void verify(std::vector<std::string>& actualOutput) const;
 
 public:

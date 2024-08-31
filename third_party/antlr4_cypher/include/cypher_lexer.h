@@ -1,5 +1,5 @@
 
-// Generated from Cypher.g4 by ANTLR 4.9
+// Generated from Cypher.g4 by ANTLR 4.13.1
 
 #pragma once
 
@@ -19,59 +19,62 @@ public:
     T__26 = 27, T__27 = 28, T__28 = 29, T__29 = 30, T__30 = 31, T__31 = 32, 
     T__32 = 33, T__33 = 34, T__34 = 35, T__35 = 36, T__36 = 37, T__37 = 38, 
     T__38 = 39, T__39 = 40, T__40 = 41, T__41 = 42, T__42 = 43, T__43 = 44, 
-    T__44 = 45, T__45 = 46, GLOB = 47, COPY = 48, FROM = 49, NPY = 50, COLUMN = 51, 
-    NODE = 52, TABLE = 53, DROP = 54, ALTER = 55, DEFAULT = 56, RENAME = 57, 
-    ADD = 58, PRIMARY = 59, KEY = 60, REL = 61, TO = 62, EXPLAIN = 63, PROFILE = 64, 
-    UNION = 65, ALL = 66, OPTIONAL = 67, MATCH = 68, UNWIND = 69, CREATE = 70, 
-    SET = 71, DELETE = 72, WITH = 73, RETURN = 74, DISTINCT = 75, STAR = 76, 
-    AS = 77, ORDER = 78, BY = 79, L_SKIP = 80, LIMIT = 81, ASCENDING = 82, 
-    ASC = 83, DESCENDING = 84, DESC = 85, WHERE = 86, SHORTEST = 87, OR = 88, 
-    XOR = 89, AND = 90, NOT = 91, INVALID_NOT_EQUAL = 92, MINUS = 93, FACTORIAL = 94, 
-    STARTS = 95, ENDS = 96, CONTAINS = 97, IS = 98, NULL_ = 99, TRUE = 100, 
-    FALSE = 101, EXISTS = 102, CASE = 103, ELSE = 104, END = 105, WHEN = 106, 
-    THEN = 107, StringLiteral = 108, EscapedChar = 109, DecimalInteger = 110, 
-    HexLetter = 111, HexDigit = 112, Digit = 113, NonZeroDigit = 114, NonZeroOctDigit = 115, 
-    ZeroDigit = 116, RegularDecimalReal = 117, UnescapedSymbolicName = 118, 
-    IdentifierStart = 119, IdentifierPart = 120, EscapedSymbolicName = 121, 
-    SP = 122, WHITESPACE = 123, Comment = 124, Unknown = 125
+    T__44 = 45, ADD = 46, ALL = 47, ALTER = 48, AND = 49, AS = 50, ASC = 51, 
+    ASCENDING = 52, ATTACH = 53, BEGIN = 54, BY = 55, CALL = 56, CASE = 57, 
+    CAST = 58, COLUMN = 59, COMMENT = 60, COMMIT = 61, COMMIT_SKIP_CHECKPOINT = 62, 
+    CONTAINS = 63, COPY = 64, COUNT = 65, CREATE = 66, CYCLE = 67, DATABASE = 68, 
+    DBTYPE = 69, DEFAULT = 70, DELETE = 71, DESC = 72, DESCENDING = 73, 
+    DETACH = 74, DISTINCT = 75, DROP = 76, ELSE = 77, END = 78, ENDS = 79, 
+    EXISTS = 80, EXPLAIN = 81, EXPORT = 82, EXTENSION = 83, FALSE = 84, 
+    FROM = 85, GLOB = 86, GRAPH = 87, GROUP = 88, HEADERS = 89, HINT = 90, 
+    IMPORT = 91, IF = 92, IN = 93, INCREMENT = 94, IN_MEM = 95, INSTALL = 96, 
+    IS = 97, JOIN = 98, KEY = 99, LIMIT = 100, LOAD = 101, MACRO = 102, 
+    MATCH = 103, MAXVALUE = 104, MERGE = 105, MINVALUE = 106, MULTI_JOIN = 107, 
+    NO = 108, NODE = 109, NOT = 110, NULL_ = 111, ON = 112, ONLY = 113, 
+    OPTIONAL = 114, OR = 115, ORDER = 116, PRIMARY = 117, PROFILE = 118, 
+    PROJECT = 119, RDFGRAPH = 120, READ = 121, REL = 122, RENAME = 123, 
+    RETURN = 124, ROLLBACK = 125, ROLLBACK_SKIP_CHECKPOINT = 126, SEQUENCE = 127, 
+    SET = 128, SHORTEST = 129, START = 130, STARTS = 131, TABLE = 132, THEN = 133, 
+    TO = 134, TRANSACTION = 135, TRUE = 136, TYPE = 137, UNION = 138, UNWIND = 139, 
+    USE = 140, WHEN = 141, WHERE = 142, WITH = 143, WRITE = 144, XOR = 145, 
+    DECIMAL = 146, STAR = 147, L_SKIP = 148, INVALID_NOT_EQUAL = 149, MINUS = 150, 
+    FACTORIAL = 151, COLON = 152, StringLiteral = 153, EscapedChar = 154, 
+    DecimalInteger = 155, HexLetter = 156, HexDigit = 157, Digit = 158, 
+    NonZeroDigit = 159, NonZeroOctDigit = 160, ZeroDigit = 161, RegularDecimalReal = 162, 
+    UnescapedSymbolicName = 163, IdentifierStart = 164, IdentifierPart = 165, 
+    EscapedSymbolicName = 166, SP = 167, WHITESPACE = 168, CypherComment = 169, 
+    Unknown = 170
   };
 
   explicit CypherLexer(antlr4::CharStream *input);
-  ~CypherLexer();
 
-  virtual std::string getGrammarFileName() const override;
-  virtual const std::vector<std::string>& getRuleNames() const override;
+  ~CypherLexer() override;
 
-  virtual const std::vector<std::string>& getChannelNames() const override;
-  virtual const std::vector<std::string>& getModeNames() const override;
-  virtual const std::vector<std::string>& getTokenNames() const override; // deprecated, use vocabulary instead
-  virtual antlr4::dfa::Vocabulary& getVocabulary() const override;
 
-  virtual const std::vector<uint16_t> getSerializedATN() const override;
-  virtual const antlr4::atn::ATN& getATN() const override;
+  std::string getGrammarFileName() const override;
+
+  const std::vector<std::string>& getRuleNames() const override;
+
+  const std::vector<std::string>& getChannelNames() const override;
+
+  const std::vector<std::string>& getModeNames() const override;
+
+  const antlr4::dfa::Vocabulary& getVocabulary() const override;
+
+  antlr4::atn::SerializedATNView getSerializedATN() const override;
+
+  const antlr4::atn::ATN& getATN() const override;
+
+  // By default the static state used to implement the lexer is lazily initialized during the first
+  // call to the constructor. You can call this function if you wish to initialize the static state
+  // ahead of time.
+  static void initialize();
 
 private:
-  static std::vector<antlr4::dfa::DFA> _decisionToDFA;
-  static antlr4::atn::PredictionContextCache _sharedContextCache;
-  static std::vector<std::string> _ruleNames;
-  static std::vector<std::string> _tokenNames;
-  static std::vector<std::string> _channelNames;
-  static std::vector<std::string> _modeNames;
-
-  static std::vector<std::string> _literalNames;
-  static std::vector<std::string> _symbolicNames;
-  static antlr4::dfa::Vocabulary _vocabulary;
-  static antlr4::atn::ATN _atn;
-  static std::vector<uint16_t> _serializedATN;
-
 
   // Individual action functions triggered by action() above.
 
   // Individual semantic predicate functions triggered by sempred() above.
 
-  struct Initializer {
-    Initializer();
-  };
-  static Initializer _init;
 };
 

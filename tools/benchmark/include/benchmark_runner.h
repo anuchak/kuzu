@@ -14,13 +14,15 @@ public:
     void registerBenchmarks(const std::string& path);
 
     void runAllBenchmarks();
-    static double computeAverageOfLastRuns(
-        const double* runTimes, const int& len, const int& lastRunsToAverage);
+    static double computeAverageOfLastRuns(const double* runTimes, const int& len,
+        const int& lastRunsToAverage);
 
 private:
     void registerBenchmark(const std::string& path);
 
     void runBenchmark(Benchmark* benchmark) const;
+
+    void profileQueryIfEnabled(Benchmark* benchmark) const;
 
 public:
     std::unique_ptr<BenchmarkConfig> config;

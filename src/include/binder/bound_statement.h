@@ -1,31 +1,38 @@
 #pragma once
 
 #include "bound_statement_result.h"
-#include "common/statement_type.h"
+#include "common/copy_constructors.h"
+#include "common/enums/statement_type.h"
 
 namespace kuzu {
 namespace binder {
 
 class BoundStatement {
 public:
-    explicit BoundStatement(
-        common::StatementType statementType, std::unique_ptr<BoundStatementResult> statementResult)
+    BoundStatement(common::StatementType statementType, BoundStatementResult statementResult)
         : statementType{statementType}, statementResult{std::move(statementResult)} {}
+    DELETE_COPY_DEFAULT_MOVE(BoundStatement);
 
     virtual ~BoundStatement() = default;
 
-    inline common::StatementType getStatementType() const { return statementType; }
+    common::StatementType getStatementType() const { return statementType; }
 
-    inline BoundStatementResult* getStatementResult() const { return statementResult.get(); }
+    const BoundStatementResult* getStatementResult() const { return &statementResult; }
 
-    inline bool isDDL() const { return common::StatementTypeUtils::isDDL(statementType); }
-    inline bool isCopyCSV() const { return common::StatementTypeUtils::isCopyCSV(statementType); }
+    BoundStatementResult* getStatementResultUnsafe() { return &statementResult; }
 
-    virtual inline bool isReadOnly() const { return false; }
+    template<class TARGET>
+    const TARGET& constCast() const {
+        return common::ku_dynamic_cast<const BoundStatement&, const TARGET&>(*this);
+    }
+    template<class TARGET>
+    TARGET& cast() {
+        return common::ku_dynamic_cast<BoundStatement&, TARGET&>(*this);
+    }
 
 private:
     common::StatementType statementType;
-    std::unique_ptr<BoundStatementResult> statementResult;
+    BoundStatementResult statementResult;
 };
 
 } // namespace binder

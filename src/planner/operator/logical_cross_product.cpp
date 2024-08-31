@@ -1,6 +1,6 @@
-#include "planner/logical_plan/logical_operator/logical_cross_product.h"
+#include "planner/operator/logical_cross_product.h"
 
-#include "planner/logical_plan/logical_operator/sink_util.h"
+#include "planner/operator/factorization/sink_util.h"
 
 namespace kuzu {
 namespace planner {
@@ -16,7 +16,7 @@ void LogicalCrossProduct::computeFlatSchema() {
     auto probeSchema = children[0]->getSchema();
     auto buildSchema = children[1]->getSchema();
     schema = probeSchema->copy();
-    assert(schema->getNumGroups() == 1);
+    KU_ASSERT(schema->getNumGroups() == 1);
     for (auto& expression : buildSchema->getExpressionsInScope()) {
         schema->insertToGroupAndScope(expression, 0);
     }

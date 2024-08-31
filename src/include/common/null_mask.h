@@ -2,12 +2,13 @@
 
 #include <memory>
 #include <utility>
-#include <vector>
 
-#include "common/constants.h"
+#include <span>
 
 namespace kuzu {
 namespace common {
+
+class ArrowNullMaskTree;
 
 constexpr uint64_t NULL_BITMASKS_WITH_SINGLE_ONE[64] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80,
     0x100, 0x200, 0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000, 0x10000, 0x20000, 0x40000, 0x80000,
@@ -66,74 +67,114 @@ const uint64_t NULL_HIGH_MASKS[65] = {0x0, 0x8000000000000000, 0xc00000000000000
     0xfffffffffffffffe, 0xffffffffffffffff};
 
 class NullMask {
-
 public:
     static constexpr uint64_t NO_NULL_ENTRY = 0;
     static constexpr uint64_t ALL_NULL_ENTRY = ~uint64_t(NO_NULL_ENTRY);
     static constexpr uint64_t NUM_BITS_PER_NULL_ENTRY_LOG2 = 6;
     static constexpr uint64_t NUM_BITS_PER_NULL_ENTRY = (uint64_t)1 << NUM_BITS_PER_NULL_ENTRY_LOG2;
     static constexpr uint64_t NUM_BYTES_PER_NULL_ENTRY = NUM_BITS_PER_NULL_ENTRY >> 3;
-    static constexpr uint64_t DEFAULT_NUM_NULL_ENTRIES =
-        DEFAULT_VECTOR_CAPACITY >> NUM_BITS_PER_NULL_ENTRY_LOG2;
 
-    NullMask() : NullMask{DEFAULT_NUM_NULL_ENTRIES} {}
-
-    NullMask(uint64_t numNullEntries) : mayContainNulls{false}, numNullEntries{numNullEntries} {
+    // For creating a managed null mask
+    explicit NullMask(uint64_t capacity) : mayContainNulls{false} {
+        auto numNullEntries = (capacity + NUM_BITS_PER_NULL_ENTRY - 1) / NUM_BITS_PER_NULL_ENTRY;
         buffer = std::make_unique<uint64_t[]>(numNullEntries);
-        data = buffer.get();
-        std::fill(data, data + numNullEntries, NO_NULL_ENTRY);
+        data = std::span(buffer.get(), numNullEntries);
+        std::fill(data.begin(), data.end(), NO_NULL_ENTRY);
     }
+
+    // For creating a null mask using existing data
+    explicit NullMask(std::span<uint64_t> nullData, bool mayContainNulls)
+        : data{nullData}, buffer{}, mayContainNulls{mayContainNulls} {}
 
     inline void setAllNonNull() {
         if (!mayContainNulls) {
             return;
         }
-        std::fill(data, data + numNullEntries, NO_NULL_ENTRY);
+        std::fill(data.begin(), data.end(), NO_NULL_ENTRY);
         mayContainNulls = false;
     }
     inline void setAllNull() {
-        std::fill(data, data + numNullEntries, ALL_NULL_ENTRY);
+        std::fill(data.begin(), data.end(), ALL_NULL_ENTRY);
         mayContainNulls = true;
     }
 
-    inline void setMayContainNulls() { mayContainNulls = true; }
     inline bool hasNoNullsGuarantee() const { return !mayContainNulls; }
 
-    void setNull(uint32_t pos, bool isNull);
+    static void setNull(uint64_t* nullEntries, uint32_t pos, bool isNull);
+    inline void setNull(uint32_t pos, bool isNull) {
+        setNull(data.data(), pos, isNull);
+        if (isNull) {
+            mayContainNulls = true;
+        }
+    }
 
     static inline bool isNull(const uint64_t* nullEntries, uint32_t pos) {
         auto [entryPos, bitPosInEntry] = getNullEntryAndBitPos(pos);
         return nullEntries[entryPos] & NULL_BITMASKS_WITH_SINGLE_ONE[bitPosInEntry];
     }
 
-    inline bool isNull(uint32_t pos) const { return isNull(data, pos); }
+    inline bool isNull(uint32_t pos) const { return isNull(data.data(), pos); }
 
-    inline uint64_t* getData() { return data; }
+    // const because updates to the data must set mayContainNulls if any value
+    // becomes non-null
+    // Modifying the underlying data should be done with setNull or copyFromNullData
+    inline const uint64_t* getData() const { return data.data(); }
 
     static inline uint64_t getNumNullEntries(uint64_t numNullBits) {
         return (numNullBits >> NUM_BITS_PER_NULL_ENTRY_LOG2) +
                ((numNullBits - (numNullBits << NUM_BITS_PER_NULL_ENTRY_LOG2)) == 0 ? 0 : 1);
     }
 
-    // This function returns true if we have copied a nullBit with value 1 (indicate a null
-    // value) to dstNullEntries.
+    // Copies bitpacked null flags from one buffer to another, starting at an arbitrary bit
+    // offset and preserving adjacent bits.
+    //
+    // returns true if we have copied a nullBit with value 1 (indicates a null value) to
+    // dstNullEntries.
     static bool copyNullMask(const uint64_t* srcNullEntries, uint64_t srcOffset,
-        uint64_t* dstNullEntries, uint64_t dstOffset, uint64_t numBitsToCopy);
+        uint64_t* dstNullEntries, uint64_t dstOffset, uint64_t numBitsToCopy, bool invert = false);
+
+    inline bool copyFrom(const NullMask& nullMask, uint64_t srcOffset, uint64_t dstOffset,
+        uint64_t numBitsToCopy, bool invert = false) {
+        if (nullMask.hasNoNullsGuarantee()) {
+            setNullFromRange(dstOffset, numBitsToCopy, invert);
+            return invert;
+        } else {
+            return copyFromNullBits(nullMask.getData(), srcOffset, dstOffset, numBitsToCopy,
+                invert);
+        }
+    }
+    bool copyFromNullBits(const uint64_t* srcNullEntries, uint64_t srcOffset, uint64_t dstOffset,
+        uint64_t numBitsToCopy, bool invert = false);
+
+    // Sets the given number of bits to null (if isNull is true) or non-null (if isNull is false),
+    // starting at the offset
+    static void setNullRange(uint64_t* nullEntries, uint64_t offset, uint64_t numBitsToSet,
+        bool isNull);
+
+    void setNullFromRange(uint64_t offset, uint64_t numBitsToSet, bool isNull);
 
     void resize(uint64_t capacity);
+
+    void operator|=(const NullMask& other);
+
+    // Fast calculation of the minimum and maximum null values
+    // (essentially just three states, all null, all non-null and some null)
+    static std::pair<bool, bool> getMinMax(const uint64_t* nullEntries, uint64_t numValues);
 
 private:
     static inline std::pair<uint64_t, uint64_t> getNullEntryAndBitPos(uint64_t pos) {
         auto nullEntryPos = pos >> NUM_BITS_PER_NULL_ENTRY_LOG2;
-        return std::make_pair(
-            nullEntryPos, pos - (nullEntryPos << NullMask::NUM_BITS_PER_NULL_ENTRY_LOG2));
+        return std::make_pair(nullEntryPos,
+            pos - (nullEntryPos << NullMask::NUM_BITS_PER_NULL_ENTRY_LOG2));
     }
 
+    static bool copyUnaligned(const uint64_t* srcNullEntries, uint64_t srcOffset,
+        uint64_t* dstNullEntries, uint64_t dstOffset, uint64_t numBitsToCopy, bool invert = false);
+
 private:
-    uint64_t* data;
+    std::span<uint64_t> data;
     std::unique_ptr<uint64_t[]> buffer;
     bool mayContainNulls;
-    uint64_t numNullEntries;
 };
 
 } // namespace common

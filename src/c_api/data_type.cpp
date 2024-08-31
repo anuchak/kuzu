@@ -1,79 +1,70 @@
 #include "c_api/kuzu.h"
 #include "common/types/types.h"
-#include "main/kuzu.h"
 
-using namespace kuzu::main;
 using namespace kuzu::common;
 
-kuzu_data_type* kuzu_data_type_create(
-    kuzu_data_type_id id, kuzu_data_type* child_type, uint64_t fixed_num_elements_in_list) {
-    auto* c_data_type = (kuzu_data_type*)malloc(sizeof(kuzu_data_type));
-    uint8_t data_type_id_u8 = id;
-    DataType* data_type;
-    if (child_type == nullptr) {
-        data_type = new DataType(static_cast<DataTypeID>(data_type_id_u8));
-    } else {
-        auto child_type_pty =
-            std::make_unique<DataType>(*static_cast<DataType*>(child_type->_data_type));
-        data_type = fixed_num_elements_in_list > 0 ?
-                        new DataType(std::move(child_type_pty), fixed_num_elements_in_list) :
-                        new DataType(std::move(child_type_pty));
+namespace kuzu::common {
+struct CAPIHelper {
+    static inline LogicalType* createLogicalType(LogicalTypeID typeID,
+        std::unique_ptr<ExtraTypeInfo> extraTypeInfo) {
+        return new LogicalType(typeID, std::move(extraTypeInfo));
     }
-    c_data_type->_data_type = data_type;
-    return c_data_type;
+};
+} // namespace kuzu::common
+
+void kuzu_data_type_create(kuzu_data_type_id id, kuzu_logical_type* child_type,
+    uint64_t num_elements_in_array, kuzu_logical_type* out_data_type) {
+    uint8_t data_type_id_u8 = id;
+    LogicalType* data_type;
+    auto logicalTypeID = static_cast<LogicalTypeID>(data_type_id_u8);
+    if (child_type == nullptr) {
+        data_type = new LogicalType(logicalTypeID);
+    } else {
+        auto child_type_pty = static_cast<LogicalType*>(child_type->_data_type)->copy();
+        auto extraTypeInfo =
+            num_elements_in_array > 0 ?
+                std::make_unique<ArrayTypeInfo>(std::move(child_type_pty), num_elements_in_array) :
+                std::make_unique<ListTypeInfo>(std::move(child_type_pty));
+        data_type = CAPIHelper::createLogicalType(logicalTypeID, std::move(extraTypeInfo));
+    }
+    out_data_type->_data_type = data_type;
 }
 
-kuzu_data_type* kuzu_data_type_clone(kuzu_data_type* data_type) {
-    auto* c_data_type = (kuzu_data_type*)malloc(sizeof(kuzu_data_type));
-    c_data_type->_data_type = new DataType(*static_cast<DataType*>(data_type->_data_type));
-    return c_data_type;
+void kuzu_data_type_clone(kuzu_logical_type* data_type, kuzu_logical_type* out_data_type) {
+    out_data_type->_data_type =
+        new LogicalType(static_cast<LogicalType*>(data_type->_data_type)->copy());
 }
 
-void kuzu_data_type_destroy(kuzu_data_type* data_type) {
+void kuzu_data_type_destroy(kuzu_logical_type* data_type) {
     if (data_type == nullptr) {
         return;
     }
     if (data_type->_data_type != nullptr) {
-        delete static_cast<DataType*>(data_type->_data_type);
+        delete static_cast<LogicalType*>(data_type->_data_type);
     }
-    free(data_type);
 }
 
-bool kuzu_data_type_equals(kuzu_data_type* data_type1, kuzu_data_type* data_type2) {
-    return *static_cast<DataType*>(data_type1->_data_type) ==
-           *static_cast<DataType*>(data_type2->_data_type);
+bool kuzu_data_type_equals(kuzu_logical_type* data_type1, kuzu_logical_type* data_type2) {
+    return *static_cast<LogicalType*>(data_type1->_data_type) ==
+           *static_cast<LogicalType*>(data_type2->_data_type);
 }
 
-kuzu_data_type_id kuzu_data_type_get_id(kuzu_data_type* data_type) {
+kuzu_data_type_id kuzu_data_type_get_id(kuzu_logical_type* data_type) {
     auto data_type_id_u8 =
-        static_cast<uint8_t>(static_cast<DataType*>(data_type->_data_type)->getTypeID());
+        static_cast<uint8_t>(static_cast<LogicalType*>(data_type->_data_type)->getLogicalTypeID());
     return static_cast<kuzu_data_type_id>(data_type_id_u8);
 }
 
-kuzu_data_type* kuzu_data_type_get_child_type(kuzu_data_type* data_type) {
-    auto parent_type = static_cast<DataType*>(data_type->_data_type);
-    if (parent_type->getTypeID() != DataTypeID::FIXED_LIST &&
-        parent_type->getTypeID() != DataTypeID::VAR_LIST) {
-        return nullptr;
+kuzu_state kuzu_data_type_get_num_elements_in_array(kuzu_logical_type* data_type,
+    uint64_t* out_result) {
+    auto parent_type = static_cast<LogicalType*>(data_type->_data_type);
+    if (parent_type->getLogicalTypeID() != LogicalTypeID::ARRAY) {
+        return KuzuError;
     }
-    auto child_type = static_cast<DataType*>(data_type->_data_type)->getChildType();
-    if (child_type == nullptr) {
-        return nullptr;
+    try {
+        *out_result = ArrayType::getNumElements(*parent_type);
+    } catch (Exception& e) {
+        return KuzuError;
     }
-    auto* child_type_c = (kuzu_data_type*)malloc(sizeof(kuzu_data_type));
-    child_type_c->_data_type = new DataType(*child_type);
-    return child_type_c;
-}
-
-uint64_t kuzu_data_type_get_fixed_num_elements_in_list(kuzu_data_type* data_type) {
-    auto parent_type = static_cast<DataType*>(data_type->_data_type);
-    if (parent_type->getTypeID() != DataTypeID::FIXED_LIST) {
-        return 0;
-    }
-    auto extra_info = static_cast<DataType*>(data_type->_data_type)->getExtraTypeInfo();
-    if (extra_info == nullptr) {
-        return 0;
-    }
-    auto fixed_list_info = dynamic_cast<FixedListTypeInfo*>(extra_info);
-    return fixed_list_info->getFixedNumElementsInList();
+    return KuzuSuccess;
 }

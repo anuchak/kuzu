@@ -1,23 +1,29 @@
 #pragma once
 
-#include "binder/query/reading_clause/query_graph.h"
-#include "planner/logical_plan/logical_plan.h"
-#include "storage/store/nodes_statistics_and_deleted_ids.h"
-#include "storage/store/rels_statistics.h"
+#include "binder/query/query_graph.h"
+#include "planner/operator/logical_plan.h"
+#include "storage/stats/nodes_store_statistics.h"
+#include "storage/stats/rels_store_statistics.h"
 
 namespace kuzu {
 namespace planner {
 
 class CardinalityEstimator {
 public:
-    CardinalityEstimator(const storage::NodesStatisticsAndDeletedIDs& nodesStatistics,
-        const storage::RelsStatistics& relsStatistics)
-        : nodesStatistics{nodesStatistics}, relsStatistics{relsStatistics} {}
+    CardinalityEstimator() = default;
+    CardinalityEstimator(main::ClientContext* context,
+        const storage::NodesStoreStatsAndDeletedIDs* nodesStatistics,
+        const storage::RelsStoreStats* relsStatistics)
+        : context{context}, nodesStatistics{nodesStatistics}, relsStatistics{relsStatistics} {}
+    DELETE_COPY_DEFAULT_MOVE(CardinalityEstimator);
 
-    void initNodeIDDom(binder::QueryGraph* queryGraph);
+    // TODO(Xiyang): revisit this init at some point. Maybe we should init while enumerating.
+    void initNodeIDDom(const binder::QueryGraph& queryGraph, transaction::Transaction* transaction);
+    void addNodeIDDom(const binder::Expression& nodeID,
+        const std::vector<common::table_id_t>& tableIDs, transaction::Transaction* transaction);
 
     uint64_t estimateScanNode(LogicalOperator* op);
-    uint64_t estimateHashJoin(const binder::expression_vector& joinNodeIDs,
+    uint64_t estimateHashJoin(const binder::expression_vector& joinKeys,
         const LogicalPlan& probePlan, const LogicalPlan& buildPlan);
     uint64_t estimateCrossProduct(const LogicalPlan& probePlan, const LogicalPlan& buildPlan);
     uint64_t estimateIntersect(const binder::expression_vector& joinNodeIDs,
@@ -25,23 +31,26 @@ public:
     uint64_t estimateFlatten(const LogicalPlan& childPlan, f_group_pos groupPosToFlatten);
     uint64_t estimateFilter(const LogicalPlan& childPlan, const binder::Expression& predicate);
 
-    double getExtensionRate(
-        const binder::RelExpression& rel, const binder::NodeExpression& boundNode);
+    double getExtensionRate(const binder::RelExpression& rel,
+        const binder::NodeExpression& boundNode, transaction::Transaction* transaction);
 
 private:
     inline uint64_t atLeastOne(uint64_t x) { return x == 0 ? 1 : x; }
 
-    uint64_t getNodeIDDom(const std::string& nodeIDName) {
-        assert(nodeIDName2dom.contains(nodeIDName));
+    inline uint64_t getNodeIDDom(const std::string& nodeIDName) {
+        KU_ASSERT(nodeIDName2dom.contains(nodeIDName));
         return nodeIDName2dom.at(nodeIDName);
     }
-    uint64_t getNumNodes(const binder::NodeExpression& node);
+    uint64_t getNumNodes(const std::vector<common::table_id_t>& tableIDs,
+        transaction::Transaction* transaction);
 
-    uint64_t getNumRels(const binder::RelExpression& rel);
+    uint64_t getNumRels(const std::vector<common::table_id_t>& tableIDs,
+        transaction::Transaction* transaction);
 
 private:
-    const storage::NodesStatisticsAndDeletedIDs& nodesStatistics;
-    const storage::RelsStatistics& relsStatistics;
+    main::ClientContext* context;
+    const storage::NodesStoreStatsAndDeletedIDs* nodesStatistics;
+    const storage::RelsStoreStats* relsStatistics;
     // The domain of nodeID is defined as the number of unique value of nodeID, i.e. num nodes.
     std::unordered_map<std::string, uint64_t> nodeIDName2dom;
 };

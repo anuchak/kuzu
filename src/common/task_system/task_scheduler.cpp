@@ -1,82 +1,93 @@
 #include "common/task_system/task_scheduler.h"
-
-#include "common/constants.h"
-#include "spdlog/spdlog.h"
+#include <sstream>
 
 using namespace kuzu::common;
 
 namespace kuzu {
 namespace common {
 
-TaskScheduler::TaskScheduler(uint64_t numThreads)
-    : logger{LoggerUtils::getLogger(LoggerConstants::LoggerEnum::PROCESSOR)}, nextScheduledTaskID{
-                                                                                  0} {
-    for (auto n = 0u; n < numThreads; ++n) {
-        threads.emplace_back([&] { runWorkerThread(); });
+TaskScheduler::TaskScheduler(uint64_t numWorkerThreads)
+    : stopWorkerThreads{false}, nextScheduledTaskID{0} {
+    for (auto n = 0u; n < numWorkerThreads; ++n) {
+        workerThreads.emplace_back([&] { runWorkerThread(); });
     }
 }
 
 TaskScheduler::~TaskScheduler() {
-    stopThreads.store(true);
-    for (auto& thread : threads) {
+    lock_t lck{mtx};
+    stopWorkerThreads = true;
+    lck.unlock();
+    cv.notify_all();
+    for (auto& thread : workerThreads) {
         thread.join();
     }
 }
 
-std::shared_ptr<ScheduledTask> TaskScheduler::scheduleTask(const std::shared_ptr<Task>& task) {
-    lock_t lck{mtx};
-    auto scheduledTask = std::make_shared<ScheduledTask>(task, nextScheduledTaskID++);
-    taskQueue.push_back(scheduledTask);
-    return scheduledTask;
-}
-
-void TaskScheduler::errorIfThereIsAnException() {
-    lock_t lck{mtx};
-    errorIfThereIsAnExceptionNoLock();
-    lck.unlock();
-}
-
-void TaskScheduler::errorIfThereIsAnExceptionNoLock() {
-    for (auto it = taskQueue.begin(); it != taskQueue.end(); ++it) {
-        auto task = (*it)->task;
-        if (task->hasException()) {
-            taskQueue.erase(it);
-            std::rethrow_exception(task->getExceptionPtr());
+void TaskScheduler::setWorkerPoolSize(uint64_t newSize) {
+    auto thisTheadID = std::this_thread::get_id();
+    if (newSize > workerThreads.size()) {
+        for (auto i = 0u; i < (newSize - workerThreads.size()); i++) {
+            workerThreads.emplace_back([&] { runWorkerThread(); });
         }
-        // TODO(Semih): We can optimize to stop after finding a registrable task. This is
-        // because tasks after the first registrable task in the queue cannot have any thread
-        // yet registered to them, so they cannot have errored.
-    }
-}
-
-void TaskScheduler::waitAllTasksToCompleteOrError() {
-    while (true) {
+    } else {
         lock_t lck{mtx};
-        if (taskQueue.empty()) {
-            return;
-        }
-        errorIfThereIsAnExceptionNoLock();
+        stopWorkerThreads = true;
         lck.unlock();
-        std::this_thread::sleep_for(
-            std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+        cv.notify_all();
+        auto it = workerThreads.begin();
+        while (it != workerThreads.end()) {
+            if (it->get_id() == thisTheadID) {
+                it++;
+            } else {
+                it->join();
+                it = workerThreads.erase(it);
+            }
+        }
+        lck.lock();
+        stopWorkerThreads = false;
+        lck.unlock();
+        for (auto i = 0u; i < (newSize - 1); i++) {
+            workerThreads.emplace_back([&] { runWorkerThread(); });
+        }
     }
 }
 
-void TaskScheduler::scheduleTaskAndWaitOrError(
-    const std::shared_ptr<Task>& task, processor::ExecutionContext* context) {
+void TaskScheduler::scheduleTaskAndWaitOrError(const std::shared_ptr<Task>& task,
+    processor::ExecutionContext* context) {
     for (auto& dependency : task->children) {
         scheduleTaskAndWaitOrError(dependency, context);
     }
-    auto scheduledTask = scheduleTask(task);
-    while (!task->isCompleted()) {
-        if (context != nullptr && context->clientContext->isTimeOutEnabled()) {
-            interruptTaskIfTimeOutNoLock(context);
-        } else if (task->hasException()) {
+    auto scheduledTask = pushTaskIntoQueue(task);
+    cv.notify_all();
+    std::unique_lock<std::mutex> taskLck{task->mtx, std::defer_lock};
+    while (true) {
+        taskLck.lock();
+        bool timedWait = false;
+        auto timeout = 0u;
+        if (task->isCompletedNoLock()) {
+            // Note: we do not remove completed tasks from the queue in this function. They will be
+            // removed by the worker threads when they traverse down the queue for a task to work on
+            // (see getTaskAndRegister()).
+            taskLck.unlock();
+            break;
+        }
+        if (context->clientContext->hasTimeout()) {
+            timeout = context->clientContext->getTimeoutRemainingInMS();
+            if (timeout == 0) {
+                context->clientContext->interrupt();
+            } else {
+                timedWait = true;
+            }
+        } else if (task->hasExceptionNoLock()) {
             // Interrupt tasks that errored, so other threads can stop working on them early.
             context->clientContext->interrupt();
         }
-        std::this_thread::sleep_for(
-            std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+        if (timedWait) {
+            task->cv.wait_for(taskLck, std::chrono::milliseconds(timeout));
+        } else {
+            task->cv.wait(taskLck);
+        }
+        taskLck.unlock();
     }
     if (task->hasException()) {
         removeErroringTask(scheduledTask->ID);
@@ -84,37 +95,89 @@ void TaskScheduler::scheduleTaskAndWaitOrError(
     }
 }
 
-void TaskScheduler::waitUntilEnoughTasksFinish(int64_t minimumNumTasksToScheduleMore) {
-    while (getNumTasks() > minimumNumTasksToScheduleMore) {
-        errorIfThereIsAnException();
-        std::this_thread::sleep_for(
-            std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
-    }
+// For now assume that there are NO DEPENDENCIES for the task being submitted
+std::shared_ptr<ScheduledTask> TaskScheduler::scheduleTaskAndReturn(
+    const std::shared_ptr<Task>& task) {
+    auto scheduledTask = pushTaskIntoQueue(task);
+    cv.notify_all();
+    return scheduledTask;
 }
 
-std::shared_ptr<ScheduledTask> TaskScheduler::getTaskAndRegister() {
+std::vector<std::shared_ptr<ScheduledTask>> TaskScheduler::scheduleTasksAndReturn(
+    const std::vector<std::shared_ptr<Task>>& tasks) {
     lock_t lck{mtx};
+    std::vector<std::shared_ptr<ScheduledTask>> scheduledTasks;
+    for (auto& task : tasks) {
+        scheduledTasks.emplace_back(std::make_shared<ScheduledTask>(task, nextScheduledTaskID++));
+        taskQueue.push_back(scheduledTasks.back());
+    }
+    cv.notify_all();
+    return scheduledTasks;
+}
+
+std::shared_ptr<ScheduledTask> TaskScheduler::pushTaskIntoQueue(const std::shared_ptr<Task>& task) {
+    lock_t lck{mtx};
+    auto scheduledTask = std::make_shared<ScheduledTask>(task, nextScheduledTaskID++);
+    taskQueue.push_back(scheduledTask);
+    return scheduledTask;
+}
+
+/*
+ * Changing the logic of binding threads to tasks here, below is the logic:
+ *
+ * (1) We are going to scan the task queue and calculate the "amount of work" for each task
+ *
+ * (2) The amount of work will be calculated as: pipelineSink->getWork() / numThreadsRegistered
+ *
+ * (3) If we encounter a task that does not have even 1 thread executing on it, that task gets the
+ *     highest priority, the thread will pick that task over all others. It exits the process
+ *     immediately after registering to it.
+ *
+ * (4) Else, after reaching the end of the task queue, the threads will pick the task that has the
+ *     most amount of work.
+ *
+ * There is an edge case here, where the task that got picked (with the most amount of work) can
+ * either fail or already got finished. In that case we have to return nullptr, ignoring a more
+ * graceful way to handle this for now.
+ *
+ */
+std::shared_ptr<ScheduledTask> TaskScheduler::getTaskAndRegister() {
     if (taskQueue.empty()) {
         return nullptr;
     }
     auto it = taskQueue.begin();
+    auto schedTask = std::make_shared<ScheduledTask>(nullptr, 0u);
+    uint64_t maxTaskWork = 0u;
     while (it != taskQueue.end()) {
         auto task = (*it)->task;
-        if (!task->registerThread()) {
-            // If we cannot register for a thread it is because of three possibilities:
-            // (i) maximum number of threads have registered for task and the task is completed
-            // without an exception; or (ii) same as (i) but the task has not yet successfully
-            // completed; or (iii) task has an exception; Only in (i) we remove the task from the
-            // queue. For (ii) and (iii) we keep the task in queue. Recall erroring tasks need to be
-            // manually removed.
-            if (task->isCompletedSuccessfully()) { // option (i)
-                it = taskQueue.erase(it);
-            } else { // option (ii) or (iii): keep the task in the queue.
-                ++it;
-            }
-        } else {
+        task->mtx.lock();
+        if (task->numThreadsRegistered == 0) {
+            task->numThreadsRegistered++;
+            task->mtx.unlock();
             return *it;
         }
+        if (task->isCompletedNoLock() && !task->hasExceptionNoLock()) {
+            task->mtx.unlock();
+            it = taskQueue.erase(it);
+            continue;
+        }
+        // don't remove task if failed, done by thread which submitted the task
+        // if task's max thread equals to number of threads registered, ignore it
+        if (task->exceptionsPtr || (task->maxNumThreads == task->numThreadsRegistered)) {
+            task->mtx.unlock();
+            it++;
+            continue;
+        }
+        auto taskWork = task->getWorkNoLock();
+        if (taskWork > maxTaskWork) {
+            maxTaskWork = taskWork;
+            schedTask = *it;
+        }
+        task->mtx.unlock();
+        it++;
+    }
+    if (schedTask->task && schedTask->task->registerThread()) {
+        return schedTask;
     }
     return nullptr;
 }
@@ -130,32 +193,27 @@ void TaskScheduler::removeErroringTask(uint64_t scheduledTaskID) {
 }
 
 void TaskScheduler::runWorkerThread() {
+    std::unique_lock<std::mutex> lck{mtx, std::defer_lock};
     while (true) {
-        if (stopThreads.load()) {
-            break;
-        }
-        auto scheduledTask = getTaskAndRegister();
-        if (!scheduledTask) {
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
-            continue;
+        std::shared_ptr<ScheduledTask> scheduledTask = nullptr;
+        lck.lock();
+        cv.wait(lck, [&] {
+            scheduledTask = getTaskAndRegister();
+            return scheduledTask != nullptr || stopWorkerThreads;
+        });
+        lck.unlock();
+        if (stopWorkerThreads) {
+            return;
         }
         try {
             scheduledTask->task->run();
-            scheduledTask->task->deRegisterThreadAndFinalizeTaskIfNecessary();
+            scheduledTask->task->deRegisterThreadAndFinalizeTask();
         } catch (std::exception& e) {
             scheduledTask->task->setException(std::current_exception());
-            scheduledTask->task->deRegisterThreadAndFinalizeTaskIfNecessary();
+            scheduledTask->task->deRegisterThreadAndFinalizeTask();
             continue;
         }
     }
 }
-
-void TaskScheduler::interruptTaskIfTimeOutNoLock(processor::ExecutionContext* context) {
-    if (context->clientContext->isTimeOut()) {
-        context->clientContext->interrupt();
-    }
-}
-
 } // namespace common
 } // namespace kuzu

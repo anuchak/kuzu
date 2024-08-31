@@ -1,42 +1,54 @@
 #include "processor/operator/order_by/key_block_merger.h"
 
-#include "function/comparison/comparison_operations.h"
-
 using namespace kuzu::common;
 using namespace kuzu::processor;
-using namespace kuzu::function::operation;
 using namespace kuzu::storage;
 
 namespace kuzu {
 namespace processor {
 
-MergedKeyBlocks::MergedKeyBlocks(
-    uint32_t numBytesPerTuple, uint64_t numTuples, MemoryManager* memoryManager)
+MergedKeyBlocks::MergedKeyBlocks(uint32_t numBytesPerTuple, uint64_t numTuples,
+    MemoryManager* memoryManager)
     : numBytesPerTuple{numBytesPerTuple},
-      numTuplesPerBlock{(uint32_t)(BufferPoolConstants::PAGE_256KB_SIZE / numBytesPerTuple)},
-      numTuples{numTuples}, endTupleOffset{numTuplesPerBlock * numBytesPerTuple} {
+      numTuplesPerBlock{(uint32_t)(DATA_BLOCK_SIZE / numBytesPerTuple)}, numTuples{numTuples},
+      endTupleOffset{numTuplesPerBlock * numBytesPerTuple} {
     auto numKeyBlocks = numTuples / numTuplesPerBlock + (numTuples % numTuplesPerBlock ? 1 : 0);
     for (auto i = 0u; i < numKeyBlocks; i++) {
-        keyBlocks.emplace_back(std::make_shared<DataBlock>(memoryManager));
+        keyBlocks.emplace_back(std::make_shared<DataBlock>(memoryManager, DATA_BLOCK_SIZE));
     }
 }
 
 // This constructor is used to convert a keyBlock to a MergedKeyBlocks.
 MergedKeyBlocks::MergedKeyBlocks(uint32_t numBytesPerTuple, std::shared_ptr<DataBlock> keyBlock)
     : numBytesPerTuple{numBytesPerTuple},
-      numTuplesPerBlock{(uint32_t)(BufferPoolConstants::PAGE_256KB_SIZE / numBytesPerTuple)},
+      numTuplesPerBlock{(uint32_t)(DATA_BLOCK_SIZE / numBytesPerTuple)},
       numTuples{keyBlock->numTuples}, endTupleOffset{numTuplesPerBlock * numBytesPerTuple} {
-    keyBlocks.emplace_back(keyBlock);
+    keyBlocks.emplace_back(std::move(keyBlock));
 }
 
-uint8_t* MergedKeyBlocks::getBlockEndTuplePtr(
-    uint32_t blockIdx, uint64_t endTupleIdx, uint32_t endTupleBlockIdx) const {
-    assert(blockIdx < keyBlocks.size());
+uint8_t* MergedKeyBlocks::getBlockEndTuplePtr(uint32_t blockIdx, uint64_t endTupleIdx,
+    uint32_t endTupleBlockIdx) const {
+    KU_ASSERT(blockIdx < keyBlocks.size());
     if (endTupleIdx == 0) {
         return getKeyBlockBuffer(0);
     }
     return blockIdx == endTupleBlockIdx ? getTuple(endTupleIdx - 1) + numBytesPerTuple :
                                           getKeyBlockBuffer(blockIdx) + endTupleOffset;
+}
+
+BlockPtrInfo::BlockPtrInfo(uint64_t startTupleIdx, uint64_t endTupleIdx, MergedKeyBlocks* keyBlocks)
+    : keyBlocks{keyBlocks}, curBlockIdx{startTupleIdx / keyBlocks->getNumTuplesPerBlock()},
+      endBlockIdx{endTupleIdx == 0 ? 0 : (endTupleIdx - 1) / keyBlocks->getNumTuplesPerBlock()},
+      endTupleIdx{endTupleIdx} {
+    if (startTupleIdx == endTupleIdx) {
+        curTuplePtr = nullptr;
+        endTuplePtr = nullptr;
+        curBlockEndTuplePtr = nullptr;
+    } else {
+        curTuplePtr = keyBlocks->getTuple(startTupleIdx);
+        endTuplePtr = keyBlocks->getBlockEndTuplePtr(endBlockIdx, endTupleIdx, endBlockIdx);
+        curBlockEndTuplePtr = keyBlocks->getBlockEndTuplePtr(curBlockIdx, endTupleIdx, endBlockIdx);
+    }
 }
 
 void BlockPtrInfo::updateTuplePtrIfNecessary() {
@@ -50,7 +62,7 @@ void BlockPtrInfo::updateTuplePtrIfNecessary() {
     }
 }
 
-uint64_t KeyBlockMergeTask::findRightKeyBlockIdx(uint8_t* leftEndTuplePtr) {
+uint64_t KeyBlockMergeTask::findRightKeyBlockIdx(uint8_t* leftEndTuplePtr) const {
     // Find a tuple in the right memory block such that:
     // 1. The value of the current tuple is smaller than the value in leftEndTuple.
     // 2. Either the value of next tuple is larger than the value in leftEndTuple or
@@ -64,8 +76,8 @@ uint64_t KeyBlockMergeTask::findRightKeyBlockIdx(uint8_t* leftEndTuplePtr) {
 
         if (keyBlockMerger.compareTuplePtr(leftEndTuplePtr, curTuplePtr)) {
             if (curTupleIdx == rightKeyBlock->getNumTuples() - 1 ||
-                !keyBlockMerger.compareTuplePtr(
-                    leftEndTuplePtr, rightKeyBlock->getTuple(curTupleIdx + 1))) {
+                !keyBlockMerger.compareTuplePtr(leftEndTuplePtr,
+                    rightKeyBlock->getTuple(curTupleIdx + 1))) {
                 // If the current tuple is the last tuple or the value of next tuple is larger than
                 // the value of leftEndTuple, return the curTupleIdx.
                 return curTupleIdx;
@@ -112,9 +124,9 @@ std::unique_ptr<KeyBlockMergeMorsel> KeyBlockMergeTask::getMorsel() {
 
         auto keyBlockMergeMorsel = std::make_unique<KeyBlockMergeMorsel>(leftKeyBlockStartIdx,
             std::min(leftKeyBlockNextIdx, leftKeyBlock->getNumTuples()), rightKeyBlockNextIdx,
-            rightEndIdx == -1 ? rightKeyBlockNextIdx : ++rightEndIdx);
+            rightEndIdx == (uint64_t)-1 ? rightKeyBlockNextIdx : ++rightEndIdx);
 
-        if (rightEndIdx != -1) {
+        if (rightEndIdx != (uint64_t)-1) {
             rightKeyBlockNextIdx = rightEndIdx;
         }
         return keyBlockMergeMorsel;
@@ -122,35 +134,35 @@ std::unique_ptr<KeyBlockMergeMorsel> KeyBlockMergeTask::getMorsel() {
 }
 
 void KeyBlockMerger::mergeKeyBlocks(KeyBlockMergeMorsel& keyBlockMergeMorsel) const {
-    assert(keyBlockMergeMorsel.leftKeyBlockStartIdx < keyBlockMergeMorsel.leftKeyBlockEndIdx ||
-           keyBlockMergeMorsel.rightKeyBlockStartIdx < keyBlockMergeMorsel.rightKeyBlockEndIdx);
+    KU_ASSERT(keyBlockMergeMorsel.leftKeyBlockStartIdx < keyBlockMergeMorsel.leftKeyBlockEndIdx ||
+              keyBlockMergeMorsel.rightKeyBlockStartIdx < keyBlockMergeMorsel.rightKeyBlockEndIdx);
 
     auto leftBlockPtrInfo = BlockPtrInfo(keyBlockMergeMorsel.leftKeyBlockStartIdx,
         keyBlockMergeMorsel.leftKeyBlockEndIdx,
-        keyBlockMergeMorsel.keyBlockMergeTask->leftKeyBlock);
+        keyBlockMergeMorsel.keyBlockMergeTask->leftKeyBlock.get());
 
     auto rightBlockPtrInfo = BlockPtrInfo(keyBlockMergeMorsel.rightKeyBlockStartIdx,
         keyBlockMergeMorsel.rightKeyBlockEndIdx,
-        keyBlockMergeMorsel.keyBlockMergeTask->rightKeyBlock);
+        keyBlockMergeMorsel.keyBlockMergeTask->rightKeyBlock.get());
 
-    auto resultBlockPtrInfo = BlockPtrInfo(
-        keyBlockMergeMorsel.leftKeyBlockStartIdx + keyBlockMergeMorsel.rightKeyBlockStartIdx,
+    auto resultBlockPtrInfo = BlockPtrInfo(keyBlockMergeMorsel.leftKeyBlockStartIdx +
+                                               keyBlockMergeMorsel.rightKeyBlockStartIdx,
         keyBlockMergeMorsel.leftKeyBlockEndIdx + keyBlockMergeMorsel.rightKeyBlockEndIdx,
-        keyBlockMergeMorsel.keyBlockMergeTask->resultKeyBlock);
+        keyBlockMergeMorsel.keyBlockMergeTask->resultKeyBlock.get());
 
     while (leftBlockPtrInfo.hasMoreTuplesToRead() && rightBlockPtrInfo.hasMoreTuplesToRead()) {
         uint64_t nextNumBytesToMerge =
             std::min(std::min(leftBlockPtrInfo.getNumBytesLeftInCurBlock(),
                          rightBlockPtrInfo.getNumBytesLeftInCurBlock()),
                 resultBlockPtrInfo.getNumBytesLeftInCurBlock());
-        for (auto i = 0; i < nextNumBytesToMerge; i += numBytesPerTuple) {
+        for (auto i = 0u; i < nextNumBytesToMerge; i += numBytesPerTuple) {
             if (compareTuplePtr(leftBlockPtrInfo.curTuplePtr, rightBlockPtrInfo.curTuplePtr)) {
                 memcpy(resultBlockPtrInfo.curTuplePtr, rightBlockPtrInfo.curTuplePtr,
                     numBytesPerTuple);
                 rightBlockPtrInfo.curTuplePtr += numBytesPerTuple;
             } else {
-                memcpy(
-                    resultBlockPtrInfo.curTuplePtr, leftBlockPtrInfo.curTuplePtr, numBytesPerTuple);
+                memcpy(resultBlockPtrInfo.curTuplePtr, leftBlockPtrInfo.curTuplePtr,
+                    numBytesPerTuple);
                 leftBlockPtrInfo.curTuplePtr += numBytesPerTuple;
             }
             resultBlockPtrInfo.curTuplePtr += numBytesPerTuple;
@@ -166,8 +178,8 @@ void KeyBlockMerger::mergeKeyBlocks(KeyBlockMergeMorsel& keyBlockMergeMorsel) co
 
 // This function returns true if the value in the leftTuplePtr is larger than the value in the
 // rightTuplePtr.
-bool KeyBlockMerger::compareTuplePtrWithStringCol(
-    uint8_t* leftTuplePtr, uint8_t* rightTuplePtr) const {
+bool KeyBlockMerger::compareTuplePtrWithStringCol(uint8_t* leftTuplePtr,
+    uint8_t* rightTuplePtr) const {
     // We can't simply use memcmp to compare tuples if there are string columns.
     // We should only compare the binary strings starting from the last compared string column
     // till the next string column.
@@ -217,10 +229,10 @@ bool KeyBlockMerger::compareTuplePtrWithStringCol(
             auto& rightFactorizedTable =
                 factorizedTables[OrderByKeyEncoder::getEncodedFTIdx(rightTupleInfo)];
             uint8_t result;
-            auto leftStr = leftFactorizedTable->getData<ku_string_t>(
-                leftBlockIdx, leftBlockOffset, strKeyColInfo.colOffsetInFT);
-            auto rightStr = rightFactorizedTable->getData<ku_string_t>(
-                rightBlockIdx, rightBlockOffset, strKeyColInfo.colOffsetInFT);
+            auto leftStr = leftFactorizedTable->getData<ku_string_t>(leftBlockIdx, leftBlockOffset,
+                strKeyColInfo.colOffsetInFT);
+            auto rightStr = rightFactorizedTable->getData<ku_string_t>(rightBlockIdx,
+                rightBlockOffset, strKeyColInfo.colOffsetInFT);
             result = (leftStr == rightStr);
             if (result) {
                 // If the tie can't be solved, we need to check the next string column.
@@ -238,12 +250,12 @@ bool KeyBlockMerger::compareTuplePtrWithStringCol(
     return false;
 }
 
-void KeyBlockMerger::copyRemainingBlockDataToResult(
-    BlockPtrInfo& blockToCopy, BlockPtrInfo& resultBlock) const {
+void KeyBlockMerger::copyRemainingBlockDataToResult(BlockPtrInfo& blockToCopy,
+    BlockPtrInfo& resultBlock) const {
     while (blockToCopy.curBlockIdx <= blockToCopy.endBlockIdx) {
-        uint64_t nextNumBytesToMerge = std::min(
-            blockToCopy.getNumBytesLeftInCurBlock(), resultBlock.getNumBytesLeftInCurBlock());
-        for (int i = 0; i < nextNumBytesToMerge; i += numBytesPerTuple) {
+        uint64_t nextNumBytesToMerge = std::min(blockToCopy.getNumBytesLeftInCurBlock(),
+            resultBlock.getNumBytesLeftInCurBlock());
+        for (auto i = 0u; i < nextNumBytesToMerge; i += numBytesPerTuple) {
             memcpy(resultBlock.curTuplePtr, blockToCopy.curTuplePtr, numBytesPerTuple);
             blockToCopy.curTuplePtr += numBytesPerTuple;
             resultBlock.curTuplePtr += numBytesPerTuple;
@@ -272,8 +284,8 @@ std::unique_ptr<KeyBlockMergeMorsel> KeyBlockMergeTaskDispatcher::getMorsel() {
         sortedKeyBlocks->pop();
         auto resultKeyBlock = std::make_shared<MergedKeyBlocks>(leftKeyBlock->getNumBytesPerTuple(),
             leftKeyBlock->getNumTuples() + rightKeyBlock->getNumTuples(), memoryManager);
-        auto newMergeTask = std::make_shared<KeyBlockMergeTask>(
-            leftKeyBlock, rightKeyBlock, resultKeyBlock, *keyBlockMerger);
+        auto newMergeTask = std::make_shared<KeyBlockMergeTask>(leftKeyBlock, rightKeyBlock,
+            resultKeyBlock, *keyBlockMerger);
         activeKeyBlockMergeTasks.emplace_back(newMergeTask);
         auto morsel = newMergeTask->getMorsel();
         morsel->keyBlockMergeTask = newMergeTask;
@@ -297,14 +309,14 @@ void KeyBlockMergeTaskDispatcher::doneMorsel(std::unique_ptr<KeyBlockMergeMorsel
 }
 
 void KeyBlockMergeTaskDispatcher::init(MemoryManager* memoryManager,
-    std::shared_ptr<std::queue<std::shared_ptr<MergedKeyBlocks>>> sortedKeyBlocks,
-    std::vector<std::shared_ptr<FactorizedTable>>& factorizedTables,
-    std::vector<StrKeyColInfo>& strKeyColsInfo, uint64_t numBytesPerTuple) {
-    assert(this->keyBlockMerger == nullptr);
+    std::queue<std::shared_ptr<MergedKeyBlocks>>* sortedKeyBlocks,
+    std::vector<FactorizedTable*> factorizedTables, std::vector<StrKeyColInfo>& strKeyColsInfo,
+    uint64_t numBytesPerTuple) {
+    KU_ASSERT(this->keyBlockMerger == nullptr);
     this->memoryManager = memoryManager;
     this->sortedKeyBlocks = sortedKeyBlocks;
-    this->keyBlockMerger =
-        std::make_unique<KeyBlockMerger>(factorizedTables, strKeyColsInfo, numBytesPerTuple);
+    this->keyBlockMerger = std::make_unique<KeyBlockMerger>(std::move(factorizedTables),
+        strKeyColsInfo, numBytesPerTuple);
 }
 
 } // namespace processor

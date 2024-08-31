@@ -20,10 +20,17 @@ def _get_kuzu_version():
     with open(cmake_file) as f:
         for line in f:
             if line.startswith('project(Kuzu VERSION'):
-                return line.split(' ')[2].strip()
+                raw_version = line.split(' ')[2].strip()
+                version_nums = raw_version.split('.')
+                if len(version_nums) <= 3:
+                    return raw_version
+                else:
+                    dev_suffix = version_nums[3]
+                    version = '.'.join(version_nums[:3])
+                    version += ".dev%s" % dev_suffix
+                    return version
 
-
-kuzu_version = os.environ['PYTHON_PACKAGE_VERSION'] if 'PYTHON_PACKAGE_VERSION' in os.environ else _get_kuzu_version()
+kuzu_version = _get_kuzu_version()
 print("The version of this build is %s" % kuzu_version)
 
 
@@ -73,7 +80,7 @@ class CMakeBuild(build_ext):
         subprocess.run(['make', 'clean'], check=True, cwd=build_dir)
 
         # Build the native extension.
-        full_cmd = ['make', 'release', 'NUM_THREADS=%d' % num_cores]
+        full_cmd = ['make', 'python', 'NUM_THREADS=%d' % num_cores]
         subprocess.run(full_cmd, cwd=build_dir, check=True, env=env_vars)
         self.announce("Done building native extension.")
         self.announce("Copying native extension...")

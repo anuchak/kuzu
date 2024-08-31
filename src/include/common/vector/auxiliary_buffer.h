@@ -1,6 +1,11 @@
 #pragma once
 
 #include "common/in_mem_overflow_buffer.h"
+#include "common/types/types.h"
+
+namespace arrow {
+class ChunkedArray;
+} // namespace arrow
 
 namespace kuzu {
 namespace common {
@@ -20,8 +25,10 @@ public:
     }
 
     inline InMemOverflowBuffer* getOverflowBuffer() const { return inMemOverflowBuffer.get(); }
+    inline uint8_t* allocateOverflow(uint64_t size) {
+        return inMemOverflowBuffer->allocateSpace(size);
+    }
     inline void resetOverflowBuffer() const { inMemOverflowBuffer->resetBuffer(); }
-    void addString(common::ValueVector* vector, uint32_t pos, char* value, uint64_t len) const;
 
 private:
     std::unique_ptr<InMemOverflowBuffer> inMemOverflowBuffer;
@@ -29,17 +36,24 @@ private:
 
 class StructAuxiliaryBuffer : public AuxiliaryBuffer {
 public:
-    StructAuxiliaryBuffer() = default;
+    StructAuxiliaryBuffer(const LogicalType& type, storage::MemoryManager* memoryManager);
 
-    inline void addChildVector(std::shared_ptr<ValueVector> valueVector) {
-        childrenVectors.emplace_back(std::move(valueVector));
+    inline void referenceChildVector(idx_t idx, std::shared_ptr<ValueVector> vectorToReference) {
+        childrenVectors[idx] = std::move(vectorToReference);
     }
-    inline const std::vector<std::shared_ptr<ValueVector>>& getChildrenVectors() const {
+    inline const std::vector<std::shared_ptr<ValueVector>>& getFieldVectors() const {
         return childrenVectors;
     }
 
 private:
     std::vector<std::shared_ptr<ValueVector>> childrenVectors;
+};
+
+class ArrowColumnAuxiliaryBuffer : public AuxiliaryBuffer {
+    friend class ArrowColumnVector;
+
+private:
+    std::shared_ptr<arrow::ChunkedArray> column;
 };
 
 // ListVector layout:
@@ -50,23 +64,38 @@ private:
 // actual elements of the lists in a flat, continuous storage. Each list would be represented as a
 // contiguous subsequence of elements in this vector.
 class ListAuxiliaryBuffer : public AuxiliaryBuffer {
+    friend class ListVector;
+
 public:
-    ListAuxiliaryBuffer(DataType& dataVectorType, storage::MemoryManager* memoryManager);
+    ListAuxiliaryBuffer(const LogicalType& dataVectorType, storage::MemoryManager* memoryManager);
 
-    inline ValueVector* getDataVector() const { return dataVector.get(); }
+    void setDataVector(std::shared_ptr<ValueVector> vector) { dataVector = std::move(vector); }
+    ValueVector* getDataVector() const { return dataVector.get(); }
+    std::shared_ptr<ValueVector> getSharedDataVector() const { return dataVector; }
 
-    list_entry_t addList(uint64_t listSize);
+    list_entry_t addList(list_size_t listSize);
+
+    uint64_t getSize() const { return size; }
+
+    void resetSize() { size = 0; }
+
+    KUZU_API void resize(uint64_t numValues);
+
+private:
+    void resizeDataVector(ValueVector* dataVector);
+
+    void resizeStructDataVector(ValueVector* dataVector);
 
 private:
     uint64_t capacity;
     uint64_t size;
-    std::unique_ptr<ValueVector> dataVector;
+    std::shared_ptr<ValueVector> dataVector;
 };
 
 class AuxiliaryBufferFactory {
 public:
-    static std::unique_ptr<AuxiliaryBuffer> getAuxiliaryBuffer(
-        DataType& type, storage::MemoryManager* memoryManager);
+    static std::unique_ptr<AuxiliaryBuffer> getAuxiliaryBuffer(LogicalType& type,
+        storage::MemoryManager* memoryManager);
 };
 
 } // namespace common

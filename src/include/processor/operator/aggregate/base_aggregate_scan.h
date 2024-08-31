@@ -1,22 +1,23 @@
 #pragma once
 
-#include "function/aggregate/aggregate_function.h"
+#include "function/aggregate_function.h"
 #include "processor/operator/physical_operator.h"
 
 namespace kuzu {
 namespace processor {
 
 class BaseAggregateScan : public PhysicalOperator {
+    static constexpr PhysicalOperatorType type_ = PhysicalOperatorType::AGGREGATE_SCAN;
+
 public:
     BaseAggregateScan(std::vector<DataPos> aggregatesPos, std::unique_ptr<PhysicalOperator> child,
-        uint32_t id, const std::string& paramsString)
-        : PhysicalOperator{PhysicalOperatorType::AGGREGATE_SCAN, std::move(child), id,
-              paramsString},
+        uint32_t id, std::unique_ptr<OPPrintInfo> printInfo)
+        : PhysicalOperator{type_, std::move(child), id, std::move(printInfo)},
           aggregatesPos{std::move(aggregatesPos)} {}
 
-    BaseAggregateScan(
-        std::vector<DataPos> aggregatesPos, uint32_t id, const std::string& paramsString)
-        : PhysicalOperator{PhysicalOperatorType::AGGREGATE_SCAN, id, paramsString},
+    BaseAggregateScan(std::vector<DataPos> aggregatesPos, physical_op_id id,
+        std::unique_ptr<OPPrintInfo> printInfo)
+        : PhysicalOperator{type_, id, std::move(printInfo)},
           aggregatesPos{std::move(aggregatesPos)} {}
 
     bool isSource() const override { return true; }
@@ -28,8 +29,8 @@ public:
     std::unique_ptr<PhysicalOperator> clone() override = 0;
 
 protected:
-    void writeAggregateResultToVector(
-        common::ValueVector& vector, uint64_t pos, function::AggregateState* aggregateState);
+    void writeAggregateResultToVector(common::ValueVector& vector, uint64_t pos,
+        function::AggregateState* aggregateState);
 
 protected:
     std::vector<DataPos> aggregatesPos;

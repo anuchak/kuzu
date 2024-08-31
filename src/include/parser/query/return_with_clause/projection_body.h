@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/copy_constructors.h"
 #include "parser/expression/parsed_expression.h"
 
 namespace kuzu {
@@ -7,26 +8,23 @@ namespace parser {
 
 class ProjectionBody {
 public:
-    ProjectionBody(bool isDistinct, bool containsStar_,
+    ProjectionBody(bool isDistinct,
         std::vector<std::unique_ptr<ParsedExpression>> projectionExpressions)
-        : isDistinct{isDistinct}, containsStar_{containsStar_}, projectionExpressions{std::move(
-                                                                    projectionExpressions)} {}
+        : isDistinct{isDistinct}, projectionExpressions{std::move(projectionExpressions)} {}
+    DELETE_COPY_DEFAULT_MOVE(ProjectionBody);
 
     inline bool getIsDistinct() const { return isDistinct; }
-
-    inline bool containsStar() const { return containsStar_; }
 
     inline const std::vector<std::unique_ptr<ParsedExpression>>& getProjectionExpressions() const {
         return projectionExpressions;
     }
 
-    inline void setOrderByExpressions(
-        std::vector<std::unique_ptr<ParsedExpression>> expressions, std::vector<bool> sortOrders) {
+    inline void setOrderByExpressions(std::vector<std::unique_ptr<ParsedExpression>> expressions,
+        std::vector<bool> sortOrders) {
         orderByExpressions = std::move(expressions);
         isAscOrders = std::move(sortOrders);
     }
     inline bool hasOrderByExpressions() const { return !orderByExpressions.empty(); }
-    inline uint32_t numOrderByExpressions() const { return orderByExpressions.size(); }
     inline const std::vector<std::unique_ptr<ParsedExpression>>& getOrderByExpressions() const {
         return orderByExpressions;
     }
@@ -47,7 +45,6 @@ public:
 
 private:
     bool isDistinct;
-    bool containsStar_;
     std::vector<std::unique_ptr<ParsedExpression>> projectionExpressions;
     std::vector<std::unique_ptr<ParsedExpression>> orderByExpressions;
     std::vector<bool> isAscOrders;

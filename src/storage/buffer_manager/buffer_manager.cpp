@@ -1,74 +1,98 @@
 #include "storage/buffer_manager/buffer_manager.h"
 
+#include <atomic>
+#include <cstring>
+
+#include "common/assert.h"
 #include "common/constants.h"
-#include "common/exception.h"
-#include "spdlog/spdlog.h"
+#include "common/exception/buffer_manager.h"
+#include "common/types/types.h"
+#include "storage/buffer_manager/bm_file_handle.h"
+
+#if defined(_WIN32)
+#include <exception>
+
+#include <eh.h>
+#include <windows.h>
+#include <winnt.h>
+#endif
 
 using namespace kuzu::common;
 
 namespace kuzu {
 namespace storage {
-// In this function, we try to remove as many as possible candidates that are not evictable from the
-// eviction queue until we hit a candidate that is evictable.
-// 1) If the candidate page's version has changed, which means the page was pinned and unpinned, we
-// remove the candidate from the queue.
-// 2) If the candidate page's state is UNLOCKED, and its page version hasn't changed, which means
-// the page was optimistically read, we give a second chance to evict the page by marking the page
-// as MARKED, and moving the candidate to the back of the queue.
-// 3) If the candidate page's state is LOCKED, we remove the candidate from the queue.
-void EvictionQueue::removeNonEvictableCandidates() {
-    std::shared_lock sLck{mtx};
-    while (true) {
-        EvictionCandidate evictionCandidate;
-        if (!queue->try_dequeue(evictionCandidate)) {
-            break;
+
+bool EvictionQueue::insert(uint32_t fileIndex, common::page_idx_t pageIndex) {
+    EvictionCandidate candidate{fileIndex, pageIndex};
+    while (size < capacity) {
+        // Weak is fine since spurious failure is acceptable.
+        // The slot can always be filled later.
+        auto emptyCandidate = EMPTY;
+        if (data[insertCursor.fetch_add(1, std::memory_order_relaxed) % capacity]
+                .compare_exchange_weak(emptyCandidate, candidate)) {
+            size++;
+            return true;
         }
-        auto pageStateAndVersion = evictionCandidate.pageState->getStateAndVersion();
-        if (evictionCandidate.isEvictable(pageStateAndVersion)) {
-            queue->enqueue(evictionCandidate);
-            break;
-        } else if (evictionCandidate.isSecondChanceEvictable(pageStateAndVersion)) {
-            // The page was optimistically read, mark it as MARKED, and enqueue to be evicted later.
-            evictionCandidate.pageState->tryMark(pageStateAndVersion);
-            queue->enqueue(evictionCandidate);
-            continue;
-        } else {
-            // Cases to remove the candidate from the queue:
-            // 1) The page is currently LOCKED (it is currently pinned), remove the candidate from
-            // the queue.
-            // 2) The page's version number has changed (it was pinned and unpinned), another
-            // candidate exists for this page in the queue. remove the candidate from the queue.
-            continue;
+    }
+    return false;
+}
+
+std::atomic<EvictionCandidate>* EvictionQueue::next() {
+    std::atomic<EvictionCandidate>* candidate;
+    do {
+        // Since the buffer pool size is a power of two (as is the page size), (UINT64_MAX + 1) %
+        // size == 0, which means no entries will be skipped when the cursor overflows
+        candidate = &data[evictionCursor.fetch_add(1, std::memory_order_relaxed) % capacity];
+    } while (candidate->load() == EMPTY);
+    return candidate;
+}
+
+void EvictionQueue::removeCandidatesForFile(uint32_t fileIndex) {
+    if (size == 0) {
+        return;
+    }
+    for (uint64_t i = 0; i < capacity; i++) {
+        auto candidate = data[i].load();
+        if (candidate.fileIdx == fileIndex && data[i].compare_exchange_strong(candidate, EMPTY)) {
+            if (size-- == 1) {
+                return;
+            }
         }
     }
 }
 
-void EvictionQueue::removeCandidatesForFile(kuzu::storage::BMFileHandle& fileHandle) {
-    std::unique_lock xLck{mtx};
-    EvictionCandidate candidate;
-    uint64_t loopedCandidateIdx = 0;
-    auto numCandidatesInQueue = queue->size_approx();
-    while (loopedCandidateIdx < numCandidatesInQueue && queue->try_dequeue(candidate)) {
-        if (candidate.fileHandle != &fileHandle) {
-            queue->enqueue(candidate);
-        }
-        loopedCandidateIdx++;
+void EvictionQueue::clear(std::atomic<EvictionCandidate>& candidate) {
+    auto nonEmpty = candidate.load();
+    if (nonEmpty != EMPTY && candidate.compare_exchange_strong(nonEmpty, EMPTY)) {
+        size--;
+        return;
     }
+    KU_UNREACHABLE;
 }
 
-BufferManager::BufferManager(uint64_t bufferPoolSize)
-    : logger{LoggerUtils::getLogger(common::LoggerConstants::LoggerEnum::BUFFER_MANAGER)},
-      usedMemory{0}, bufferPoolSize{bufferPoolSize}, numEvictionQueueInsertions{0} {
-    logger->info("Done initializing buffer manager.");
+BufferManager::BufferManager(uint64_t bufferPoolSize, uint64_t maxDBSize)
+    : bufferPoolSize{bufferPoolSize},
+      evictionQueue{bufferPoolSize / BufferPoolConstants::PAGE_4KB_SIZE},
+      usedMemory{evictionQueue.getCapacity() * sizeof(EvictionCandidate)} {
+    verifySizeParams(bufferPoolSize, maxDBSize);
+    vmRegions.resize(2);
+    vmRegions[0] = std::make_unique<VMRegion>(PageSizeClass::PAGE_4KB, maxDBSize);
+    vmRegions[1] = std::make_unique<VMRegion>(PageSizeClass::PAGE_256KB, bufferPoolSize);
+}
+
+void BufferManager::verifySizeParams(uint64_t bufferPoolSize, uint64_t maxDBSize) {
     if (bufferPoolSize < BufferPoolConstants::PAGE_4KB_SIZE) {
         throw BufferManagerException("The given buffer pool size should be at least 4KB.");
     }
-    vmRegions.resize(2);
-    vmRegions[0] = std::make_unique<VMRegion>(
-        PageSizeClass::PAGE_4KB, BufferPoolConstants::DEFAULT_VM_REGION_MAX_SIZE);
-    vmRegions[1] = std::make_unique<VMRegion>(PageSizeClass::PAGE_256KB, bufferPoolSize);
-    evictionQueue =
-        std::make_unique<EvictionQueue>(bufferPoolSize / BufferPoolConstants::PAGE_4KB_SIZE);
+    if (maxDBSize < BufferPoolConstants::PAGE_4KB_SIZE * StorageConstants::PAGE_GROUP_SIZE) {
+        throw BufferManagerException(
+            "The given max db size should be at least " +
+            std::to_string(BufferPoolConstants::PAGE_4KB_SIZE * StorageConstants::PAGE_GROUP_SIZE) +
+            " bytes.");
+    }
+    if ((maxDBSize & (maxDBSize - 1)) != 0) {
+        throw BufferManagerException("The given max db size should be a power of 2.");
+    }
 }
 
 // Important Note: Pin returns a raw pointer to the frame. This is potentially very dangerous and
@@ -80,8 +104,8 @@ BufferManager::BufferManager(uint64_t bufferPoolSize)
 // should be flushed to disk if it is evicted.
 // (3) If multiple threads are writing to the page, they should coordinate separately because they
 // both get access to the same piece of memory.
-uint8_t* BufferManager::pin(
-    BMFileHandle& fileHandle, common::page_idx_t pageIdx, PageReadPolicy pageReadPolicy) {
+uint8_t* BufferManager::pin(BMFileHandle& fileHandle, page_idx_t pageIdx,
+    PageReadPolicy pageReadPolicy) {
     auto pageState = fileHandle.getPageState(pageIdx);
     while (true) {
         auto currStateAndVersion = pageState->getStateAndVersion();
@@ -91,6 +115,10 @@ uint8_t* BufferManager::pin(
                 if (!claimAFrame(fileHandle, pageIdx, pageReadPolicy)) {
                     pageState->unlock();
                     throw BufferManagerException("Failed to claim a frame.");
+                }
+                if (!evictionQueue.insert(fileHandle.getFileIndex(), pageIdx)) {
+                    throw BufferManagerException(
+                        "Eviction queue is full! This should be impossible.");
                 }
                 return getFrame(fileHandle, pageIdx);
             }
@@ -104,28 +132,92 @@ uint8_t* BufferManager::pin(
         case PageState::LOCKED: {
             continue;
         }
+        default: {
+            KU_UNREACHABLE;
+        }
         }
     }
 }
 
-void BufferManager::optimisticRead(BMFileHandle& fileHandle, common::page_idx_t pageIdx,
+#if defined(WIN32)
+class AccessViolation : public std::exception {
+public:
+    AccessViolation(const uint8_t* location) : location{location} {}
+
+    const uint8_t* location;
+};
+
+class ScopedTranslator {
+    const _se_translator_function old;
+
+public:
+    ScopedTranslator(_se_translator_function newTranslator)
+        : old{_set_se_translator(newTranslator)} {}
+    ~ScopedTranslator() { _set_se_translator(old); }
+};
+
+void handleAccessViolation(unsigned int exceptionCode, PEXCEPTION_POINTERS exceptionRecord) {
+    if (exceptionCode == EXCEPTION_ACCESS_VIOLATION
+        // exception was from a read
+        && exceptionRecord->ExceptionRecord->ExceptionInformation[0] == 0) [[likely]] {
+        throw AccessViolation(
+            (const uint8_t*)exceptionRecord->ExceptionRecord->ExceptionInformation[1]);
+    }
+    // Needs to not be an Exception so that it can't be caught by regular exception handling
+    // And is seems like throwing integer error codes is treated similarly to hardware
+    // exceptions with /EHa
+    throw exceptionCode;
+}
+#endif
+
+// Returns true if the function completes successfully
+inline bool try_func(const std::function<void(uint8_t*)>& func, uint8_t* frame,
+    const std::vector<std::unique_ptr<VMRegion>>& vmRegions, common::PageSizeClass pageSizeClass) {
+#if defined(_WIN32)
+    try {
+#endif
+        func(frame);
+#if defined(_WIN32)
+    } catch (AccessViolation& exc) {
+        // If we encounter an acess violation within the VM region,
+        // the page was decomitted by another thread
+        // and is no longer valid memory
+        if (vmRegions[pageSizeClass]->contains(exc.location)) {
+            return false;
+        } else {
+            throw EXCEPTION_ACCESS_VIOLATION;
+        }
+    }
+#else
+    (void)pageSizeClass;
+    (void)vmRegions;
+#endif
+    return true;
+}
+
+void BufferManager::optimisticRead(BMFileHandle& fileHandle, page_idx_t pageIdx,
     const std::function<void(uint8_t*)>& func) {
     auto pageState = fileHandle.getPageState(pageIdx);
+#if defined(_WIN32)
+    // Change the Structured Exception handling just for the scope of this function
+    auto translator = ScopedTranslator(handleAccessViolation);
+#endif
     while (true) {
         auto currStateAndVersion = pageState->getStateAndVersion();
         switch (PageState::getState(currStateAndVersion)) {
         case PageState::UNLOCKED: {
-            func(getFrame(fileHandle, pageIdx));
+            if (!try_func(func, getFrame(fileHandle, pageIdx), vmRegions,
+                    fileHandle.getPageSizeClass())) {
+                continue;
+            }
             if (pageState->getStateAndVersion() == currStateAndVersion) {
                 return;
             }
         } break;
         case PageState::MARKED: {
-            // If the page is marked, we try to switch to unlocked. If we succeed, we read the page.
-            if (pageState->tryClearMark(currStateAndVersion)) {
-                func(getFrame(fileHandle, pageIdx));
-                return;
-            }
+            // If the page is marked, we try to switch to unlocked.
+            pageState->tryClearMark(currStateAndVersion);
+            continue;
         } break;
         case PageState::EVICTED: {
             pin(fileHandle, pageIdx, PageReadPolicy::READ_PAGE);
@@ -142,7 +234,41 @@ void BufferManager::optimisticRead(BMFileHandle& fileHandle, common::page_idx_t 
 void BufferManager::unpin(BMFileHandle& fileHandle, page_idx_t pageIdx) {
     auto pageState = fileHandle.getPageState(pageIdx);
     pageState->unlock();
-    addToEvictionQueue(&fileHandle, pageIdx, pageState);
+}
+
+// evicts up to 64 pages and returns the space reclaimed
+uint64_t BufferManager::evictPages() {
+    const size_t BATCH_SIZE = 64;
+    std::array<std::atomic<EvictionCandidate>*, BATCH_SIZE> evictionCandidates;
+    size_t pagesEvicted = 0;
+    size_t pagesTried = 0;
+    uint64_t claimedMemory = 0;
+
+    // Try each page at least twice.
+    // E.g. if the vast majority of pages are unmarked and unlocked,
+    // the first pass will mark them and the second pass, if insufficient marked pages
+    // are found, will evict the first batch.
+    auto failureLimit = evictionQueue.getSize() * 2;
+    while (pagesEvicted < BATCH_SIZE && pagesTried < failureLimit) {
+        evictionCandidates[pagesEvicted] = evictionQueue.next();
+        pagesTried++;
+        auto evictionCandidate = evictionCandidates[pagesEvicted]->load();
+        auto* pageState =
+            fileHandles[evictionCandidate.fileIdx]->getPageState(evictionCandidate.pageIdx);
+        auto pageStateAndVersion = pageState->getStateAndVersion();
+        if (!evictionCandidate.isEvictable(pageStateAndVersion)) {
+            if (evictionCandidate.isSecondChanceEvictable(pageStateAndVersion)) {
+                pageState->tryMark(pageStateAndVersion);
+            }
+            continue;
+        }
+        pagesEvicted++;
+    }
+
+    for (size_t i = 0; i < pagesEvicted; i++) {
+        claimedMemory += tryEvictPage(*evictionCandidates[i]);
+    }
+    return claimedMemory;
 }
 
 // This function tries to load the given page into a frame. Due to our design of mmap, each page is
@@ -153,94 +279,93 @@ void BufferManager::unpin(BMFileHandle& fileHandle, page_idx_t pageIdx) {
 // or we can find no more pages to be evicted.
 // Lastly, we double check if the needed memory is available. If not, we free the memory we reserved
 // and return false, otherwise, we load the page to its corresponding frame and return true.
-bool BufferManager::claimAFrame(
-    BMFileHandle& fileHandle, common::page_idx_t pageIdx, PageReadPolicy pageReadPolicy) {
+bool BufferManager::claimAFrame(BMFileHandle& fileHandle, page_idx_t pageIdx,
+    PageReadPolicy pageReadPolicy) {
     page_offset_t pageSizeToClaim = fileHandle.getPageSize();
-    // Reserve the memory for the page.
-    auto currentUsedMem = reserveUsedMemory(pageSizeToClaim);
-    uint64_t claimedMemory = 0;
-    // Evict pages if necessary until we have enough memory.
-    while ((currentUsedMem + pageSizeToClaim - claimedMemory) > bufferPoolSize.load()) {
-        EvictionCandidate evictionCandidate;
-        if (!evictionQueue->dequeue(evictionCandidate)) {
-            // Cannot find more pages to be evicted. Free the memory we reserved and return false.
-            freeUsedMemory(pageSizeToClaim);
-            return false;
-        }
-        auto pageStateAndVersion = evictionCandidate.pageState->getStateAndVersion();
-        if (!evictionCandidate.isEvictable(pageStateAndVersion)) {
-            if (evictionCandidate.isSecondChanceEvictable(pageStateAndVersion)) {
-                evictionCandidate.pageState->tryMark(pageStateAndVersion);
-                evictionQueue->enqueue(evictionCandidate);
-            }
-            continue;
-        }
-        // We found a page that potentially hasn't been accessed since enqueued. We try to evict the
-        // page from its frame by calling `tryEvictPage`, which will check if the page's version has
-        // changed, if not, we evict the page from its frame.
-        claimedMemory += tryEvictPage(evictionCandidate);
-        currentUsedMem = usedMemory.load();
-    }
-    if ((currentUsedMem + pageSizeToClaim - claimedMemory) > bufferPoolSize.load()) {
-        // Cannot claim the memory needed. Free the memory we reserved and return false.
-        freeUsedMemory(pageSizeToClaim);
+    if (!reserve(pageSizeToClaim)) {
         return false;
     }
-    // Have enough memory available now, load the page into its corresponding frame.
     cachePageIntoFrame(fileHandle, pageIdx, pageReadPolicy);
-    freeUsedMemory(claimedMemory);
     return true;
 }
 
-void BufferManager::addToEvictionQueue(
-    BMFileHandle* fileHandle, common::page_idx_t pageIdx, PageState* pageState) {
-    auto currStateAndVersion = pageState->getStateAndVersion();
-    if (++numEvictionQueueInsertions == BufferPoolConstants::EVICTION_QUEUE_PURGING_INTERVAL) {
-        evictionQueue->removeNonEvictableCandidates();
-        numEvictionQueueInsertions = 0;
+bool BufferManager::reserve(uint64_t sizeToReserve) {
+    // Reserve the memory for the page.
+    auto currentUsedMem = reserveUsedMemory(sizeToReserve);
+    uint64_t totalClaimedMemory = 0;
+    // Evict pages if necessary until we have enough memory.
+    while ((currentUsedMem + sizeToReserve - totalClaimedMemory) > bufferPoolSize.load()) {
+        auto memoryClaimed = evictPages();
+        if (memoryClaimed == 0) {
+            // Cannot find more pages to be evicted. Free the memory we reserved and return false.
+            freeUsedMemory(sizeToReserve + totalClaimedMemory);
+            return false;
+        }
+        totalClaimedMemory += memoryClaimed;
+        currentUsedMem = usedMemory.load();
     }
-    pageState->tryMark(currStateAndVersion);
-    evictionQueue->enqueue(
-        fileHandle, pageIdx, pageState, PageState::getVersion(currStateAndVersion));
+    if ((currentUsedMem + sizeToReserve - totalClaimedMemory) > bufferPoolSize.load()) {
+        // Cannot claim the memory needed. Free the memory we reserved and return false.
+        freeUsedMemory(sizeToReserve + totalClaimedMemory);
+        return false;
+    }
+    // Have enough memory available now
+    freeUsedMemory(totalClaimedMemory);
+    return true;
 }
 
-uint64_t BufferManager::tryEvictPage(EvictionCandidate& candidate) {
-    auto& pageState = *candidate.pageState;
+uint64_t BufferManager::tryEvictPage(std::atomic<EvictionCandidate>& _candidate) {
+    auto candidate = _candidate.load();
+    // Page must have been evicted by another thread already
+    if (candidate.pageIdx == INVALID_PAGE_IDX) {
+        return 0;
+    }
+    auto& pageState = *fileHandles[candidate.fileIdx]->getPageState(candidate.pageIdx);
     auto currStateAndVersion = pageState.getStateAndVersion();
     // We check if the page is evictable again. Note that if the page's state or version has
     // changed after the check, `tryLock` will fail, and we will abort the eviction of this page.
     if (!candidate.isEvictable(currStateAndVersion) || !pageState.tryLock(currStateAndVersion)) {
         return 0;
     }
-    // At this point, the page is LOCKED. Next, flush out the frame into the file page if the frame
+    // The pageState was locked, but another thread already evicted this candidate and unlocked it
+    // before the lock occurred
+    if (_candidate.load() != candidate) {
+        pageState.unlock();
+        return 0;
+    }
+    // At this point, the page is LOCKED, and we have exclusive access to the eviction candidate.
+    // Next, flush out the frame into the file page if the frame
     // is dirty. Finally remove the page from the frame and reset the page to EVICTED.
-    flushIfDirtyWithoutLock(*candidate.fileHandle, candidate.pageIdx);
-    auto numBytesFreed = candidate.fileHandle->getPageSize();
-    releaseFrameForPage(*candidate.fileHandle, candidate.pageIdx);
+    auto& fileHandle = *fileHandles[candidate.fileIdx];
+    flushIfDirtyWithoutLock(fileHandle, candidate.pageIdx);
+    auto numBytesFreed = fileHandle.getPageSize();
+    releaseFrameForPage(fileHandle, candidate.pageIdx);
     pageState.resetToEvicted();
+    evictionQueue.clear(_candidate);
     return numBytesFreed;
 }
 
-void BufferManager::cachePageIntoFrame(
-    BMFileHandle& fileHandle, common::page_idx_t pageIdx, PageReadPolicy pageReadPolicy) {
+void BufferManager::cachePageIntoFrame(BMFileHandle& fileHandle, page_idx_t pageIdx,
+    PageReadPolicy pageReadPolicy) {
     auto pageState = fileHandle.getPageState(pageIdx);
     pageState->clearDirty();
     if (pageReadPolicy == PageReadPolicy::READ_PAGE) {
-        FileUtils::readFromFile(fileHandle.getFileInfo(), (void*)getFrame(fileHandle, pageIdx),
+        fileHandle.getFileInfo()->readFromFile((void*)getFrame(fileHandle, pageIdx),
             fileHandle.getPageSize(), pageIdx * fileHandle.getPageSize());
     }
 }
 
-void BufferManager::flushIfDirtyWithoutLock(BMFileHandle& fileHandle, common::page_idx_t pageIdx) {
+void BufferManager::flushIfDirtyWithoutLock(BMFileHandle& fileHandle, page_idx_t pageIdx) {
     auto pageState = fileHandle.getPageState(pageIdx);
     if (pageState->isDirty()) {
-        FileUtils::writeToFile(fileHandle.getFileInfo(), getFrame(fileHandle, pageIdx),
-            fileHandle.getPageSize(), pageIdx * fileHandle.getPageSize());
+        fileHandle.getFileInfo()->writeFile(getFrame(fileHandle, pageIdx), fileHandle.getPageSize(),
+            pageIdx * fileHandle.getPageSize());
+        pageState->clearDirtyWithoutLock();
     }
 }
 
 void BufferManager::removeFilePagesFromFrames(BMFileHandle& fileHandle) {
-    evictionQueue->removeCandidatesForFile(fileHandle);
+    evictionQueue.removeCandidatesForFile(fileHandle.getFileIndex());
     for (auto pageIdx = 0u; pageIdx < fileHandle.getNumPages(); ++pageIdx) {
         removePageFromFrame(fileHandle, pageIdx, false /* do not flush */);
     }
@@ -248,12 +373,12 @@ void BufferManager::removeFilePagesFromFrames(BMFileHandle& fileHandle) {
 
 void BufferManager::flushAllDirtyPagesInFrames(BMFileHandle& fileHandle) {
     for (auto pageIdx = 0u; pageIdx < fileHandle.getNumPages(); ++pageIdx) {
-        removePageFromFrame(fileHandle, pageIdx, true /* flush */);
+        flushIfDirtyWithoutLock(fileHandle, pageIdx);
     }
 }
 
-void BufferManager::updateFrameIfPageIsInFrameWithoutLock(
-    BMFileHandle& fileHandle, uint8_t* newPage, page_idx_t pageIdx) {
+void BufferManager::updateFrameIfPageIsInFrameWithoutLock(BMFileHandle& fileHandle,
+    uint8_t* newPage, page_idx_t pageIdx) {
     auto pageState = fileHandle.getPageState(pageIdx);
     if (pageState) {
         memcpy(getFrame(fileHandle, pageIdx), newPage, BufferPoolConstants::PAGE_4KB_SIZE);
@@ -268,14 +393,18 @@ void BufferManager::removePageFromFrameIfNecessary(BMFileHandle& fileHandle, pag
 }
 
 // NOTE: We assume the page is not pinned (locked) here.
-void BufferManager::removePageFromFrame(
-    BMFileHandle& fileHandle, common::page_idx_t pageIdx, bool shouldFlush) {
+void BufferManager::removePageFromFrame(BMFileHandle& fileHandle, page_idx_t pageIdx,
+    bool shouldFlush) {
     auto pageState = fileHandle.getPageState(pageIdx);
+    if (PageState::getState(pageState->getStateAndVersion()) == PageState::EVICTED) {
+        return;
+    }
     pageState->spinLock(pageState->getStateAndVersion());
     if (shouldFlush) {
         flushIfDirtyWithoutLock(fileHandle, pageIdx);
     }
     releaseFrameForPage(fileHandle, pageIdx);
+    freeUsedMemory(fileHandle.getPageSize());
     pageState->resetToEvicted();
 }
 

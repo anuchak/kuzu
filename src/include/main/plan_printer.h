@@ -1,10 +1,9 @@
 #pragma once
 
-#include <cassert>
-#include <fstream>
 #include <sstream>
 #include <string>
 
+#include "common/assert.h"
 #include "common/profiler.h"
 #include "json_fwd.hpp"
 #include "kuzu_fwd.h"
@@ -14,7 +13,8 @@ namespace main {
 
 class OpProfileBox {
 public:
-    OpProfileBox(std::string opName, std::string paramsName, std::vector<std::string> attributes);
+    OpProfileBox(std::string opName, const std::string& paramsName,
+        std::vector<std::string> attributes);
 
     inline std::string getOpName() const { return opName; }
 
@@ -41,8 +41,8 @@ public:
     std::ostringstream printPlanToOstream() const;
 
 private:
-    static void calculateNumRowsAndColsForOp(
-        processor::PhysicalOperator* op, uint32_t& numRows, uint32_t& numCols);
+    static void calculateNumRowsAndColsForOp(processor::PhysicalOperator* op, uint32_t& numRows,
+        uint32_t& numCols);
 
     uint32_t fillOpProfileBoxes(processor::PhysicalOperator* op, uint32_t rowIdx, uint32_t colIdx,
         uint32_t& maxFieldWidth, common::Profiler& profiler);
@@ -58,18 +58,19 @@ private:
     static std::string genHorizLine(uint32_t len);
 
     inline void validateRowIdxAndColIdx(uint32_t rowIdx, uint32_t colIdx) const {
-        assert(0 <= rowIdx && rowIdx < opProfileBoxes.size() && 0 <= colIdx &&
-               colIdx < opProfileBoxes[rowIdx].size());
+        KU_ASSERT(rowIdx < opProfileBoxes.size() && colIdx < opProfileBoxes[rowIdx].size());
+        (void)rowIdx;
+        (void)colIdx;
     }
 
-    void insertOpProfileBox(
-        uint32_t rowIdx, uint32_t colIdx, std::unique_ptr<OpProfileBox> opProfileBox);
+    void insertOpProfileBox(uint32_t rowIdx, uint32_t colIdx,
+        std::unique_ptr<OpProfileBox> opProfileBox);
 
     OpProfileBox* getOpProfileBox(uint32_t rowIdx, uint32_t colIdx) const;
 
     bool hasOpProfileBox(uint32_t rowIdx, uint32_t colIdx) const {
-        return 0 <= rowIdx && rowIdx < opProfileBoxes.size() && 0 <= colIdx &&
-               colIdx < opProfileBoxes[rowIdx].size() && getOpProfileBox(rowIdx, colIdx);
+        return rowIdx < opProfileBoxes.size() && colIdx < opProfileBoxes[rowIdx].size() &&
+               getOpProfileBox(rowIdx, colIdx);
     }
 
     //! Returns true if there is a valid OpProfileBox on the upper left side of the OpProfileBox
@@ -88,23 +89,24 @@ private:
 class PlanPrinter {
 
 public:
-    PlanPrinter(processor::PhysicalPlan* physicalPlan, std::unique_ptr<common::Profiler> profiler);
+    PlanPrinter(processor::PhysicalPlan* physicalPlan, common::Profiler* profiler)
+        : physicalPlan{physicalPlan}, profiler{profiler} {};
 
     nlohmann::json printPlanToJson();
 
     std::ostringstream printPlanToOstream();
 
-    static inline std::string getOperatorName(processor::PhysicalOperator* physicalOperator);
+    static std::string getOperatorName(processor::PhysicalOperator* physicalOperator);
 
-    static inline std::string getOperatorParams(processor::PhysicalOperator* physicalOperator);
+    static std::string getOperatorParams(processor::PhysicalOperator* physicalOperator);
 
 private:
-    nlohmann::json toJson(
-        processor::PhysicalOperator* physicalOperator, common::Profiler& profiler);
+    nlohmann::json toJson(processor::PhysicalOperator* physicalOperator,
+        common::Profiler& profiler);
 
 private:
     processor::PhysicalPlan* physicalPlan;
-    std::unique_ptr<common::Profiler> profiler;
+    common::Profiler* profiler;
 };
 
 } // namespace main

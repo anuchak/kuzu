@@ -1,56 +1,54 @@
 #pragma once
 
-#include "catalog/catalog.h"
-#include "storage/buffer_manager/buffer_manager.h"
-#include "storage/wal/wal.h"
 #include "storage/wal/wal_record.h"
 
-namespace spdlog {
-class logger;
-}
-
 namespace kuzu {
+namespace main {
+class ClientContext;
+} // namespace main
+
 namespace storage {
 
 class StorageManager;
+class BufferManager;
+class BMFileHandle;
+enum class WALReplayMode : uint8_t { COMMIT_CHECKPOINT, ROLLBACK, RECOVERY_CHECKPOINT };
 
-// Note: This class is not thread-safe.
 class WALReplayer {
 public:
-    // This interface is used for recovery only. We always recover the disk files before
-    // constructing the storageManager and catalog. So this specialized recovery constructor
-    // doesn't take in storageManager and bufferManager.
-    explicit WALReplayer(WAL* wal);
-
-    WALReplayer(WAL* wal, StorageManager* storageManager, MemoryManager* memoryManager,
-        catalog::Catalog* catalog, bool isCheckpoint);
+    WALReplayer(main::ClientContext& clientContext, BMFileHandle& shadowFH,
+        WALReplayMode replayMode);
 
     void replay();
 
 private:
-    void init();
-    void replayWALRecord(WALRecord& walRecord);
-    void checkpointOrRollbackVersionedFileHandleAndBufferManager(
-        const WALRecord& walRecord, const StorageStructureID& storageStructureID);
-    void truncateFileIfInsertion(
-        BMFileHandle* fileHandle, const PageUpdateOrInsertRecord& pageInsertOrUpdateRecord);
-    BMFileHandle* getVersionedFileHandleIfWALVersionAndBMShouldBeCleared(
-        const StorageStructureID& storageStructureID);
-    std::unique_ptr<catalog::Catalog> getCatalogForRecovery(common::DBFileType dbFileType);
+    void replayWALRecord(WALRecord& walRecord,
+        std::unordered_map<DBFileID, std::unique_ptr<common::FileInfo>>& fileCache);
+    void replayPageUpdateOrInsertRecord(const WALRecord& walRecord,
+        std::unordered_map<DBFileID, std::unique_ptr<common::FileInfo>>& fileCache);
+    void replayCatalogRecord(const WALRecord& walRecord);
+    void replayTableStatisticsRecord(const WALRecord& walRecord);
+    void replayCreateCatalogEntryRecord(const WALRecord& walRecord);
+    void replayDropCatalogEntryRecord(const WALRecord& walRecord);
+    void replayAlterTableEntryRecord(const WALRecord& walRecord);
+    void replayCopyTableRecord(const WALRecord& walRecord) const;
+    void replayUpdateSequenceRecord(const WALRecord& walRecord);
+
+    void checkpointOrRollbackVersionedFileHandleAndBufferManager(const WALRecord& walRecord,
+        const DBFileID& dbFileID);
+    void truncateFileIfInsertion(BMFileHandle* fileHandle,
+        const PageUpdateOrInsertRecord& pageInsertOrUpdateRecord);
+    BMFileHandle* getVersionedFileHandleIfWALVersionAndBMShouldBeCleared(const DBFileID& dbFileID);
 
 private:
+    std::string walFilePath;
+    BMFileHandle& shadowFH;
     bool isRecovering;
     bool isCheckpoint; // if true does redo operations; if false does undo operations
+    std::unique_ptr<uint8_t[]> pageBuffer;
     // Warning: Some fields of the storageManager may not yet be initialized if the WALReplayer
     // has been initialized during recovery, i.e., isRecovering=true.
-    StorageManager* storageManager;
-    BufferManager* bufferManager;
-    MemoryManager* memoryManager;
-    std::shared_ptr<BMFileHandle> walFileHandle;
-    std::unique_ptr<uint8_t[]> pageBuffer;
-    std::shared_ptr<spdlog::logger> logger;
-    WAL* wal;
-    catalog::Catalog* catalog;
+    main::ClientContext& clientContext;
 };
 
 } // namespace storage

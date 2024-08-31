@@ -1,26 +1,28 @@
-#include "binder/bound_statement_result.h"
 #include "c_api/kuzu.h"
-#include "common/exception.h"
-#include "common/types/value.h"
+#include "common/exception/exception.h"
 #include "main/kuzu.h"
-#include "planner/logical_plan/logical_plan.h"
+
+namespace kuzu {
+namespace common {
+class Value;
+}
+} // namespace kuzu
 
 using namespace kuzu::common;
 using namespace kuzu::main;
 
-kuzu_connection* kuzu_connection_init(kuzu_database* database) {
+kuzu_state kuzu_connection_init(kuzu_database* database, kuzu_connection* out_connection) {
     if (database == nullptr || database->_database == nullptr) {
-        return nullptr;
+        out_connection->_connection = nullptr;
+        return KuzuError;
     }
-    auto connection = (kuzu_connection*)malloc(sizeof(kuzu_connection));
     try {
-        auto* connection_ptr = new Connection(static_cast<Database*>(database->_database));
-        connection->_connection = connection_ptr;
+        out_connection->_connection = new Connection(static_cast<Database*>(database->_database));
     } catch (Exception& e) {
-        free(connection);
-        return nullptr;
+        out_connection->_connection = nullptr;
+        return KuzuError;
     }
-    return connection;
+    return KuzuSuccess;
 }
 
 void kuzu_connection_destroy(kuzu_connection* connection) {
@@ -30,108 +32,126 @@ void kuzu_connection_destroy(kuzu_connection* connection) {
     if (connection->_connection != nullptr) {
         delete static_cast<Connection*>(connection->_connection);
     }
-    free(connection);
 }
 
-void kuzu_connection_begin_read_only_transaction(kuzu_connection* connection) {
-    static_cast<Connection*>(connection->_connection)->beginReadOnlyTransaction();
-}
-
-void kuzu_connection_begin_write_transaction(kuzu_connection* connection) {
-    static_cast<Connection*>(connection->_connection)->beginWriteTransaction();
-}
-
-void kuzu_connection_commit(kuzu_connection* connection) {
-    static_cast<Connection*>(connection->_connection)->commit();
-}
-
-void kuzu_connection_rollback(kuzu_connection* connection) {
-    static_cast<Connection*>(connection->_connection)->rollback();
-}
-
-void kuzu_connection_set_max_num_thread_for_exec(
-    kuzu_connection* connection, uint64_t num_threads) {
-    static_cast<Connection*>(connection->_connection)->setMaxNumThreadForExec(num_threads);
-}
-
-uint64_t kuzu_connection_get_max_num_thread_for_exec(kuzu_connection* connection) {
-    return static_cast<Connection*>(connection->_connection)->getMaxNumThreadForExec();
-}
-
-kuzu_query_result* kuzu_connection_query(kuzu_connection* connection, const char* query) {
-    auto query_result = static_cast<Connection*>(connection->_connection)->query(query).release();
-    if (query_result == nullptr) {
-        return nullptr;
+kuzu_state kuzu_connection_set_max_num_thread_for_exec(kuzu_connection* connection,
+    uint64_t num_threads) {
+    if (connection == nullptr || connection->_connection == nullptr) {
+        return KuzuError;
     }
-    auto* c_query_result = new kuzu_query_result;
-    c_query_result->_query_result = query_result;
-    return c_query_result;
-}
-
-kuzu_prepared_statement* kuzu_connection_prepare(kuzu_connection* connection, const char* query) {
-    auto connection_ptr = static_cast<Connection*>(connection->_connection);
-    auto prepared_statement = connection_ptr->prepare(query).release();
-    if (prepared_statement == nullptr) {
-        return nullptr;
+    try {
+        static_cast<Connection*>(connection->_connection)->setMaxNumThreadForExec(num_threads);
+    } catch (Exception& e) {
+        return KuzuError;
     }
-    auto* c_prepared_statement = new kuzu_prepared_statement;
-    c_prepared_statement->_prepared_statement = prepared_statement;
-    c_prepared_statement->_bound_values =
-        new std::unordered_map<std::string, std::shared_ptr<Value>>;
-    return c_prepared_statement;
+    return KuzuSuccess;
 }
 
-kuzu_query_result* kuzu_connection_execute(
-    kuzu_connection* connection, kuzu_prepared_statement* prepared_statement) {
-    auto prepared_statement_ptr =
-        static_cast<PreparedStatement*>(prepared_statement->_prepared_statement);
-    auto bound_values = static_cast<std::unordered_map<std::string, std::shared_ptr<Value>>*>(
-        prepared_statement->_bound_values);
-    auto query_result = static_cast<Connection*>(connection->_connection)
-                            ->executeWithParams(prepared_statement_ptr, *bound_values)
-                            .release();
-    if (query_result == nullptr) {
-        return nullptr;
+kuzu_state kuzu_connection_get_max_num_thread_for_exec(kuzu_connection* connection,
+    uint64_t* out_result) {
+    if (connection == nullptr || connection->_connection == nullptr) {
+        return KuzuError;
     }
-    auto* c_query_result = new kuzu_query_result;
-    c_query_result->_query_result = query_result;
-    return c_query_result;
+    try {
+        *out_result = static_cast<Connection*>(connection->_connection)->getMaxNumThreadForExec();
+    } catch (Exception& e) {
+        return KuzuError;
+    }
+    return KuzuSuccess;
 }
 
-char* kuzu_connection_get_node_table_names(kuzu_connection* connection) {
-    auto node_table_names = static_cast<Connection*>(connection->_connection)->getNodeTableNames();
-    char* node_table_names_c = (char*)malloc(node_table_names.size() + 1);
-    strcpy(node_table_names_c, node_table_names.c_str());
-    return node_table_names_c;
+kuzu_state kuzu_connection_query(kuzu_connection* connection, const char* query,
+    kuzu_query_result* out_query_result) {
+    if (connection == nullptr || connection->_connection == nullptr) {
+        return KuzuError;
+    }
+    try {
+        auto query_result =
+            static_cast<Connection*>(connection->_connection)->query(query).release();
+        if (query_result == nullptr) {
+            return KuzuError;
+        }
+        out_query_result->_query_result = query_result;
+        out_query_result->_is_owned_by_cpp = false;
+        if (!query_result->isSuccess()) {
+            return KuzuError;
+        }
+        return KuzuSuccess;
+    } catch (Exception& e) {
+        return KuzuError;
+    }
 }
 
-char* kuzu_connection_get_rel_table_names(kuzu_connection* connection) {
-    auto rel_table_names = static_cast<Connection*>(connection->_connection)->getRelTableNames();
-    char* rel_table_names_c = (char*)malloc(rel_table_names.size() + 1);
-    strcpy(rel_table_names_c, rel_table_names.c_str());
-    return rel_table_names_c;
+kuzu_state kuzu_connection_prepare(kuzu_connection* connection, const char* query,
+    kuzu_prepared_statement* out_prepared_statement) {
+    if (connection == nullptr || connection->_connection == nullptr) {
+        return KuzuError;
+    }
+    try {
+        auto prepared_statement =
+            static_cast<Connection*>(connection->_connection)->prepare(query).release();
+        if (prepared_statement == nullptr) {
+            return KuzuError;
+        }
+        out_prepared_statement->_prepared_statement = prepared_statement;
+        out_prepared_statement->_bound_values =
+            new std::unordered_map<std::string, std::unique_ptr<Value>>;
+        return KuzuSuccess;
+    } catch (Exception& e) {
+        return KuzuError;
+    }
+    return KuzuSuccess;
 }
 
-char* kuzu_connection_get_node_property_names(kuzu_connection* connection, const char* table_name) {
-    auto node_property_names =
-        static_cast<Connection*>(connection->_connection)->getNodePropertyNames(table_name);
-    char* node_property_names_c = (char*)malloc(node_property_names.size() + 1);
-    strcpy(node_property_names_c, node_property_names.c_str());
-    return node_property_names_c;
-}
+kuzu_state kuzu_connection_execute(kuzu_connection* connection,
+    kuzu_prepared_statement* prepared_statement, kuzu_query_result* out_query_result) {
+    if (connection == nullptr || connection->_connection == nullptr ||
+        prepared_statement == nullptr || prepared_statement->_prepared_statement == nullptr ||
+        prepared_statement->_bound_values == nullptr) {
+        return KuzuError;
+    }
+    try {
+        auto prepared_statement_ptr =
+            static_cast<PreparedStatement*>(prepared_statement->_prepared_statement);
+        auto bound_values = static_cast<std::unordered_map<std::string, std::unique_ptr<Value>>*>(
+            prepared_statement->_bound_values);
 
-char* kuzu_connection_get_rel_property_names(kuzu_connection* connection, const char* table_name) {
-    auto rel_property_names =
-        static_cast<Connection*>(connection->_connection)->getRelPropertyNames(table_name);
-    char* rel_property_names_c = (char*)malloc(rel_property_names.size() + 1);
-    strcpy(rel_property_names_c, rel_property_names.c_str());
-    return rel_property_names_c;
-}
+        // Must copy the parameters for safety, and so that the parameters in the prepared statement
+        // stay the same.
+        std::unordered_map<std::string, std::unique_ptr<Value>> copied_bound_values;
+        for (auto& [name, value] : *bound_values) {
+            copied_bound_values.emplace(name, value->copy());
+        }
 
+        auto query_result =
+            static_cast<Connection*>(connection->_connection)
+                ->executeWithParams(prepared_statement_ptr, std::move(copied_bound_values))
+                .release();
+        if (query_result == nullptr) {
+            return KuzuError;
+        }
+        out_query_result->_query_result = query_result;
+        out_query_result->_is_owned_by_cpp = false;
+        if (!query_result->isSuccess()) {
+            return KuzuError;
+        }
+        return KuzuSuccess;
+    } catch (Exception& e) {
+        return KuzuError;
+    }
+}
 void kuzu_connection_interrupt(kuzu_connection* connection) {
     static_cast<Connection*>(connection->_connection)->interrupt();
 }
 
-void kuzu_connection_set_query_timeout(kuzu_connection* connection, uint64_t timeout_in_ms) {
-    static_cast<Connection*>(connection->_connection)->setQueryTimeOut(timeout_in_ms);
+kuzu_state kuzu_connection_set_query_timeout(kuzu_connection* connection, uint64_t timeout_in_ms) {
+    if (connection == nullptr || connection->_connection == nullptr) {
+        return KuzuError;
+    }
+    try {
+        static_cast<Connection*>(connection->_connection)->setQueryTimeOut(timeout_in_ms);
+    } catch (Exception& e) {
+        return KuzuError;
+    }
+    return KuzuSuccess;
 }

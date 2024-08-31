@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
-#include <unordered_map>
+#include <vector>
 
 #include "parser/expression/parsed_expression.h"
+#include "parser/scan_source.h"
 #include "parser/statement.h"
 
 namespace kuzu {
@@ -11,26 +11,50 @@ namespace parser {
 
 class Copy : public Statement {
 public:
-    explicit Copy(std::vector<std::string> filePaths, std::string tableName,
-        std::unordered_map<std::string, std::unique_ptr<ParsedExpression>> parsingOptions,
-        common::CopyDescription::FileType fileType)
-        : Statement{common::StatementType::COPY}, filePaths{std::move(filePaths)},
-          tableName{std::move(tableName)},
-          parsingOptions{std::move(parsingOptions)}, fileType{fileType} {}
+    explicit Copy(common::StatementType type) : Statement{type} {}
 
-    inline std::vector<std::string> getFilePaths() const { return filePaths; }
-    inline std::string getTableName() const { return tableName; }
-    inline std::unordered_map<std::string, std::unique_ptr<ParsedExpression>> const*
-    getParsingOptions() const {
-        return &parsingOptions;
-    }
-    inline common::CopyDescription::FileType getFileType() const { return fileType; }
+    void setParsingOption(options_t options) { parsingOptions = std::move(options); }
+    const options_t& getParsingOptionsRef() const { return parsingOptions; }
+
+protected:
+    options_t parsingOptions;
+};
+
+class CopyFrom : public Copy {
+public:
+    CopyFrom(std::unique_ptr<BaseScanSource> source, std::string tableName)
+        : Copy{common::StatementType::COPY_FROM}, byColumn_{false}, source{std::move(source)},
+          tableName{std::move(tableName)} {}
+
+    void setByColumn() { byColumn_ = true; }
+    bool byColumn() const { return byColumn_; }
+
+    BaseScanSource* getSource() const { return source.get(); }
+
+    std::string getTableName() const { return tableName; }
+
+    void setColumnNames(std::vector<std::string> names) { columnNames = std::move(names); }
+    std::vector<std::string> getColumnNames() const { return columnNames; }
 
 private:
-    std::vector<std::string> filePaths;
-    common::CopyDescription::FileType fileType;
+    bool byColumn_;
+    std::unique_ptr<BaseScanSource> source;
     std::string tableName;
-    std::unordered_map<std::string, std::unique_ptr<ParsedExpression>> parsingOptions;
+    std::vector<std::string> columnNames;
+};
+
+class CopyTo : public Copy {
+public:
+    CopyTo(std::string filePath, std::unique_ptr<Statement> statement)
+        : Copy{common::StatementType::COPY_TO}, filePath{std::move(filePath)},
+          statement{std::move(statement)} {}
+
+    std::string getFilePath() const { return filePath; }
+    const Statement* getStatement() const { return statement.get(); }
+
+private:
+    std::string filePath;
+    std::unique_ptr<Statement> statement;
 };
 
 } // namespace parser

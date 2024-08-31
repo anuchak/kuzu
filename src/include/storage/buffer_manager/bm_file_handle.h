@@ -1,5 +1,13 @@
 #pragma once
 
+#include <atomic>
+#include <cmath>
+#include <cstdint>
+
+#include "common/concurrent_vector.h"
+#include "common/constants.h"
+#include "common/copy_constructors.h"
+#include "common/types/types.h"
 #include "storage/buffer_manager/vm_region.h"
 #include "storage/file_handle.h"
 
@@ -33,12 +41,12 @@ public:
     inline static uint64_t getVersion(uint64_t stateAndVersion) {
         return stateAndVersion & VERSION_MASK;
     }
-    inline static uint64_t updateStateWithSameVersion(
-        uint64_t oldStateAndVersion, uint64_t newState) {
+    inline static uint64_t updateStateWithSameVersion(uint64_t oldStateAndVersion,
+        uint64_t newState) {
         return ((oldStateAndVersion << 8) >> 8) | (newState << NUM_BITS_TO_SHIFT_FOR_STATE);
     }
-    inline static uint64_t updateStateAndIncrementVersion(
-        uint64_t oldStateAndVersion, uint64_t newState) {
+    inline static uint64_t updateStateAndIncrementVersion(uint64_t oldStateAndVersion,
+        uint64_t newState) {
         return (((oldStateAndVersion << 8) >> 8) + 1) | (newState << NUM_BITS_TO_SHIFT_FOR_STATE);
     }
     inline void spinLock(uint64_t oldStateAndVersion) {
@@ -49,33 +57,37 @@ public:
         }
     }
     inline bool tryLock(uint64_t oldStateAndVersion) {
-        return stateAndVersion.compare_exchange_strong(
-            oldStateAndVersion, updateStateWithSameVersion(oldStateAndVersion, LOCKED));
+        return stateAndVersion.compare_exchange_strong(oldStateAndVersion,
+            updateStateWithSameVersion(oldStateAndVersion, LOCKED));
     }
     inline void unlock() {
-        assert(getState(stateAndVersion.load()) == LOCKED);
+        // TODO(Keenan / Guodong): Track down this rare bug and re-enable the assert. Ref #2289.
+        // KU_ASSERT(getState(stateAndVersion.load()) == LOCKED);
         stateAndVersion.store(updateStateAndIncrementVersion(stateAndVersion.load(), UNLOCKED),
             std::memory_order_release);
     }
     // Change page state from Mark to Unlocked.
     inline bool tryClearMark(uint64_t oldStateAndVersion) {
-        assert(getState(oldStateAndVersion) == MARKED);
-        return stateAndVersion.compare_exchange_strong(
-            oldStateAndVersion, updateStateWithSameVersion(oldStateAndVersion, UNLOCKED));
+        KU_ASSERT(getState(oldStateAndVersion) == MARKED);
+        return stateAndVersion.compare_exchange_strong(oldStateAndVersion,
+            updateStateWithSameVersion(oldStateAndVersion, UNLOCKED));
     }
     inline bool tryMark(uint64_t oldStateAndVersion) {
-        return stateAndVersion.compare_exchange_strong(
-            oldStateAndVersion, updateStateWithSameVersion(oldStateAndVersion, MARKED));
+        return stateAndVersion.compare_exchange_strong(oldStateAndVersion,
+            updateStateWithSameVersion(oldStateAndVersion, MARKED));
     }
 
     inline void setDirty() {
-        assert(getState(stateAndVersion.load()) == LOCKED);
+        KU_ASSERT(getState(stateAndVersion.load()) == LOCKED);
         stateAndVersion |= DIRTY_MASK;
     }
     inline void clearDirty() {
-        assert(getState(stateAndVersion.load()) == LOCKED);
+        KU_ASSERT(getState(stateAndVersion.load()) == LOCKED);
         stateAndVersion &= ~DIRTY_MASK;
     }
+    // Meant to be used when flushing in a single thread.
+    // Should not be used if other threads are modifying the page state
+    inline void clearDirtyWithoutLock() { stateAndVersion &= ~DIRTY_MASK; }
     inline bool isDirty() const { return stateAndVersion & DIRTY_MASK; }
     uint64_t getStateAndVersion() const { return stateAndVersion.load(); }
 
@@ -109,8 +121,8 @@ public:
     inline common::page_idx_t getWALVersionPageIdxNoLock(common::page_idx_t pageIdxInGroup) const {
         return walPageIdxes[pageIdxInGroup];
     }
-    inline void setWALVersionPageIdxNoLock(
-        common::page_idx_t pageIdxInGroup, common::page_idx_t walVersionPageIdx) {
+    inline void setWALVersionPageIdxNoLock(common::page_idx_t pageIdxInGroup,
+        common::page_idx_t walVersionPageIdx) {
         walPageIdxes[pageIdxInGroup] = walVersionPageIdx;
     }
 
@@ -134,15 +146,10 @@ public:
         NON_VERSIONED_FILE = 1 // The file does not have any versioned pages in wal file.
     };
 
-    BMFileHandle(const std::string& path, uint8_t flags, BufferManager* bm,
-        common::PageSizeClass pageSizeClass, FileVersionedType fileVersionedType);
-
-    ~BMFileHandle();
-
     // This function assumes the page is already LOCKED.
     inline void setLockedPageDirty(common::page_idx_t pageIdx) {
-        assert(pageIdx < numPages);
-        pageStates[pageIdx]->setDirty();
+        KU_ASSERT(pageIdx < numPages);
+        pageStates[pageIdx].setDirty();
     }
 
     common::page_group_idx_t addWALPageIdxGroupIfNecessary(common::page_idx_t originalPageIdx);
@@ -168,20 +175,26 @@ public:
     // This function assumes that the caller has already acquired the wal page idx lock.
     void setWALPageIdxNoLock(common::page_idx_t originalPageIdx, common::page_idx_t pageIdxInWAL);
 
+    uint32_t getFileIndex() const { return fileIndex; }
+
 private:
+    BMFileHandle(const std::string& path, uint8_t flags, BufferManager* bm, uint32_t fileIndex,
+        common::PageSizeClass pageSizeClass, FileVersionedType fileVersionedType,
+        common::VirtualFileSystem* vfs, main::ClientContext* context);
+    // File handles are registered with the buffer manager and must not be moved or copied
+    DELETE_COPY_AND_MOVE(BMFileHandle);
     inline PageState* getPageState(common::page_idx_t pageIdx) {
-        assert(pageIdx < numPages && pageStates[pageIdx]);
-        return pageStates[pageIdx].get();
+        KU_ASSERT(pageIdx < numPages);
+        return &pageStates[pageIdx];
     }
     inline common::frame_idx_t getFrameIdx(common::page_idx_t pageIdx) {
-        assert(pageIdx < pageCapacity);
+        KU_ASSERT(pageIdx < pageCapacity);
         return (frameGroupIdxes[pageIdx >> common::StorageConstants::PAGE_GROUP_SIZE_LOG2]
                    << common::StorageConstants::PAGE_GROUP_SIZE_LOG2) |
                (pageIdx & common::StorageConstants::PAGE_IDX_IN_GROUP_MASK);
     }
     inline common::PageSizeClass getPageSizeClass() const { return pageSizeClass; }
 
-    void initPageStatesAndGroups();
     common::page_idx_t addNewPageWithoutLock() override;
     void addNewPageGroupWithoutLock();
     inline common::page_group_idx_t getNumPageGroups() {
@@ -192,13 +205,21 @@ private:
     FileVersionedType fileVersionedType;
     BufferManager* bm;
     common::PageSizeClass pageSizeClass;
-    std::vector<std::unique_ptr<PageState>> pageStates;
+    // With a page group size of 2^10 and an 256KB index size, the access cost increases
+    // only with each 128GB added to the file
+    common::ConcurrentVector<PageState, common::StorageConstants::PAGE_GROUP_SIZE,
+        common::BufferPoolConstants::PAGE_256KB_SIZE / sizeof(void*)>
+        pageStates;
     // Each file page group corresponds to a frame group in the VMRegion.
-    std::vector<common::page_group_idx_t> frameGroupIdxes;
+    // Just one frame group for each page group, so performance is less sensitive than pageStates
+    // and left at the default which won't increase access cost for the frame groups until 16TB of
+    // data has been written
+    common::ConcurrentVector<common::page_group_idx_t> frameGroupIdxes;
     // For each page group, if it has any WAL page version, we keep a `WALPageIdxGroup` in this map.
     // `WALPageIdxGroup` records the WAL page idx for each page in the page group.
     // Accesses to this map is synchronized by `fhSharedMutex`.
     std::unordered_map<common::page_group_idx_t, std::unique_ptr<WALPageIdxGroup>> walPageIdxGroups;
+    uint32_t fileIndex;
 };
 } // namespace storage
 } // namespace kuzu

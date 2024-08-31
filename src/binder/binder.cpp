@@ -1,85 +1,129 @@
 #include "binder/binder.h"
 
-#include "binder/expression/variable_expression.h"
+#include "binder/bound_statement_rewriter.h"
+#include "catalog/catalog.h"
+#include "catalog/catalog_entry/table_catalog_entry.h"
+#include "common/copier_config/csv_reader_config.h"
+#include "common/exception/binder.h"
+#include "common/keyword/rdf_keyword.h"
+#include "common/string_format.h"
 #include "common/string_utils.h"
+#include "function/built_in_function_utils.h"
+#include "function/table_functions.h"
+#include "processor/operator/persistent/reader/csv/parallel_csv_reader.h"
+#include "processor/operator/persistent/reader/csv/serial_csv_reader.h"
+#include "processor/operator/persistent/reader/npy/npy_reader.h"
+#include "processor/operator/persistent/reader/parquet/parquet_reader.h"
 
+using namespace kuzu::catalog;
 using namespace kuzu::common;
 using namespace kuzu::parser;
-using namespace kuzu::catalog;
+using namespace kuzu::processor;
 
 namespace kuzu {
 namespace binder {
 
 std::unique_ptr<BoundStatement> Binder::bind(const Statement& statement) {
+    std::unique_ptr<BoundStatement> boundStatement;
     switch (statement.getStatementType()) {
-    case StatementType::CREATE_NODE_TABLE_CLAUSE: {
-        return bindCreateNodeTableClause(statement);
-    }
-    case StatementType::CREATE_REL_TABLE_CLAUSE: {
-        return bindCreateRelTableClause(statement);
-    }
-    case StatementType::COPY: {
-        return bindCopyClause(statement);
-    }
+    case StatementType::CREATE_TABLE: {
+        boundStatement = bindCreateTable(statement);
+    } break;
+    case StatementType::CREATE_TYPE: {
+        boundStatement = bindCreateType(statement);
+    } break;
+    case StatementType::CREATE_SEQUENCE: {
+        boundStatement = bindCreateSequence(statement);
+    } break;
+    case StatementType::COPY_FROM: {
+        boundStatement = bindCopyFromClause(statement);
+    } break;
+    case StatementType::COPY_TO: {
+        boundStatement = bindCopyToClause(statement);
+    } break;
+    case StatementType::DROP_SEQUENCE: {
+        boundStatement = bindDropSequence(statement);
+    } break;
     case StatementType::DROP_TABLE: {
-        return bindDropTableClause(statement);
-    }
-    case StatementType::RENAME_TABLE: {
-        return bindRenameTableClause(statement);
-    }
-    case StatementType::ADD_PROPERTY: {
-        return bindAddPropertyClause(statement);
-    }
-    case StatementType::DROP_PROPERTY: {
-        return bindDropPropertyClause(statement);
-    }
-    case StatementType::RENAME_PROPERTY: {
-        return bindRenamePropertyClause(statement);
-    }
+        boundStatement = bindDropTable(statement);
+    } break;
+    case StatementType::ALTER: {
+        boundStatement = bindAlter(statement);
+    } break;
     case StatementType::QUERY: {
-        return bindQuery((const RegularQuery&)statement);
+        boundStatement = bindQuery((const RegularQuery&)statement);
+    } break;
+    case StatementType::STANDALONE_CALL: {
+        boundStatement = bindStandaloneCall(statement);
+    } break;
+    case StatementType::EXPLAIN: {
+        boundStatement = bindExplain(statement);
+    } break;
+    case StatementType::CREATE_MACRO: {
+        boundStatement = bindCreateMacro(statement);
+    } break;
+    case StatementType::TRANSACTION: {
+        boundStatement = bindTransaction(statement);
+    } break;
+    case StatementType::EXTENSION: {
+        boundStatement = bindExtension(statement);
+    } break;
+    case StatementType::EXPORT_DATABASE: {
+        boundStatement = bindExportDatabaseClause(statement);
+    } break;
+    case StatementType::IMPORT_DATABASE: {
+        boundStatement = bindImportDatabaseClause(statement);
+    } break;
+    case StatementType::ATTACH_DATABASE: {
+        boundStatement = bindAttachDatabase(statement);
+    } break;
+    case StatementType::DETACH_DATABASE: {
+        boundStatement = bindDetachDatabase(statement);
+    } break;
+    case StatementType::USE_DATABASE: {
+        boundStatement = bindUseDatabase(statement);
+    } break;
+    default: {
+        KU_UNREACHABLE;
     }
-    default:
-        assert(false);
     }
+    BoundStatementRewriter::rewrite(*boundStatement, *clientContext);
+    return boundStatement;
 }
 
 std::shared_ptr<Expression> Binder::bindWhereExpression(const ParsedExpression& parsedExpression) {
     auto whereExpression = expressionBinder.bindExpression(parsedExpression);
-    ExpressionBinder::implicitCastIfNecessary(whereExpression, BOOL);
+    expressionBinder.implicitCastIfNecessary(whereExpression, LogicalType::BOOL());
     return whereExpression;
 }
 
-table_id_t Binder::bindRelTableID(const std::string& tableName) const {
-    if (!catalog.getReadOnlyVersion()->containRelTable(tableName)) {
-        throw BinderException("Rel table " + tableName + " does not exist.");
+common::table_id_t Binder::bindTableID(const std::string& tableName) const {
+    auto catalog = clientContext->getCatalog();
+    if (!catalog->containsTable(clientContext->getTx(), tableName)) {
+        throw BinderException(common::stringFormat("Table {} does not exist.", tableName));
     }
-    return catalog.getReadOnlyVersion()->getTableID(tableName);
+    return catalog->getTableID(clientContext->getTx(), tableName);
 }
 
-table_id_t Binder::bindNodeTableID(const std::string& tableName) const {
-    if (!catalog.getReadOnlyVersion()->containNodeTable(tableName)) {
-        throw BinderException("Node table " + tableName + " does not exist.");
-    }
-    return catalog.getReadOnlyVersion()->getTableID(tableName);
+std::shared_ptr<Expression> Binder::createVariable(std::string_view name,
+    common::LogicalTypeID typeID) {
+    return createVariable(std::string(name), LogicalType{typeID});
 }
 
-std::shared_ptr<Expression> Binder::createVariable(
-    const std::string& name, const DataType& dataType) {
-    if (variablesInScope.contains(name)) {
+std::shared_ptr<Expression> Binder::createVariable(const std::string& name,
+    LogicalTypeID logicalTypeID) {
+    return createVariable(name, LogicalType{logicalTypeID});
+}
+
+std::shared_ptr<Expression> Binder::createVariable(const std::string& name,
+    const LogicalType& dataType) {
+    if (scope.contains(name)) {
         throw BinderException("Variable " + name + " already exists.");
     }
-    auto uniqueName = getUniqueExpressionName(name);
-    auto variable = make_shared<VariableExpression>(dataType, uniqueName, name);
-    variable->setAlias(name);
-    variablesInScope.insert({name, variable});
-    return variable;
-}
-
-void Binder::validateFirstMatchIsNotOptional(const SingleQuery& singleQuery) {
-    if (singleQuery.isFirstReadingClauseOptionalMatch()) {
-        throw BinderException("First match clause cannot be optional match.");
-    }
+    auto expression = expressionBinder.createVariableExpression(dataType.copy(), name);
+    expression->setAlias(name);
+    addToScope(name, expression);
+    return expression;
 }
 
 void Binder::validateProjectionColumnNamesAreUnique(const expression_vector& expressions) {
@@ -110,80 +154,17 @@ void Binder::validateOrderByFollowedBySkipOrLimitInWithClause(
     }
 }
 
-void Binder::validateUnionColumnsOfTheSameType(
-    const std::vector<std::unique_ptr<BoundSingleQuery>>& boundSingleQueries) {
-    if (boundSingleQueries.size() <= 1) {
-        return;
-    }
-    auto expressionsToProject = boundSingleQueries[0]->getExpressionsToCollect();
-    for (auto i = 1u; i < boundSingleQueries.size(); i++) {
-        auto expressionsToProjectToCheck = boundSingleQueries[i]->getExpressionsToCollect();
-        if (expressionsToProject.size() != expressionsToProjectToCheck.size()) {
-            throw BinderException("The number of columns to union/union all must be the same.");
-        }
-        // Check whether the dataTypes in union expressions are exactly the same in each single
-        // query.
-        for (auto j = 0u; j < expressionsToProject.size(); j++) {
-            ExpressionBinder::validateExpectedDataType(
-                *expressionsToProjectToCheck[j], expressionsToProject[j]->dataType.typeID);
-        }
+void Binder::validateTableType(table_id_t tableID, TableType expectedTableType) {
+    auto tableEntry =
+        clientContext->getCatalog()->getTableCatalogEntry(clientContext->getTx(), tableID);
+    if (tableEntry->getTableType() != expectedTableType) {
+        throw BinderException("Table type mismatch.");
     }
 }
 
-void Binder::validateIsAllUnionOrUnionAll(const BoundRegularQuery& regularQuery) {
-    auto unionAllExpressionCounter = 0u;
-    for (auto i = 0u; i < regularQuery.getNumSingleQueries() - 1; i++) {
-        unionAllExpressionCounter += regularQuery.getIsUnionAll(i);
-    }
-    if ((0 < unionAllExpressionCounter) &&
-        (unionAllExpressionCounter < regularQuery.getNumSingleQueries() - 1)) {
-        throw BinderException("Union and union all can't be used together.");
-    }
-}
-
-void Binder::validateReturnNotFollowUpdate(const NormalizedSingleQuery& singleQuery) {
-    for (auto i = 0u; i < singleQuery.getNumQueryParts(); ++i) {
-        auto normalizedQueryPart = singleQuery.getQueryPart(i);
-        if (normalizedQueryPart->hasUpdatingClause() && normalizedQueryPart->hasProjectionBody()) {
-            throw BinderException("Return/With after update is not supported.");
-        }
-    }
-}
-
-void Binder::validateReadNotFollowUpdate(const NormalizedSingleQuery& singleQuery) {
-    bool hasSeenUpdateClause = false;
-    for (auto i = 0u; i < singleQuery.getNumQueryParts(); ++i) {
-        auto normalizedQueryPart = singleQuery.getQueryPart(i);
-        if (hasSeenUpdateClause && normalizedQueryPart->hasReadingClause()) {
-            throw BinderException("Read after update is not supported.");
-        }
-        hasSeenUpdateClause |= normalizedQueryPart->hasUpdatingClause();
-    }
-}
-
-void Binder::validateTableExist(const Catalog& _catalog, std::string& tableName) {
-    if (!_catalog.getReadOnlyVersion()->containNodeTable(tableName) &&
-        !_catalog.getReadOnlyVersion()->containRelTable(tableName)) {
-        throw BinderException("Node/Rel " + tableName + " does not exist.");
-    }
-}
-
-bool Binder::validateStringParsingOptionName(std::string& parsingOptionName) {
-    for (auto i = 0; i < std::size(CopyConstants::STRING_CSV_PARSING_OPTIONS); i++) {
-        if (parsingOptionName == CopyConstants::STRING_CSV_PARSING_OPTIONS[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void Binder::validateNodeTableHasNoEdge(const Catalog& _catalog, table_id_t tableID) {
-    for (auto& tableIDSchema : _catalog.getReadOnlyVersion()->getRelTableSchemas()) {
-        if (tableIDSchema.second->isSrcOrDstTable(tableID)) {
-            throw BinderException(StringUtils::string_format(
-                "Cannot delete a node table with edges. It is on the edges of rel: {}.",
-                tableIDSchema.second->tableName));
-        }
+void Binder::validateTableExist(const std::string& tableName) {
+    if (!clientContext->getCatalog()->containsTable(clientContext->getTx(), tableName)) {
+        throw BinderException("Table " + tableName + " does not exist.");
     }
 }
 
@@ -191,13 +172,83 @@ std::string Binder::getUniqueExpressionName(const std::string& name) {
     return "_" + std::to_string(lastExpressionId++) + "_" + name;
 }
 
-std::unordered_map<std::string, std::shared_ptr<Expression>> Binder::enterSubquery() {
-    return variablesInScope;
+struct ReservedNames {
+    // Column name that might conflict with internal names.
+    static std::unordered_set<std::string> getColumnNames() {
+        return {
+            InternalKeyword::ID,
+            InternalKeyword::LABEL,
+            InternalKeyword::SRC,
+            InternalKeyword::DST,
+            InternalKeyword::DIRECTION,
+            InternalKeyword::LENGTH,
+            InternalKeyword::NODES,
+            InternalKeyword::RELS,
+            InternalKeyword::PLACE_HOLDER,
+            StringUtils::getUpper(InternalKeyword::ROW_OFFSET),
+            StringUtils::getUpper(InternalKeyword::SRC_OFFSET),
+            StringUtils::getUpper(InternalKeyword::DST_OFFSET),
+            StringUtils::getUpper(rdf::PID),
+            StringUtils::getUpper(rdf::IRI),
+        };
+    }
+
+    // Properties that should be hidden from user access.
+    static std::unordered_set<std::string> getPropertyLookupName() {
+        return {
+            InternalKeyword::ID,
+            StringUtils::getUpper(rdf::PID),
+        };
+    }
+};
+
+bool Binder::reservedInColumnName(const std::string& name) {
+    auto normalizedName = StringUtils::getUpper(name);
+    return ReservedNames::getColumnNames().contains(normalizedName);
 }
 
-void Binder::exitSubquery(
-    std::unordered_map<std::string, std::shared_ptr<Expression>> prevVariablesInScope) {
-    variablesInScope = std::move(prevVariablesInScope);
+bool Binder::reservedInPropertyLookup(const std::string& name) {
+    auto normalizedName = StringUtils::getUpper(name);
+    return ReservedNames::getPropertyLookupName().contains(normalizedName);
+}
+
+void Binder::addToScope(const std::string& name, std::shared_ptr<Expression> expr) {
+    // TODO(Xiyang): assert name not in scope.
+    scope.addExpression(name, std::move(expr));
+}
+
+BinderScope Binder::saveScope() {
+    return scope.copy();
+}
+
+void Binder::restoreScope(BinderScope prevScope) {
+    scope = std::move(prevScope);
+}
+
+function::TableFunction Binder::getScanFunction(FileType fileType, const ReaderConfig& config) {
+    function::Function* func;
+    std::vector<LogicalType> inputTypes;
+    inputTypes.push_back(LogicalType::STRING());
+    auto functions = clientContext->getCatalog()->getFunctions(clientContext->getTx());
+    switch (fileType) {
+    case FileType::PARQUET: {
+        func = function::BuiltInFunctionsUtils::matchFunction(clientContext->getTx(),
+            ParquetScanFunction::name, inputTypes, functions);
+    } break;
+    case FileType::NPY: {
+        func = function::BuiltInFunctionsUtils::matchFunction(clientContext->getTx(),
+            NpyScanFunction::name, inputTypes, functions);
+    } break;
+    case FileType::CSV: {
+        auto csvConfig = CSVReaderConfig::construct(config.options);
+        func = function::BuiltInFunctionsUtils::matchFunction(clientContext->getTx(),
+            csvConfig.parallel ? ParallelCSVScan::name : SerialCSVScan::name, inputTypes,
+            functions);
+    } break;
+    default:
+        KU_UNREACHABLE;
+    }
+    return *ku_dynamic_cast<function::Function*, function::TableFunction*>(func);
 }
 
 } // namespace binder

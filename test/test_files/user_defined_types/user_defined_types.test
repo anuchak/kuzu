@@ -1,0 +1,94 @@
+-DATASET CSV empty
+
+--
+
+-CASE UDT
+
+-LOG UDT
+-STATEMENT CREATE TYPE DESCRIPTION AS STRUCT(age int64, name string);
+---- ok
+-STATEMENT CREATE NODE TABLE person (id INT64, description DESCRIPTION, primary key(id));
+---- ok
+-STATEMENT CREATE (:person {id: 5, description: {age: 5, name: 'Alice'}});
+---- ok
+-STATEMENT CREATE (:person {id: 8, description: {age: 3, name: 'Bob'}});
+---- ok
+-STATEMENT CREATE (:person {id: 12, description: {age: 1, name: 'Dan'}});
+---- ok
+-STATEMENT MATCH (p:person) RETURN p.*;
+---- 3
+12|{age: 1, name: Dan}
+5|{age: 5, name: Alice}
+8|{age: 3, name: Bob}
+-STATEMENT CREATE TYPE timeinfo AS STRUCT(meetDate date, length interval);
+---- ok
+-STATEMENT CREATE REL TABLE knows (FROM person TO person, info timeinfo);
+---- ok
+-STATEMENT MATCH (p:person {id: 5}), (p1:person {id: 8}) CREATE (p)-[:knows {info: {meetDate: date('2020-05-03'), length: interval('3 years 2 hours')}}]->(p1)
+---- ok
+-STATEMENT MATCH (p:person {id: 12}), (p1:person {id: 8}) CREATE (p)-[:knows {info: {meetDate: date('2011-11-12'), length: interval('3 days 2 minutes')}}]->(p1)
+---- ok
+-STATEMENT MATCH (p:person {id: 8}), (p1:person {id: 5}) CREATE (p)-[:knows {info: {meetDate: date('1988-02-21'), length: interval('3 hours')}}]->(p1)
+---- ok
+-STATEMENT MATCH (p:person)-[e:knows]->(p1:person) return p.description, p1.description, e.info
+---- 3
+{age: 1, name: Dan}|{age: 3, name: Bob}|{meetDate: 2011-11-12, length: 3 days 00:02:00}
+{age: 3, name: Bob}|{age: 5, name: Alice}|{meetDate: 1988-02-21, length: 03:00:00}
+{age: 5, name: Alice}|{age: 3, name: Bob}|{meetDate: 2020-05-03, length: 3 years 02:00:00}
+-STATEMENT CALL TABLE_INFO('person') RETURN *;
+---- 2
+0|id|INT64|True
+1|description|STRUCT(age INT64, name STRING)|False
+-STATEMENT CALL TABLE_INFO('knows') RETURN *;
+---- 1
+1|info|STRUCT(meetDate DATE, length INTERVAL)
+
+-CASE InvalidUserDefinedType
+-LOG InvalidUserDefinedTypeErr
+-STATEMENT CREATE TYPE DESCRIPTION AS STRUCT(age int64, name string);
+---- ok
+-STATEMENT CREATE TYPE DESCRIPTION AS STRUCT(age int64, name string);
+---- error
+Binder exception: Duplicated type name: DESCRIPTION.
+
+-CASE UDTPrimitiveType
+-STATEMENT CREATE TYPE SMALLINT AS INT32;
+---- ok
+-STATEMENT CREATE TYPE BIGINT AS INT64;
+---- ok
+-STATEMENT CREATE NODE TABLE PERSON (ID SMALLINT, AGE BIGINT, primary key(ID))
+---- ok
+-STATEMENT COPY PERSON FROM '${KUZU_ROOT_DIRECTORY}/dataset/udt/vPerson.csv'
+---- ok
+-STATEMENT MATCH (p:PERSON) return p.*;
+---- 3
+30|40
+5|20
+8|100
+-STATEMENT CREATE TYPE HEIGHT AS STRING;
+---- ok
+-STATEMENT LOAD FROM "${KUZU_ROOT_DIRECTORY}/dataset/udt/vMovies.csv" (header = true) RETURN size(height), preference
+---- 3
+3|200
+2|55
+2|33
+-STATEMENT CREATE TYPE GENDER AS BOOL;
+---- ok
+-STATEMENT LOAD WITH HEADERS (height HEIGHT, gender GENDER) FROM "${KUZU_ROOT_DIRECTORY}/dataset/udt/no_header.csv" WHERE gender=true RETURN size(height)
+---- 2
+4
+2
+-STATEMENT alter table PERSON add propx GENDER default false;
+---- ok
+-STATEMENT MATCH (p:PERSON) return p.*;
+---- 3
+30|40|False
+5|20|False
+8|100|False
+-STATEMENT alter table PERSON add propy SMALLINT;
+---- ok
+-STATEMENT MATCH (p:PERSON) return p.*;
+---- 3
+30|40|False|
+5|20|False|
+8|100|False|

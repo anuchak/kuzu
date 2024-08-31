@@ -1,7 +1,7 @@
-#include "planner/logical_plan/logical_operator/logical_union.h"
+#include "planner/operator/logical_union.h"
 
-#include "planner/logical_plan/logical_operator/flatten_resolver.h"
-#include "planner/logical_plan/logical_operator/sink_util.h"
+#include "planner/operator/factorization/flatten_resolver.h"
+#include "planner/operator/factorization/sink_util.h"
 
 namespace kuzu {
 namespace planner {
@@ -21,8 +21,8 @@ f_group_pos_set LogicalUnion::getGroupsPosToFlatten(uint32_t childIdx) {
 void LogicalUnion::computeFactorizedSchema() {
     auto firstChildSchema = children[0]->getSchema();
     createEmptySchema();
-    SinkOperatorUtil::recomputeSchema(
-        *firstChildSchema, firstChildSchema->getExpressionsInScope(), *schema);
+    SinkOperatorUtil::recomputeSchema(*firstChildSchema, firstChildSchema->getExpressionsInScope(),
+        *schema);
 }
 
 void LogicalUnion::computeFlatSchema() {
@@ -35,6 +35,7 @@ void LogicalUnion::computeFlatSchema() {
 
 std::unique_ptr<LogicalOperator> LogicalUnion::copy() {
     std::vector<std::shared_ptr<LogicalOperator>> copiedChildren;
+    copiedChildren.reserve(getNumChildren());
     for (auto i = 0u; i < getNumChildren(); ++i) {
         copiedChildren.push_back(getChild(i)->copy());
     }

@@ -10,19 +10,11 @@ class CopyNodeFromCSVTest : public DBTest {
     }
 };
 
-TEST_F(CopyNodeFromCSVTest, CopyNodeTest) {
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/copy/copy_node.test"));
-}
-
 class CopyNodeFromParquetTest : public DBTest {
     std::string getInputDir() override {
         return TestHelper::appendKuzuRootPath("dataset/copy-test/node/parquet/");
     }
 };
-
-TEST_F(CopyNodeFromParquetTest, CopyNodeTest) {
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/copy/copy_node.test"));
-}
 
 class CopyNodeWrongPathTest : public BaseGraphTest {
 public:

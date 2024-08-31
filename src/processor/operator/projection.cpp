@@ -8,7 +8,7 @@ namespace processor {
 void Projection::initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) {
     for (auto i = 0u; i < expressionEvaluators.size(); ++i) {
         auto& expressionEvaluator = *expressionEvaluators[i];
-        expressionEvaluator.init(*resultSet, context->memoryManager);
+        expressionEvaluator.init(*resultSet, context->clientContext);
         auto [outDataChunkPos, outValueVectorPos] = expressionsOutputPos[i];
         auto dataChunk = resultSet->dataChunks[outDataChunkPos];
         dataChunk->valueVectors[outValueVectorPos] = expressionEvaluator.resultVector;
@@ -33,12 +33,13 @@ bool Projection::getNextTuplesInternal(ExecutionContext* context) {
 }
 
 std::unique_ptr<PhysicalOperator> Projection::clone() {
-    std::vector<std::unique_ptr<BaseExpressionEvaluator>> rootExpressionsCloned;
+    std::vector<std::unique_ptr<ExpressionEvaluator>> rootExpressionsCloned;
+    rootExpressionsCloned.reserve(expressionEvaluators.size());
     for (auto& expressionEvaluator : expressionEvaluators) {
         rootExpressionsCloned.push_back(expressionEvaluator->clone());
     }
     return make_unique<Projection>(std::move(rootExpressionsCloned), expressionsOutputPos,
-        discardedDataChunksPos, children[0]->clone(), id, paramsString);
+        discardedDataChunksPos, children[0]->clone(), id, printInfo->copy());
 }
 
 } // namespace processor

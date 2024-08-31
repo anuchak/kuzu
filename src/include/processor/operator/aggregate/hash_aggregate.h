@@ -6,7 +6,8 @@
 namespace kuzu {
 namespace processor {
 
-class HashAggregateSharedState : public BaseAggregateSharedState {
+// NOLINTNEXTLINE(cppcoreguidelines-virtual-class-destructor): This is a final class.
+class HashAggregateSharedState final : public BaseAggregateSharedState {
 
 public:
     explicit HashAggregateSharedState(
@@ -25,27 +26,65 @@ public:
 
     FactorizedTable* getFactorizedTable() { return globalAggregateHashTable->getFactorizedTable(); }
 
+    uint64_t getCurrentOffset() const { return currentOffset; }
+
 private:
     std::vector<std::unique_ptr<AggregateHashTable>> localAggregateHashTables;
     std::unique_ptr<AggregateHashTable> globalAggregateHashTable;
 };
 
+struct HashAggregateInfo {
+    std::vector<DataPos> flatKeysPos;
+    std::vector<DataPos> unFlatKeysPos;
+    std::vector<DataPos> dependentKeysPos;
+    FactorizedTableSchema tableSchema;
+    HashTableType hashTableType;
+
+    HashAggregateInfo(std::vector<DataPos> flatKeysPos, std::vector<DataPos> unFlatKeysPos,
+        std::vector<DataPos> dependentKeysPos, FactorizedTableSchema tableSchema,
+        HashTableType hashTableType);
+    HashAggregateInfo(const HashAggregateInfo& other);
+};
+
+struct HashAggregateLocalState {
+    std::vector<common::ValueVector*> flatKeyVectors;
+    std::vector<common::ValueVector*> unFlatKeyVectors;
+    std::vector<common::ValueVector*> dependentKeyVectors;
+    common::DataChunkState* leadingState;
+    std::unique_ptr<AggregateHashTable> aggregateHashTable;
+
+    void init(ResultSet& resultSet, main::ClientContext* context, HashAggregateInfo& info,
+        std::vector<std::unique_ptr<function::AggregateFunction>>& aggregateFunctions,
+        std::vector<common::LogicalType> types);
+    void append(const std::vector<AggregateInput>& aggregateInputs, uint64_t multiplicity) const;
+};
+
+struct HashAggregatePrintInfo final : OPPrintInfo {
+    binder::expression_vector keys;
+    binder::expression_vector aggregates;
+
+    HashAggregatePrintInfo(binder::expression_vector keys, binder::expression_vector aggregates)
+        : keys{std::move(keys)}, aggregates{std::move(aggregates)} {}
+    HashAggregatePrintInfo(const HashAggregatePrintInfo& other)
+        : OPPrintInfo{other}, keys{other.keys}, aggregates{other.aggregates} {}
+
+    std::string toString() const override;
+
+    std::unique_ptr<OPPrintInfo> copy() const override {
+        return std::make_unique<HashAggregatePrintInfo>(*this);
+    }
+};
+
 class HashAggregate : public BaseAggregate {
 public:
     HashAggregate(std::unique_ptr<ResultSetDescriptor> resultSetDescriptor,
-        std::shared_ptr<HashAggregateSharedState> sharedState,
-        std::vector<DataPos> inputGroupByHashKeyVectorsPos,
-        std::vector<DataPos> inputGroupByNonHashKeyVectorsPos,
-        std::vector<bool> isInputGroupByHashKeyVectorFlat,
+        std::shared_ptr<HashAggregateSharedState> sharedState, HashAggregateInfo hashInfo,
         std::vector<std::unique_ptr<function::AggregateFunction>> aggregateFunctions,
-        std::vector<std::unique_ptr<AggregateInputInfo>> aggregateInputInfos,
-        std::unique_ptr<PhysicalOperator> child, uint32_t id, const std::string& paramsString)
+        std::vector<AggregateInfo> aggInfos, std::unique_ptr<PhysicalOperator> child, uint32_t id,
+        std::unique_ptr<OPPrintInfo> printInfo)
         : BaseAggregate{std::move(resultSetDescriptor), std::move(aggregateFunctions),
-              std::move(aggregateInputInfos), std::move(child), id, paramsString},
-          groupByHashKeyVectorsPos{std::move(inputGroupByHashKeyVectorsPos)},
-          groupByNonHashKeyVectorsPos{std::move(inputGroupByNonHashKeyVectorsPos)},
-          isGroupByHashKeyVectorFlat{std::move(isInputGroupByHashKeyVectorFlat)},
-          sharedState{std::move(sharedState)} {}
+              std::move(aggInfos), std::move(child), id, std::move(printInfo)},
+          hashInfo{std::move(hashInfo)}, sharedState{std::move(sharedState)} {}
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 
@@ -53,22 +92,15 @@ public:
 
     void finalize(ExecutionContext* context) override;
 
-    inline std::unique_ptr<PhysicalOperator> clone() override {
-        return make_unique<HashAggregate>(resultSetDescriptor->copy(), sharedState,
-            groupByHashKeyVectorsPos, groupByNonHashKeyVectorsPos, isGroupByHashKeyVectorFlat,
-            cloneAggFunctions(), cloneAggInputInfos(), children[0]->clone(), id, paramsString);
+    std::unique_ptr<PhysicalOperator> clone() override {
+        return make_unique<HashAggregate>(resultSetDescriptor->copy(), sharedState, hashInfo,
+            cloneAggFunctions(), copyVector(aggInfos), children[0]->clone(), id, printInfo->copy());
     }
 
 private:
-    std::vector<DataPos> groupByHashKeyVectorsPos;
-    std::vector<DataPos> groupByNonHashKeyVectorsPos;
-    std::vector<bool> isGroupByHashKeyVectorFlat;
-    std::vector<common::ValueVector*> groupByFlatHashKeyVectors;
-    std::vector<common::ValueVector*> groupByUnflatHashKeyVectors;
-    std::vector<common::ValueVector*> groupByNonHashKeyVectors;
-
+    HashAggregateInfo hashInfo;
+    HashAggregateLocalState localState;
     std::shared_ptr<HashAggregateSharedState> sharedState;
-    std::unique_ptr<AggregateHashTable> localAggregateHashTable;
 };
 
 } // namespace processor

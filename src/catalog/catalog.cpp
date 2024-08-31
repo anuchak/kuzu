@@ -1,446 +1,566 @@
 #include "catalog/catalog.h"
 
-#include "common/string_utils.h"
-#include "spdlog/spdlog.h"
+#include <fcntl.h>
+
+#include "binder/ddl/bound_alter_info.h"
+#include "binder/ddl/bound_create_sequence_info.h"
+#include "binder/ddl/bound_create_table_info.h"
+#include "catalog/catalog_entry/function_catalog_entry.h"
+#include "catalog/catalog_entry/node_table_catalog_entry.h"
+#include "catalog/catalog_entry/rdf_graph_catalog_entry.h"
+#include "catalog/catalog_entry/rel_group_catalog_entry.h"
+#include "catalog/catalog_entry/rel_table_catalog_entry.h"
+#include "catalog/catalog_entry/scalar_macro_catalog_entry.h"
+#include "catalog/catalog_entry/sequence_catalog_entry.h"
+#include "catalog/catalog_entry/type_catalog_entry.h"
+#include "common/cast.h"
+#include "common/exception/catalog.h"
+#include "common/file_system/virtual_file_system.h"
+#include "common/serializer/buffered_file.h"
+#include "common/serializer/deserializer.h"
+#include "common/serializer/serializer.h"
+#include "common/string_format.h"
+#include "function/built_in_function_utils.h"
 #include "storage/storage_utils.h"
+#include "storage/storage_version_info.h"
+#include "storage/wal/wal.h"
+#include "transaction/transaction.h"
 
+using namespace kuzu::binder;
 using namespace kuzu::common;
-using namespace kuzu::catalog;
 using namespace kuzu::storage;
-
-namespace kuzu {
-namespace common {
-
-/**
- * Specialized serialize and deserialize functions used in Catalog.
- * */
-
-template<>
-uint64_t SerDeser::serializeValue<std::string>(
-    const std::string& value, FileInfo* fileInfo, uint64_t offset) {
-    uint64_t valueLength = value.length();
-    FileUtils::writeToFile(fileInfo, (uint8_t*)&valueLength, sizeof(uint64_t), offset);
-    FileUtils::writeToFile(
-        fileInfo, (uint8_t*)value.data(), valueLength, offset + sizeof(uint64_t));
-    return offset + sizeof(uint64_t) + valueLength;
-}
-
-template<>
-uint64_t SerDeser::deserializeValue<std::string>(
-    std::string& value, FileInfo* fileInfo, uint64_t offset) {
-    uint64_t valueLength = 0;
-    offset = SerDeser::deserializeValue<uint64_t>(valueLength, fileInfo, offset);
-    value.resize(valueLength);
-    FileUtils::readFromFile(fileInfo, (uint8_t*)value.data(), valueLength, offset);
-    return offset + valueLength;
-}
-
-template<>
-uint64_t SerDeser::serializeValue<Property>(
-    const Property& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::serializeValue<std::string>(value.name, fileInfo, offset);
-    offset = SerDeser::serializeValue<DataType>(value.dataType, fileInfo, offset);
-    offset = SerDeser::serializeValue<property_id_t>(value.propertyID, fileInfo, offset);
-    return SerDeser::serializeValue<table_id_t>(value.tableID, fileInfo, offset);
-}
-
-template<>
-uint64_t SerDeser::deserializeValue<Property>(
-    Property& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::deserializeValue<std::string>(value.name, fileInfo, offset);
-    offset = SerDeser::deserializeValue<DataType>(value.dataType, fileInfo, offset);
-    offset = SerDeser::deserializeValue<property_id_t>(value.propertyID, fileInfo, offset);
-    return SerDeser::deserializeValue<table_id_t>(value.tableID, fileInfo, offset);
-}
-
-template<>
-uint64_t SerDeser::serializeValue(
-    const std::unordered_map<table_id_t, uint64_t>& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::serializeValue<uint64_t>(value.size(), fileInfo, offset);
-    for (auto& entry : value) {
-        offset = SerDeser::serializeValue<table_id_t>(entry.first, fileInfo, offset);
-        offset = SerDeser::serializeValue<uint64_t>(entry.second, fileInfo, offset);
-    }
-    return offset;
-}
-
-template<>
-uint64_t SerDeser::deserializeValue(
-    std::unordered_map<table_id_t, uint64_t>& value, FileInfo* fileInfo, uint64_t offset) {
-    uint64_t numEntries = 0;
-    offset = SerDeser::deserializeValue<uint64_t>(numEntries, fileInfo, offset);
-    for (auto i = 0u; i < numEntries; i++) {
-        table_id_t tableID;
-        uint64_t num;
-        offset = SerDeser::deserializeValue<table_id_t>(tableID, fileInfo, offset);
-        offset = SerDeser::deserializeValue<uint64_t>(num, fileInfo, offset);
-        value.emplace(tableID, num);
-    }
-    return offset;
-}
-
-template<>
-uint64_t SerDeser::serializeVector<std::vector<uint64_t>>(
-    const std::vector<std::vector<uint64_t>>& values, FileInfo* fileInfo, uint64_t offset) {
-    uint64_t vectorSize = values.size();
-    offset = SerDeser::serializeValue<uint64_t>(vectorSize, fileInfo, offset);
-    for (auto& value : values) {
-        offset = serializeVector<uint64_t>(value, fileInfo, offset);
-    }
-    return offset;
-}
-
-template<>
-uint64_t SerDeser::deserializeVector<std::vector<uint64_t>>(
-    std::vector<std::vector<uint64_t>>& values, FileInfo* fileInfo, uint64_t offset) {
-    uint64_t vectorSize;
-    offset = deserializeValue<uint64_t>(vectorSize, fileInfo, offset);
-    values.resize(vectorSize);
-    for (auto& value : values) {
-        offset = SerDeser::deserializeVector<uint64_t>(value, fileInfo, offset);
-    }
-    return offset;
-}
-
-template<>
-uint64_t SerDeser::serializeValue<TableSchema>(
-    const TableSchema& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::serializeValue<std::string>(value.tableName, fileInfo, offset);
-    offset = SerDeser::serializeValue<table_id_t>(value.tableID, fileInfo, offset);
-    offset = SerDeser::serializeVector<Property>(value.properties, fileInfo, offset);
-    return SerDeser::serializeValue<property_id_t>(value.nextPropertyID, fileInfo, offset);
-}
-
-template<>
-uint64_t SerDeser::deserializeValue<TableSchema>(
-    TableSchema& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::deserializeValue<std::string>(value.tableName, fileInfo, offset);
-    offset = SerDeser::deserializeValue<table_id_t>(value.tableID, fileInfo, offset);
-    offset = SerDeser::deserializeVector<Property>(value.properties, fileInfo, offset);
-    return SerDeser::deserializeValue<property_id_t>(value.nextPropertyID, fileInfo, offset);
-}
-
-template<>
-uint64_t SerDeser::serializeValue<NodeTableSchema>(
-    const NodeTableSchema& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::serializeValue<TableSchema>((const TableSchema&)value, fileInfo, offset);
-    offset = SerDeser::serializeValue<property_id_t>(value.primaryKeyPropertyID, fileInfo, offset);
-    offset = SerDeser::serializeUnorderedSet<table_id_t>(value.fwdRelTableIDSet, fileInfo, offset);
-    return SerDeser::serializeUnorderedSet<table_id_t>(value.bwdRelTableIDSet, fileInfo, offset);
-}
-
-template<>
-uint64_t SerDeser::deserializeValue<NodeTableSchema>(
-    NodeTableSchema& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::deserializeValue<TableSchema>((TableSchema&)value, fileInfo, offset);
-    offset =
-        SerDeser::deserializeValue<property_id_t>(value.primaryKeyPropertyID, fileInfo, offset);
-    offset =
-        SerDeser::deserializeUnorderedSet<table_id_t>(value.fwdRelTableIDSet, fileInfo, offset);
-    return SerDeser::deserializeUnorderedSet<table_id_t>(value.bwdRelTableIDSet, fileInfo, offset);
-}
-
-template<>
-uint64_t SerDeser::serializeValue<RelTableSchema>(
-    const RelTableSchema& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::serializeValue<TableSchema>((const TableSchema&)value, fileInfo, offset);
-    offset = SerDeser::serializeValue<RelMultiplicity>(value.relMultiplicity, fileInfo, offset);
-    offset = SerDeser::serializeValue<table_id_t>(value.srcTableID, fileInfo, offset);
-    return SerDeser::serializeValue<table_id_t>(value.dstTableID, fileInfo, offset);
-}
-
-template<>
-uint64_t SerDeser::deserializeValue<RelTableSchema>(
-    RelTableSchema& value, FileInfo* fileInfo, uint64_t offset) {
-    offset = SerDeser::deserializeValue<TableSchema>((TableSchema&)value, fileInfo, offset);
-    offset = SerDeser::deserializeValue<RelMultiplicity>(value.relMultiplicity, fileInfo, offset);
-    offset = SerDeser::deserializeValue<table_id_t>(value.srcTableID, fileInfo, offset);
-    return SerDeser::deserializeValue<table_id_t>(value.dstTableID, fileInfo, offset);
-}
-
-} // namespace common
-} // namespace kuzu
+using namespace kuzu::transaction;
 
 namespace kuzu {
 namespace catalog {
 
-CatalogContent::CatalogContent() : nextTableID{0} {
-    logger = LoggerUtils::getLogger(LoggerConstants::LoggerEnum::CATALOG);
+Catalog::Catalog() {
+    tables = std::make_unique<CatalogSet>();
+    sequences = std::make_unique<CatalogSet>();
+    functions = std::make_unique<CatalogSet>();
+    types = std::make_unique<CatalogSet>();
+    registerBuiltInFunctions();
 }
 
-CatalogContent::CatalogContent(const std::string& directory) {
-    logger = LoggerUtils::getLogger(LoggerConstants::LoggerEnum::CATALOG);
-    logger->info("Initializing catalog.");
-    readFromFile(directory, DBFileType::ORIGINAL);
-    logger->info("Initializing catalog done.");
-}
-
-CatalogContent::CatalogContent(const CatalogContent& other) {
-    for (auto& nodeTableSchema : other.nodeTableSchemas) {
-        auto newNodeTableSchema = std::make_unique<NodeTableSchema>(*nodeTableSchema.second);
-        nodeTableSchemas[newNodeTableSchema->tableID] = std::move(newNodeTableSchema);
-    }
-    for (auto& relTableSchema : other.relTableSchemas) {
-        auto newRelTableSchema = std::make_unique<RelTableSchema>(*relTableSchema.second);
-        relTableSchemas[newRelTableSchema->tableID] = std::move(newRelTableSchema);
-    }
-    nodeTableNameToIDMap = other.nodeTableNameToIDMap;
-    relTableNameToIDMap = other.relTableNameToIDMap;
-    nextTableID = other.nextTableID;
-}
-
-table_id_t CatalogContent::addNodeTableSchema(
-    std::string tableName, property_id_t primaryKeyId, std::vector<Property> properties) {
-    table_id_t tableID = assignNextTableID();
-    for (auto i = 0u; i < properties.size(); ++i) {
-        properties[i].propertyID = i;
-        properties[i].tableID = tableID;
-    }
-    auto nodeTableSchema = std::make_unique<NodeTableSchema>(
-        std::move(tableName), tableID, primaryKeyId, std::move(properties));
-    nodeTableNameToIDMap[nodeTableSchema->tableName] = tableID;
-    nodeTableSchemas[tableID] = std::move(nodeTableSchema);
-    return tableID;
-}
-
-table_id_t CatalogContent::addRelTableSchema(std::string tableName, RelMultiplicity relMultiplicity,
-    std::vector<Property> properties, table_id_t srcTableID, table_id_t dstTableID) {
-    table_id_t tableID = assignNextTableID();
-    nodeTableSchemas[srcTableID]->addFwdRelTableID(tableID);
-    nodeTableSchemas[dstTableID]->addBwdRelTableID(tableID);
-    auto relInternalIDProperty = Property(INTERNAL_ID_SUFFIX, DataType{INTERNAL_ID});
-    properties.insert(properties.begin(), relInternalIDProperty);
-    for (auto i = 0u; i < properties.size(); ++i) {
-        properties[i].propertyID = i;
-        properties[i].tableID = tableID;
-    }
-    auto relTableSchema = std::make_unique<RelTableSchema>(std::move(tableName), tableID,
-        relMultiplicity, std::move(properties), srcTableID, dstTableID);
-    relTableNameToIDMap[relTableSchema->tableName] = tableID;
-    relTableSchemas[tableID] = std::move(relTableSchema);
-    return tableID;
-}
-
-const Property& CatalogContent::getNodeProperty(
-    table_id_t tableID, const std::string& propertyName) const {
-    for (auto& property : nodeTableSchemas.at(tableID)->properties) {
-        if (propertyName == property.name) {
-            return property;
-        }
-    }
-    throw CatalogException("Cannot find node property " + propertyName + ".");
-}
-
-const Property& CatalogContent::getRelProperty(
-    table_id_t tableID, const std::string& propertyName) const {
-    for (auto& property : relTableSchemas.at(tableID)->properties) {
-        if (propertyName == property.name) {
-            return property;
-        }
-    }
-    throw CatalogException("Cannot find rel property " + propertyName + ".");
-}
-
-std::vector<Property> CatalogContent::getAllNodeProperties(table_id_t tableID) const {
-    return nodeTableSchemas.at(tableID)->getAllNodeProperties();
-}
-
-void CatalogContent::dropTableSchema(table_id_t tableID) {
-    auto tableSchema = getTableSchema(tableID);
-    if (tableSchema->isNodeTable) {
-        nodeTableNameToIDMap.erase(tableSchema->tableName);
-        nodeTableSchemas.erase(tableID);
+Catalog::Catalog(std::string directory, VirtualFileSystem* fs) {
+    if (fs->fileOrPathExists(
+            StorageUtils::getCatalogFilePath(fs, directory, FileVersionType::ORIGINAL))) {
+        readFromFile(directory, fs, FileVersionType::ORIGINAL);
     } else {
-        relTableNameToIDMap.erase(tableSchema->tableName);
-        relTableSchemas.erase(tableID);
+        tables = std::make_unique<CatalogSet>();
+        sequences = std::make_unique<CatalogSet>();
+        functions = std::make_unique<CatalogSet>();
+        types = std::make_unique<CatalogSet>();
+        saveToFile(directory, fs, FileVersionType::ORIGINAL);
     }
+    registerBuiltInFunctions();
 }
 
-void CatalogContent::renameTable(table_id_t tableID, std::string newName) {
-    auto tableSchema = getTableSchema(tableID);
-    auto& tableNameToIDMap = tableSchema->isNodeTable ? nodeTableNameToIDMap : relTableNameToIDMap;
-    tableNameToIDMap.erase(tableSchema->tableName);
-    tableNameToIDMap.emplace(newName, tableID);
-    tableSchema->tableName = newName;
+bool Catalog::containsTable(Transaction* transaction, const std::string& tableName) const {
+    return tables->containsEntry(transaction, tableName);
 }
 
-void CatalogContent::saveToFile(const std::string& directory, DBFileType dbFileType) {
-    auto catalogPath = StorageUtils::getCatalogFilePath(directory, dbFileType);
-    auto fileInfo = FileUtils::openFile(catalogPath, O_WRONLY | O_CREAT);
-    uint64_t offset = 0;
-    writeMagicBytes(fileInfo.get(), offset);
-    offset = SerDeser::serializeValue<uint64_t>(
-        StorageVersionInfo::getStorageVersion(), fileInfo.get(), offset);
-    offset = SerDeser::serializeValue<uint64_t>(nodeTableSchemas.size(), fileInfo.get(), offset);
-    offset = SerDeser::serializeValue<uint64_t>(relTableSchemas.size(), fileInfo.get(), offset);
-    for (auto& nodeTableSchema : nodeTableSchemas) {
-        offset = SerDeser::serializeValue<uint64_t>(nodeTableSchema.first, fileInfo.get(), offset);
-        offset = SerDeser::serializeValue<NodeTableSchema>(
-            *nodeTableSchema.second, fileInfo.get(), offset);
-    }
-    for (auto& relTableSchema : relTableSchemas) {
-        offset = SerDeser::serializeValue<uint64_t>(relTableSchema.first, fileInfo.get(), offset);
-        offset = SerDeser::serializeValue<RelTableSchema>(
-            *relTableSchema.second, fileInfo.get(), offset);
-    }
-    SerDeser::serializeValue<table_id_t>(nextTableID, fileInfo.get(), offset);
+table_id_t Catalog::getTableID(Transaction* transaction, const std::string& tableName) const {
+    auto entry = tables->getEntry(transaction, tableName);
+    KU_ASSERT(entry);
+    return ku_dynamic_cast<CatalogEntry*, TableCatalogEntry*>(entry)->getTableID();
 }
 
-void CatalogContent::readFromFile(const std::string& directory, DBFileType dbFileType) {
-    auto catalogPath = StorageUtils::getCatalogFilePath(directory, dbFileType);
-    logger->debug("Reading from {}.", catalogPath);
-    auto fileInfo = FileUtils::openFile(catalogPath, O_RDONLY);
-    uint64_t offset = 0;
-    validateMagicBytes(fileInfo.get(), offset);
-    storage::storage_version_t savedStorageVersion;
-    offset = SerDeser::deserializeValue<uint64_t>(savedStorageVersion, fileInfo.get(), offset);
-    validateStorageVersion(savedStorageVersion);
-    uint64_t numNodeTables, numRelTables;
-    offset = SerDeser::deserializeValue<uint64_t>(numNodeTables, fileInfo.get(), offset);
-    offset = SerDeser::deserializeValue<uint64_t>(numRelTables, fileInfo.get(), offset);
-    table_id_t tableID;
-    for (auto i = 0u; i < numNodeTables; i++) {
-        offset = SerDeser::deserializeValue<uint64_t>(tableID, fileInfo.get(), offset);
-        nodeTableSchemas[tableID] = std::make_unique<NodeTableSchema>();
-        offset = SerDeser::deserializeValue<NodeTableSchema>(
-            *nodeTableSchemas[tableID], fileInfo.get(), offset);
-    }
-    for (auto i = 0u; i < numRelTables; i++) {
-        offset = SerDeser::deserializeValue<uint64_t>(tableID, fileInfo.get(), offset);
-        relTableSchemas[tableID] = std::make_unique<RelTableSchema>();
-        offset = SerDeser::deserializeValue<RelTableSchema>(
-            *relTableSchemas[tableID], fileInfo.get(), offset);
-    }
-    // Construct the tableNameToIdMap.
-    for (auto& nodeTableSchema : nodeTableSchemas) {
-        nodeTableNameToIDMap[nodeTableSchema.second->tableName] = nodeTableSchema.second->tableID;
-    }
-    for (auto& relTableSchema : relTableSchemas) {
-        relTableNameToIDMap[relTableSchema.second->tableName] = relTableSchema.second->tableID;
-    }
-    SerDeser::deserializeValue<table_id_t>(nextTableID, fileInfo.get(), offset);
+std::vector<table_id_t> Catalog::getNodeTableIDs(Transaction* transaction) const {
+    std::vector<table_id_t> tableIDs;
+    iterateCatalogEntries(transaction, [&](CatalogEntry* entry) {
+        if (entry->getType() == CatalogEntryType::NODE_TABLE_ENTRY) {
+            auto nodeTableEntry = ku_dynamic_cast<CatalogEntry*, NodeTableCatalogEntry*>(entry);
+            tableIDs.push_back(nodeTableEntry->getTableID());
+        }
+    });
+    return tableIDs;
 }
 
-void CatalogContent::validateStorageVersion(storage_version_t savedStorageVersion) const {
+std::vector<table_id_t> Catalog::getRelTableIDs(Transaction* transaction) const {
+    std::vector<table_id_t> tableIDs;
+    iterateCatalogEntries(transaction, [&](CatalogEntry* entry) {
+        if (entry->getType() == CatalogEntryType::REL_TABLE_ENTRY) {
+            auto nodeTableEntry = ku_dynamic_cast<CatalogEntry*, RelTableCatalogEntry*>(entry);
+            tableIDs.push_back(nodeTableEntry->getTableID());
+        }
+    });
+    return tableIDs;
+}
+
+std::string Catalog::getTableName(Transaction* transaction, table_id_t tableID) const {
+    return getTableCatalogEntry(transaction, tableID)->getName();
+}
+
+TableCatalogEntry* Catalog::getTableCatalogEntry(Transaction* transaction,
+    table_id_t tableID) const {
+    TableCatalogEntry* result;
+    iterateCatalogEntries(transaction, [&](CatalogEntry* entry) {
+        if (ku_dynamic_cast<CatalogEntry*, TableCatalogEntry*>(entry)->getTableID() == tableID) {
+            result = ku_dynamic_cast<CatalogEntry*, TableCatalogEntry*>(entry);
+        }
+    });
+    KU_ASSERT(result);
+    return result;
+}
+
+std::vector<NodeTableCatalogEntry*> Catalog::getNodeTableEntries(Transaction* transaction) const {
+    return getTableCatalogEntries<NodeTableCatalogEntry>(transaction,
+        CatalogEntryType::NODE_TABLE_ENTRY);
+}
+
+std::vector<RelTableCatalogEntry*> Catalog::getRelTableEntries(Transaction* transaction) const {
+    return getTableCatalogEntries<RelTableCatalogEntry>(transaction,
+        CatalogEntryType::REL_TABLE_ENTRY);
+}
+
+std::vector<RelGroupCatalogEntry*> Catalog::getRelTableGroupEntries(
+    Transaction* transaction) const {
+    return getTableCatalogEntries<RelGroupCatalogEntry>(transaction,
+        CatalogEntryType::REL_GROUP_ENTRY);
+}
+
+std::vector<RDFGraphCatalogEntry*> Catalog::getRdfGraphEntries(Transaction* tx) const {
+    return getTableCatalogEntries<RDFGraphCatalogEntry>(tx, CatalogEntryType::RDF_GRAPH_ENTRY);
+}
+
+std::vector<TableCatalogEntry*> Catalog::getTableEntries(Transaction* transaction) const {
+    std::vector<TableCatalogEntry*> result;
+    for (auto& [_, entry] : tables->getEntries(transaction)) {
+        result.push_back(ku_dynamic_cast<CatalogEntry*, TableCatalogEntry*>(entry));
+    }
+    return result;
+}
+
+std::vector<TableCatalogEntry*> Catalog::getTableEntries(Transaction* transaction,
+    const table_id_vector_t& tableIDs) const {
+    std::vector<TableCatalogEntry*> result;
+    for (auto tableID : tableIDs) {
+        result.push_back(getTableCatalogEntry(transaction, tableID));
+    }
+    return result;
+}
+
+bool Catalog::tableInRDFGraph(Transaction* tx, table_id_t tableID) const {
+    for (auto& entry : getRdfGraphEntries(tx)) {
+        auto set = entry->getTableIDSet();
+        if (set.contains(tableID)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Catalog::tableInRelGroup(Transaction* tx, table_id_t tableID) const {
+    for (auto& entry : getRelTableGroupEntries(tx)) {
+        if (entry->isParent(tableID)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+table_id_t Catalog::createTableSchema(Transaction* transaction, const BoundCreateTableInfo& info) {
+    table_id_t tableID = tables->assignNextOID();
+    std::unique_ptr<CatalogEntry> entry;
+    switch (info.type) {
+    case TableType::NODE: {
+        entry = createNodeTableEntry(transaction, tableID, info);
+    } break;
+    case TableType::REL: {
+        entry = createRelTableEntry(transaction, tableID, info);
+    } break;
+    case TableType::REL_GROUP: {
+        entry = createRelTableGroupEntry(transaction, tableID, info);
+    } break;
+    case TableType::RDF: {
+        entry = createRdfGraphEntry(transaction, tableID, info);
+    } break;
+    default:
+        KU_UNREACHABLE;
+    }
+    auto tableEntry = entry->constPtrCast<TableCatalogEntry>();
+    for (auto& property : tableEntry->getPropertiesRef()) {
+        if (property.getDataType().getLogicalTypeID() == LogicalTypeID::SERIAL) {
+            auto seqName = genSerialName(tableEntry->getName(), property.getName());
+            auto seqInfo = BoundCreateSequenceInfo(seqName, 0, 1, 0,
+                std::numeric_limits<int64_t>::max(), false, ConflictAction::ON_CONFLICT_THROW);
+            createSequence(transaction, seqInfo);
+        }
+    }
+    tables->createEntry(transaction, std::move(entry));
+    return tableID;
+}
+
+void Catalog::dropTableSchema(Transaction* transaction, table_id_t tableID) {
+    auto tableEntry = getTableCatalogEntry(transaction, tableID);
+    switch (tableEntry->getType()) {
+    case CatalogEntryType::REL_GROUP_ENTRY: {
+        auto relGroupEntry = ku_dynamic_cast<CatalogEntry*, RelGroupCatalogEntry*>(tableEntry);
+        for (auto& relTableID : relGroupEntry->getRelTableIDs()) {
+            dropTableSchema(transaction, relTableID);
+        }
+    } break;
+    case CatalogEntryType::RDF_GRAPH_ENTRY: {
+        auto rdfGraphSchema = ku_dynamic_cast<CatalogEntry*, RDFGraphCatalogEntry*>(tableEntry);
+        dropTableSchema(transaction, rdfGraphSchema->getResourceTableID());
+        dropTableSchema(transaction, rdfGraphSchema->getLiteralTableID());
+        dropTableSchema(transaction, rdfGraphSchema->getResourceTripleTableID());
+        dropTableSchema(transaction, rdfGraphSchema->getLiteralTripleTableID());
+    } break;
+    default: {
+        // DO NOTHING.
+    }
+    }
+    for (auto& property : tableEntry->getPropertiesRef()) {
+        if (property.getDataType().getLogicalTypeID() == LogicalTypeID::SERIAL) {
+            auto seqName = std::string(tableEntry->getName())
+                               .append("_")
+                               .append(property.getName())
+                               .append("_")
+                               .append("serial");
+            auto seqID = getSequenceID(transaction, seqName);
+            dropSequence(transaction, seqID);
+        }
+    }
+    tables->dropEntry(transaction, tableEntry->getName());
+}
+
+void Catalog::alterTableSchema(Transaction* transaction, const BoundAlterInfo& info) {
+    auto tableEntry = getTableCatalogEntry(transaction, info.tableID);
+    KU_ASSERT(tableEntry);
+    if (tableEntry->getType() == CatalogEntryType::RDF_GRAPH_ENTRY &&
+        info.alterType != AlterType::COMMENT) {
+        alterRdfChildTableEntries(transaction, tableEntry, info);
+    }
+    tables->alterEntry(transaction, info);
+}
+
+bool Catalog::containsSequence(Transaction* transaction, const std::string& sequenceName) const {
+    return sequences->containsEntry(transaction, sequenceName);
+}
+
+sequence_id_t Catalog::getSequenceID(Transaction* transaction,
+    const std::string& sequenceName) const {
+    auto entry = sequences->getEntry(transaction, sequenceName);
+    KU_ASSERT(entry);
+    return ku_dynamic_cast<CatalogEntry*, SequenceCatalogEntry*>(entry)->getSequenceID();
+}
+
+SequenceCatalogEntry* Catalog::getSequenceCatalogEntry(Transaction* transaction,
+    sequence_id_t sequenceID) const {
+    SequenceCatalogEntry* result;
+    iterateSequenceCatalogEntries(transaction, [&](CatalogEntry* entry) {
+        if (ku_dynamic_cast<CatalogEntry*, SequenceCatalogEntry*>(entry)->getSequenceID() ==
+            sequenceID) {
+            result = ku_dynamic_cast<CatalogEntry*, SequenceCatalogEntry*>(entry);
+        }
+    });
+    KU_ASSERT(result);
+    return result;
+}
+
+std::vector<SequenceCatalogEntry*> Catalog::getSequenceEntries(Transaction* transaction) const {
+    std::vector<SequenceCatalogEntry*> result;
+    for (auto& [_, entry] : sequences->getEntries(transaction)) {
+        result.push_back(ku_dynamic_cast<CatalogEntry*, SequenceCatalogEntry*>(entry));
+    }
+    return result;
+}
+
+sequence_id_t Catalog::createSequence(Transaction* transaction,
+    const BoundCreateSequenceInfo& info) {
+    sequence_id_t sequenceID = sequences->assignNextOID();
+    auto entry = std::make_unique<SequenceCatalogEntry>(sequences.get(), sequenceID, info);
+    sequences->createEntry(transaction, std::move(entry));
+    return sequenceID;
+}
+
+void Catalog::dropSequence(Transaction* transaction, sequence_id_t sequenceID) {
+    auto sequenceEntry = getSequenceCatalogEntry(transaction, sequenceID);
+    sequences->dropEntry(transaction, sequenceEntry->getName());
+}
+
+std::string Catalog::genSerialName(const std::string& tableName, const std::string& propertyName) {
+    return std::string(tableName).append("_").append(propertyName).append("_").append("serial");
+}
+
+void Catalog::createType(Transaction* transaction, std::string name, LogicalType type) {
+    KU_ASSERT(!types->containsEntry(transaction, name));
+    auto entry = std::make_unique<TypeCatalogEntry>(std::move(name), std::move(type));
+    types->createEntry(transaction, std::move(entry));
+}
+
+LogicalType Catalog::getType(Transaction* transaction, std::string name) {
+    LogicalType type;
+    if (LogicalType::tryConvertFromString(name, type)) {
+        return type;
+    }
+    if (!types->containsEntry(transaction, name)) {
+        throw CatalogException{
+            stringFormat("{} is neither an internal type nor a user defined type.", name)};
+    }
+    return types->getEntry(transaction, name)
+        ->constCast<TypeCatalogEntry>()
+        .getLogicalType()
+        .copy();
+}
+
+bool Catalog::containsType(Transaction* transaction, const std::string& typeName) {
+    return types->containsEntry(transaction, typeName);
+}
+
+void Catalog::addFunction(Transaction* transaction, CatalogEntryType entryType, std::string name,
+    function::function_set functionSet) {
+    if (functions->containsEntry(transaction, name)) {
+        throw CatalogException{stringFormat("function {} already exists.", name)};
+    }
+    functions->createEntry(transaction,
+        std::make_unique<FunctionCatalogEntry>(entryType, std::move(name), std::move(functionSet)));
+}
+
+void Catalog::dropFunction(Transaction* tx, const std::string& name) {
+    if (!functions->containsEntry(tx, name)) {
+        throw CatalogException{stringFormat("function {} doesn't exist.", name)};
+    }
+    functions->dropEntry(tx, std::move(name));
+}
+
+void Catalog::addBuiltInFunction(CatalogEntryType entryType, std::string name,
+    function::function_set functionSet) {
+    addFunction(&DUMMY_WRITE_TRANSACTION, entryType, std::move(name), std::move(functionSet));
+}
+
+CatalogSet* Catalog::getFunctions(Transaction*) const {
+    return functions.get();
+}
+
+CatalogEntry* Catalog::getFunctionEntry(Transaction* transaction, const std::string& name) {
+    auto catalogSet = functions.get();
+    if (!catalogSet->containsEntry(transaction, name)) {
+        throw CatalogException(stringFormat("function {} does not exist.", name));
+    }
+    return catalogSet->getEntry(transaction, name);
+}
+
+bool Catalog::containsMacro(Transaction* transaction, const std::string& macroName) const {
+    return functions->containsEntry(transaction, macroName);
+}
+
+function::ScalarMacroFunction* Catalog::getScalarMacroFunction(Transaction* transaction,
+    const std::string& name) const {
+    return ku_dynamic_cast<CatalogEntry*, ScalarMacroCatalogEntry*>(
+        functions->getEntry(transaction, name))
+        ->getMacroFunction();
+}
+
+void Catalog::addScalarMacroFunction(Transaction* transaction, std::string name,
+    std::unique_ptr<function::ScalarMacroFunction> macro) {
+    auto scalarMacroCatalogEntry =
+        std::make_unique<ScalarMacroCatalogEntry>(std::move(name), std::move(macro));
+    functions->createEntry(transaction, std::move(scalarMacroCatalogEntry));
+}
+
+std::vector<std::string> Catalog::getMacroNames(Transaction* transaction) const {
+    std::vector<std::string> macroNames;
+    for (auto& [_, function] : functions->getEntries(transaction)) {
+        if (function->getType() == CatalogEntryType::SCALAR_MACRO_ENTRY) {
+            macroNames.push_back(function->getName());
+        }
+    }
+    return macroNames;
+}
+
+void Catalog::prepareCheckpoint(const std::string& databasePath, WAL* wal, VirtualFileSystem* fs) {
+    saveToFile(databasePath, fs, FileVersionType::WAL_VERSION);
+    wal->logCatalogRecord();
+}
+
+static void validateStorageVersion(storage_version_t savedStorageVersion) {
     auto storageVersion = StorageVersionInfo::getStorageVersion();
     if (savedStorageVersion != storageVersion) {
-        throw common::RuntimeException(StringUtils::string_format(
-            "Trying to read a database file with a different version. "
-            "Database file version: {}, Current build storage version: {}",
-            savedStorageVersion, storageVersion));
+        // LCOV_EXCL_START
+        throw RuntimeException(
+            stringFormat("Trying to read a database file with a different version. "
+                         "Database file version: {}, Current build storage version: {}",
+                savedStorageVersion, storageVersion));
+        // LCOV_EXCL_STOP
     }
 }
 
-void CatalogContent::validateMagicBytes(FileInfo* fileInfo, offset_t& offset) const {
+static void validateMagicBytes(Deserializer& deserializer) {
     auto numMagicBytes = strlen(StorageVersionInfo::MAGIC_BYTES);
     uint8_t magicBytes[4];
     for (auto i = 0u; i < numMagicBytes; i++) {
-        offset = SerDeser::deserializeValue<uint8_t>(magicBytes[i], fileInfo, offset);
+        deserializer.deserializeValue<uint8_t>(magicBytes[i]);
     }
     if (memcmp(magicBytes, StorageVersionInfo::MAGIC_BYTES, numMagicBytes) != 0) {
-        throw common::RuntimeException(
+        throw RuntimeException(
             "This is not a valid Kuzu database directory for the current version of Kuzu.");
     }
 }
 
-void CatalogContent::writeMagicBytes(FileInfo* fileInfo, offset_t& offset) const {
+static void writeMagicBytes(Serializer& serializer) {
     auto numMagicBytes = strlen(StorageVersionInfo::MAGIC_BYTES);
     for (auto i = 0u; i < numMagicBytes; i++) {
-        offset =
-            SerDeser::serializeValue<uint8_t>(StorageVersionInfo::MAGIC_BYTES[i], fileInfo, offset);
+        serializer.serializeValue<uint8_t>(StorageVersionInfo::MAGIC_BYTES[i]);
     }
 }
 
-Catalog::Catalog() : wal{nullptr} {
-    catalogContentForReadOnlyTrx = std::make_unique<CatalogContent>();
-    builtInVectorOperations = std::make_unique<function::BuiltInVectorOperations>();
-    builtInAggregateFunctions = std::make_unique<function::BuiltInAggregateFunctions>();
+void Catalog::saveToFile(const std::string& directory, VirtualFileSystem* fs,
+    FileVersionType versionType) {
+    auto catalogPath = StorageUtils::getCatalogFilePath(fs, directory, versionType);
+    Serializer serializer(
+        std::make_unique<BufferedFileWriter>(fs->openFile(catalogPath, O_WRONLY | O_CREAT)));
+    writeMagicBytes(serializer);
+    serializer.serializeValue(StorageVersionInfo::getStorageVersion());
+    tables->serialize(serializer);
+    sequences->serialize(serializer);
+    functions->serialize(serializer);
+    types->serialize(serializer);
 }
 
-Catalog::Catalog(WAL* wal) : wal{wal} {
-    catalogContentForReadOnlyTrx = std::make_unique<CatalogContent>(wal->getDirectory());
-    builtInVectorOperations = std::make_unique<function::BuiltInVectorOperations>();
-    builtInAggregateFunctions = std::make_unique<function::BuiltInAggregateFunctions>();
+void Catalog::readFromFile(const std::string& directory, VirtualFileSystem* fs,
+    FileVersionType versionType, main::ClientContext* context) {
+    auto catalogPath = StorageUtils::getCatalogFilePath(fs, directory, versionType);
+    Deserializer deserializer(
+        std::make_unique<BufferedFileReader>(fs->openFile(catalogPath, O_RDONLY, context)));
+    validateMagicBytes(deserializer);
+    storage_version_t savedStorageVersion;
+    deserializer.deserializeValue(savedStorageVersion);
+    validateStorageVersion(savedStorageVersion);
+    tables = CatalogSet::deserialize(deserializer);
+    sequences = CatalogSet::deserialize(deserializer);
+    functions = CatalogSet::deserialize(deserializer);
+    types = CatalogSet::deserialize(deserializer);
 }
 
-void Catalog::checkpointInMemoryIfNecessary() {
-    if (!hasUpdates()) {
-        return;
+void Catalog::registerBuiltInFunctions() {
+    function::BuiltInFunctionsUtils::createFunctions(&DUMMY_WRITE_TRANSACTION, functions.get());
+}
+
+bool Catalog::containMacro(const std::string& macroName) const {
+    return functions->containsEntry(&DUMMY_READ_TRANSACTION, macroName);
+}
+
+void Catalog::alterRdfChildTableEntries(Transaction* transaction, CatalogEntry* tableEntry,
+    const binder::BoundAlterInfo& info) const {
+    auto rdfGraphEntry = ku_dynamic_cast<CatalogEntry*, RDFGraphCatalogEntry*>(tableEntry);
+    auto& renameTableInfo =
+        ku_dynamic_cast<const BoundExtraAlterInfo&, const BoundExtraRenameTableInfo&>(
+            *info.extraInfo);
+    // Resource table.
+    auto resourceEntry = getTableCatalogEntry(transaction, rdfGraphEntry->getResourceTableID());
+    auto resourceRenameInfo = std::make_unique<BoundAlterInfo>(AlterType::RENAME_TABLE,
+        resourceEntry->getName(), resourceEntry->getTableID(),
+        std::make_unique<BoundExtraRenameTableInfo>(
+            RDFGraphCatalogEntry::getResourceTableName(renameTableInfo.newName)));
+    tables->alterEntry(transaction, *resourceRenameInfo);
+    // Literal table.
+    auto literalEntry = getTableCatalogEntry(transaction, rdfGraphEntry->getLiteralTableID());
+    auto literalRenameInfo = std::make_unique<BoundAlterInfo>(AlterType::RENAME_TABLE,
+        literalEntry->getName(), literalEntry->getTableID(),
+        std::make_unique<BoundExtraRenameTableInfo>(
+            RDFGraphCatalogEntry::getLiteralTableName(renameTableInfo.newName)));
+    tables->alterEntry(transaction, *literalRenameInfo);
+    // Resource triple table.
+    auto resourceTripleEntry =
+        getTableCatalogEntry(transaction, rdfGraphEntry->getResourceTripleTableID());
+    auto resourceTripleRenameInfo = std::make_unique<BoundAlterInfo>(AlterType::RENAME_TABLE,
+        resourceTripleEntry->getName(), resourceTripleEntry->getTableID(),
+        std::make_unique<BoundExtraRenameTableInfo>(
+            RDFGraphCatalogEntry::getResourceTripleTableName(renameTableInfo.newName)));
+    tables->alterEntry(transaction, *resourceTripleRenameInfo);
+    // Literal triple table.
+    auto literalTripleEntry =
+        getTableCatalogEntry(transaction, rdfGraphEntry->getLiteralTripleTableID());
+    auto literalTripleRenameInfo = std::make_unique<BoundAlterInfo>(AlterType::RENAME_TABLE,
+        literalTripleEntry->getName(), literalTripleEntry->getTableID(),
+        std::make_unique<BoundExtraRenameTableInfo>(
+            RDFGraphCatalogEntry::getLiteralTripleTableName(renameTableInfo.newName)));
+    tables->alterEntry(transaction, *literalTripleRenameInfo);
+}
+
+std::unique_ptr<CatalogEntry> Catalog::createNodeTableEntry(Transaction*, table_id_t tableID,
+    const binder::BoundCreateTableInfo& info) const {
+    auto extraInfo =
+        ku_dynamic_cast<BoundExtraCreateCatalogEntryInfo*, BoundExtraCreateNodeTableInfo*>(
+            info.extraInfo.get());
+    auto nodeTableEntry = std::make_unique<NodeTableCatalogEntry>(tables.get(), info.tableName,
+        tableID, extraInfo->primaryKeyIdx);
+    for (auto& propertyInfo : extraInfo->propertyInfos) {
+        nodeTableEntry->addProperty(propertyInfo.name, propertyInfo.type.copy(),
+            std::move(propertyInfo.defaultValue));
     }
-    catalogContentForReadOnlyTrx = std::move(catalogContentForWriteTrx);
+    return nodeTableEntry;
 }
 
-ExpressionType Catalog::getFunctionType(const std::string& name) const {
-    if (builtInVectorOperations->containsFunction(name)) {
-        return FUNCTION;
-    } else if (builtInAggregateFunctions->containsFunction(name)) {
-        return AGGREGATE_FUNCTION;
-    } else {
-        throw CatalogException(name + " function does not exist.");
+std::unique_ptr<CatalogEntry> Catalog::createRelTableEntry(Transaction* transaction,
+    table_id_t tableID, const binder::BoundCreateTableInfo& info) const {
+    auto extraInfo =
+        ku_dynamic_cast<BoundExtraCreateCatalogEntryInfo*, BoundExtraCreateRelTableInfo*>(
+            info.extraInfo.get());
+    auto srcTableEntry = ku_dynamic_cast<CatalogEntry*, NodeTableCatalogEntry*>(
+        getTableCatalogEntry(transaction, extraInfo->srcTableID));
+    auto dstTableEntry = ku_dynamic_cast<CatalogEntry*, NodeTableCatalogEntry*>(
+        getTableCatalogEntry(transaction, extraInfo->dstTableID));
+    srcTableEntry->addFwdRelTableID(tableID);
+    dstTableEntry->addBWdRelTableID(tableID);
+    auto relTableEntry = std::make_unique<RelTableCatalogEntry>(tables.get(), info.tableName,
+        tableID, extraInfo->srcMultiplicity, extraInfo->dstMultiplicity, extraInfo->srcTableID,
+        extraInfo->dstTableID);
+    for (auto& propertyInfo : extraInfo->propertyInfos) {
+        relTableEntry->addProperty(propertyInfo.name, propertyInfo.type.copy(),
+            std::move(propertyInfo.defaultValue));
     }
+    return relTableEntry;
 }
 
-table_id_t Catalog::addNodeTableSchema(
-    std::string tableName, property_id_t primaryKeyId, std::vector<Property> propertyDefinitions) {
-    initCatalogContentForWriteTrxIfNecessary();
-    auto tableID = catalogContentForWriteTrx->addNodeTableSchema(
-        std::move(tableName), primaryKeyId, std::move(propertyDefinitions));
-    wal->logNodeTableRecord(tableID);
-    return tableID;
-}
-
-table_id_t Catalog::addRelTableSchema(std::string tableName, RelMultiplicity relMultiplicity,
-    const std::vector<Property>& propertyDefinitions, table_id_t srcTableID,
-    table_id_t dstTableID) {
-    initCatalogContentForWriteTrxIfNecessary();
-    auto tableID = catalogContentForWriteTrx->addRelTableSchema(
-        std::move(tableName), relMultiplicity, propertyDefinitions, srcTableID, dstTableID);
-    wal->logRelTableRecord(tableID);
-    return tableID;
-}
-
-void Catalog::dropTableSchema(table_id_t tableID) {
-    initCatalogContentForWriteTrxIfNecessary();
-    catalogContentForWriteTrx->dropTableSchema(tableID);
-    wal->logDropTableRecord(tableID);
-}
-
-void Catalog::renameTable(table_id_t tableID, std::string newName) {
-    initCatalogContentForWriteTrxIfNecessary();
-    catalogContentForWriteTrx->renameTable(tableID, std::move(newName));
-}
-
-void Catalog::addProperty(table_id_t tableID, std::string propertyName, DataType dataType) {
-    initCatalogContentForWriteTrxIfNecessary();
-    catalogContentForWriteTrx->getTableSchema(tableID)->addProperty(
-        propertyName, std::move(dataType));
-    wal->logAddPropertyRecord(tableID,
-        catalogContentForWriteTrx->getTableSchema(tableID)->getPropertyID(std::move(propertyName)));
-}
-
-void Catalog::dropProperty(table_id_t tableID, property_id_t propertyID) {
-    initCatalogContentForWriteTrxIfNecessary();
-    catalogContentForWriteTrx->getTableSchema(tableID)->dropProperty(propertyID);
-    wal->logDropPropertyRecord(tableID, propertyID);
-}
-
-void Catalog::renameProperty(
-    table_id_t tableID, property_id_t propertyID, const std::string& newName) {
-    initCatalogContentForWriteTrxIfNecessary();
-    catalogContentForWriteTrx->getTableSchema(tableID)->renameProperty(propertyID, newName);
-}
-
-std::unordered_set<RelTableSchema*> Catalog::getAllRelTableSchemasContainBoundTable(
-    table_id_t boundTableID) const {
-    std::unordered_set<RelTableSchema*> relTableSchemas;
-    auto nodeTableSchema = getReadOnlyVersion()->getNodeTableSchema(boundTableID);
-    for (auto& fwdRelTableID : nodeTableSchema->fwdRelTableIDSet) {
-        relTableSchemas.insert(getReadOnlyVersion()->getRelTableSchema(fwdRelTableID));
+std::unique_ptr<CatalogEntry> Catalog::createRelTableGroupEntry(Transaction* transaction,
+    table_id_t tableID, const binder::BoundCreateTableInfo& info) {
+    auto extraInfo =
+        ku_dynamic_cast<BoundExtraCreateCatalogEntryInfo*, BoundExtraCreateRelTableGroupInfo*>(
+            info.extraInfo.get());
+    std::vector<table_id_t> relTableIDs;
+    relTableIDs.reserve(extraInfo->infos.size());
+    for (auto& childInfo : extraInfo->infos) {
+        relTableIDs.push_back(createTableSchema(transaction, childInfo));
     }
-    for (auto& bwdRelTableID : nodeTableSchema->bwdRelTableIDSet) {
-        relTableSchemas.insert(getReadOnlyVersion()->getRelTableSchema(bwdRelTableID));
-    }
-    return relTableSchemas;
+    return std::make_unique<RelGroupCatalogEntry>(tables.get(), info.tableName, tableID,
+        std::move(relTableIDs));
+}
+
+std::unique_ptr<CatalogEntry> Catalog::createRdfGraphEntry(Transaction* transaction,
+    table_id_t tableID, const binder::BoundCreateTableInfo& info) {
+    auto extraInfo =
+        ku_dynamic_cast<BoundExtraCreateCatalogEntryInfo*, BoundExtraCreateRdfGraphInfo*>(
+            info.extraInfo.get());
+    auto& resourceInfo = extraInfo->resourceInfo;
+    auto& literalInfo = extraInfo->literalInfo;
+    auto& resourceTripleInfo = extraInfo->resourceTripleInfo;
+    auto& literalTripleInfo = extraInfo->literalTripleInfo;
+    auto resourceTripleExtraInfo =
+        ku_dynamic_cast<BoundExtraCreateCatalogEntryInfo*, BoundExtraCreateRelTableInfo*>(
+            resourceTripleInfo.extraInfo.get());
+    auto literalTripleExtraInfo =
+        ku_dynamic_cast<BoundExtraCreateCatalogEntryInfo*, BoundExtraCreateRelTableInfo*>(
+            literalTripleInfo.extraInfo.get());
+    // Resource table
+    auto resourceTableID = createTableSchema(transaction, resourceInfo);
+    // Literal table
+    auto literalTableID = createTableSchema(transaction, literalInfo);
+    // Resource triple table
+    resourceTripleExtraInfo->srcTableID = resourceTableID;
+    resourceTripleExtraInfo->dstTableID = resourceTableID;
+    auto resourceTripleTableID = createTableSchema(transaction, resourceTripleInfo);
+    // Literal triple table
+    literalTripleExtraInfo->srcTableID = resourceTableID;
+    literalTripleExtraInfo->dstTableID = literalTableID;
+    auto literalTripleTableID = createTableSchema(transaction, literalTripleInfo);
+    // Rdf graph entry
+    auto rdfGraphName = info.tableName;
+    return std::make_unique<RDFGraphCatalogEntry>(tables.get(), rdfGraphName, tableID,
+        resourceTableID, literalTableID, resourceTripleTableID, literalTripleTableID);
 }
 
 } // namespace catalog

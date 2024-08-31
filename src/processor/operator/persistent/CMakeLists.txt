@@ -1,0 +1,22 @@
+add_subdirectory(reader)
+add_subdirectory(writer/parquet)
+
+add_library(kuzu_processor_operator_persistent
+        OBJECT
+        node_batch_insert.cpp
+        copy_rdf.cpp
+        rel_batch_insert.cpp
+        copy_to.cpp
+        delete.cpp
+        delete_executor.cpp
+        index_builder.cpp
+        insert.cpp
+        insert_executor.cpp
+        merge.cpp
+        set.cpp
+        set_executor.cpp
+)
+
+set(ALL_OBJECT_FILES
+        ${ALL_OBJECT_FILES} $<TARGET_OBJECTS:kuzu_processor_operator_persistent>
+        PARENT_SCOPE)

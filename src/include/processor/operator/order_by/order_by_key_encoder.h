@@ -1,32 +1,30 @@
 #pragma once
 
-#include <string>
+#include <functional>
 #include <vector>
 
-#include "common/constants.h"
-#include "common/exception.h"
-#include "common/utils.h"
 #include "common/vector/value_vector.h"
+#include "order_by_data_info.h"
 #include "processor/result/factorized_table.h"
 
 namespace kuzu {
 namespace processor {
 
 #define BSWAP64(x)                                                                                 \
-    ((uint64_t)((((uint64_t)(x)&0xff00000000000000ull) >> 56) |                                    \
-                (((uint64_t)(x)&0x00ff000000000000ull) >> 40) |                                    \
-                (((uint64_t)(x)&0x0000ff0000000000ull) >> 24) |                                    \
-                (((uint64_t)(x)&0x000000ff00000000ull) >> 8) |                                     \
-                (((uint64_t)(x)&0x00000000ff000000ull) << 8) |                                     \
-                (((uint64_t)(x)&0x0000000000ff0000ull) << 24) |                                    \
-                (((uint64_t)(x)&0x000000000000ff00ull) << 40) |                                    \
-                (((uint64_t)(x)&0x00000000000000ffull) << 56)))
+    ((uint64_t)((((uint64_t)(x) & 0xff00000000000000ull) >> 56) |                                  \
+                (((uint64_t)(x) & 0x00ff000000000000ull) >> 40) |                                  \
+                (((uint64_t)(x) & 0x0000ff0000000000ull) >> 24) |                                  \
+                (((uint64_t)(x) & 0x000000ff00000000ull) >> 8) |                                   \
+                (((uint64_t)(x) & 0x00000000ff000000ull) << 8) |                                   \
+                (((uint64_t)(x) & 0x0000000000ff0000ull) << 24) |                                  \
+                (((uint64_t)(x) & 0x000000000000ff00ull) << 40) |                                  \
+                (((uint64_t)(x) & 0x00000000000000ffull) << 56)))
 
 #define BSWAP32(x)                                                                                 \
-    ((uint32_t)((((uint32_t)(x)&0xff000000) >> 24) | (((uint32_t)(x)&0x00ff0000) >> 8) |           \
-                (((uint32_t)(x)&0x0000ff00) << 8) | (((uint32_t)(x)&0x000000ff) << 24)))
+    ((uint32_t)((((uint32_t)(x) & 0xff000000) >> 24) | (((uint32_t)(x) & 0x00ff0000) >> 8) |       \
+                (((uint32_t)(x) & 0x0000ff00) << 8) | (((uint32_t)(x) & 0x000000ff) << 24)))
 
-#define BSWAP16(x) ((uint16_t)((((uint16_t)(x)&0xff00) >> 8) | (((uint16_t)(x)&0x00ff) << 8)))
+#define BSWAP16(x) ((uint16_t)((((uint16_t)(x) & 0xff00) >> 8) | (((uint16_t)(x) & 0x00ff) << 8)))
 
 // The OrderByKeyEncoder encodes all columns in the ORDER BY clause into a single binary sequence
 // that, when compared using memcmp will yield the correct overall sorting order. On little-endian
@@ -43,17 +41,16 @@ namespace processor {
 using encode_function_t = std::function<void(const uint8_t*, uint8_t*, bool)>;
 
 class OrderByKeyEncoder {
+private:
+    static constexpr uint64_t DATA_BLOCK_SIZE = common::BufferPoolConstants::PAGE_256KB_SIZE;
 
 public:
-    OrderByKeyEncoder(std::vector<common::ValueVector*>& orderByVectors,
-        std::vector<bool>& isAscOrder, storage::MemoryManager* memoryManager, uint8_t ftIdx,
-        uint32_t numTuplesPerBlockInFT, uint32_t numBytesPerTuple);
+    OrderByKeyEncoder(const OrderByDataInfo& orderByDataInfo, storage::MemoryManager* memoryManager,
+        uint8_t ftIdx, uint32_t numTuplesPerBlockInFT, uint32_t numBytesPerTuple);
 
     inline std::vector<std::shared_ptr<DataBlock>>& getKeyBlocks() { return keyBlocks; }
 
     inline uint32_t getNumBytesPerTuple() const { return numBytesPerTuple; }
-
-    inline uint32_t getMaxNumTuplesPerBlock() const { return maxNumTuplesPerBlock; }
 
     inline uint32_t getNumTuplesInCurBlock() const { return keyBlocks.back()->numTuples; }
 
@@ -81,28 +78,27 @@ public:
         return *(strBuffer + 13) == (isAsc ? UINT8_MAX : 0);
     }
 
-    static uint32_t getNumBytesPerTuple(
-        const std::vector<std::shared_ptr<common::ValueVector>>& keyVectors);
+    static uint32_t getEncodingSize(const common::LogicalType& dataType);
 
-    static uint32_t getEncodingSize(const common::DataType& dataType);
+    void encodeKeys(const std::vector<common::ValueVector*>& orderByKeys);
 
-    void encodeKeys();
+    inline void clear() { keyBlocks.clear(); }
 
 private:
-    static inline uint8_t flipSign(uint8_t key_byte) { return key_byte ^ 128; }
-
     template<typename type>
     static inline void encodeTemplate(const uint8_t* data, uint8_t* resultPtr, bool swapBytes) {
-        encodeData(*(type*)data, resultPtr, swapBytes);
+        OrderByKeyEncoder::encodeData(*(type*)data, resultPtr, swapBytes);
     }
 
     template<typename type>
-    static void encodeData(type data, uint8_t* resultPtr, bool swapBytes) {
-        assert(false);
+    static void encodeData(type /*data*/, uint8_t* /*resultPtr*/, bool /*swapBytes*/) {
+        KU_UNREACHABLE;
     }
 
-    void flipBytesIfNecessary(
-        uint32_t keyColIdx, uint8_t* tuplePtr, uint32_t numEntriesToEncode, common::DataType& type);
+    static inline uint8_t flipSign(uint8_t key_byte) { return key_byte ^ 128; }
+
+    void flipBytesIfNecessary(uint32_t keyColIdx, uint8_t* tuplePtr, uint32_t numEntriesToEncode,
+        common::LogicalType& type);
 
     void encodeFlatVector(common::ValueVector* vector, uint8_t* tuplePtr, uint32_t keyColIdx);
 
@@ -116,12 +112,11 @@ private:
 
     void allocateMemoryIfFull();
 
-    static encode_function_t getEncodingFunction(common::DataTypeID typeId);
+    static void getEncodingFunction(common::PhysicalTypeID physicalType, encode_function_t& func);
 
 private:
     storage::MemoryManager* memoryManager;
     std::vector<std::shared_ptr<DataBlock>> keyBlocks;
-    std::vector<common::ValueVector*>& orderByVectors;
     std::vector<bool> isAscOrder;
     uint32_t numBytesPerTuple;
     uint32_t maxNumTuplesPerBlock;

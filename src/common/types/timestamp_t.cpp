@@ -1,7 +1,10 @@
 #include "common/types/timestamp_t.h"
 
-#include "common/exception.h"
+#include <chrono>
+
+#include "common/exception/conversion.h"
 #include "common/string_utils.h"
+#include "function/arithmetic/multiply.h"
 
 namespace kuzu {
 namespace common {
@@ -41,7 +44,7 @@ bool timestamp_t::operator>(const timestamp_t& rhs) const {
 
 bool timestamp_t::operator>=(const timestamp_t& rhs) const {
     return value >= rhs.value;
-};
+}
 
 bool timestamp_t::operator==(const date_t& rhs) const {
     return rhs == *this;
@@ -71,7 +74,7 @@ timestamp_t timestamp_t::operator+(const interval_t& interval) const {
     date_t date{};
     date_t result_date{};
     dtime_t time{};
-    Timestamp::Convert(*this, date, time);
+    Timestamp::convert(*this, date, time);
     result_date = date + interval;
     date = result_date;
     int64_t diff =
@@ -84,7 +87,7 @@ timestamp_t timestamp_t::operator+(const interval_t& interval) const {
         time.micros += Interval::MICROS_PER_DAY;
         date.days--;
     }
-    return Timestamp::FromDatetime(date, time);
+    return Timestamp::fromDateTime(date, time);
 }
 
 timestamp_t timestamp_t::operator-(const interval_t& interval) const {
@@ -110,11 +113,7 @@ interval_t timestamp_t::operator-(const timestamp_t& rhs) const {
 
 static_assert(sizeof(timestamp_t) == sizeof(int64_t), "timestamp_t was padded");
 
-// string format is YYYY-MM-DDThh:mm:ss[.mmmmmm]
-// T may be a space, timezone is not supported yet
-// ISO 8601
-timestamp_t Timestamp::FromCString(const char* str, uint64_t len) {
-    timestamp_t result;
+bool Timestamp::tryConvertTimestamp(const char* str, uint64_t len, timestamp_t& result) {
     uint64_t pos;
     date_t date;
     dtime_t time;
@@ -122,37 +121,37 @@ timestamp_t Timestamp::FromCString(const char* str, uint64_t len) {
     // Find the string len for date
     uint32_t dateStrLen = 0;
     // Skip leading spaces.
-    while (common::StringUtils::CharacterIsSpace(str[dateStrLen])) {
+    while (StringUtils::CharacterIsSpace(str[dateStrLen])) {
         dateStrLen++;
     }
     while (dateStrLen < len && str[dateStrLen] != ' ' && str[dateStrLen] != 'T') {
         dateStrLen++;
     }
-    if (!Date::TryConvertDate(str, dateStrLen, pos, date)) {
-        throw ConversionException(getTimestampConversionExceptionMsg(str, len));
+    if (!Date::tryConvertDate(str, dateStrLen, pos, date)) {
+        return false;
     }
     if (pos == len) {
         // no time: only a date
-        result = FromDatetime(date, dtime_t(0));
-        return result;
+        result = fromDateTime(date, dtime_t(0));
+        return true;
     }
     // try to parse a time field
     if (str[pos] == ' ' || str[pos] == 'T') {
         pos++;
     }
     uint64_t time_pos = 0;
-    if (!Time::TryConvertTime(str + pos, len - pos, time_pos, time)) {
-        throw ConversionException(getTimestampConversionExceptionMsg(str, len));
+    if (!Time::tryConvertTime(str + pos, len - pos, time_pos, time)) {
+        return false;
     }
     pos += time_pos;
-    result = FromDatetime(date, time);
+    result = fromDateTime(date, time);
     if (pos < len) {
         // skip a "Z" at the end (as per the ISO8601 specs)
         if (str[pos] == 'Z') {
             pos++;
         }
         int hour_offset, minute_offset;
-        if (Timestamp::TryParseUTCOffset(str, pos, len, hour_offset, minute_offset)) {
+        if (Timestamp::tryParseUTCOffset(str, pos, len, hour_offset, minute_offset)) {
             result.value -= hour_offset * Interval::MICROS_PER_HOUR +
                             minute_offset * Interval::MICROS_PER_MINUTE;
         }
@@ -161,14 +160,25 @@ timestamp_t Timestamp::FromCString(const char* str, uint64_t len) {
             pos++;
         }
         if (pos < len) {
-            throw ConversionException(getTimestampConversionExceptionMsg(str, len));
+            return false;
         }
+    }
+    return true;
+}
+
+// string format is YYYY-MM-DDThh:mm:ss[.mmmmmm]
+// T may be a space, timezone is not supported yet
+// ISO 8601
+timestamp_t Timestamp::fromCString(const char* str, uint64_t len) {
+    timestamp_t result;
+    if (!tryConvertTimestamp(str, len, result)) {
+        throw ConversionException(getTimestampConversionExceptionMsg(str, len));
     }
     return result;
 }
 
-bool Timestamp::TryParseUTCOffset(
-    const char* str, uint64_t& pos, uint64_t len, int& hour_offset, int& minute_offset) {
+bool Timestamp::tryParseUTCOffset(const char* str, uint64_t& pos, uint64_t len, int& hour_offset,
+    int& minute_offset) {
     minute_offset = 0;
     uint64_t curpos = pos;
     // parse the next 3 characters
@@ -218,49 +228,64 @@ bool Timestamp::TryParseUTCOffset(
 std::string Timestamp::toString(timestamp_t timestamp) {
     date_t date;
     dtime_t time;
-    Timestamp::Convert(timestamp, date, time);
+    Timestamp::convert(timestamp, date, time);
     return Date::toString(date) + " " + Time::toString(time);
 }
 
-date_t Timestamp::GetDate(timestamp_t timestamp) {
+date_t Timestamp::getDate(timestamp_t timestamp) {
     return date_t((timestamp.value + (timestamp.value < 0)) / Interval::MICROS_PER_DAY -
                   (timestamp.value < 0));
 }
 
-dtime_t Timestamp::GetTime(timestamp_t timestamp) {
-    date_t date = Timestamp::GetDate(timestamp);
+dtime_t Timestamp::getTime(timestamp_t timestamp) {
+    date_t date = Timestamp::getDate(timestamp);
     return dtime_t(timestamp.value - (int64_t(date.days) * int64_t(Interval::MICROS_PER_DAY)));
 }
 
-timestamp_t Timestamp::FromDatetime(date_t date, dtime_t time) {
+timestamp_t Timestamp::fromDateTime(date_t date, dtime_t time) {
     timestamp_t result;
     int32_t year, month, day, hour, minute, second, microsecond = -1;
-    Date::Convert(date, year, month, day);
-    Time::Convert(time, hour, minute, second, microsecond);
-    if (!Date::IsValid(year, month, day) || !Time::IsValid(hour, minute, second, microsecond)) {
+    Date::convert(date, year, month, day);
+    Time::convert(time, hour, minute, second, microsecond);
+    if (!Date::isValid(year, month, day) || !Time::isValid(hour, minute, second, microsecond)) {
         throw ConversionException("Invalid date or time format");
     }
     result.value = date.days * Interval::MICROS_PER_DAY + time.micros;
     return result;
 }
 
-void Timestamp::Convert(timestamp_t timestamp, date_t& out_date, dtime_t& out_time) {
-    out_date = GetDate(timestamp);
-    out_time = GetTime(timestamp);
+void Timestamp::convert(timestamp_t timestamp, date_t& out_date, dtime_t& out_time) {
+    out_date = getDate(timestamp);
+    out_time = getTime(timestamp);
 }
 
-timestamp_t Timestamp::FromEpochMs(int64_t epochMs) {
-    return timestamp_t(epochMs * Interval::MICROS_PER_MSEC);
+timestamp_t Timestamp::fromEpochMicroSeconds(int64_t micros) {
+    return timestamp_t(micros);
 }
 
-timestamp_t Timestamp::FromEpochSec(int64_t epochSec) {
-    return timestamp_t(epochSec * Interval::MICROS_PER_SEC);
+timestamp_t Timestamp::fromEpochMilliSeconds(int64_t ms) {
+    int64_t microSeconds;
+    function::Multiply::operation(ms, Interval::MICROS_PER_MSEC, microSeconds);
+    return fromEpochMicroSeconds(microSeconds);
+}
+
+// LCOV_EXCL_START
+// TODO(Kebing): will add the tests in the timestamp PR
+timestamp_t Timestamp::fromEpochSeconds(int64_t sec) {
+    int64_t microSeconds;
+    function::Multiply::operation(sec, Interval::MICROS_PER_SEC, microSeconds);
+    return fromEpochMicroSeconds(microSeconds);
+}
+// LCOV_EXCL_STOP
+
+timestamp_t Timestamp::fromEpochNanoSeconds(int64_t ns) {
+    return fromEpochMicroSeconds(ns / 1000);
 }
 
 int32_t Timestamp::getTimestampPart(DatePartSpecifier specifier, timestamp_t& timestamp) {
     switch (specifier) {
     case DatePartSpecifier::MICROSECOND:
-        return GetTime(timestamp).micros % Interval::MICROS_PER_MINUTE;
+        return getTime(timestamp).micros % Interval::MICROS_PER_MINUTE;
     case DatePartSpecifier::MILLISECOND:
         return getTimestampPart(DatePartSpecifier::MICROSECOND, timestamp) /
                Interval::MICROS_PER_MSEC;
@@ -268,12 +293,12 @@ int32_t Timestamp::getTimestampPart(DatePartSpecifier specifier, timestamp_t& ti
         return getTimestampPart(DatePartSpecifier::MICROSECOND, timestamp) /
                Interval::MICROS_PER_SEC;
     case DatePartSpecifier::MINUTE:
-        return (GetTime(timestamp).micros % Interval::MICROS_PER_HOUR) /
+        return (getTime(timestamp).micros % Interval::MICROS_PER_HOUR) /
                Interval::MICROS_PER_MINUTE;
     case DatePartSpecifier::HOUR:
-        return GetTime(timestamp).micros / Interval::MICROS_PER_HOUR;
+        return getTime(timestamp).micros / Interval::MICROS_PER_HOUR;
     default:
-        date_t date = GetDate(timestamp);
+        date_t date = getDate(timestamp);
         return Date::getDatePart(specifier, date);
     }
 }
@@ -282,30 +307,46 @@ timestamp_t Timestamp::trunc(DatePartSpecifier specifier, timestamp_t& timestamp
     int32_t hour, min, sec, micros;
     date_t date;
     dtime_t time;
-    Timestamp::Convert(timestamp, date, time);
-    Time::Convert(time, hour, min, sec, micros);
+    Timestamp::convert(timestamp, date, time);
+    Time::convert(time, hour, min, sec, micros);
     switch (specifier) {
     case DatePartSpecifier::MICROSECOND:
         return timestamp;
     case DatePartSpecifier::MILLISECOND:
         micros -= micros % Interval::MICROS_PER_MSEC;
-        return Timestamp::FromDatetime(date, Time::FromTime(hour, min, sec, micros));
+        return Timestamp::fromDateTime(date, Time::fromTime(hour, min, sec, micros));
     case DatePartSpecifier::SECOND:
-        return Timestamp::FromDatetime(date, Time::FromTime(hour, min, sec, 0 /* microseconds */));
+        return Timestamp::fromDateTime(date, Time::fromTime(hour, min, sec, 0 /* microseconds */));
     case DatePartSpecifier::MINUTE:
-        return Timestamp::FromDatetime(
-            date, Time::FromTime(hour, min, 0 /* seconds */, 0 /* microseconds */));
+        return Timestamp::fromDateTime(date,
+            Time::fromTime(hour, min, 0 /* seconds */, 0 /* microseconds */));
     case DatePartSpecifier::HOUR:
-        return Timestamp::FromDatetime(
-            date, Time::FromTime(hour, 0 /* minutes */, 0 /* seconds */, 0 /* microseconds */));
+        return Timestamp::fromDateTime(date,
+            Time::fromTime(hour, 0 /* minutes */, 0 /* seconds */, 0 /* microseconds */));
     default:
-        date_t date = GetDate(timestamp);
-        return FromDatetime(Date::trunc(specifier, date), dtime_t(0));
+        date_t date = getDate(timestamp);
+        return fromDateTime(Date::trunc(specifier, date), dtime_t(0));
     }
 }
 
 int64_t Timestamp::getEpochNanoSeconds(const timestamp_t& timestamp) {
-    return timestamp.value * Interval::NANOS_PER_MICRO;
+    int64_t result;
+    function::Multiply::operation(timestamp.value, Interval::NANOS_PER_MICRO, result);
+    return result;
+}
+
+int64_t Timestamp::getEpochMilliSeconds(const timestamp_t& timestamp) {
+    return timestamp.value / Interval::MICROS_PER_MSEC;
+}
+
+int64_t Timestamp::getEpochSeconds(const timestamp_t& timestamp) {
+    return timestamp.value / Interval::MICROS_PER_SEC;
+}
+
+timestamp_t Timestamp::getCurrentTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    return Timestamp::fromEpochMilliSeconds(
+        duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
 }
 
 } // namespace common

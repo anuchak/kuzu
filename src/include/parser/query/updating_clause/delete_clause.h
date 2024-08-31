@@ -1,24 +1,27 @@
 #pragma once
 
+#include "common/enums/delete_type.h"
 #include "parser/expression/parsed_expression.h"
 #include "updating_clause.h"
 
 namespace kuzu {
 namespace parser {
 
-class DeleteClause : public UpdatingClause {
+class DeleteClause final : public UpdatingClause {
 public:
-    DeleteClause() : UpdatingClause{common::ClauseType::DELETE} {};
-    ~DeleteClause() override = default;
+    explicit DeleteClause(common::DeleteNodeType deleteType)
+        : UpdatingClause{common::ClauseType::DELETE_}, deleteType{deleteType} {};
 
-    inline void addExpression(std::unique_ptr<ParsedExpression> expression) {
+    void addExpression(std::unique_ptr<ParsedExpression> expression) {
         expressions.push_back(std::move(expression));
     }
-    inline uint32_t getNumExpressions() const { return expressions.size(); }
-    inline ParsedExpression* getExpression(uint32_t idx) const { return expressions[idx].get(); }
+    common::DeleteNodeType getDeleteClauseType() const { return deleteType; }
+    uint32_t getNumExpressions() const { return expressions.size(); }
+    ParsedExpression* getExpression(uint32_t idx) const { return expressions[idx].get(); }
 
 private:
-    std::vector<std::unique_ptr<ParsedExpression>> expressions;
+    common::DeleteNodeType deleteType;
+    parsed_expr_vector expressions;
 };
 
 } // namespace parser

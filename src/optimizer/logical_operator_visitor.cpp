@@ -5,22 +5,28 @@ using namespace kuzu::planner;
 namespace kuzu {
 namespace optimizer {
 
-void LogicalOperatorVisitor::visitOperatorSwitch(planner::LogicalOperator* op) {
+void LogicalOperatorVisitor::visitOperatorSwitch(LogicalOperator* op) {
     switch (op->getOperatorType()) {
     case LogicalOperatorType::FLATTEN: {
         visitFlatten(op);
     } break;
-    case LogicalOperatorType::SCAN_NODE: {
-        visitScanNode(op);
+    case LogicalOperatorType::EMPTY_RESULT: {
+        visitEmptyResult(op);
     } break;
-    case LogicalOperatorType::INDEX_SCAN_NODE: {
-        visitIndexScanNode(op);
+    case LogicalOperatorType::EXPRESSIONS_SCAN: {
+        visitExpressionsScan(op);
+    } break;
+    case LogicalOperatorType::SCAN_NODE_TABLE: {
+        visitScanNodeTable(op);
     } break;
     case LogicalOperatorType::EXTEND: {
         visitExtend(op);
     } break;
     case LogicalOperatorType::RECURSIVE_EXTEND: {
         visitRecursiveExtend(op);
+    } break;
+    case LogicalOperatorType::PATH_PROPERTY_PROBE: {
+        visitPathPropertyProbe(op);
     } break;
     case LogicalOperatorType::HASH_JOIN: {
         visitHashJoin(op);
@@ -37,14 +43,14 @@ void LogicalOperatorVisitor::visitOperatorSwitch(planner::LogicalOperator* op) {
     case LogicalOperatorType::ORDER_BY: {
         visitOrderBy(op);
     } break;
-    case LogicalOperatorType::SKIP: {
-        visitSkip(op);
-    } break;
     case LogicalOperatorType::LIMIT: {
         visitLimit(op);
     } break;
     case LogicalOperatorType::ACCUMULATE: {
         visitAccumulate(op);
+    } break;
+    case LogicalOperatorType::MARK_ACCUMULATE: {
+        visitMarkAccumulate(op);
     } break;
     case LogicalOperatorType::DISTINCT: {
         visitDistinct(op);
@@ -58,46 +64,55 @@ void LogicalOperatorVisitor::visitOperatorSwitch(planner::LogicalOperator* op) {
     case LogicalOperatorType::FILTER: {
         visitFilter(op);
     } break;
-    case LogicalOperatorType::SET_NODE_PROPERTY: {
-        visitSetNodeProperty(op);
+    case LogicalOperatorType::SET_PROPERTY: {
+        visitSetProperty(op);
     } break;
-    case LogicalOperatorType::SET_REL_PROPERTY: {
-        visitSetRelProperty(op);
+    case LogicalOperatorType::DELETE: {
+        visitDelete(op);
     } break;
-    case LogicalOperatorType::DELETE_NODE: {
-        visitDeleteNode(op);
+    case LogicalOperatorType::INSERT: {
+        visitInsert(op);
     } break;
-    case LogicalOperatorType::DELETE_REL: {
-        visitDeleteRel(op);
+    case LogicalOperatorType::MERGE: {
+        visitMerge(op);
     } break;
-    case LogicalOperatorType::CREATE_NODE: {
-        visitCreateNode(op);
+    case LogicalOperatorType::COPY_TO: {
+        visitCopyTo(op);
     } break;
-    case LogicalOperatorType::CREATE_REL: {
-        visitCreateRel(op);
+    case LogicalOperatorType::COPY_FROM: {
+        visitCopyFrom(op);
+    } break;
+    case LogicalOperatorType::GDS_CALL: {
+        visitGDSCall(op);
     } break;
     default:
         return;
     }
 }
 
-std::shared_ptr<planner::LogicalOperator> LogicalOperatorVisitor::visitOperatorReplaceSwitch(
-    std::shared_ptr<planner::LogicalOperator> op) {
+std::shared_ptr<LogicalOperator> LogicalOperatorVisitor::visitOperatorReplaceSwitch(
+    std::shared_ptr<LogicalOperator> op) {
     switch (op->getOperatorType()) {
     case LogicalOperatorType::FLATTEN: {
         return visitFlattenReplace(op);
     }
-    case LogicalOperatorType::SCAN_NODE: {
-        return visitScanNodeReplace(op);
+    case LogicalOperatorType::EMPTY_RESULT: {
+        return visitEmptyResultReplace(op);
     }
-    case LogicalOperatorType::INDEX_SCAN_NODE: {
-        return visitIndexScanNodeReplace(op);
+    case LogicalOperatorType::EXPRESSIONS_SCAN: {
+        return visitExpressionsScanReplace(op);
+    }
+    case LogicalOperatorType::SCAN_NODE_TABLE: {
+        return visitScanNodeTableReplace(op);
     }
     case LogicalOperatorType::EXTEND: {
         return visitExtendReplace(op);
     }
     case LogicalOperatorType::RECURSIVE_EXTEND: {
         return visitRecursiveExtendReplace(op);
+    }
+    case LogicalOperatorType::PATH_PROPERTY_PROBE: {
+        return visitPathPropertyProbeReplace(op);
     }
     case LogicalOperatorType::HASH_JOIN: {
         return visitHashJoinReplace(op);
@@ -114,14 +129,14 @@ std::shared_ptr<planner::LogicalOperator> LogicalOperatorVisitor::visitOperatorR
     case LogicalOperatorType::ORDER_BY: {
         return visitOrderByReplace(op);
     }
-    case LogicalOperatorType::SKIP: {
-        return visitSkipReplace(op);
-    }
     case LogicalOperatorType::LIMIT: {
         return visitLimitReplace(op);
     }
     case LogicalOperatorType::ACCUMULATE: {
         return visitAccumulateReplace(op);
+    }
+    case LogicalOperatorType::MARK_ACCUMULATE: {
+        return visitMarkAccumulateReplace(op);
     }
     case LogicalOperatorType::DISTINCT: {
         return visitDistinctReplace(op);
@@ -135,23 +150,26 @@ std::shared_ptr<planner::LogicalOperator> LogicalOperatorVisitor::visitOperatorR
     case LogicalOperatorType::FILTER: {
         return visitFilterReplace(op);
     }
-    case LogicalOperatorType::SET_NODE_PROPERTY: {
-        return visitSetNodePropertyReplace(op);
+    case LogicalOperatorType::SET_PROPERTY: {
+        return visitSetPropertyReplace(op);
     }
-    case LogicalOperatorType::SET_REL_PROPERTY: {
-        return visitSetRelPropertyReplace(op);
+    case LogicalOperatorType::DELETE: {
+        return visitDeleteReplace(op);
     }
-    case LogicalOperatorType::DELETE_NODE: {
-        return visitDeleteNodeReplace(op);
+    case LogicalOperatorType::INSERT: {
+        return visitInsertReplace(op);
     }
-    case LogicalOperatorType::DELETE_REL: {
-        return visitDeleteRelReplace(op);
+    case LogicalOperatorType::MERGE: {
+        return visitMergeReplace(op);
     }
-    case LogicalOperatorType::CREATE_NODE: {
-        return visitCreateNodeReplace(op);
+    case LogicalOperatorType::COPY_TO: {
+        return visitCopyToReplace(op);
     }
-    case LogicalOperatorType::CREATE_REL: {
-        return visitCreateRelReplace(op);
+    case LogicalOperatorType::COPY_FROM: {
+        return visitCopyFromReplace(op);
+    }
+    case LogicalOperatorType::GDS_CALL: {
+        return visitGDSCallReplace(op);
     }
     default:
         return op;

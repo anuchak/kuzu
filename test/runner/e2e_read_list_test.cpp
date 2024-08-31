@@ -20,15 +20,6 @@ public:
     }
 };
 
-TEST_F(EndToEndReadLargeListsTest, LargeAdjListTest) {
-    runTest(TestHelper::appendKuzuRootPath("test/test_files/read_list/large-list.test"));
-}
-
-TEST_F(EndToEndReadLargeListsTest, PropLists4BytesPerEdgeTest) {
-    runTest(TestHelper::appendKuzuRootPath(
-        "test/test_files/read_list/small-large-property-list-reading.test"));
-}
-
 TEST_F(EndToEndReadLargeListsTest, VarLengthExtendLargeAdjListTest) {
     runTest(TestHelper::appendKuzuRootPath(
         "test/test_files/read_list/var_length_large_adj_list_extend.test"));

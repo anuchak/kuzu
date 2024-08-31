@@ -60,7 +60,7 @@ UnicodeType Utf8Proc::analyze(
         int c = (int)s[i];
 
         if ((c & 0x80) == 0) {
-            return type;
+            continue;
         } else {
             int firstPosSeq = i;
 
@@ -122,6 +122,14 @@ uint32_t Utf8Proc::renderWidth(const char* s, size_t pos) {
     auto codepoint = kuzu::utf8proc::utf8proc_codepoint(s + pos, size);
     auto properties = kuzu::utf8proc::utf8proc_get_property(codepoint);
     return properties->charwidth;
+}
+
+int Utf8Proc::codepointLength(int cp) {
+    return utf8proc_codepoint_length(cp);
+}
+
+bool Utf8Proc::codepointToUtf8(int cp, int &sz, char *c) {
+    return utf8proc_codepoint_to_utf8(cp, sz, c);
 }
 
 } // namespace utf8proc

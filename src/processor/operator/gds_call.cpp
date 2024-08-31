@@ -26,7 +26,12 @@ void GDSCall::initLocalStateInternal(ResultSet*, ExecutionContext* context) {
 }
 
 void GDSCall::executeInternal(ExecutionContext* executionContext) {
+    auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
     info.gds->exec(executionContext);
+    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+    auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+    printf("Total time taken: %lu\n", millis1 - millis);
 }
 
 } // namespace processor

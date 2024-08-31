@@ -71,7 +71,7 @@ public:
 
     bool isSource() const override { return true; }
 
-    bool isParallel() const override { return false; }
+    bool isParallel() const override { return true; }
 
     void initLocalStateInternal(ResultSet* resultSet, ExecutionContext* context) override;
 

@@ -71,7 +71,8 @@ public:
             dstNodeID = nbrNodes[j];
             state = ifeMorsel->visitedNodes[dstNodeID.offset];
             if (state == NOT_VISITED_DST) {
-                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state, VISITED_DST)) {
+                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state,
+                        VISITED_DST)) {
                     numDstVisitedLocal++;
                     __atomic_store_n(&ifeMorsel->pathLength[dstNodeID.offset],
                         ifeMorsel->currentLevel + 1, __ATOMIC_RELEASE);
@@ -79,7 +80,8 @@ public:
                         __ATOMIC_RELEASE);
                 }
             } else if (state == NOT_VISITED) {
-                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state, VISITED)) {
+                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state,
+                        VISITED)) {
                     numNonDstVisitedLocal++;
                     __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u,
                         __ATOMIC_RELEASE);
@@ -100,18 +102,20 @@ public:
         }
         auto posInCSR = frontierOffset & OFFSET_DIV;
         for (auto nbrIdx = csrEntry->csr_v[posInCSR]; nbrIdx < csrEntry->csr_v[posInCSR + 1];
-             nbrIdx++) {
+            nbrIdx++) {
             auto nbrOffset = csrEntry->nbrNodeOffsets[nbrIdx];
             auto state = ifeMorsel->visitedNodes[nbrOffset];
             if (state == NOT_VISITED_DST) {
-                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[nbrOffset], state, VISITED_DST)) {
+                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[nbrOffset], state,
+                        VISITED_DST)) {
                     numDstVisitedLocal++;
                     __atomic_store_n(&ifeMorsel->pathLength[nbrOffset], ifeMorsel->currentLevel + 1,
                         __ATOMIC_RELEASE);
                     __atomic_store_n(&ifeMorsel->nextFrontier[nbrOffset], 1u, __ATOMIC_RELEASE);
                 }
             } else if (state == NOT_VISITED) {
-                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[nbrOffset], state, VISITED)) {
+                if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[nbrOffset], state,
+                        VISITED)) {
                     numNonDstVisitedLocal++;
                     __atomic_store_n(&ifeMorsel->nextFrontier[nbrOffset], 1u, __ATOMIC_RELEASE);
                 }
@@ -178,7 +182,7 @@ public:
         uint64_t numDstVisitedLocal = 0u, numNonDstVisitedLocal = 0u;
         while (!ifeMorsel->isBFSCompleteNoLock() && frontierMorsel.hasMoreToOutput()) {
             for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                 offset++) {
+                offset++) {
                 if (!ifeMorsel->currentFrontier[offset]) {
                     continue;
                 }
@@ -233,17 +237,16 @@ public:
             if (!inputMask->isMasked(offset)) {
                 continue;
             }
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             ifeMorsel->resetNoLock(offset);
             ifeMorsel->init();
             while (!ifeMorsel->isBFSCompleteNoLock()) {
-                /*auto duration = std::chrono::system_clock::now().time_since_epoch();
-                auto millis =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 // printf("starting bfs level: %d\n", ifeMorsel->currentLevel);
                 auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 auto maxTaskThreads = std::min(maxThreads,
-                    (uint64_t)std::ceil(ifeMorsel->currentFrontierSize / morselSize));
+                    (uint64_t)std::ceil((double)ifeMorsel->currentFrontierSize / morselSize));
                 if (ifeMorsel->isSparseFrontier) {
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendSparseFrontierFunc, maxTaskThreads};
@@ -253,15 +256,19 @@ public:
                         sharedState, extendDenseFrontierFunc, maxTaskThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
                 }
-                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                    millis1 - millis);*/
+                    millis1 - millis);
                 ifeMorsel->initializeNextFrontierNoLock();
+                duration = std::chrono::system_clock::now().time_since_epoch();
+                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                printf("bfs level: %d initialized in %ld ms \n", ifeMorsel->currentLevel,
+                    millis - millis1);
             }
-            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
+            duration = std::chrono::system_clock::now().time_since_epoch();
+            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             auto maxTaskThreads =
@@ -269,9 +276,10 @@ public:
             auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                 shortestPathOutputFunc, maxTaskThreads};
             parallelUtils->submitParallelTaskAndWait(job);
-            /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+            auto duration1 = std::chrono::system_clock::now().time_since_epoch();
             auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
-            printf("output writing completed in %lu ms\n", millis1 - millis);*/
+            printf("output writing completed in %lu ms\n", millis1 - millis);
+            printf("source: %u completed in %lu ms\n", offset, millis1 - ifeMorsel->startTime);
         }
     }
 

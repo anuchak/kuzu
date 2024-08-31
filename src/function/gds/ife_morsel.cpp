@@ -9,8 +9,10 @@ namespace kuzu {
 namespace function {
 
 IFEMorsel::~IFEMorsel() {
-    delete[] currentFrontier;
-    delete[] nextFrontier;
+    if (currentFrontier) {
+        delete[] currentFrontier;
+        delete[] nextFrontier;
+    }
 }
 
 void IFEMorsel::init() {

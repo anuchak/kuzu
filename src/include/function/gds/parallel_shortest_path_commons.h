@@ -13,9 +13,11 @@ typedef std::vector<std::pair<std::unique_ptr<IFEMorsel>, std::shared_ptr<Schedu
 
 struct ParallelShortestPathBindData final : public GDSBindData {
     uint8_t upperBound;
+    std::string bfsPolicy;
 
-    ParallelShortestPathBindData(std::shared_ptr<Expression> nodeInput, uint8_t upperBound)
-        : GDSBindData{std::move(nodeInput)}, upperBound{upperBound} {}
+    ParallelShortestPathBindData(std::shared_ptr<Expression> nodeInput, uint8_t upperBound,
+        std::string bfsPolicy)
+        : GDSBindData{std::move(nodeInput)}, upperBound{upperBound}, bfsPolicy{std::move(bfsPolicy)} {}
     ParallelShortestPathBindData(const ParallelShortestPathBindData& other)
         : GDSBindData{other}, upperBound{other.upperBound} {}
 

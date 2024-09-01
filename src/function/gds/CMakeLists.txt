@@ -1,13 +1,14 @@
 add_library(kuzu_function_algorithm
         OBJECT
         ife_morsel.cpp
+        sp_ife_morsel.cpp
+        asp_ife_morsel.cpp
+        varlen_ife_morsel.cpp
         gds.cpp
         gds_task.cpp
         page_rank.cpp
-        1T1S_parallel_shortest_path.cpp
-        nT1S_parallel_shortest_path.cpp
-        nTkS_parallel_shortest_path.cpp
         parallel_utils.cpp
+        parallel_sp_length.cpp
         shortest_paths.cpp
         gds_utils.cpp
         weakly_connected_components.cpp)

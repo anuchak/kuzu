@@ -107,7 +107,7 @@ void IFEMorsel::initializeNextFrontierNoLock() {
     nextFrontierSize.store(0u, std::memory_order_acq_rel);
     // if true, next frontier is sparse, push elements in bfsFrontier vector
     // else, next frontier is dense, switch pointers with current frontier array & next frontier
-    if (currentFrontierSize < std::ceil((maxOffset / 8))) {
+    if (currentFrontierSize < (uint64_t) std::ceil((maxOffset / 8))) {
         isSparseFrontier = true;
         bfsFrontier.clear();
         auto simdWidth = 16u, i = 0u, pos = 0u;

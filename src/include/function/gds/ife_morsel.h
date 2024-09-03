@@ -22,26 +22,25 @@ public:
     IFEMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_,
         common::offset_t srcOffset)
         : mutex{std::mutex()}, initializedIFEMorsel{false}, currentLevel{0u}, nextScanStartIdx{0u},
-          currentFrontierSize{0u}, srcOffset{srcOffset}, numVisitedDstNodes{0u},
-          numDstNodesToVisit{maxNodeOffset_ + 1}, currentFrontier{nullptr}, nextFrontier{nullptr},
-          bfsFrontier{std::vector<common::offset_t>()}, maxOffset{maxNodeOffset_},
-          upperBound{upperBound_}, lowerBound{lowerBound_}, nextDstScanStartIdx{0u} {}
+          currentFrontierSize{0u}, srcOffset{srcOffset}, currentFrontier{nullptr},
+          nextFrontier{nullptr}, bfsFrontier{std::vector<common::offset_t>()},
+          maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_} {}
 
     ~IFEMorsel();
 
-    void init();
+    virtual void init();
 
     void resetNoLock(common::offset_t srcOffset);
 
     function::CallFuncMorsel getMorsel(uint64_t morselSize);
 
-    function::CallFuncMorsel getDstWriteMorsel(uint64_t morselSize);
+    virtual uint64_t getWork() = 0;
 
-    bool isBFSCompleteNoLock() const;
+    virtual function::CallFuncMorsel getDstWriteMorsel(uint64_t morselSize) = 0;
 
-    bool isIFEMorselCompleteNoLock() const;
+    virtual bool isBFSCompleteNoLock() = 0;
 
-    void mergeResults(uint64_t numDstVisitedLocal, uint64_t numNonDstVisitedLocal);
+    virtual bool isIFEMorselCompleteNoLock() = 0;
 
     void initializeNextFrontierNoLock();
 
@@ -60,13 +59,6 @@ public:
     char padding3[64]{0};
     common::offset_t srcOffset;
 
-    // Visited state
-    char padding4[64]{0};
-    std::atomic<uint64_t> numVisitedDstNodes;
-    char padding5[64]{0};
-    uint64_t numDstNodesToVisit;
-    char padding6[64]{0};
-    std::vector<uint8_t> visitedNodes;
     // If the frontier is dense, then we use these 2 arrays as frontier and next frontier
     // Based on if the frontier size > (total nodes / 8)
     uint8_t* currentFrontier;
@@ -75,12 +67,10 @@ public:
     // Based on if frontier size < (total nodes / 8)
     std::vector<common::offset_t> bfsFrontier;
 
-    std::vector<uint8_t> pathLength;
     // Maximum offset of dst nodes.
     common::offset_t maxOffset;
     uint64_t upperBound;
     uint64_t lowerBound;
-    std::atomic<uint64_t> nextDstScanStartIdx;
 };
 
 } // namespace function

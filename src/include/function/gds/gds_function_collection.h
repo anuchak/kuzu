@@ -29,5 +29,11 @@ struct ParallelSPLengthsFunction {
     static function_set getFunctionSet();
 };
 
+struct ParallelASPLenthsFunction {
+    static constexpr const char* name = "ParallelASPLength";
+
+    static function_set getFunctionSet();
+};
+
 } // namespace function
 } // namespace kuzu

@@ -47,29 +47,12 @@ public:
     /*
      * Return the amount of work currently being processed on for this IFEMorsel.
      * Based on the frontier on which BFS extension is being done, or if output is being written.
-     * Hold the lock in case the IFEMorsel has not been initialized, the frontier vector needs to
-     * be accessed in a thread safe manner.
      */
     inline uint64_t getWork() override {
         if (!ifeMorsel || !ifeMorsel->initializedIFEMorsel) {
             return 0u;
         }
-        if (ifeMorsel->isBFSCompleteNoLock()) {
-            return ifeMorsel->maxOffset -
-                   ifeMorsel->nextDstScanStartIdx.load(std::memory_order_acquire);
-        }
-        /*
-         * This is an approximation of the remaining frontier, it can be either:
-         * (1) if frontier is sparse, we subtract the next scan idx from current frontier size
-         *     and return the value
-         * (2) if frontier is dense, subtract next scan idx from maxOffset (since in this case the
-         *     frontier is technically the whole currFrontier array)
-         */
-        if (ifeMorsel->isSparseFrontier) {
-            return ifeMorsel->currentFrontierSize -
-                   ifeMorsel->nextScanStartIdx.load(std::memory_order_acquire);
-        }
-        return ifeMorsel->maxOffset - ifeMorsel->nextScanStartIdx.load(std::memory_order_acquire);
+        return ifeMorsel->getWork();
     }
 
     std::unique_ptr<GDSLocalState> copy() override {

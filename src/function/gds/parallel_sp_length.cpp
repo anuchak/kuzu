@@ -4,6 +4,7 @@
 #include "common/types/types.h"
 #include "function/gds/gds_function_collection.h"
 #include "function/gds/ife_morsel.h"
+#include "function/gds/sp_ife_morsel.h"
 #include "function/gds/parallel_shortest_path_commons.h"
 #include "function/gds/parallel_utils.h"
 #include "function/gds_function.h"
@@ -19,7 +20,7 @@ namespace function {
 class ParallelSPLengths : public GDSAlgorithm {
 public:
     ParallelSPLengths() = default;
-    ParallelSPLengths(const ParallelSPLengths& other) : GDSAlgorithm{other} {}
+    ParallelSPLengths(const ParallelSPLengths& other) = default;
 
     /*
      * Inputs are
@@ -66,7 +67,7 @@ public:
         localState->init(context);
     }
 
-    static std::pair<uint64_t, uint64_t> visitNbrsOnDiskSingle(IFEMorsel* ifeMorsel,
+    static std::pair<uint64_t, uint64_t> visitNbrsOnDiskSingle(SPIFEMorsel* ifeMorsel,
         ValueVector& dstNodeIDVector) {
         uint64_t numDstVisitedLocal = 0u, numNonDstVisitedLocal = 0u;
         auto size = dstNodeIDVector.state->getSelVector().getSelSize();
@@ -91,7 +92,7 @@ public:
     }
 
     static std::pair<uint64_t, uint64_t> visitNbrsInMemSingle(common::offset_t frontierOffset,
-        IFEMorsel* ifeMorsel, graph::Graph* graph) {
+        SPIFEMorsel* ifeMorsel, graph::Graph* graph) {
         uint64_t numDstVisitedLocal = 0u, numNonDstVisitedLocal = 0u;
         auto inMemGraph = ku_dynamic_cast<graph::Graph*, graph::InMemGraph*>(graph);
         auto& csr = inMemGraph->getInMemCSR();
@@ -118,7 +119,7 @@ public:
         return {numDstVisitedLocal, numNonDstVisitedLocal};
     }
 
-    static std::pair<uint64_t, uint64_t> visitNbrsOnDiskParallel(IFEMorsel* ifeMorsel,
+    static std::pair<uint64_t, uint64_t> visitNbrsOnDiskParallel(SPIFEMorsel* ifeMorsel,
         ValueVector& dstNodeIDVector) {
         uint64_t numDstVisitedLocal = 0u, numNonDstVisitedLocal = 0u;
         auto size = dstNodeIDVector.state->getSelVector().getSelSize();
@@ -150,7 +151,7 @@ public:
     }
 
     static std::pair<uint64_t, uint64_t> visitNbrsInMemParallel(common::offset_t frontierOffset,
-        IFEMorsel* ifeMorsel, graph::Graph* graph) {
+        SPIFEMorsel* ifeMorsel, graph::Graph* graph) {
         uint64_t numDstVisitedLocal = 0u, numNonDstVisitedLocal = 0u;
         auto inMemGraph = ku_dynamic_cast<graph::Graph*, graph::InMemGraph*>(graph);
         auto& csr = inMemGraph->getInMemCSR();
@@ -182,7 +183,7 @@ public:
         return {numDstVisitedLocal, numNonDstVisitedLocal};
     }
 
-    static void extendNodeParallel(graph::Graph* graph, IFEMorsel* ifeMorsel, const common::offset_t offset,
+    static void extendNodeParallel(graph::Graph* graph, SPIFEMorsel* ifeMorsel, const common::offset_t offset,
         uint64_t& numDstVisitedLocal, uint64_t& numNonDstVisitedLocal,
         graph::NbrScanState* nbrScanState) {
         std::pair<uint64_t, uint64_t> retVal;
@@ -206,7 +207,7 @@ public:
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
-        auto ifeMorsel = shortestPathLocalState->ifeMorsel;
+        auto ifeMorsel = (SPIFEMorsel *)shortestPathLocalState->ifeMorsel;
         if (!ifeMorsel->initializedIFEMorsel) {
             ifeMorsel->init();
         }
@@ -233,7 +234,7 @@ public:
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
-        auto ifeMorsel = shortestPathLocalState->ifeMorsel;
+        auto ifeMorsel = (SPIFEMorsel *)shortestPathLocalState->ifeMorsel;
         auto morselSize = graph->isInMemory ? 512LU : 256LU;
         auto frontierMorsel = ifeMorsel->getMorsel(morselSize);
         if (!frontierMorsel.hasMoreToOutput()) {
@@ -260,7 +261,7 @@ public:
         GDSLocalState* localState) {
         auto shortestPathLocalState =
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
-        auto ifeMorsel = shortestPathLocalState->ifeMorsel;
+        auto ifeMorsel = (SPIFEMorsel *)shortestPathLocalState->ifeMorsel;
         auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
         if (!morsel.hasMoreToOutput()) {
             return 0;
@@ -286,7 +287,7 @@ public:
         return pos; // return the no. of output values written to the value vectors
     }
 
-    static void extendNodeSingle(graph::Graph* graph, IFEMorsel* ifeMorsel,
+    static void extendNodeSingle(graph::Graph* graph, SPIFEMorsel* ifeMorsel,
         const common::offset_t offset, uint64_t& numDstVisitedLocal,
         uint64_t& numNonDstVisitedLocal, graph::NbrScanState* nbrScanState) {
         std::pair<uint64_t, uint64_t> retVal;
@@ -310,7 +311,7 @@ public:
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
-        auto ifeMorsel = shortestPathLocalState->ifeMorsel;
+        auto ifeMorsel = (SPIFEMorsel *)shortestPathLocalState->ifeMorsel;
         while (!ifeMorsel->isBFSCompleteNoLock()) {
             auto& nbrScanState = shortestPathLocalState->nbrScanState;
             uint64_t numDstVisitedLocal = 0u, numNonDstVisitedLocal = 0u;
@@ -359,7 +360,7 @@ public:
         auto morselSize = sharedState->graph->isInMemory ? 512LU : 256LU;
         auto extraData = bindData->ptrCast<ParallelShortestPathBindData>();
         auto numNodes = sharedState->graph->getNumNodes();
-        auto ifeMorsel = std::make_unique<IFEMorsel>(extraData->upperBound, 1, numNodes - 1,
+        auto ifeMorsel = std::make_unique<SPIFEMorsel>(extraData->upperBound, 1, numNodes - 1,
             common::INVALID_OFFSET);
         auto& inputMask = sharedState->inputNodeOffsetMasks[sharedState->graph->getNodeTableID()];
         for (auto offset = 0u; offset < numNodes; offset++) {
@@ -446,7 +447,7 @@ public:
             /*auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             printf("starting bfs source: %lu at %lu\n", srcOffset, millis);*/
-            auto ifeMorsel = std::make_unique<IFEMorsel>(extraData->upperBound, lowerBound,
+            auto ifeMorsel = std::make_unique<SPIFEMorsel>(extraData->upperBound, lowerBound,
                 maxNodeOffset, srcOffset);
             srcOffset++;
             auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
@@ -551,7 +552,7 @@ public:
             }
             totalBFSSources++;
             // printf("starting bfs source: %lu\n", srcOffset);
-            auto ifeMorsel = std::make_unique<IFEMorsel>(extraData->upperBound, lowerBound,
+            auto ifeMorsel = std::make_unique<SPIFEMorsel>(extraData->upperBound, lowerBound,
                 maxNodeOffset, srcOffset);
             auto duration = std::chrono::system_clock::now().time_since_epoch();
             ifeMorsel->startTime =

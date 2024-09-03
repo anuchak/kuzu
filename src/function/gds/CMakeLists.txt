@@ -9,6 +9,11 @@ add_library(kuzu_function_algorithm
         page_rank.cpp
         parallel_utils.cpp
         parallel_sp_length.cpp
+        parallel_sp_path.cpp
+        parallel_asp_length.cpp
+        parallel_asp_path.cpp
+        parallel_varlen_length.cpp
+        parallel_varlen_path.cpp
         shortest_paths.cpp
         gds_utils.cpp
         weakly_connected_components.cpp)

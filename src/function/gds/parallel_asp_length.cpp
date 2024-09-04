@@ -66,8 +66,31 @@ public:
         localState->init(context);
     }
 
-    void exec(processor::ExecutionContext* executionContext) override {
+    void executenT1SPolicy(processor::ExecutionContext *executionContext) {
 
+    }
+
+    void execute1T1SPolicy(processor::ExecutionContext *executionContext) {
+
+    }
+
+    void executenTkSPolicy(processor::ExecutionContext *executionContext) {
+
+    }
+
+    void exec(processor::ExecutionContext* executionContext) override {
+        auto extraData = bindData->ptrCast<ParallelShortestPathBindData>();
+        auto bfsPolicy = extraData->bfsPolicy;
+        if (bfsPolicy == "nT1S") {
+            return executenT1SPolicy(executionContext);
+        } else if (bfsPolicy == "1T1S") {
+            return execute1T1SPolicy(executionContext);
+        } else if (bfsPolicy == "nTkS") {
+            return executenTkSPolicy(executionContext);
+        } else {
+            throw RuntimeException("Unidentified BFS Policy passed,"
+                                   " supported policies: nT1S, 1T1S, nTkS\n");
+        }
     }
 
     std::unique_ptr<GDSAlgorithm> copy() const override {
@@ -75,7 +98,7 @@ public:
     }
 };
 
-function_set ParallelASPLenthsFunction::getFunctionSet() {
+function_set ParallelASPLengthsFunction::getFunctionSet() {
     function_set result;
     auto function = std::make_unique<GDSFunction>(name, std::make_unique<ParallelASPLengths>());
     result.push_back(std::move(function));

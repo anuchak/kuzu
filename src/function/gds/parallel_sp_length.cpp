@@ -667,8 +667,11 @@ public:
             return executenT1SPolicy(executionContext);
         } else if (bfsPolicy == "1T1S") {
             return execute1T1SPolicy(executionContext);
-        } else {
+        } else if (bfsPolicy == "nTkS") {
             return executenTkSPolicy(executionContext);
+        } else {
+            throw RuntimeException("Unidentified BFS Policy passed,"
+                                   " supported policies: nT1S, 1T1S, nTkS\n");
         }
     }
 

@@ -29,6 +29,12 @@ struct ParallelSPLengthsFunction {
     static function_set getFunctionSet();
 };
 
+struct ParallelMSBFSLengthsFunction {
+    static constexpr const char* name = "ParallelMSBFSLength";
+
+    static function_set getFunctionSet();
+};
+
 struct ParallelASPLengthsFunction {
     static constexpr const char* name = "ParallelASPLength";
 

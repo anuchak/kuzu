@@ -17,12 +17,28 @@ struct ParallelShortestPathBindData final : public GDSBindData {
 
     ParallelShortestPathBindData(std::shared_ptr<Expression> nodeInput, uint8_t upperBound,
         std::string bfsPolicy)
-        : GDSBindData{std::move(nodeInput)}, upperBound{upperBound}, bfsPolicy{std::move(bfsPolicy)} {}
-    ParallelShortestPathBindData(const ParallelShortestPathBindData& other)
-        : GDSBindData{other}, upperBound{other.upperBound} {}
+        : GDSBindData{std::move(nodeInput)}, upperBound{upperBound},
+          bfsPolicy{std::move(bfsPolicy)} {}
+    ParallelShortestPathBindData(const ParallelShortestPathBindData& other) = default;
 
     std::unique_ptr<GDSBindData> copy() const override {
         return std::make_unique<ParallelShortestPathBindData>(*this);
+    }
+};
+
+struct ParallelMSBFSPathBindData final : public GDSBindData {
+    uint8_t upperBound;
+    std::string bfsPolicy;
+    int laneWidth;
+
+    ParallelMSBFSPathBindData(std::shared_ptr<Expression> nodeInput, uint8_t upperBound,
+        std::string bfsPolicy, int laneWidth)
+        : GDSBindData{std::move(nodeInput)}, upperBound{upperBound},
+          bfsPolicy{std::move(bfsPolicy)}, laneWidth{laneWidth} {}
+    ParallelMSBFSPathBindData(const ParallelMSBFSPathBindData& other) = default;
+
+    std::unique_ptr<GDSBindData> copy() const override {
+        return std::make_unique<ParallelMSBFSPathBindData>(*this);
     }
 };
 

@@ -9,7 +9,6 @@ template<> void MSBFSIFEMorsel<uint8_t>::init() {
     if (initializedIFEMorsel) {
         return;
     }
-    initializedIFEMorsel = true;
     currentDstLane = 0;
     maskValue = 0xFF;
     currentLevel = 0u;
@@ -34,6 +33,7 @@ template<> void MSBFSIFEMorsel<uint8_t>::init() {
         seenVal = seenVal << 1;
     }
     nextDstScanStartIdx.store(0u, std::memory_order_relaxed);
+    initializedIFEMorsel = true;
 }
 
 template<> void MSBFSIFEMorsel<uint16_t>::init() {

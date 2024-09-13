@@ -359,7 +359,7 @@ public:
                                     newVal = oldVal | shouldBeActive;
                                 }
                                 while (shouldBeActive) {
-                                    int index = __builtin_ctzl(shouldBeActive) + 1;
+                                    int index = __builtin_ctzll(shouldBeActive) + 1;
                                     auto exact1BytePos = nbrOffset * 64 + (64 - index);
                                     newVal = msbfsIFEMorsel->currentLevel + 1;
                                     __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos], newVal, __ATOMIC_RELEASE);
@@ -386,7 +386,6 @@ public:
                                 dstNodeID = nbrNodes[j];
                                 uint64_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
-
                                     uint64_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint64_t newVal = oldVal | shouldBeActive;
                                     while (!__sync_bool_compare_and_swap_8
@@ -395,7 +394,7 @@ public:
                                         newVal = oldVal | shouldBeActive;
                                     }
                                     while (shouldBeActive) {
-                                        int index = __builtin_ctzl(shouldBeActive) + 1;
+                                        int index = __builtin_ctzll(shouldBeActive) + 1;
                                         auto exact1BytePos = dstNodeID.offset * 64 + (64 - index);
                                         newVal = msbfsIFEMorsel->currentLevel + 1;
                                         __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos], newVal, __ATOMIC_RELEASE);
@@ -641,7 +640,7 @@ public:
                             if (shouldBeActive) {
                                 msbfsIFEMorsel->next[nbrOffset] |= shouldBeActive;
                                 while (shouldBeActive) {
-                                    int index = __builtin_ctzl(shouldBeActive) + 1;
+                                    int index = __builtin_ctzll(shouldBeActive) + 1;
                                     auto exact1BytePos = nbrOffset * 64 + (64 - index);
                                     msbfsIFEMorsel->pathLength[exact1BytePos] =
                                         msbfsIFEMorsel->currentLevel + 1;
@@ -670,7 +669,7 @@ public:
                                 if (shouldBeActive) {
                                     msbfsIFEMorsel->next[dstNodeID.offset] |= shouldBeActive;
                                     while (shouldBeActive) {
-                                        int index = __builtin_ctzl(shouldBeActive) + 1;
+                                        int index = __builtin_ctzll(shouldBeActive) + 1;
                                         auto exact1BytePos = dstNodeID.offset * 64 + (64 - index);
                                         msbfsIFEMorsel->pathLength[exact1BytePos] =
                                             msbfsIFEMorsel->currentLevel + 1;

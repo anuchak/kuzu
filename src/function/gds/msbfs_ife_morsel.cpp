@@ -10,10 +10,10 @@ template<> void MSBFSIFEMorsel<uint8_t>::init() {
         return;
     }
     currentDstLane = 0;
-    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;
+    isSparseFrontier = false;
     if (!seen) {
         seen = new uint8_t [maxOffset + 1]{0};
         current = new uint8_t [maxOffset + 1]{0};
@@ -43,10 +43,10 @@ template<> void MSBFSIFEMorsel<uint16_t>::init() {
     }
     initializedIFEMorsel = true;
     currentDstLane = 0;
-    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;
+    isSparseFrontier = false;
     if (!seen) {
         seen = new uint16_t [maxOffset + 1]{0};
         current = new uint16_t [maxOffset + 1]{0};
@@ -75,10 +75,10 @@ template<> void MSBFSIFEMorsel<uint32_t>::init() {
     }
     initializedIFEMorsel = true;
     currentDstLane = 0;
-    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;
+    isSparseFrontier = false;
     if (!seen) {
         seen = new uint32_t [maxOffset + 1]{0};
         current = new uint32_t [maxOffset + 1]{0};
@@ -107,10 +107,10 @@ template<> void MSBFSIFEMorsel<uint64_t>::init() {
     }
     initializedIFEMorsel = true;
     currentDstLane = 0;
-    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;
+    isSparseFrontier = false;
     if (!seen) {
         seen = new uint64_t [maxOffset + 1]{0};
         current = new uint64_t [maxOffset + 1]{0};
@@ -136,7 +136,11 @@ template<> void MSBFSIFEMorsel<uint8_t>::initializeNextFrontierNoLock() {
     currentLevel++;
     if (currentLevel < upperBound) {
         nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        isBFSActive = false;
         for (auto offset = 0u; offset <= maxOffset; offset++) {
+            if (next[offset]) {
+                isBFSActive = true;
+            }
             seen[offset] |= next[offset];
         }
         auto temp = current;
@@ -152,7 +156,11 @@ template<> void MSBFSIFEMorsel<uint16_t>::initializeNextFrontierNoLock() {
     currentLevel++;
     if (currentLevel < upperBound) {
         nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        isBFSActive = false;
         for (auto offset = 0u; offset <= maxOffset; offset++) {
+            if (next[offset]) {
+                isBFSActive = true;
+            }
             seen[offset] |= next[offset];
         }
         auto temp = current;
@@ -168,7 +176,11 @@ template<> void MSBFSIFEMorsel<uint32_t>::initializeNextFrontierNoLock() {
     currentLevel++;
     if (currentLevel < upperBound) {
         nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        isBFSActive = false;
         for (auto offset = 0u; offset <= maxOffset; offset++) {
+            if (next[offset]) {
+                isBFSActive = true;
+            }
             seen[offset] |= next[offset];
         }
         auto temp = current;
@@ -184,7 +196,11 @@ template<> void MSBFSIFEMorsel<uint64_t>::initializeNextFrontierNoLock() {
     currentLevel++;
     if (currentLevel < upperBound) {
         nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        isBFSActive = false;
         for (auto offset = 0u; offset <= maxOffset; offset++) {
+            if (next[offset]) {
+                isBFSActive = true;
+            }
             seen[offset] |= next[offset];
         }
         auto temp = current;

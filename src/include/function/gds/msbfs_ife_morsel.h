@@ -1,7 +1,5 @@
 #pragma once
 
-#include <immintrin.h>
-
 #include "ife_morsel.h"
 
 namespace kuzu {
@@ -13,8 +11,9 @@ public:
     MSBFSIFEMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
         : IFEMorsel(upperBound_, lowerBound_, maxNodeOffset_, common::INVALID_OFFSET
               /* passing this as a placeholder, no use of the srcOffset variable in IFEMorsel */),
-          isBFSActive{true}, nextDstScanStartIdx{0u}, srcOffsets{std::vector<common::offset_t>()},
-          seen{nullptr}, current{nullptr}, next{nullptr}, pathLength{nullptr} {}
+          srcOffsets{std::vector<common::offset_t>()}, isBFSActive{true}, seen{nullptr},
+          current{nullptr}, next{nullptr}, pathLength{nullptr}, currentDstLane{0u},
+          nextDstScanStartIdx{0u} {}
 
     ~MSBFSIFEMorsel() {
         if (seen) {
@@ -63,7 +62,7 @@ public:
                (nextDstScanStartIdx.load(std::memory_order_acq_rel) >= maxOffset);
     }
 
-    void mergeResults(uint64_t numDstVisitedLocal, uint64_t numNonDstVisitedLocal) {}
+    void mergeResults(uint64_t /*numDstVisitedLocal*/, uint64_t /*numNonDstVisitedLocal*/) {}
 
     void initializeNextFrontierNoLock() override;
 
@@ -78,7 +77,6 @@ public:
     uint8_t* pathLength;
     // Destination writing information
     uint8_t currentDstLane;
-    uint maskValue;
 
     std::atomic<uint64_t> nextDstScanStartIdx;
 };

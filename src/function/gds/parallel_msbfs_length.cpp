@@ -81,9 +81,7 @@ public:
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint8_t>*>(shortestPathLocalState->ifeMorsel);
-        if (!msbfsIFEMorsel->initializedIFEMorsel) {
-            msbfsIFEMorsel->init();
-        }
+        msbfsIFEMorsel->init();
         auto morselSize = graph->isInMemory ? 512LU : 256LU;
         auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
         if (!frontierMorsel.hasMoreToOutput()) {
@@ -101,10 +99,6 @@ public:
                             auto nbrOffset = csrEntry->nbrNodeOffsets[nbrIdx];
                             uint8_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
-                                if (!msbfsIFEMorsel->isBFSActive) {
-                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                }
                                 uint8_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint8_t newVal = oldVal | shouldBeActive;
                                 while (!__sync_bool_compare_and_swap_1(
@@ -140,10 +134,6 @@ public:
                                 dstNodeID = nbrNodes[j];
                                 uint8_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
-                                    if (!msbfsIFEMorsel->isBFSActive) {
-                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                    }
                                     uint8_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint8_t newVal = oldVal | shouldBeActive;
                                     while (!__sync_bool_compare_and_swap_1(
@@ -175,9 +165,7 @@ public:
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint16_t>*>(shortestPathLocalState->ifeMorsel);
-        if (!msbfsIFEMorsel->initializedIFEMorsel) {
-            msbfsIFEMorsel->init();
-        }
+        msbfsIFEMorsel->init();
         auto morselSize = graph->isInMemory ? 512LU : 256LU;
         auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
         if (!frontierMorsel.hasMoreToOutput()) {
@@ -195,10 +183,6 @@ public:
                             auto nbrOffset = csrEntry->nbrNodeOffsets[nbrIdx];
                             uint16_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
-                                if (!msbfsIFEMorsel->isBFSActive) {
-                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                }
                                 uint16_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint16_t newVal = oldVal | shouldBeActive;
                                 while (!__sync_bool_compare_and_swap_2(
@@ -234,10 +218,6 @@ public:
                                 dstNodeID = nbrNodes[j];
                                 uint16_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
-                                    if (!msbfsIFEMorsel->isBFSActive) {
-                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                    }
                                     uint16_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint16_t newVal = oldVal | shouldBeActive;
                                     while (!__sync_bool_compare_and_swap_2(
@@ -269,9 +249,7 @@ public:
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint32_t>*>(shortestPathLocalState->ifeMorsel);
-        if (!msbfsIFEMorsel->initializedIFEMorsel) {
-            msbfsIFEMorsel->init();
-        }
+        msbfsIFEMorsel->init();
         auto morselSize = graph->isInMemory ? 512LU : 256LU;
         auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
         if (!frontierMorsel.hasMoreToOutput()) {
@@ -289,10 +267,6 @@ public:
                             auto nbrOffset = csrEntry->nbrNodeOffsets[nbrIdx];
                             uint32_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
-                                if (!msbfsIFEMorsel->isBFSActive) {
-                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                }
                                 uint32_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint32_t newVal = oldVal | shouldBeActive;
                                 while (!__sync_bool_compare_and_swap_4(
@@ -328,10 +302,6 @@ public:
                                 dstNodeID = nbrNodes[j];
                                 uint32_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
-                                    if (!msbfsIFEMorsel->isBFSActive) {
-                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                    }
                                     uint32_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint32_t newVal = oldVal | shouldBeActive;
                                     while (!__sync_bool_compare_and_swap_4(
@@ -363,9 +333,7 @@ public:
             common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint64_t>*>(shortestPathLocalState->ifeMorsel);
-        if (!msbfsIFEMorsel->initializedIFEMorsel) {
-            msbfsIFEMorsel->init();
-        }
+        msbfsIFEMorsel->init();
         auto morselSize = graph->isInMemory ? 512LU : 256LU;
         auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
         if (!frontierMorsel.hasMoreToOutput()) {
@@ -383,10 +351,6 @@ public:
                             auto nbrOffset = csrEntry->nbrNodeOffsets[nbrIdx];
                             uint64_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
-                                if (!msbfsIFEMorsel->isBFSActive) {
-                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                }
                                 uint64_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint64_t newVal = oldVal | shouldBeActive;
                                 while (!__sync_bool_compare_and_swap_8(
@@ -422,10 +386,7 @@ public:
                                 dstNodeID = nbrNodes[j];
                                 uint64_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
-                                    if (!msbfsIFEMorsel->isBFSActive) {
-                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
-                                        __ATOMIC_RELEASE);
-                                    }
+
                                     uint64_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint64_t newVal = oldVal | shouldBeActive;
                                     while (!__sync_bool_compare_and_swap_8
@@ -904,10 +865,6 @@ public:
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
                         auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        // Set BFS active as false, when a thread encounters a new neighbour
-                        // it will set this variable as true. Else it remains false indicating
-                        // next Frontier is empty.
-                        ifeMorsel->isBFSActive = false;
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane8Func, maxThreads};
                         parallelUtils->submitParallelTaskAndWait(job);
@@ -915,6 +872,7 @@ public:
                         auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                         printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
                             millis1 - millis);
+                        millis = millis1;
                         ifeMorsel->initializeNextFrontierNoLock();
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
@@ -951,10 +909,6 @@ public:
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
                     auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    // Set BFS active as false, when a thread encounters a new neighbour
-                    // it will set this variable as true. Else it remains false indicating
-                    // next Frontier is empty.
-                    ifeMorsel->isBFSActive = false;
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane8Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
@@ -1005,10 +959,6 @@ public:
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
                         auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        // Set BFS active as false, when a thread encounters a new neighbour
-                        // it will set this variable as true. Else it remains false indicating
-                        // next Frontier is empty.
-                        ifeMorsel->isBFSActive = false;
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                             sharedState, extendFrontierLane16Func, maxThreads};
                         parallelUtils->submitParallelTaskAndWait(job);
@@ -1017,6 +967,7 @@ public:
                         printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
                             millis1 - millis);
                         ifeMorsel->initializeNextFrontierNoLock();
+                        millis = millis1;
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
                     millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
@@ -1052,10 +1003,6 @@ public:
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
                     auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    // Set BFS active as false, when a thread encounters a new neighbour
-                    // it will set this variable as true. Else it remains false indicating
-                    // next Frontier is empty.
-                    ifeMorsel->isBFSActive = false;
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane16Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
@@ -1106,10 +1053,6 @@ public:
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
                         auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        // Set BFS active as false, when a thread encounters a new neighbour
-                        // it will set this variable as true. Else it remains false indicating
-                        // next Frontier is empty.
-                        ifeMorsel->isBFSActive = false;
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                             sharedState, extendFrontierLane32Func, maxThreads};
                         parallelUtils->submitParallelTaskAndWait(job);
@@ -1118,6 +1061,7 @@ public:
                         printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
                             millis1 - millis);
                         ifeMorsel->initializeNextFrontierNoLock();
+                        millis = millis1;
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
                     millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
@@ -1153,10 +1097,6 @@ public:
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
                     auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    // Set BFS active as false, when a thread encounters a new neighbour
-                    // it will set this variable as true. Else it remains false indicating
-                    // next Frontier is empty.
-                    ifeMorsel->isBFSActive = false;
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane32Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
@@ -1207,10 +1147,6 @@ public:
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
                         auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        // Set BFS active as false, when a thread encounters a new neighbour
-                        // it will set this variable as true. Else it remains false indicating
-                        // next Frontier is empty.
-                        ifeMorsel->isBFSActive = false;
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                             sharedState, extendFrontierLane64Func, maxThreads};
                         parallelUtils->submitParallelTaskAndWait(job);
@@ -1219,6 +1155,7 @@ public:
                         printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
                             millis1 - millis);
                         ifeMorsel->initializeNextFrontierNoLock();
+                        millis = millis1;
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
                     millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
@@ -1254,10 +1191,6 @@ public:
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
                     auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    // Set BFS active as false, when a thread encounters a new neighbour
-                    // it will set this variable as true. Else it remains false indicating
-                    // next Frontier is empty.
-                    ifeMorsel->isBFSActive = false;
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane64Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);

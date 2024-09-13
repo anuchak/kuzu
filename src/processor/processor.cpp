@@ -56,7 +56,6 @@ void QueryProcessor::initTask(Task* task) {
     PhysicalOperator* op = processorTask->sink;
     while (!op->isSource()) {
         if (!op->isParallel()) {
-            printf("", op->getOperatorType());
             task->setSingleThreadedTask();
         }
         op = op->getChild(0);

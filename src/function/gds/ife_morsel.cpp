@@ -36,6 +36,7 @@ void IFEMorsel::init() {
 void IFEMorsel::resetNoLock(common::offset_t srcOffset_) {
     initializedIFEMorsel = false;
     srcOffset = srcOffset_;
+    currentLevel = 0u;
     auto duration = std::chrono::system_clock::now().time_since_epoch();
     startTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 }
@@ -64,36 +65,38 @@ void IFEMorsel::initializeNextFrontierNoLock() {
     nextFrontierSize.store(0u, std::memory_order_acq_rel);
     // if true, next frontier is sparse, push elements in bfsFrontier vector
     // else, next frontier is dense, switch pointers with current frontier array & next frontier
-    if (currentFrontierSize < (uint64_t) std::ceil((maxOffset / 8))) {
-        isSparseFrontier = true;
-        bfsFrontier.clear();
-        auto simdWidth = 16u, i = 0u, pos = 0u;
-        // SSE2 vector with all elements set to 1
-        __m128i ones = _mm_set1_epi8(1);
-        for (; i + simdWidth < maxOffset + 1; i += simdWidth) {
-            __m128i vec = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&nextFrontier[i]));
-            __m128i cmp = _mm_cmpeq_epi8(vec, ones);
-            int mask = _mm_movemask_epi8(cmp);
-            while (mask != 0) {
-                int index = __builtin_ctz(mask);
-                bfsFrontier[pos++] = (i + index);
-                mask &= ~(1 << index);
+    if (currentLevel < upperBound) {
+        if (currentFrontierSize < (uint64_t)std::ceil((maxOffset / 8))) {
+            isSparseFrontier = true;
+            bfsFrontier.clear();
+            auto simdWidth = 16u, i = 0u, pos = 0u;
+            // SSE2 vector with all elements set to 1
+            __m128i ones = _mm_set1_epi8(1);
+            for (; i + simdWidth < maxOffset + 1; i += simdWidth) {
+                __m128i vec = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&nextFrontier[i]));
+                __m128i cmp = _mm_cmpeq_epi8(vec, ones);
+                int mask = _mm_movemask_epi8(cmp);
+                while (mask != 0) {
+                    int index = __builtin_ctz(mask);
+                    bfsFrontier[pos++] = (i + index);
+                    mask &= ~(1 << index);
+                }
             }
-        }
 
-        // Process any remaining elements
-        for (; i < maxOffset + 1; ++i) {
-            if (nextFrontier[i]) {
-                bfsFrontier[pos++] = i;
+            // Process any remaining elements
+            for (; i < maxOffset + 1; ++i) {
+                if (nextFrontier[i]) {
+                    bfsFrontier[pos++] = i;
+                }
             }
+        } else {
+            isSparseFrontier = false;
+            auto temp = currentFrontier;
+            currentFrontier = nextFrontier;
+            nextFrontier = temp;
         }
-    } else {
-        isSparseFrontier = false;
-        auto temp = currentFrontier;
-        currentFrontier = nextFrontier;
-        nextFrontier = temp;
+        std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
     }
-    std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
 }
 
 } // namespace function

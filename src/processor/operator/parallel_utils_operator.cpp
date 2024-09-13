@@ -18,7 +18,7 @@ void ParallelUtilsOperator::executeInternal(ExecutionContext* /*context*/) {
         auto numTuplesOutput = funcToExecute(sharedState, gdsLocalState.get());
         switch (numTuplesOutput) {
         case 0:
-            sharedState->merge(*localFTable.get());
+            sharedState->merge(*localFTable);
             return;
         case UINT64_MAX:
             continue;

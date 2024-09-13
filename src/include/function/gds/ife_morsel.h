@@ -30,7 +30,7 @@ public:
 
     virtual void init();
 
-    void resetNoLock(common::offset_t srcOffset);
+    virtual void resetNoLock(common::offset_t srcOffset);
 
     function::CallFuncMorsel getMorsel(uint64_t morselSize);
 
@@ -42,7 +42,7 @@ public:
 
     virtual bool isIFEMorselCompleteNoLock() = 0;
 
-    void initializeNextFrontierNoLock();
+    virtual void initializeNextFrontierNoLock();
 
 public:
     std::mutex mutex;

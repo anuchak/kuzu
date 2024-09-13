@@ -10,14 +10,17 @@ template<> void MSBFSIFEMorsel<uint8_t>::init() {
         return;
     }
     initializedIFEMorsel = true;
+    currentDstLane = 0;
+    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
+    isBFSActive = true;
     if (!seen) {
-        seen = new uint8_t [maxOffset + 1];
-        current = new uint8_t [maxOffset + 1];
-        next = new uint8_t [maxOffset + 1];
+        seen = new uint8_t [maxOffset + 1]{0};
+        current = new uint8_t [maxOffset + 1]{0};
+        next = new uint8_t [maxOffset + 1]{0};
         // lane width 8, 1 byte path length value
-        pathLength = new uint8_t [8 * (maxOffset + 1)];
+        pathLength = new uint8_t [8 * (maxOffset + 1)]{0};
     } else {
         memset(seen, 0u, maxOffset + 1);
         memset(current, 0u, maxOffset + 1);
@@ -31,7 +34,6 @@ template<> void MSBFSIFEMorsel<uint8_t>::init() {
         seenVal = seenVal << 1;
     }
     nextDstScanStartIdx.store(0u, std::memory_order_relaxed);
-    numVisitedDstNodes.store(1, std::memory_order_relaxed);
 }
 
 template<> void MSBFSIFEMorsel<uint16_t>::init() {
@@ -40,18 +42,21 @@ template<> void MSBFSIFEMorsel<uint16_t>::init() {
         return;
     }
     initializedIFEMorsel = true;
+    currentDstLane = 0;
+    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
+    isBFSActive = true;
     if (!seen) {
-        seen = new uint16_t [maxOffset + 1];
-        current = new uint16_t [maxOffset + 1];
-        next = new uint16_t [maxOffset + 1];
+        seen = new uint16_t [maxOffset + 1]{0};
+        current = new uint16_t [maxOffset + 1]{0};
+        next = new uint16_t [maxOffset + 1]{0};
         // lane width 16, 1 byte path length value
-        pathLength = new uint8_t [16 * (maxOffset + 1)];
+        pathLength = new uint8_t [16 * (maxOffset + 1)]{0};
     } else {
-        memset(seen, 0u, maxOffset + 1);
-        memset(current, 0u, maxOffset + 1);
-        memset(next, 0u, maxOffset + 1);
+        memset(seen, 0u, 2 * (maxOffset + 1));
+        memset(current, 0u, 2 * (maxOffset + 1));
+        memset(next, 0u, 2 * (maxOffset + 1));
         memset(pathLength, 0u, 16 * (maxOffset + 1));
     }
     auto seenVal = 0x1;
@@ -61,7 +66,6 @@ template<> void MSBFSIFEMorsel<uint16_t>::init() {
         seenVal = seenVal << 1;
     }
     nextDstScanStartIdx.store(0u, std::memory_order_relaxed);
-    numVisitedDstNodes.store(1, std::memory_order_relaxed);
 }
 
 template<> void MSBFSIFEMorsel<uint32_t>::init() {
@@ -70,18 +74,21 @@ template<> void MSBFSIFEMorsel<uint32_t>::init() {
         return;
     }
     initializedIFEMorsel = true;
+    currentDstLane = 0;
+    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
+    isBFSActive = true;
     if (!seen) {
-        seen = new uint32_t [maxOffset + 1];
-        current = new uint32_t [maxOffset + 1];
-        next = new uint32_t [maxOffset + 1];
+        seen = new uint32_t [maxOffset + 1]{0};
+        current = new uint32_t [maxOffset + 1]{0};
+        next = new uint32_t [maxOffset + 1]{0};
         // lane width 32, 1 byte path length value
-        pathLength = new uint8_t [32 * (maxOffset + 1)];
+        pathLength = new uint8_t [32 * (maxOffset + 1)]{0};
     } else {
-        memset(seen, 0u, maxOffset + 1);
-        memset(current, 0u, maxOffset + 1);
-        memset(next, 0u, maxOffset + 1);
+        memset(seen, 0u, 4 * (maxOffset + 1));
+        memset(current, 0u, 4 * (maxOffset + 1));
+        memset(next, 0u, 4 * (maxOffset + 1));
         memset(pathLength, 0u, 32 * (maxOffset + 1));
     }
     auto seenVal = 0x1;
@@ -91,7 +98,6 @@ template<> void MSBFSIFEMorsel<uint32_t>::init() {
         seenVal = seenVal << 1;
     }
     nextDstScanStartIdx.store(0u, std::memory_order_relaxed);
-    numVisitedDstNodes.store(1, std::memory_order_relaxed);
 }
 
 template<> void MSBFSIFEMorsel<uint64_t>::init() {
@@ -100,19 +106,22 @@ template<> void MSBFSIFEMorsel<uint64_t>::init() {
         return;
     }
     initializedIFEMorsel = true;
+    currentDstLane = 0;
+    maskValue = 0xFF;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
+    isBFSActive = true;
     if (!seen) {
-        seen = new uint64_t [maxOffset + 1];
-        current = new uint64_t [maxOffset + 1];
-        next = new uint64_t [maxOffset + 1];
-        // lane width 32, 1 byte path length value
-        pathLength = new uint8_t [32 * (maxOffset + 1)];
+        seen = new uint64_t [maxOffset + 1]{0};
+        current = new uint64_t [maxOffset + 1]{0};
+        next = new uint64_t [maxOffset + 1]{0};
+        // lane width 64, 1 byte path length value
+        pathLength = new uint8_t [64 * (maxOffset + 1)]{0};
     } else {
-        memset(seen, 0u, maxOffset + 1);
-        memset(current, 0u, maxOffset + 1);
-        memset(next, 0u, maxOffset + 1);
-        memset(pathLength, 0u, 32 * (maxOffset + 1));
+        memset(seen, 0u, 8 * (maxOffset + 1));
+        memset(current, 0u, 8 * (maxOffset + 1));
+        memset(next, 0u, 8 * (maxOffset + 1));
+        memset(pathLength, 0u, 64 * (maxOffset + 1));
     }
     auto seenVal = 0x1;
     for (auto srcOffset : srcOffsets) {
@@ -121,25 +130,70 @@ template<> void MSBFSIFEMorsel<uint64_t>::init() {
         seenVal = seenVal << 1;
     }
     nextDstScanStartIdx.store(0u, std::memory_order_relaxed);
-    numVisitedDstNodes.store(1, std::memory_order_relaxed);
 }
 
-bool MSBFSIFEMorsel::isBFSCompleteNoLock() {
-    if (currentLevel == upperBound) {
-        return true;
+template<> void MSBFSIFEMorsel<uint8_t>::initializeNextFrontierNoLock() {
+    currentLevel++;
+    if (currentLevel < upperBound) {
+        nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        for (auto offset = 0u; offset <= maxOffset; offset++) {
+            seen[offset] |= next[offset];
+        }
+        auto temp = current;
+        current = next;
+        next = temp;
+        memset(next, 0u, maxOffset + 1);
+    } else {
+        isBFSActive = false;
     }
-    if (currentFrontierSize == 0u) {
-        return true;
-    }
-    if (numVisitedDstNodes.load(std::memory_order_acq_rel) == numDstNodesToVisit) {
-        return true;
-    }
-    return false;
 }
 
-void MSBFSIFEMorsel::mergeResults(uint64_t numDstVisitedLocal, uint64_t numNonDstVisitedLocal) {
-    numVisitedDstNodes.fetch_add(numDstVisitedLocal);
-    nextFrontierSize.fetch_add(numDstVisitedLocal + numNonDstVisitedLocal);
+template<> void MSBFSIFEMorsel<uint16_t>::initializeNextFrontierNoLock() {
+    currentLevel++;
+    if (currentLevel < upperBound) {
+        nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        for (auto offset = 0u; offset <= maxOffset; offset++) {
+            seen[offset] |= next[offset];
+        }
+        auto temp = current;
+        current = next;
+        next = temp;
+        memset(next, 0u, 2 * (maxOffset + 1));
+    } else {
+        isBFSActive = false;
+    }
+}
+
+template<> void MSBFSIFEMorsel<uint32_t>::initializeNextFrontierNoLock() {
+    currentLevel++;
+    if (currentLevel < upperBound) {
+        nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        for (auto offset = 0u; offset <= maxOffset; offset++) {
+            seen[offset] |= next[offset];
+        }
+        auto temp = current;
+        current = next;
+        next = temp;
+        memset(next, 0u, 4 * (maxOffset + 1));
+    }  else {
+        isBFSActive = false;
+    }
+}
+
+template<> void MSBFSIFEMorsel<uint64_t>::initializeNextFrontierNoLock() {
+    currentLevel++;
+    if (currentLevel < upperBound) {
+        nextScanStartIdx.store(0LU, std::memory_order_acq_rel);
+        for (auto offset = 0u; offset <= maxOffset; offset++) {
+            seen[offset] |= next[offset];
+        }
+        auto temp = current;
+        current = next;
+        next = temp;
+        memset(next, 0u, 8 * (maxOffset + 1));
+    } else {
+        isBFSActive = false;
+    }
 }
 
 }

@@ -51,7 +51,18 @@ public:
         return columns;
     }
 
+    void initLocalState(main::ClientContext* context) override {
+        localState = std::make_unique<ParallelShortestPathLocalState>();
+        localState->init(context);
+    }
 
+    void exec(processor::ExecutionContext *executionContext) override {
+
+    }
+
+    std::unique_ptr<GDSAlgorithm> copy() const override {
+        return std::make_unique<ParallelSPPaths>(*this);
+    }
 };
 
 function_set ParallelSPPathsFunction::getFunctionSet() {

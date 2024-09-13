@@ -1,5 +1,7 @@
 #pragma once
 
+#include <immintrin.h>
+
 #include "ife_morsel.h"
 
 namespace kuzu {
@@ -8,18 +10,31 @@ namespace function {
 template<typename T>
 struct MSBFSIFEMorsel : public IFEMorsel {
 public:
-    MSBFSIFEMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_,
-        std::vector<common::offset_t> srcOffsets)
-        : IFEMorsel(upperBound_, lowerBound_, maxNodeOffset_, srcOffsets[0]),
-          numVisitedDstNodes{0u}, numDstNodesToVisit{maxNodeOffset_ + 1},
-          nextDstScanStartIdx{0u}, srcOffsets{std::move(srcOffsets)} {}
+    MSBFSIFEMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
+        : IFEMorsel(upperBound_, lowerBound_, maxNodeOffset_, common::INVALID_OFFSET
+              /* passing this as a placeholder, no use of the srcOffset variable in IFEMorsel */),
+          isBFSActive{true}, nextDstScanStartIdx{0u}, srcOffsets{std::vector<common::offset_t>()},
+          seen{nullptr}, current{nullptr}, next{nullptr}, pathLength{nullptr} {}
+
+    ~MSBFSIFEMorsel() {
+        if (seen) {
+            delete[] seen;
+            delete[] current;
+            delete[] next;
+            delete[] pathLength;
+        }
+    }
+
+    void resetNoLock(common::offset_t srcOffset_) override {
+        IFEMorsel::resetNoLock(srcOffset_);
+        isBFSActive = true;
+    }
 
     void init() override;
 
     uint64_t getWork() override {
         if (isBFSCompleteNoLock()) {
-            return maxOffset -
-                   nextDstScanStartIdx.load(std::memory_order_acquire);
+            return maxOffset - nextDstScanStartIdx.load(std::memory_order_acquire);
         }
         return maxOffset - nextScanStartIdx.load(std::memory_order_acquire);
     }
@@ -33,27 +48,40 @@ public:
         return {morselStartIdx, morselEndIdx};
     }
 
-    bool isBFSCompleteNoLock() override;
+    bool isBFSCompleteNoLock() override {
+        if (currentLevel == upperBound) {
+            return true;
+        }
+        if (!isBFSActive) {
+            return true;
+        }
+        return false;
+    }
 
     bool isIFEMorselCompleteNoLock() override {
         return isBFSCompleteNoLock() &&
                (nextDstScanStartIdx.load(std::memory_order_acq_rel) >= maxOffset);
     }
 
-    void mergeResults(uint64_t numDstVisitedLocal, uint64_t numNonDstVisitedLocal);
+    void mergeResults(uint64_t numDstVisitedLocal, uint64_t numNonDstVisitedLocal) {}
+
+    void initializeNextFrontierNoLock() override;
 
 public:
     std::vector<common::offset_t> srcOffsets;
     // Visited state
-    std::atomic<uint64_t> numVisitedDstNodes;
-    uint64_t numDstNodesToVisit;
-    T *seen;
+    bool isBFSActive;
+    T* seen;
 
-    T *current;
-    T *next;
-    uint8_t *pathLength;
+    T* current;
+    T* next;
+    uint8_t* pathLength;
+    // Destination writing information
+    uint8_t currentDstLane;
+    uint maskValue;
+
     std::atomic<uint64_t> nextDstScanStartIdx;
 };
 
-}
-}
+} // namespace function
+} // namespace kuzu

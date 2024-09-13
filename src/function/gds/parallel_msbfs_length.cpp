@@ -11,7 +11,6 @@
 #include "function/gds_function.h"
 #include "graph/in_mem_graph.h"
 #include "processor/processor_task.h"
-#include <immintrin.h>
 
 using namespace kuzu::binder;
 using namespace kuzu::common;
@@ -103,7 +102,8 @@ public:
                             uint8_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
                                 if (!msbfsIFEMorsel->isBFSActive) {
-                                    msbfsIFEMorsel->isBFSActive = true;
+                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                 }
                                 uint8_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint8_t newVal = oldVal | shouldBeActive;
@@ -141,7 +141,8 @@ public:
                                 uint8_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
                                     if (!msbfsIFEMorsel->isBFSActive) {
-                                        msbfsIFEMorsel->isBFSActive = true;
+                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                     }
                                     uint8_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint8_t newVal = oldVal | shouldBeActive;
@@ -195,7 +196,8 @@ public:
                             uint16_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
                                 if (!msbfsIFEMorsel->isBFSActive) {
-                                    msbfsIFEMorsel->isBFSActive = true;
+                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                 }
                                 uint16_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint16_t newVal = oldVal | shouldBeActive;
@@ -233,7 +235,8 @@ public:
                                 uint16_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
                                     if (!msbfsIFEMorsel->isBFSActive) {
-                                        msbfsIFEMorsel->isBFSActive = true;
+                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                     }
                                     uint16_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint16_t newVal = oldVal | shouldBeActive;
@@ -287,7 +290,8 @@ public:
                             uint32_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
                                 if (!msbfsIFEMorsel->isBFSActive) {
-                                    msbfsIFEMorsel->isBFSActive = true;
+                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                 }
                                 uint32_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint32_t newVal = oldVal | shouldBeActive;
@@ -325,7 +329,8 @@ public:
                                 uint32_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
                                     if (!msbfsIFEMorsel->isBFSActive) {
-                                        msbfsIFEMorsel->isBFSActive = true;
+                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                     }
                                     uint32_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint32_t newVal = oldVal | shouldBeActive;
@@ -379,7 +384,8 @@ public:
                             uint64_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                             if (shouldBeActive) {
                                 if (!msbfsIFEMorsel->isBFSActive) {
-                                    msbfsIFEMorsel->isBFSActive = true;
+                                    __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                 }
                                 uint64_t oldVal = msbfsIFEMorsel->next[nbrOffset];
                                 uint64_t newVal = oldVal | shouldBeActive;
@@ -417,7 +423,8 @@ public:
                                 uint64_t shouldBeActive = msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[dstNodeID.offset];
                                 if (shouldBeActive) {
                                     if (!msbfsIFEMorsel->isBFSActive) {
-                                        msbfsIFEMorsel->isBFSActive = true;
+                                        __atomic_store_n(&msbfsIFEMorsel->isBFSActive, true,
+                                        __ATOMIC_RELEASE);
                                     }
                                     uint64_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
                                     uint64_t newVal = oldVal | shouldBeActive;

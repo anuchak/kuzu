@@ -28,7 +28,7 @@ struct ParallelShortestPathBindData final : public GDSBindData {
 
 class ParallelShortestPathLocalState : public GDSLocalState {
 public:
-    explicit ParallelShortestPathLocalState() = default;
+    ParallelShortestPathLocalState() : GDSLocalState(), ifeMorsel{nullptr} {}
 
     void init(main::ClientContext* clientContext) override {
         auto mm = clientContext->getMemoryManager();

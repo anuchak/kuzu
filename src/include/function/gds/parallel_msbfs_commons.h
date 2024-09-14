@@ -29,7 +29,7 @@ struct ParallelMSBFSPathBindData final : public GDSBindData {
 
 struct ParallelMSBFSLocalState : public GDSLocalState {
 public:
-    explicit ParallelMSBFSLocalState() : ifeMorsel{nullptr}, currentDstLane{UINT8_MAX},
+    ParallelMSBFSLocalState() : GDSLocalState(), ifeMorsel{nullptr}, currentDstLane{UINT8_MAX},
           dstScanMorsel{CallFuncMorsel::createInvalidMorsel()} {}
 
     void init(main::ClientContext* clientContext) override {

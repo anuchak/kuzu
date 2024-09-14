@@ -49,6 +49,8 @@ struct GDSBindData {
 
 class GDSLocalState {
 public:
+    GDSLocalState() : outputVectors{std::vector<common::ValueVector*>()} {}
+
     virtual ~GDSLocalState() = default;
 
     template<class TARGET>

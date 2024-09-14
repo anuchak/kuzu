@@ -12,8 +12,7 @@ public:
         : IFEMorsel(upperBound_, lowerBound_, maxNodeOffset_, common::INVALID_OFFSET
               /* passing this as a placeholder, no use of the srcOffset variable in IFEMorsel */),
           srcOffsets{std::vector<common::offset_t>()}, isBFSActive{true}, seen{nullptr},
-          current{nullptr}, next{nullptr}, pathLength{nullptr}, currentDstLane{0u},
-          nextDstScanStartIdx{0u} {}
+          current{nullptr}, next{nullptr}, pathLength{nullptr}, nextDstScanStartIdx{0u} {}
 
     ~MSBFSIFEMorsel() {
         if (seen) {
@@ -75,8 +74,6 @@ public:
     T* current;
     T* next;
     uint8_t* pathLength;
-    // Destination writing information
-    uint8_t currentDstLane;
 
     std::atomic<uint64_t> nextDstScanStartIdx;
 };

@@ -9,7 +9,6 @@ template<> void MSBFSIFEMorsel<uint8_t>::init() {
     if (initializedIFEMorsel) {
         return;
     }
-    currentDstLane = 0;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;
@@ -42,7 +41,6 @@ template<> void MSBFSIFEMorsel<uint16_t>::init() {
         return;
     }
     initializedIFEMorsel = true;
-    currentDstLane = 0;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;
@@ -74,7 +72,6 @@ template<> void MSBFSIFEMorsel<uint32_t>::init() {
         return;
     }
     initializedIFEMorsel = true;
-    currentDstLane = 0;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;
@@ -106,7 +103,6 @@ template<> void MSBFSIFEMorsel<uint64_t>::init() {
         return;
     }
     initializedIFEMorsel = true;
-    currentDstLane = 0;
     currentLevel = 0u;
     nextScanStartIdx.store(0u, std::memory_order_relaxed);
     isBFSActive = true;

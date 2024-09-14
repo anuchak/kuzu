@@ -123,7 +123,7 @@ template<> void MSBFSIFEMorsel<uint64_t>::init() {
         memset(next, 0u, 8 * (maxOffset + 1));
         memset(pathLength, 0u, 64 * (maxOffset + 1));
     }
-    auto seenVal = 0x1;
+    uint64_t seenVal = 1llu;
     for (auto srcOffset : srcOffsets) {
         seen[srcOffset] = seenVal;
         current[srcOffset] = seenVal;

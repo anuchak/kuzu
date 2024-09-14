@@ -61,11 +61,6 @@ public:
         bindData = std::make_unique<ParallelShortestPathBindData>(inputNode, upperBound, bfsPolicy);
     }
 
-    void initLocalState(main::ClientContext* context) override {
-        localState = std::make_unique<ParallelShortestPathLocalState>();
-        localState->init(context);
-    }
-
     void executenT1SPolicy(processor::ExecutionContext *executionContext) {
 
     }

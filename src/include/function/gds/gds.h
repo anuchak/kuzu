@@ -97,22 +97,16 @@ public:
 
     virtual void exec(processor::ExecutionContext* executionContext) = 0;
 
-    inline GDSLocalState* getGDSLocalState() { return localState.get(); }
-
     // TODO: We should get rid of this copy interface (e.g. using stateless design) or at least make
     // sure the fields that cannot be copied, such as graph or factorized table and localState, are
     // wrapped in a different class.
     virtual std::unique_ptr<GDSAlgorithm> copy() const = 0;
 
 protected:
-    virtual void initLocalState(main::ClientContext* context) = 0;
-
-protected:
     std::unique_ptr<GDSBindData> bindData;
     std::shared_ptr<ParallelUtils> parallelUtils;
     processor::FactorizedTable* table;
     processor::GDSCallSharedState* sharedState;
-    std::unique_ptr<GDSLocalState> localState;
 };
 
 } // namespace function

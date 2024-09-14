@@ -13,7 +13,6 @@ namespace function {
 
 void GDSAlgorithm::init(GDSCallSharedState* sharedState_, ClientContext* context) {
     sharedState = sharedState_;
-    initLocalState(context);
 }
 
 } // namespace function

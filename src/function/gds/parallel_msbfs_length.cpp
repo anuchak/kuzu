@@ -5,7 +5,7 @@
 #include "common/types/types.h"
 #include "function/gds/gds_function_collection.h"
 #include "function/gds/ife_morsel.h"
-#include "function/gds/parallel_shortest_path_commons.h"
+#include "function/gds/parallel_msbfs_commons.h"
 #include "function/gds/parallel_utils.h"
 #include "function/gds/msbfs_ife_morsel.h"
 #include "function/gds_function.h"
@@ -70,15 +70,10 @@ public:
             laneWidth);
     }
 
-    void initLocalState(main::ClientContext* context) override {
-        localState = std::make_unique<ParallelShortestPathLocalState>();
-        localState->init(context);
-    }
-
     static uint64_t extendFrontierLane8Func(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint8_t>*>(shortestPathLocalState->ifeMorsel);
         msbfsIFEMorsel->init();
@@ -162,7 +157,7 @@ public:
     static uint64_t extendFrontierLane16Func(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint16_t>*>(shortestPathLocalState->ifeMorsel);
         msbfsIFEMorsel->init();
@@ -246,7 +241,7 @@ public:
     static uint64_t extendFrontierLane32Func(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint32_t>*>(shortestPathLocalState->ifeMorsel);
         msbfsIFEMorsel->init();
@@ -330,7 +325,7 @@ public:
     static uint64_t extendFrontierLane64Func(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint64_t>*>(shortestPathLocalState->ifeMorsel);
         msbfsIFEMorsel->init();
@@ -414,7 +409,7 @@ public:
     static uint64_t extendFrontierLane8SingleFunc(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint8_t>*>(shortestPathLocalState->ifeMorsel);
         if (!msbfsIFEMorsel->initializedIFEMorsel) {
@@ -482,7 +477,7 @@ public:
     static uint64_t extendFrontierLane16SingleFunc(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint16_t>*>(shortestPathLocalState->ifeMorsel);
         if (!msbfsIFEMorsel->initializedIFEMorsel) {
@@ -551,7 +546,7 @@ public:
     static uint64_t extendFrontierLane32SingleFunc(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint32_t>*>(shortestPathLocalState->ifeMorsel);
         if (!msbfsIFEMorsel->initializedIFEMorsel) {
@@ -620,7 +615,7 @@ public:
     static uint64_t extendFrontierLane64SingleFunc(GDSCallSharedState *sharedState, GDSLocalState *localState) {
         auto& graph = sharedState->graph;
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel *,
             MSBFSIFEMorsel<uint64_t>*>(shortestPathLocalState->ifeMorsel);
         if (!msbfsIFEMorsel->initializedIFEMorsel) {
@@ -689,22 +684,26 @@ public:
     static uint64_t shortestPathOutputLane8Func(GDSCallSharedState *sharedState,
         GDSLocalState* localState) {
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto ifeMorsel = (MSBFSIFEMorsel<uint8_t>*)shortestPathLocalState->ifeMorsel;
-        auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
-        if (!morsel.hasMoreToOutput()) {
-            return 0;
+        auto& currentDstLane = shortestPathLocalState->currentDstLane;
+        auto& morsel = shortestPathLocalState->dstScanMorsel;
+        if (currentDstLane & 0x8) {
+            currentDstLane = 0u;
+            morsel = ifeMorsel->getDstWriteMorsel(common::DEFAULT_VECTOR_CAPACITY);
+            if (!morsel.hasMoreToOutput()) {
+                return 0u;
+            }
         }
         auto tableID = sharedState->graph->getNodeTableID();
         auto& srcNodeVector = shortestPathLocalState->srcNodeIDVector;
         auto& dstOffsetVector = shortestPathLocalState->dstNodeIDVector;
         auto& pathLengthVector = shortestPathLocalState->lengthVector;
-        srcNodeVector->setValue<nodeID_t>(0, common::nodeID_t{
-                                                 ifeMorsel->srcOffsets[ifeMorsel->currentDstLane],
-                                                 tableID});
+        srcNodeVector->setValue<nodeID_t>(0,
+            common::nodeID_t{ifeMorsel->srcOffsets[currentDstLane], tableID});
         auto pos = 0;
         for (auto offset = morsel.startOffset; offset < morsel.endOffset; offset++) {
-            auto exactPathLengthPos = offset * 8 + (7 - ifeMorsel->currentDstLane);
+            auto exactPathLengthPos = offset * 8 + (7 - currentDstLane);
             uint64_t pathLength = ifeMorsel->pathLength[exactPathLengthPos];
             if (pathLength >= ifeMorsel->lowerBound) {
                 dstOffsetVector->setValue<nodeID_t>(pos, nodeID_t{offset, tableID});
@@ -712,6 +711,7 @@ public:
                 pos++;
             }
         }
+        currentDstLane++;
         if (pos == 0) {
             return UINT64_MAX;
         }
@@ -722,22 +722,27 @@ public:
     static uint64_t shortestPathOutputLane16Func(GDSCallSharedState *sharedState,
         GDSLocalState* localState) {
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto ifeMorsel = (MSBFSIFEMorsel<uint16_t>*)shortestPathLocalState->ifeMorsel;
-        auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
-        if (!morsel.hasMoreToOutput()) {
-            return 0;
+        auto& currentDstLane = shortestPathLocalState->currentDstLane;
+        auto& morsel = shortestPathLocalState->dstScanMorsel;
+        if (currentDstLane & 0x10) {
+            currentDstLane = 0u;
+            morsel = ifeMorsel->getDstWriteMorsel(common::DEFAULT_VECTOR_CAPACITY);
+            if (!morsel.hasMoreToOutput()) {
+                return 0u;
+            }
         }
         auto tableID = sharedState->graph->getNodeTableID();
         auto& srcNodeVector = shortestPathLocalState->srcNodeIDVector;
         auto& dstOffsetVector = shortestPathLocalState->dstNodeIDVector;
         auto& pathLengthVector = shortestPathLocalState->lengthVector;
         srcNodeVector->setValue<nodeID_t>(0, common::nodeID_t{
-                                                 ifeMorsel->srcOffsets[ifeMorsel->currentDstLane],
+                                                 ifeMorsel->srcOffsets[currentDstLane],
                                                  tableID});
         auto pos = 0;
         for (auto offset = morsel.startOffset; offset < morsel.endOffset; offset++) {
-            auto exactPathLengthPos = offset * 16 + (15 - ifeMorsel->currentDstLane);
+            auto exactPathLengthPos = offset * 16 + (15 - currentDstLane);
             uint64_t pathLength = ifeMorsel->pathLength[exactPathLengthPos];
             if (pathLength >= ifeMorsel->lowerBound) {
                 dstOffsetVector->setValue<nodeID_t>(pos, nodeID_t{offset, tableID});
@@ -745,6 +750,7 @@ public:
                 pos++;
             }
         }
+        currentDstLane++;
         if (pos == 0) {
             return UINT64_MAX;
         }
@@ -755,22 +761,27 @@ public:
     static uint64_t shortestPathOutputLane32Func(GDSCallSharedState *sharedState,
         GDSLocalState* localState) {
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto ifeMorsel = (MSBFSIFEMorsel<uint32_t>*)shortestPathLocalState->ifeMorsel;
-        auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
-        if (!morsel.hasMoreToOutput()) {
-            return 0;
+        auto& currentDstLane = shortestPathLocalState->currentDstLane;
+        auto& morsel = shortestPathLocalState->dstScanMorsel;
+        if (currentDstLane & 0x20) {
+            currentDstLane = 0u;
+            morsel = ifeMorsel->getDstWriteMorsel(common::DEFAULT_VECTOR_CAPACITY);
+            if (!morsel.hasMoreToOutput()) {
+                return 0u;
+            }
         }
         auto tableID = sharedState->graph->getNodeTableID();
         auto& srcNodeVector = shortestPathLocalState->srcNodeIDVector;
         auto& dstOffsetVector = shortestPathLocalState->dstNodeIDVector;
         auto& pathLengthVector = shortestPathLocalState->lengthVector;
         srcNodeVector->setValue<nodeID_t>(0, common::nodeID_t{
-                                                 ifeMorsel->srcOffsets[ifeMorsel->currentDstLane],
+                                                 ifeMorsel->srcOffsets[currentDstLane],
                                                  tableID});
         auto pos = 0;
         for (auto offset = morsel.startOffset; offset < morsel.endOffset; offset++) {
-            auto exactPathLengthPos = offset * 32 + (31 - ifeMorsel->currentDstLane);
+            auto exactPathLengthPos = offset * 32 + (31 - currentDstLane);
             uint64_t pathLength = ifeMorsel->pathLength[exactPathLengthPos];
             if (pathLength >= ifeMorsel->lowerBound) {
                 dstOffsetVector->setValue<nodeID_t>(pos, nodeID_t{offset, tableID});
@@ -778,6 +789,7 @@ public:
                 pos++;
             }
         }
+        currentDstLane++;
         if (pos == 0) {
             return UINT64_MAX;
         }
@@ -788,22 +800,27 @@ public:
     static uint64_t shortestPathOutputLane64Func(GDSCallSharedState *sharedState,
         GDSLocalState* localState) {
         auto shortestPathLocalState =
-            common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
+            common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
         auto ifeMorsel = (MSBFSIFEMorsel<uint64_t>*)shortestPathLocalState->ifeMorsel;
-        auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
-        if (!morsel.hasMoreToOutput()) {
-            return 0;
+        auto& currentDstLane = shortestPathLocalState->currentDstLane;
+        auto& morsel = shortestPathLocalState->dstScanMorsel;
+        if (currentDstLane & 0x40) {
+            currentDstLane = 0u;
+            morsel = ifeMorsel->getDstWriteMorsel(common::DEFAULT_VECTOR_CAPACITY);
+            if (!morsel.hasMoreToOutput()) {
+                return 0u;
+            }
         }
         auto tableID = sharedState->graph->getNodeTableID();
         auto& srcNodeVector = shortestPathLocalState->srcNodeIDVector;
         auto& dstOffsetVector = shortestPathLocalState->dstNodeIDVector;
         auto& pathLengthVector = shortestPathLocalState->lengthVector;
         srcNodeVector->setValue<nodeID_t>(0, common::nodeID_t{
-                                                 ifeMorsel->srcOffsets[ifeMorsel->currentDstLane],
+                                                 ifeMorsel->srcOffsets[currentDstLane],
                                                  tableID});
         auto pos = 0;
         for (auto offset = morsel.startOffset; offset < morsel.endOffset; offset++) {
-            auto exactPathLengthPos = offset * 64 + (63 - ifeMorsel->currentDstLane);
+            auto exactPathLengthPos = offset * 64 + (63 - currentDstLane);
             uint64_t pathLength = ifeMorsel->pathLength[exactPathLengthPos];
             if (pathLength >= ifeMorsel->lowerBound) {
                 dstOffsetVector->setValue<nodeID_t>(pos, nodeID_t{offset, tableID});
@@ -811,6 +828,7 @@ public:
                 pos++;
             }
         }
+        currentDstLane++;
         if (pos == 0) {
             return UINT64_MAX;
         }
@@ -862,7 +880,7 @@ public:
                     // just pass a placeholder offset, it is not used for ms bfs ife morsel
                     ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                        auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane8Func, maxThreads};
@@ -876,15 +894,11 @@ public:
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
                     millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                    for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                        ifeMorsel->currentDstLane = i;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                            shortestPathOutputLane8Func, maxThreads};
-                        parallelUtils->submitParallelTaskAndWait(job);
-                        ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                    }
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                    gdsLocalState->ifeMorsel = ifeMorsel.get();
+                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                        shortestPathOutputLane8Func, maxThreads};
+                    parallelUtils->submitParallelTaskAndWait(job);
                     auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -906,7 +920,7 @@ public:
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane8Func, maxThreads};
@@ -920,15 +934,11 @@ public:
                 }
                 duration = std::chrono::system_clock::now().time_since_epoch();
                 millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                    ifeMorsel->currentDstLane = i;
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                        shortestPathOutputLane8Func, maxThreads};
-                    parallelUtils->submitParallelTaskAndWait(job);
-                    ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                }
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                gdsLocalState->ifeMorsel = ifeMorsel.get();
+                auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                    shortestPathOutputLane8Func, maxThreads};
+                parallelUtils->submitParallelTaskAndWait(job);
                 auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -956,7 +966,7 @@ public:
                     // just pass a placeholder offset, it is not used for ms bfs ife morsel
                     ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                        auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                             sharedState, extendFrontierLane16Func, maxThreads};
@@ -970,15 +980,11 @@ public:
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
                     millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                    for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                        ifeMorsel->currentDstLane = i;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                            shortestPathOutputLane16Func, maxThreads};
-                        parallelUtils->submitParallelTaskAndWait(job);
-                        ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                    }
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                    gdsLocalState->ifeMorsel = ifeMorsel.get();
+                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                        shortestPathOutputLane16Func, maxThreads};
+                    parallelUtils->submitParallelTaskAndWait(job);
                     auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -1000,7 +1006,7 @@ public:
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane16Func, maxThreads};
@@ -1014,15 +1020,11 @@ public:
                 }
                 duration = std::chrono::system_clock::now().time_since_epoch();
                 millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                    ifeMorsel->currentDstLane = i;
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                        shortestPathOutputLane16Func, maxThreads};
-                    parallelUtils->submitParallelTaskAndWait(job);
-                    ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                }
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                gdsLocalState->ifeMorsel = ifeMorsel.get();
+                auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                    shortestPathOutputLane16Func, maxThreads};
+                parallelUtils->submitParallelTaskAndWait(job);
                 auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -1050,7 +1052,7 @@ public:
                     // just pass a placeholder offset, it is not used for ms bfs ife morsel
                     ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                        auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                             sharedState, extendFrontierLane32Func, maxThreads};
@@ -1064,15 +1066,11 @@ public:
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
                     millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                    for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                        ifeMorsel->currentDstLane = i;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                            shortestPathOutputLane32Func, maxThreads};
-                        parallelUtils->submitParallelTaskAndWait(job);
-                        ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                    }
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                    gdsLocalState->ifeMorsel = ifeMorsel.get();
+                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                        shortestPathOutputLane32Func, maxThreads};
+                    parallelUtils->submitParallelTaskAndWait(job);
                     auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -1094,7 +1092,7 @@ public:
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane32Func, maxThreads};
@@ -1108,15 +1106,11 @@ public:
                 }
                 duration = std::chrono::system_clock::now().time_since_epoch();
                 millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                    ifeMorsel->currentDstLane = i;
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                        shortestPathOutputLane32Func, maxThreads};
-                    parallelUtils->submitParallelTaskAndWait(job);
-                    ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                }
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                gdsLocalState->ifeMorsel = ifeMorsel.get();
+                auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                    shortestPathOutputLane32Func, maxThreads};
+                parallelUtils->submitParallelTaskAndWait(job);
                 auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -1144,7 +1138,7 @@ public:
                     // just pass a placeholder offset, it is not used for ms bfs ife morsel
                     ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                     while (!ifeMorsel->isBFSCompleteNoLock()) {
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                        auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                         gdsLocalState->ifeMorsel = ifeMorsel.get();
                         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                             sharedState, extendFrontierLane64Func, maxThreads};
@@ -1158,15 +1152,11 @@ public:
                     }
                     duration = std::chrono::system_clock::now().time_since_epoch();
                     millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                    for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                        ifeMorsel->currentDstLane = i;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorsel.get();
-                        auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                            shortestPathOutputLane64Func, maxThreads};
-                        parallelUtils->submitParallelTaskAndWait(job);
-                        ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                    }
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                    gdsLocalState->ifeMorsel = ifeMorsel.get();
+                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                        shortestPathOutputLane64Func, maxThreads};
+                    parallelUtils->submitParallelTaskAndWait(job);
                     auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -1188,7 +1178,7 @@ public:
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorsel.get();
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane64Func, maxThreads};
@@ -1202,15 +1192,11 @@ public:
                 }
                 duration = std::chrono::system_clock::now().time_since_epoch();
                 millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-                for (auto i = 0u; i < ifeMorsel->srcOffsets.size(); i++) {
-                    ifeMorsel->currentDstLane = i;
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorsel.get();
-                    auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                        shortestPathOutputLane64Func, maxThreads};
-                    parallelUtils->submitParallelTaskAndWait(job);
-                    ifeMorsel->nextDstScanStartIdx.store(0u, std::memory_order_release);
-                }
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
+                gdsLocalState->ifeMorsel = ifeMorsel.get();
+                auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
+                    shortestPathOutputLane64Func, maxThreads};
+                parallelUtils->submitParallelTaskAndWait(job);
                 auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);

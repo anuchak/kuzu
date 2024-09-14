@@ -11,24 +11,26 @@ namespace function {
 typedef std::vector<std::pair<std::unique_ptr<IFEMorsel>, std::shared_ptr<ScheduledTask>>>
     scheduledTaskMap;
 
-struct ParallelShortestPathBindData final : public GDSBindData {
+struct ParallelMSBFSPathBindData final : public GDSBindData {
     uint8_t upperBound;
     std::string bfsPolicy;
+    int laneWidth;
 
-    ParallelShortestPathBindData(std::shared_ptr<Expression> nodeInput, uint8_t upperBound,
-        std::string bfsPolicy)
+    ParallelMSBFSPathBindData(std::shared_ptr<Expression> nodeInput, uint8_t upperBound,
+        std::string bfsPolicy, int laneWidth)
         : GDSBindData{std::move(nodeInput)}, upperBound{upperBound},
-          bfsPolicy{std::move(bfsPolicy)} {}
-    ParallelShortestPathBindData(const ParallelShortestPathBindData& other) = default;
+          bfsPolicy{std::move(bfsPolicy)}, laneWidth{laneWidth} {}
+    ParallelMSBFSPathBindData(const ParallelMSBFSPathBindData& other) = default;
 
     std::unique_ptr<GDSBindData> copy() const override {
-        return std::make_unique<ParallelShortestPathBindData>(*this);
+        return std::make_unique<ParallelMSBFSPathBindData>(*this);
     }
 };
 
-class ParallelShortestPathLocalState : public GDSLocalState {
+struct ParallelMSBFSLocalState : public GDSLocalState {
 public:
-    explicit ParallelShortestPathLocalState() = default;
+    explicit ParallelMSBFSLocalState() : ifeMorsel{nullptr}, currentDstLane{UINT8_MAX},
+          dstScanMorsel{CallFuncMorsel::createInvalidMorsel()} {}
 
     void init(main::ClientContext* clientContext) override {
         auto mm = clientContext->getMemoryManager();
@@ -56,7 +58,7 @@ public:
     }
 
     std::unique_ptr<GDSLocalState> copy() override {
-        auto localState = std::make_unique<ParallelShortestPathLocalState>();
+        auto localState = std::make_unique<ParallelMSBFSLocalState>();
         localState->ifeMorsel = ifeMorsel;
         return localState;
     }
@@ -66,6 +68,10 @@ public:
     std::unique_ptr<ValueVector> dstNodeIDVector;
     std::unique_ptr<ValueVector> lengthVector;
     IFEMorsel* ifeMorsel;
+    // Destination writing information
+    // Destination lane & scan index should be set BEFORE launching task
+    uint8_t currentDstLane;
+    CallFuncMorsel dstScanMorsel;
 };
 
 } // namespace function

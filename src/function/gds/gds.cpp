@@ -11,7 +11,7 @@ using namespace kuzu::processor;
 namespace kuzu {
 namespace function {
 
-void GDSAlgorithm::init(GDSCallSharedState* sharedState_, ClientContext* context) {
+void GDSAlgorithm::init(GDSCallSharedState* sharedState_, ClientContext* /*context*/) {
     sharedState = sharedState_;
 }
 

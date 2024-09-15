@@ -113,7 +113,7 @@ uint8_t* BufferManager::pin(BMFileHandle& fileHandle, page_idx_t pageIdx,
         case PageState::EVICTED: {
             if (pageState->tryLock(currStateAndVersion)) {
                 if (!claimAFrame(fileHandle, pageIdx, pageReadPolicy)) {
-                    pageState->resetToEvicted();
+                    pageState->unlock();
                     throw BufferManagerException("Failed to claim a frame.");
                 }
                 if (!evictionQueue.insert(fileHandle.getFileIndex(), pageIdx)) {

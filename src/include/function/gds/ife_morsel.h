@@ -26,7 +26,7 @@ public:
           nextFrontier{nullptr}, bfsFrontier{std::vector<common::offset_t>()},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_} {}
 
-    ~IFEMorsel();
+    virtual ~IFEMorsel();
 
     virtual void init();
 

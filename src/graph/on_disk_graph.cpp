@@ -61,7 +61,7 @@ std::vector<nodeID_t> OnDiskGraph::getNbrs(offset_t offset, NbrScanState* nbrSca
 
 void OnDiskGraph::initializeStateFwdNbrs(common::offset_t offset, NbrScanState* nbrScanState) {
     nbrScanState->srcNodeIDVector->setValue<nodeID_t>(0, {offset, nodeTable->getTableID()});
-    relTable->initializeScanState(context->getTx(), *nbrScanState->fwdReadState.get());
+    relTable->initializeScanState(context->getTx(), *nbrScanState->fwdReadState);
 }
 
 bool OnDiskGraph::hasMoreFwdNbrs(NbrScanState* nbrScanState) {

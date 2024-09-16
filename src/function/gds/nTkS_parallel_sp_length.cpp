@@ -182,9 +182,7 @@ void nTkSParallelShortestPath::exec() {
     auto maxThreads = executionContext->clientContext->getClientConfig()->numThreads;
     auto morselSize = sharedState->graph->isInMemory ? 512LU : 256LU;
     auto extraData = bindData->ptrCast<ParallelShortestPathBindData>();
-    // threads available will be 1 less than total (main thread makes gds call)
     auto concurrentBFS = executionContext->clientContext->getClientConfig()->maxConcurrentBFS;
-    // set max bfs always to min value between threads available and maxConcurrentBFS value
     auto maxConcurrentBFS = std::max(1LU, concurrentBFS);
     printf("max concurrent bfs setting: %lu, launching maxConcurrentBFS as: %lu\n",
         concurrentBFS, maxConcurrentBFS);

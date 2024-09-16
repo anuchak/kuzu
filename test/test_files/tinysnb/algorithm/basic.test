@@ -157,3 +157,231 @@ Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
 -STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 64) RETURN count(*);
 ---- 1
 43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nT1S', 8) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 8) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nT1S', 16) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 16) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nT1S', 32) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 32) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nT1S', 64) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 64) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 8) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 16) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 32) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nT1S', 64) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 8) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 8) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 16) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 16) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 32) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 32) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 64) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 64) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 8) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 16) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 32) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 64) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 8) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 8) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 16) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 16) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 32) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 32) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMSBFSLength(PK, a, 2, 'nTkS', 64) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 13 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 64) RETURN a.fName, count(*);
+---- 8
+Alice11|300
+Alice12|300
+Alice|277
+Bob|277
+Carol|287
+Dan|277
+Elizabeth|293
+Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 8) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 16) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 32) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, 'nTkS', 64) RETURN count(*);
+---- 1
+43411

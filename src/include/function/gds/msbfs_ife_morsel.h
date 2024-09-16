@@ -14,7 +14,7 @@ public:
           srcOffsets{std::vector<common::offset_t>()}, isBFSActive{true}, seen{nullptr},
           current{nullptr}, next{nullptr}, pathLength{nullptr}, nextDstScanStartIdx{0u} {}
 
-    ~MSBFSIFEMorsel() {
+    ~MSBFSIFEMorsel() override {
         if (seen) {
             delete[] seen;
             delete[] current;

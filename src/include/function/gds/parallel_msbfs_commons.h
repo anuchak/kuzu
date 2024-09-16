@@ -2,14 +2,24 @@
 
 #include "common/task_system/task_scheduler.h"
 #include "gds.h"
+#include "function/gds/msbfs_ife_morsel.h"
 using namespace kuzu::binder;
 using namespace kuzu::common;
 
 namespace kuzu {
 namespace function {
 
-typedef std::vector<std::pair<std::unique_ptr<IFEMorsel>, std::shared_ptr<ScheduledTask>>>
-    scheduledTaskMap;
+typedef std::vector<std::pair<std::unique_ptr<MSBFSIFEMorsel<uint8_t>>,
+    std::shared_ptr<ScheduledTask>>> scheduledTaskMapLane8;
+
+typedef std::vector<std::pair<std::unique_ptr<MSBFSIFEMorsel<uint16_t>>,
+    std::shared_ptr<ScheduledTask>>> scheduledTaskMapLane16;
+
+typedef std::vector<std::pair<std::unique_ptr<MSBFSIFEMorsel<uint32_t>>,
+    std::shared_ptr<ScheduledTask>>> scheduledTaskMapLane32;
+
+typedef std::vector<std::pair<std::unique_ptr<MSBFSIFEMorsel<uint64_t>>,
+    std::shared_ptr<ScheduledTask>>> scheduledTaskMapLane64;
 
 struct ParallelMSBFSPathBindData final : public GDSBindData {
     uint8_t upperBound;

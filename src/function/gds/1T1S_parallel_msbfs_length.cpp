@@ -4,7 +4,6 @@
 #include "common/types/types.h"
 #include "function/gds/msbfs_ife_morsel.h"
 #include "function/gds/parallel_msbfs_commons.h"
-#include "function/gds/parallel_shortest_path_commons.h"
 #include "function/gds/parallel_utils.h"
 #include "function/gds_function.h"
 #include "graph/in_mem_graph.h"
@@ -16,25 +15,21 @@ using namespace kuzu::binder;
 namespace kuzu {
 namespace function {
 
-static uint64_t extendFrontierLane8Func(GDSCallSharedState* sharedState,
+static uint64_t extendFrontierLane8SingleFunc(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto& graph = sharedState->graph;
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
     auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel*, MSBFSIFEMorsel<uint8_t>*>(
         shortestPathLocalState->ifeMorsel);
-    msbfsIFEMorsel->init();
-    auto morselSize = graph->isInMemory ? 512LU : 256LU;
-    auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
-    if (!frontierMorsel.hasMoreToOutput()) {
-        return 0;
+    if (!msbfsIFEMorsel->initializedIFEMorsel) {
+        msbfsIFEMorsel->init();
     }
     if (graph->isInMemory) {
         auto inMemGraph = ku_dynamic_cast<graph::Graph*, graph::InMemGraph*>(graph.get());
         auto& csr = inMemGraph->getInMemCSR();
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     auto csrEntry = csr[offset >> RIGHT_SHIFT];
                     auto posInCSR = offset & OFFSET_DIV;
@@ -44,32 +39,24 @@ static uint64_t extendFrontierLane8Func(GDSCallSharedState* sharedState,
                         uint8_t shouldBeActive =
                             msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                         if (shouldBeActive) {
-                            uint8_t oldVal = msbfsIFEMorsel->next[nbrOffset];
-                            uint8_t newVal = oldVal | shouldBeActive;
-                            while (!__sync_bool_compare_and_swap_1(&msbfsIFEMorsel->next[nbrOffset],
-                                oldVal, newVal)) {
-                                oldVal = msbfsIFEMorsel->next[nbrOffset];
-                                newVal = oldVal | shouldBeActive;
-                            }
+                            msbfsIFEMorsel->next[nbrOffset] |= shouldBeActive;
                             while (shouldBeActive) {
                                 int index = __builtin_ctz(shouldBeActive) + 1;
                                 auto exact1BytePos = nbrOffset * 8 + (8 - index);
-                                newVal = msbfsIFEMorsel->currentLevel + 1;
-                                __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos], newVal,
-                                    __ATOMIC_RELEASE);
+                                msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                    msbfsIFEMorsel->currentLevel + 1;
                                 shouldBeActive = shouldBeActive ^ ((uint8_t)1 << (index - 1));
                             }
                         }
                     }
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     } else {
         auto& nbrScanState = shortestPathLocalState->nbrScanState;
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     graph->initializeStateFwdNbrs(offset, nbrScanState.get());
                     do {
@@ -83,19 +70,12 @@ static uint64_t extendFrontierLane8Func(GDSCallSharedState* sharedState,
                             uint8_t shouldBeActive = msbfsIFEMorsel->current[offset] &
                                                      ~msbfsIFEMorsel->seen[dstNodeID.offset];
                             if (shouldBeActive) {
-                                uint8_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                uint8_t newVal = oldVal | shouldBeActive;
-                                while (!__sync_bool_compare_and_swap_1(
-                                    &msbfsIFEMorsel->next[dstNodeID.offset], oldVal, newVal)) {
-                                    oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                    newVal = oldVal | shouldBeActive;
-                                }
+                                msbfsIFEMorsel->next[dstNodeID.offset] |= shouldBeActive;
                                 while (shouldBeActive) {
                                     int index = __builtin_ctz(shouldBeActive) + 1;
                                     auto exact1BytePos = dstNodeID.offset * 8 + (8 - index);
-                                    newVal = msbfsIFEMorsel->currentLevel + 1;
-                                    __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos],
-                                        newVal, __ATOMIC_RELEASE);
+                                    msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                        msbfsIFEMorsel->currentLevel + 1;
                                     shouldBeActive = shouldBeActive ^ ((uint8_t)1 << (index - 1));
                                 }
                             }
@@ -103,31 +83,27 @@ static uint64_t extendFrontierLane8Func(GDSCallSharedState* sharedState,
                     } while (graph->hasMoreFwdNbrs(nbrScanState.get()));
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     }
     return 0u;
 }
 
-static uint64_t extendFrontierLane16Func(GDSCallSharedState* sharedState,
+static uint64_t extendFrontierLane16SingleFunc(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto& graph = sharedState->graph;
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
     auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel*, MSBFSIFEMorsel<uint16_t>*>(
         shortestPathLocalState->ifeMorsel);
-    msbfsIFEMorsel->init();
-    auto morselSize = graph->isInMemory ? 512LU : 256LU;
-    auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
-    if (!frontierMorsel.hasMoreToOutput()) {
-        return 0;
+    if (!msbfsIFEMorsel->initializedIFEMorsel) {
+        msbfsIFEMorsel->init();
     }
     if (graph->isInMemory) {
         auto inMemGraph = ku_dynamic_cast<graph::Graph*, graph::InMemGraph*>(graph.get());
         auto& csr = inMemGraph->getInMemCSR();
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     auto csrEntry = csr[offset >> RIGHT_SHIFT];
                     auto posInCSR = offset & OFFSET_DIV;
@@ -137,32 +113,24 @@ static uint64_t extendFrontierLane16Func(GDSCallSharedState* sharedState,
                         uint16_t shouldBeActive =
                             msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                         if (shouldBeActive) {
-                            uint16_t oldVal = msbfsIFEMorsel->next[nbrOffset];
-                            uint16_t newVal = oldVal | shouldBeActive;
-                            while (!__sync_bool_compare_and_swap_2(&msbfsIFEMorsel->next[nbrOffset],
-                                oldVal, newVal)) {
-                                oldVal = msbfsIFEMorsel->next[nbrOffset];
-                                newVal = oldVal | shouldBeActive;
-                            }
+                            msbfsIFEMorsel->next[nbrOffset] |= shouldBeActive;
                             while (shouldBeActive) {
                                 int index = __builtin_ctz(shouldBeActive) + 1;
                                 auto exact1BytePos = nbrOffset * 16 + (16 - index);
-                                newVal = msbfsIFEMorsel->currentLevel + 1;
-                                __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos], newVal,
-                                    __ATOMIC_RELEASE);
+                                msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                    msbfsIFEMorsel->currentLevel + 1;
                                 shouldBeActive = shouldBeActive ^ ((uint16_t)1 << (index - 1));
                             }
                         }
                     }
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     } else {
         auto& nbrScanState = shortestPathLocalState->nbrScanState;
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     graph->initializeStateFwdNbrs(offset, nbrScanState.get());
                     do {
@@ -176,19 +144,12 @@ static uint64_t extendFrontierLane16Func(GDSCallSharedState* sharedState,
                             uint16_t shouldBeActive = msbfsIFEMorsel->current[offset] &
                                                       ~msbfsIFEMorsel->seen[dstNodeID.offset];
                             if (shouldBeActive) {
-                                uint16_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                uint16_t newVal = oldVal | shouldBeActive;
-                                while (!__sync_bool_compare_and_swap_2(
-                                    &msbfsIFEMorsel->next[dstNodeID.offset], oldVal, newVal)) {
-                                    oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                    newVal = oldVal | shouldBeActive;
-                                }
+                                msbfsIFEMorsel->next[dstNodeID.offset] |= shouldBeActive;
                                 while (shouldBeActive) {
                                     int index = __builtin_ctz(shouldBeActive) + 1;
                                     auto exact1BytePos = dstNodeID.offset * 16 + (16 - index);
-                                    newVal = msbfsIFEMorsel->currentLevel + 1;
-                                    __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos],
-                                        newVal, __ATOMIC_RELEASE);
+                                    msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                        msbfsIFEMorsel->currentLevel + 1;
                                     shouldBeActive = shouldBeActive ^ ((uint16_t)1 << (index - 1));
                                 }
                             }
@@ -196,31 +157,27 @@ static uint64_t extendFrontierLane16Func(GDSCallSharedState* sharedState,
                     } while (graph->hasMoreFwdNbrs(nbrScanState.get()));
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     }
     return 0u;
 }
 
-static uint64_t extendFrontierLane32Func(GDSCallSharedState* sharedState,
+static uint64_t extendFrontierLane32SingleFunc(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto& graph = sharedState->graph;
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
     auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel*, MSBFSIFEMorsel<uint32_t>*>(
         shortestPathLocalState->ifeMorsel);
-    msbfsIFEMorsel->init();
-    auto morselSize = graph->isInMemory ? 512LU : 256LU;
-    auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
-    if (!frontierMorsel.hasMoreToOutput()) {
-        return 0;
+    if (!msbfsIFEMorsel->initializedIFEMorsel) {
+        msbfsIFEMorsel->init();
     }
     if (graph->isInMemory) {
         auto inMemGraph = ku_dynamic_cast<graph::Graph*, graph::InMemGraph*>(graph.get());
         auto& csr = inMemGraph->getInMemCSR();
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     auto csrEntry = csr[offset >> RIGHT_SHIFT];
                     auto posInCSR = offset & OFFSET_DIV;
@@ -230,32 +187,24 @@ static uint64_t extendFrontierLane32Func(GDSCallSharedState* sharedState,
                         uint32_t shouldBeActive =
                             msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                         if (shouldBeActive) {
-                            uint32_t oldVal = msbfsIFEMorsel->next[nbrOffset];
-                            uint32_t newVal = oldVal | shouldBeActive;
-                            while (!__sync_bool_compare_and_swap_4(&msbfsIFEMorsel->next[nbrOffset],
-                                oldVal, newVal)) {
-                                oldVal = msbfsIFEMorsel->next[nbrOffset];
-                                newVal = oldVal | shouldBeActive;
-                            }
+                            msbfsIFEMorsel->next[nbrOffset] |= shouldBeActive;
                             while (shouldBeActive) {
                                 int index = __builtin_ctz(shouldBeActive) + 1;
                                 auto exact1BytePos = nbrOffset * 32 + (32 - index);
-                                newVal = msbfsIFEMorsel->currentLevel + 1;
-                                __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos], newVal,
-                                    __ATOMIC_RELEASE);
+                                msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                    msbfsIFEMorsel->currentLevel + 1;
                                 shouldBeActive = shouldBeActive ^ ((uint32_t)1 << (index - 1));
                             }
                         }
                     }
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     } else {
         auto& nbrScanState = shortestPathLocalState->nbrScanState;
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     graph->initializeStateFwdNbrs(offset, nbrScanState.get());
                     do {
@@ -269,19 +218,12 @@ static uint64_t extendFrontierLane32Func(GDSCallSharedState* sharedState,
                             uint32_t shouldBeActive = msbfsIFEMorsel->current[offset] &
                                                       ~msbfsIFEMorsel->seen[dstNodeID.offset];
                             if (shouldBeActive) {
-                                uint32_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                uint32_t newVal = oldVal | shouldBeActive;
-                                while (!__sync_bool_compare_and_swap_4(
-                                    &msbfsIFEMorsel->next[dstNodeID.offset], oldVal, newVal)) {
-                                    oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                    newVal = oldVal | shouldBeActive;
-                                }
+                                msbfsIFEMorsel->next[dstNodeID.offset] |= shouldBeActive;
                                 while (shouldBeActive) {
                                     int index = __builtin_ctz(shouldBeActive) + 1;
                                     auto exact1BytePos = dstNodeID.offset * 32 + (32 - index);
-                                    newVal = msbfsIFEMorsel->currentLevel + 1;
-                                    __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos],
-                                        newVal, __ATOMIC_RELEASE);
+                                    msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                        msbfsIFEMorsel->currentLevel + 1;
                                     shouldBeActive = shouldBeActive ^ ((uint32_t)1 << (index - 1));
                                 }
                             }
@@ -289,31 +231,27 @@ static uint64_t extendFrontierLane32Func(GDSCallSharedState* sharedState,
                     } while (graph->hasMoreFwdNbrs(nbrScanState.get()));
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     }
     return 0u;
 }
 
-static uint64_t extendFrontierLane64Func(GDSCallSharedState* sharedState,
+static uint64_t extendFrontierLane64SingleFunc(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto& graph = sharedState->graph;
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
     auto msbfsIFEMorsel = common::ku_dynamic_cast<IFEMorsel*, MSBFSIFEMorsel<uint64_t>*>(
         shortestPathLocalState->ifeMorsel);
-    msbfsIFEMorsel->init();
-    auto morselSize = graph->isInMemory ? 512LU : 256LU;
-    auto frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
-    if (!frontierMorsel.hasMoreToOutput()) {
-        return 0;
+    if (!msbfsIFEMorsel->initializedIFEMorsel) {
+        msbfsIFEMorsel->init();
     }
     if (graph->isInMemory) {
         auto inMemGraph = ku_dynamic_cast<graph::Graph*, graph::InMemGraph*>(graph.get());
         auto& csr = inMemGraph->getInMemCSR();
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     auto csrEntry = csr[offset >> RIGHT_SHIFT];
                     auto posInCSR = offset & OFFSET_DIV;
@@ -323,32 +261,24 @@ static uint64_t extendFrontierLane64Func(GDSCallSharedState* sharedState,
                         uint64_t shouldBeActive =
                             msbfsIFEMorsel->current[offset] & ~msbfsIFEMorsel->seen[nbrOffset];
                         if (shouldBeActive) {
-                            uint64_t oldVal = msbfsIFEMorsel->next[nbrOffset];
-                            uint64_t newVal = oldVal | shouldBeActive;
-                            while (!__sync_bool_compare_and_swap_8(&msbfsIFEMorsel->next[nbrOffset],
-                                oldVal, newVal)) {
-                                oldVal = msbfsIFEMorsel->next[nbrOffset];
-                                newVal = oldVal | shouldBeActive;
-                            }
+                            msbfsIFEMorsel->next[nbrOffset] |= shouldBeActive;
                             while (shouldBeActive) {
                                 int index = __builtin_ctzll(shouldBeActive) + 1;
                                 auto exact1BytePos = nbrOffset * 64 + (64 - index);
-                                newVal = msbfsIFEMorsel->currentLevel + 1;
-                                __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos], newVal,
-                                    __ATOMIC_RELEASE);
+                                msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                    msbfsIFEMorsel->currentLevel + 1;
                                 shouldBeActive = shouldBeActive ^ ((uint64_t)1 << (index - 1));
                             }
                         }
                     }
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     } else {
         auto& nbrScanState = shortestPathLocalState->nbrScanState;
-        while (frontierMorsel.hasMoreToOutput()) {
-            for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
-                offset++) {
+        while (!msbfsIFEMorsel->isBFSCompleteNoLock()) {
+            for (auto offset = 0u; offset <= msbfsIFEMorsel->maxOffset; offset++) {
                 if (msbfsIFEMorsel->current[offset]) {
                     graph->initializeStateFwdNbrs(offset, nbrScanState.get());
                     do {
@@ -362,19 +292,12 @@ static uint64_t extendFrontierLane64Func(GDSCallSharedState* sharedState,
                             uint64_t shouldBeActive = msbfsIFEMorsel->current[offset] &
                                                       ~msbfsIFEMorsel->seen[dstNodeID.offset];
                             if (shouldBeActive) {
-                                uint64_t oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                uint64_t newVal = oldVal | shouldBeActive;
-                                while (!__sync_bool_compare_and_swap_8(
-                                    &msbfsIFEMorsel->next[dstNodeID.offset], oldVal, newVal)) {
-                                    oldVal = msbfsIFEMorsel->next[dstNodeID.offset];
-                                    newVal = oldVal | shouldBeActive;
-                                }
+                                msbfsIFEMorsel->next[dstNodeID.offset] |= shouldBeActive;
                                 while (shouldBeActive) {
                                     int index = __builtin_ctzll(shouldBeActive) + 1;
                                     auto exact1BytePos = dstNodeID.offset * 64 + (64 - index);
-                                    newVal = msbfsIFEMorsel->currentLevel + 1;
-                                    __atomic_store_n(&msbfsIFEMorsel->pathLength[exact1BytePos],
-                                        newVal, __ATOMIC_RELEASE);
+                                    msbfsIFEMorsel->pathLength[exact1BytePos] =
+                                        msbfsIFEMorsel->currentLevel + 1;
                                     shouldBeActive = shouldBeActive ^ ((uint64_t)1 << (index - 1));
                                 }
                             }
@@ -382,13 +305,13 @@ static uint64_t extendFrontierLane64Func(GDSCallSharedState* sharedState,
                     } while (graph->hasMoreFwdNbrs(nbrScanState.get()));
                 }
             }
-            frontierMorsel = msbfsIFEMorsel->getMorsel(morselSize);
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     }
     return 0u;
 }
 
-static uint64_t shortestPathOutputLane8Func(GDSCallSharedState* sharedState,
+static uint64_t shortestPathOutputLane8FuncSingle(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
@@ -426,7 +349,7 @@ static uint64_t shortestPathOutputLane8Func(GDSCallSharedState* sharedState,
     return pos;
 }
 
-static uint64_t shortestPathOutputLane16Func(GDSCallSharedState* sharedState,
+static uint64_t shortestPathOutputLane16FuncSingle(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
@@ -464,7 +387,7 @@ static uint64_t shortestPathOutputLane16Func(GDSCallSharedState* sharedState,
     return pos;
 }
 
-static uint64_t shortestPathOutputLane32Func(GDSCallSharedState* sharedState,
+static uint64_t shortestPathOutputLane32FuncSingle(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
@@ -502,7 +425,7 @@ static uint64_t shortestPathOutputLane32Func(GDSCallSharedState* sharedState,
     return pos;
 }
 
-static uint64_t shortestPathOutputLane64Func(GDSCallSharedState* sharedState,
+static uint64_t shortestPathOutputLane64FuncSingle(GDSCallSharedState* sharedState,
     GDSLocalState* localState) {
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
@@ -540,9 +463,67 @@ static uint64_t shortestPathOutputLane64Func(GDSCallSharedState* sharedState,
     return pos;
 }
 
+static uint64_t mainFuncLane8(GDSCallSharedState* sharedState, GDSLocalState* localState) {
+    auto shortestPathLocalState =
+        common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
+    shortestPathLocalState->ifeMorsel->init();
+    if (shortestPathLocalState->ifeMorsel->isBFSCompleteNoLock()) {
+        return shortestPathOutputLane8FuncSingle(sharedState, localState);
+    }
+    extendFrontierLane8SingleFunc(sharedState, localState);
+    /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    printf("starting output writing for src: %lu at time: %lu\n",
+        shortestPathLocalState->ifeMorsel->srcOffset, millis);*/
+    return shortestPathOutputLane8FuncSingle(sharedState, localState);
+}
+
+static uint64_t mainFuncLane16(GDSCallSharedState* sharedState, GDSLocalState* localState) {
+    auto shortestPathLocalState =
+        common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
+    shortestPathLocalState->ifeMorsel->init();
+    if (shortestPathLocalState->ifeMorsel->isBFSCompleteNoLock()) {
+        return shortestPathOutputLane16FuncSingle(sharedState, localState);
+    }
+    extendFrontierLane16SingleFunc(sharedState, localState);
+    /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    printf("starting output writing for src: %lu at time: %lu\n",
+        shortestPathLocalState->ifeMorsel->srcOffset, millis);*/
+    return shortestPathOutputLane16FuncSingle(sharedState, localState);
+}
+
+static uint64_t mainFuncLane32(GDSCallSharedState* sharedState, GDSLocalState* localState) {
+    auto shortestPathLocalState =
+        common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
+    shortestPathLocalState->ifeMorsel->init();
+    if (shortestPathLocalState->ifeMorsel->isBFSCompleteNoLock()) {
+        return shortestPathOutputLane32FuncSingle(sharedState, localState);
+    }
+    extendFrontierLane32SingleFunc(sharedState, localState);
+    /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    printf("starting output writing for src: %lu at time: %lu\n",
+        shortestPathLocalState->ifeMorsel->srcOffset, millis);*/
+    return shortestPathOutputLane32FuncSingle(sharedState, localState);
+}
+
+static uint64_t mainFuncLane64(GDSCallSharedState* sharedState, GDSLocalState* localState) {
+    auto shortestPathLocalState =
+        common::ku_dynamic_cast<GDSLocalState*, ParallelMSBFSLocalState*>(localState);
+    shortestPathLocalState->ifeMorsel->init();
+    if (shortestPathLocalState->ifeMorsel->isBFSCompleteNoLock()) {
+        return shortestPathOutputLane64FuncSingle(sharedState, localState);
+    }
+    extendFrontierLane64SingleFunc(sharedState, localState);
+    /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    printf("starting output writing for src: %lu at time: %lu\n",
+        shortestPathLocalState->ifeMorsel->srcOffset, millis);*/
+    return shortestPathOutputLane64FuncSingle(sharedState, localState);
+}
+
 void _1T1SParallelMSBFSLength::exec() {
-    auto maxThreads = executionContext->clientContext->getClientConfig()->numThreads;
-    auto morselSize = sharedState->graph->isInMemory ? 512LU : 256LU;
     auto extraData = bindData->ptrCast<ParallelMSBFSPathBindData>();
     auto laneWidth = extraData->laneWidth;
     auto concurrentBFS = executionContext->clientContext->getClientConfig()->maxConcurrentBFS;
@@ -552,7 +533,6 @@ void _1T1SParallelMSBFSLength::exec() {
     auto maxNodeOffset = sharedState->graph->getNumNodes() - 1;
     auto lowerBound = 1u;
     auto& inputMask = sharedState->inputNodeOffsetMasks[sharedState->graph->getNodeTableID()];
-    scheduledTaskMap ifeMorselTasks = scheduledTaskMap();
     std::vector<ParallelUtilsJob> jobs;    // stores the next batch of jobs to submit
     std::vector<unsigned int> jobIdxInMap; // stores the scheduledTaskMap idx <-> job mapping
     auto srcOffset = 0LU;
@@ -566,6 +546,7 @@ void _1T1SParallelMSBFSLength::exec() {
      * (3) If we reach total nodes before we hit maxConcurrentBFS, then break.
      */
     if (laneWidth == 8) {
+        auto ifeMorselTasks = scheduledTaskMapLane8();
         while (totalMorsels < maxConcurrentMorsels) {
             while (srcOffset <= maxNodeOffset) {
                 if (inputMask->isMasked(srcOffset)) {
@@ -578,6 +559,7 @@ void _1T1SParallelMSBFSLength::exec() {
             }
             countSources++;
             nextMSBFSBatch.push_back(srcOffset);
+            srcOffset++;
             if (countSources == laneWidth) {
                 totalMorsels++;
                 countSources = 0;
@@ -588,11 +570,10 @@ void _1T1SParallelMSBFSLength::exec() {
                 ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                     nextMSBFSBatch.end());
                 nextMSBFSBatch.clear();
-                srcOffset++;
-                auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                    sharedState, extendFrontierLane8Func, 1 /* maxTaskThreads */});
+                    sharedState, mainFuncLane8, 1 /* maxTaskThreads */});
                 ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
             }
         }
@@ -607,10 +588,10 @@ void _1T1SParallelMSBFSLength::exec() {
             ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                 nextMSBFSBatch.end());
             nextMSBFSBatch.clear();
-            auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+            auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                extendFrontierLane8Func, 1 /* maxTaskThreads */});
+                mainFuncLane8, 1 /* maxTaskThreads */});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
         }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
@@ -638,51 +619,34 @@ void _1T1SParallelMSBFSLength::exec() {
                     runLoop = false;
                     break;
                 }
-                if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
-                    auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
-                        ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
-                    ifeMorselTasks[i].second = nullptr;
-                    numCompletedMorsels++;
-                    while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
-                        if (inputMask->isMasked(srcOffset)) {
-                            nextMSBFSBatch.push_back(srcOffset);
-                            countSources++;
-                        }
-                        srcOffset++;
+                auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
+                    ifeMorselTasks[i].second->task.get());
+                free(processorTask->getSink());
+                ifeMorselTasks[i].second = nullptr;
+                numCompletedMorsels++;
+                ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
+                ifeMorselTasks[i].first->srcOffsets.clear();
+                while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
+                    if (inputMask->isMasked(srcOffset)) {
+                        ifeMorselTasks[i].first->srcOffsets.push_back(srcOffset);
+                        countSources++;
                     }
-                    if (countSources > 0) {
-                        countSources = 0;
-                        srcOffset++;
-                        totalMorsels++;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                        jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                            sharedState, extendFrontierLane8Func, 1u /* maxTaskThreads */});
-                        jobIdxInMap.push_back(i);
-                        continue;
-                    }
-                    if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
-                        return; // reached termination, all bfs sources launched have finished
-                    } else if (srcOffset > maxNodeOffset) {
-                        continue;
-                    }
+                    srcOffset++;
                 }
-                bool isBFSComplete = ifeMorselTasks[i].first->isBFSCompleteNoLock();
-                if (isBFSComplete) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                if (countSources > 0) {
+                    countSources = 0;
+                    totalMorsels++;
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
                     jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, shortestPathOutputLane8Func, maxThreads});
+                        sharedState, mainFuncLane8, 1u /* maxTaskThreads */});
                     jobIdxInMap.push_back(i);
                     continue;
-                } else {
-                    ifeMorselTasks[i].first->initializeNextFrontierNoLock();
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                    jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, extendFrontierLane8Func, maxThreads});
-                    jobIdxInMap.push_back(i);
+                }
+                if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
+                    return; // reached termination, all bfs sources launched have finished
+                } else if (srcOffset > maxNodeOffset) {
+                    continue;
                 }
             }
             scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
@@ -696,6 +660,7 @@ void _1T1SParallelMSBFSLength::exec() {
                 std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
         }
     } else if (laneWidth == 16) {
+        auto ifeMorselTasks = scheduledTaskMapLane16();
         while (totalMorsels < maxConcurrentMorsels) {
             while (srcOffset <= maxNodeOffset) {
                 if (inputMask->isMasked(srcOffset)) {
@@ -708,21 +673,21 @@ void _1T1SParallelMSBFSLength::exec() {
             }
             countSources++;
             nextMSBFSBatch.push_back(srcOffset);
+            srcOffset++;
             if (countSources == laneWidth) {
                 totalMorsels++;
                 countSources = 0;
-                auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint8_t>>(extraData->upperBound,
+                auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint16_t>>(extraData->upperBound,
                     lowerBound, maxNodeOffset);
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                     nextMSBFSBatch.end());
                 nextMSBFSBatch.clear();
-                srcOffset++;
-                auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                    sharedState, extendFrontierLane16Func, 1 /* maxTaskThreads */});
+                    sharedState, mainFuncLane16, 1 /* maxTaskThreads */});
                 ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
             }
         }
@@ -730,17 +695,17 @@ void _1T1SParallelMSBFSLength::exec() {
             countSources = 0;
             srcOffset++;
             totalMorsels++;
-            auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint8_t>>(extraData->upperBound,
+            auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint16_t>>(extraData->upperBound,
                 lowerBound, maxNodeOffset);
             // just pass a placeholder offset, it is not used for ms bfs ife morsel
             ifeMorsel->resetNoLock(common::INVALID_OFFSET);
             ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                 nextMSBFSBatch.end());
             nextMSBFSBatch.clear();
-            auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+            auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                extendFrontierLane16Func, 1 /* maxTaskThreads */});
+                mainFuncLane16, 1 /* maxTaskThreads */});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
         }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
@@ -768,51 +733,34 @@ void _1T1SParallelMSBFSLength::exec() {
                     runLoop = false;
                     break;
                 }
-                if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
-                    auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
-                        ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
-                    ifeMorselTasks[i].second = nullptr;
-                    numCompletedMorsels++;
-                    while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
-                        if (inputMask->isMasked(srcOffset)) {
-                            nextMSBFSBatch.push_back(srcOffset);
-                            countSources++;
-                        }
-                        srcOffset++;
+                auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
+                    ifeMorselTasks[i].second->task.get());
+                free(processorTask->getSink());
+                ifeMorselTasks[i].second = nullptr;
+                numCompletedMorsels++;
+                ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
+                ifeMorselTasks[i].first->srcOffsets.clear();
+                while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
+                    if (inputMask->isMasked(srcOffset)) {
+                        ifeMorselTasks[i].first->srcOffsets.push_back(srcOffset);
+                        countSources++;
                     }
-                    if (countSources > 0) {
-                        countSources = 0;
-                        srcOffset++;
-                        totalMorsels++;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                        jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                            sharedState, extendFrontierLane16Func, 1u /* maxTaskThreads */});
-                        jobIdxInMap.push_back(i);
-                        continue;
-                    }
-                    if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
-                        return; // reached termination, all bfs sources launched have finished
-                    } else if (srcOffset > maxNodeOffset) {
-                        continue;
-                    }
+                    srcOffset++;
                 }
-                bool isBFSComplete = ifeMorselTasks[i].first->isBFSCompleteNoLock();
-                if (isBFSComplete) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                if (countSources > 0) {
+                    countSources = 0;
+                    totalMorsels++;
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
                     jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, shortestPathOutputLane16Func, maxThreads});
+                        sharedState, mainFuncLane16, 1u /* maxTaskThreads */});
                     jobIdxInMap.push_back(i);
                     continue;
-                } else {
-                    ifeMorselTasks[i].first->initializeNextFrontierNoLock();
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                    jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, extendFrontierLane16Func, maxThreads});
-                    jobIdxInMap.push_back(i);
+                }
+                if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
+                    return; // reached termination, all bfs sources launched have finished
+                } else if (srcOffset > maxNodeOffset) {
+                    continue;
                 }
             }
             scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
@@ -826,6 +774,7 @@ void _1T1SParallelMSBFSLength::exec() {
                 std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
         }
     } else if (laneWidth == 32) {
+        auto ifeMorselTasks = scheduledTaskMapLane32();
         while (totalMorsels < maxConcurrentMorsels) {
             while (srcOffset <= maxNodeOffset) {
                 if (inputMask->isMasked(srcOffset)) {
@@ -838,21 +787,21 @@ void _1T1SParallelMSBFSLength::exec() {
             }
             countSources++;
             nextMSBFSBatch.push_back(srcOffset);
+            srcOffset++;
             if (countSources == laneWidth) {
                 totalMorsels++;
                 countSources = 0;
-                auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint8_t>>(extraData->upperBound,
+                auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint32_t>>(extraData->upperBound,
                     lowerBound, maxNodeOffset);
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                     nextMSBFSBatch.end());
                 nextMSBFSBatch.clear();
-                srcOffset++;
-                auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                    sharedState, extendFrontierLane32Func, 1 /* maxTaskThreads */});
+                    sharedState, mainFuncLane32, 1 /* maxTaskThreads */});
                 ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
             }
         }
@@ -860,17 +809,17 @@ void _1T1SParallelMSBFSLength::exec() {
             countSources = 0;
             srcOffset++;
             totalMorsels++;
-            auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint8_t>>(extraData->upperBound,
+            auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint32_t>>(extraData->upperBound,
                 lowerBound, maxNodeOffset);
             // just pass a placeholder offset, it is not used for ms bfs ife morsel
             ifeMorsel->resetNoLock(common::INVALID_OFFSET);
             ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                 nextMSBFSBatch.end());
             nextMSBFSBatch.clear();
-            auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+            auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                extendFrontierLane32Func, 1 /* maxTaskThreads */});
+                mainFuncLane32, 1 /* maxTaskThreads */});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
         }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
@@ -898,51 +847,34 @@ void _1T1SParallelMSBFSLength::exec() {
                     runLoop = false;
                     break;
                 }
-                if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
-                    auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
-                        ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
-                    ifeMorselTasks[i].second = nullptr;
-                    numCompletedMorsels++;
-                    while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
-                        if (inputMask->isMasked(srcOffset)) {
-                            nextMSBFSBatch.push_back(srcOffset);
-                            countSources++;
-                        }
-                        srcOffset++;
+                auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
+                    ifeMorselTasks[i].second->task.get());
+                free(processorTask->getSink());
+                ifeMorselTasks[i].second = nullptr;
+                numCompletedMorsels++;
+                ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
+                ifeMorselTasks[i].first->srcOffsets.clear();
+                while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
+                    if (inputMask->isMasked(srcOffset)) {
+                        ifeMorselTasks[i].first->srcOffsets.push_back(srcOffset);
+                        countSources++;
                     }
-                    if (countSources > 0) {
-                        countSources = 0;
-                        srcOffset++;
-                        totalMorsels++;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                        jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                            sharedState, extendFrontierLane32Func, 1u /* maxTaskThreads */});
-                        jobIdxInMap.push_back(i);
-                        continue;
-                    }
-                    if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
-                        return; // reached termination, all bfs sources launched have finished
-                    } else if (srcOffset > maxNodeOffset) {
-                        continue;
-                    }
+                    srcOffset++;
                 }
-                bool isBFSComplete = ifeMorselTasks[i].first->isBFSCompleteNoLock();
-                if (isBFSComplete) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                if (countSources > 0) {
+                    countSources = 0;
+                    totalMorsels++;
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
                     jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, shortestPathOutputLane32Func, maxThreads});
+                        sharedState, mainFuncLane32, 1u /* maxTaskThreads */});
                     jobIdxInMap.push_back(i);
                     continue;
-                } else {
-                    ifeMorselTasks[i].first->initializeNextFrontierNoLock();
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                    jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, extendFrontierLane32Func, maxThreads});
-                    jobIdxInMap.push_back(i);
+                }
+                if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
+                    return; // reached termination, all bfs sources launched have finished
+                } else if (srcOffset > maxNodeOffset) {
+                    continue;
                 }
             }
             scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
@@ -956,6 +888,7 @@ void _1T1SParallelMSBFSLength::exec() {
                 std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
         }
     } else {
+        auto ifeMorselTasks = scheduledTaskMapLane64();
         while (totalMorsels < maxConcurrentMorsels) {
             while (srcOffset <= maxNodeOffset) {
                 if (inputMask->isMasked(srcOffset)) {
@@ -968,21 +901,21 @@ void _1T1SParallelMSBFSLength::exec() {
             }
             countSources++;
             nextMSBFSBatch.push_back(srcOffset);
+            srcOffset++;
             if (countSources == laneWidth) {
                 totalMorsels++;
                 countSources = 0;
-                auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint8_t>>(extraData->upperBound,
+                auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint64_t>>(extraData->upperBound,
                     lowerBound, maxNodeOffset);
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                     nextMSBFSBatch.end());
                 nextMSBFSBatch.clear();
-                srcOffset++;
-                auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                    sharedState, extendFrontierLane64Func, 1 /* maxTaskThreads */});
+                    sharedState, mainFuncLane64, 1 /* maxTaskThreads */});
                 ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
             }
         }
@@ -990,17 +923,17 @@ void _1T1SParallelMSBFSLength::exec() {
             countSources = 0;
             srcOffset++;
             totalMorsels++;
-            auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint8_t>>(extraData->upperBound,
+            auto ifeMorsel = std::make_unique<MSBFSIFEMorsel<uint64_t>>(extraData->upperBound,
                 lowerBound, maxNodeOffset);
             // just pass a placeholder offset, it is not used for ms bfs ife morsel
             ifeMorsel->resetNoLock(common::INVALID_OFFSET);
             ifeMorsel->srcOffsets.insert(ifeMorsel->srcOffsets.end(), nextMSBFSBatch.begin(),
                 nextMSBFSBatch.end());
             nextMSBFSBatch.clear();
-            auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+            auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-                extendFrontierLane64Func, 1 /* maxTaskThreads */});
+                mainFuncLane64, 1 /* maxTaskThreads */});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
         }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
@@ -1028,51 +961,34 @@ void _1T1SParallelMSBFSLength::exec() {
                     runLoop = false;
                     break;
                 }
-                if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
-                    auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
-                        ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
-                    ifeMorselTasks[i].second = nullptr;
-                    numCompletedMorsels++;
-                    while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
-                        if (inputMask->isMasked(srcOffset)) {
-                            nextMSBFSBatch.push_back(srcOffset);
-                            countSources++;
-                        }
-                        srcOffset++;
+                auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
+                    ifeMorselTasks[i].second->task.get());
+                free(processorTask->getSink());
+                ifeMorselTasks[i].second = nullptr;
+                numCompletedMorsels++;
+                ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
+                ifeMorselTasks[i].first->srcOffsets.clear();
+                while ((srcOffset <= maxNodeOffset) && (countSources < laneWidth)) {
+                    if (inputMask->isMasked(srcOffset)) {
+                        ifeMorselTasks[i].first->srcOffsets.push_back(srcOffset);
+                        countSources++;
                     }
-                    if (countSources > 0) {
-                        countSources = 0;
-                        srcOffset++;
-                        totalMorsels++;
-                        auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                        gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                        jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                            sharedState, extendFrontierLane64Func, 1u /* maxTaskThreads */});
-                        jobIdxInMap.push_back(i);
-                        continue;
-                    }
-                    if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
-                        return; // reached termination, all bfs sources launched have finished
-                    } else if (srcOffset > maxNodeOffset) {
-                        continue;
-                    }
+                    srcOffset++;
                 }
-                bool isBFSComplete = ifeMorselTasks[i].first->isBFSCompleteNoLock();
-                if (isBFSComplete) {
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
+                if (countSources > 0) {
+                    countSources = 0;
+                    totalMorsels++;
+                    auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
                     jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, shortestPathOutputLane64Func, maxThreads});
+                        sharedState, mainFuncLane64, 1u /* maxTaskThreads */});
                     jobIdxInMap.push_back(i);
                     continue;
-                } else {
-                    ifeMorselTasks[i].first->initializeNextFrontierNoLock();
-                    auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
-                    gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                    jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
-                        sharedState, extendFrontierLane64Func, maxThreads});
-                    jobIdxInMap.push_back(i);
+                }
+                if ((srcOffset > maxNodeOffset) && (totalMorsels == numCompletedMorsels)) {
+                    return; // reached termination, all bfs sources launched have finished
+                } else if (srcOffset > maxNodeOffset) {
+                    continue;
                 }
             }
             scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);

@@ -555,9 +555,9 @@ void nT1SParallelMSBFSLength::exec() {
             ifeMorsel->srcOffsets.push_back(offset);
             count++;
             if (count == laneWidth) {
-                auto duration = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration = std::chrono::system_clock::now().time_since_epoch();
                 auto millis =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -566,22 +566,22 @@ void nT1SParallelMSBFSLength::exec() {
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane8Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
-                    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                    /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 =
                         std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
                         millis1 - millis);
-                    millis = millis1;
+                    millis = millis1;*/
                     ifeMorsel->initializeNextFrontierNoLock();
                 }
-                duration = std::chrono::system_clock::now().time_since_epoch();
-                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                /*duration = std::chrono::system_clock::now().time_since_epoch();
+                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     shortestPathOutputLane8Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -589,7 +589,7 @@ void nT1SParallelMSBFSLength::exec() {
                 for (auto& offset_ : ifeMorsel->srcOffsets) {
                     printf("%lu, ", offset_);
                 }
-                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
                 ifeMorsel->srcOffsets.clear();
                 count = 0;
             }
@@ -597,8 +597,8 @@ void nT1SParallelMSBFSLength::exec() {
         // There are some BFS sources still remaining, full 8-lane not utilized.
         // But the remaining sources need to be completed.
         if (count > 0) {
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             // just pass a placeholder offset, it is not used for ms bfs ife morsel
             ifeMorsel->resetNoLock(common::INVALID_OFFSET);
             while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -607,29 +607,29 @@ void nT1SParallelMSBFSLength::exec() {
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     extendFrontierLane8Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                    millis1 - millis);
+                    millis1 - millis);*/
                 ifeMorsel->initializeNextFrontierNoLock();
-                millis = millis1;
+                // millis = millis1;
             }
-            duration = std::chrono::system_clock::now().time_since_epoch();
-            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*duration = std::chrono::system_clock::now().time_since_epoch();
+            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                 shortestPathOutputLane8Func, maxThreads};
             parallelUtils->submitParallelTaskAndWait(job);
-            auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+            /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
             auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
             printf("output writing completed in %lu ms\n", millis1 - millis);
             printf("sources: [");
             for (auto& offset_ : ifeMorsel->srcOffsets) {
                 printf("%lu, ", offset_);
             }
-            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
             ifeMorsel->srcOffsets.clear();
         }
     } else if (laneWidth == 16) {
@@ -643,9 +643,9 @@ void nT1SParallelMSBFSLength::exec() {
             ifeMorsel->srcOffsets.push_back(offset);
             count++;
             if (count == laneWidth) {
-                auto duration = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration = std::chrono::system_clock::now().time_since_epoch();
                 auto millis =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -654,22 +654,22 @@ void nT1SParallelMSBFSLength::exec() {
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane16Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
-                    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                    /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 =
                         std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                        millis1 - millis);
+                        millis1 - millis);*/
                     ifeMorsel->initializeNextFrontierNoLock();
-                    millis = millis1;
+                    // millis = millis1;
                 }
-                duration = std::chrono::system_clock::now().time_since_epoch();
-                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                /*duration = std::chrono::system_clock::now().time_since_epoch();
+                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     shortestPathOutputLane16Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -677,7 +677,7 @@ void nT1SParallelMSBFSLength::exec() {
                 for (auto& offset_ : ifeMorsel->srcOffsets) {
                     printf("%lu, ", offset_);
                 }
-                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
                 ifeMorsel->srcOffsets.clear();
                 count = 0;
             }
@@ -685,8 +685,8 @@ void nT1SParallelMSBFSLength::exec() {
         // There are some BFS sources still remaining, full 8-lane not utilized.
         // But the remaining sources need to be completed.
         if (count > 0) {
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             // just pass a placeholder offset, it is not used for ms bfs ife morsel
             ifeMorsel->resetNoLock(common::INVALID_OFFSET);
             while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -695,29 +695,29 @@ void nT1SParallelMSBFSLength::exec() {
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     extendFrontierLane16Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                    millis1 - millis);
+                    millis1 - millis);*/
                 ifeMorsel->initializeNextFrontierNoLock();
-                millis = millis1;
+                // millis = millis1;
             }
-            duration = std::chrono::system_clock::now().time_since_epoch();
-            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*duration = std::chrono::system_clock::now().time_since_epoch();
+            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                 shortestPathOutputLane16Func, maxThreads};
             parallelUtils->submitParallelTaskAndWait(job);
-            auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+            /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
             auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
             printf("output writing completed in %lu ms\n", millis1 - millis);
             printf("sources: [");
             for (auto& offset_ : ifeMorsel->srcOffsets) {
                 printf("%lu, ", offset_);
             }
-            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
             ifeMorsel->srcOffsets.clear();
         }
     } else if (laneWidth == 32) {
@@ -731,9 +731,9 @@ void nT1SParallelMSBFSLength::exec() {
             ifeMorsel->srcOffsets.push_back(offset);
             count++;
             if (count == laneWidth) {
-                auto duration = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration = std::chrono::system_clock::now().time_since_epoch();
                 auto millis =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -742,22 +742,22 @@ void nT1SParallelMSBFSLength::exec() {
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane32Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
-                    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                    /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 =
                         std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                        millis1 - millis);
+                        millis1 - millis);*/
                     ifeMorsel->initializeNextFrontierNoLock();
-                    millis = millis1;
+                    // millis = millis1;
                 }
-                duration = std::chrono::system_clock::now().time_since_epoch();
-                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                /*duration = std::chrono::system_clock::now().time_since_epoch();
+                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     shortestPathOutputLane32Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -765,7 +765,7 @@ void nT1SParallelMSBFSLength::exec() {
                 for (auto& offset_ : ifeMorsel->srcOffsets) {
                     printf("%lu, ", offset_);
                 }
-                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
                 ifeMorsel->srcOffsets.clear();
                 count = 0;
             }
@@ -773,8 +773,8 @@ void nT1SParallelMSBFSLength::exec() {
         // There are some BFS sources still remaining, full 8-lane not utilized.
         // But the remaining sources need to be completed.
         if (count > 0) {
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             // just pass a placeholder offset, it is not used for ms bfs ife morsel
             ifeMorsel->resetNoLock(common::INVALID_OFFSET);
             while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -783,29 +783,29 @@ void nT1SParallelMSBFSLength::exec() {
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     extendFrontierLane32Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                    millis1 - millis);
+                    millis1 - millis);*/
                 ifeMorsel->initializeNextFrontierNoLock();
-                millis = millis1;
+                // millis = millis1;
             }
-            duration = std::chrono::system_clock::now().time_since_epoch();
-            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*duration = std::chrono::system_clock::now().time_since_epoch();
+            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                 shortestPathOutputLane32Func, maxThreads};
             parallelUtils->submitParallelTaskAndWait(job);
-            auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+            /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
             auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
             printf("output writing completed in %lu ms\n", millis1 - millis);
             printf("sources: [");
             for (auto& offset_ : ifeMorsel->srcOffsets) {
                 printf("%lu, ", offset_);
             }
-            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
             ifeMorsel->srcOffsets.clear();
         }
     } else {
@@ -819,9 +819,9 @@ void nT1SParallelMSBFSLength::exec() {
             ifeMorsel->srcOffsets.push_back(offset);
             count++;
             if (count == laneWidth) {
-                auto duration = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration = std::chrono::system_clock::now().time_since_epoch();
                 auto millis =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 // just pass a placeholder offset, it is not used for ms bfs ife morsel
                 ifeMorsel->resetNoLock(common::INVALID_OFFSET);
                 while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -830,22 +830,22 @@ void nT1SParallelMSBFSLength::exec() {
                     auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendFrontierLane64Func, maxThreads};
                     parallelUtils->submitParallelTaskAndWait(job);
-                    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                    /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                     auto millis1 =
                         std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                     printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                        millis1 - millis);
+                        millis1 - millis);*/
                     ifeMorsel->initializeNextFrontierNoLock();
-                    millis = millis1;
+                    // millis = millis1;
                 }
-                duration = std::chrono::system_clock::now().time_since_epoch();
-                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                /*duration = std::chrono::system_clock::now().time_since_epoch();
+                millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
                 auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorsel.get();
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     shortestPathOutputLane64Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("output writing completed in %lu ms\n", millis1 - millis);
@@ -853,7 +853,7 @@ void nT1SParallelMSBFSLength::exec() {
                 for (auto& offset_ : ifeMorsel->srcOffsets) {
                     printf("%lu, ", offset_);
                 }
-                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+                printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
                 ifeMorsel->srcOffsets.clear();
                 count = 0;
             }
@@ -861,8 +861,8 @@ void nT1SParallelMSBFSLength::exec() {
         // There are some BFS sources still remaining, full 8-lane not utilized.
         // But the remaining sources need to be completed.
         if (count > 0) {
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             // just pass a placeholder offset, it is not used for ms bfs ife morsel
             ifeMorsel->resetNoLock(common::INVALID_OFFSET);
             while (!ifeMorsel->isBFSCompleteNoLock()) {
@@ -871,29 +871,29 @@ void nT1SParallelMSBFSLength::exec() {
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                     extendFrontierLane64Func, maxThreads};
                 parallelUtils->submitParallelTaskAndWait(job);
-                auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+                /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
                 auto millis1 =
                     std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
                 printf("bfs level: %d completed in %ld ms \n", ifeMorsel->currentLevel,
-                    millis1 - millis);
+                    millis1 - millis);*/
                 ifeMorsel->initializeNextFrontierNoLock();
-                millis = millis1;
+                // millis = millis1;
             }
-            duration = std::chrono::system_clock::now().time_since_epoch();
-            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            /*duration = std::chrono::system_clock::now().time_since_epoch();
+            millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
             auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                 shortestPathOutputLane64Func, maxThreads};
             parallelUtils->submitParallelTaskAndWait(job);
-            auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+            /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
             auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
             printf("output writing completed in %lu ms\n", millis1 - millis);
             printf("sources: [");
             for (auto& offset_ : ifeMorsel->srcOffsets) {
                 printf("%lu, ", offset_);
             }
-            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);
+            printf("] completed in %lu ms\n", millis1 - ifeMorsel->startTime);*/
             ifeMorsel->srcOffsets.clear();
         }
     }

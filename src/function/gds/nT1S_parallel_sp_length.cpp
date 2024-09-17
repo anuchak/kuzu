@@ -192,7 +192,7 @@ void nT1SParallelShortestPath::exec() {
             /*auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis =
                 std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
-            printf("starting bfs level: %d\n", ifeMorsel->currentLevel);
+            // printf("starting bfs level: %d\n", ifeMorsel->currentLevel);
             auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
             auto maxTaskThreads = std::min(maxThreads,

@@ -1,17 +1,21 @@
 add_library(kuzu_function_algorithm
         OBJECT
         1T1S_parallel_sp_length.cpp
+        1T1S_parallel_sp_path.cpp
         1T1S_parallel_msbfs_length.cpp
         ife_morsel.cpp
         sp_ife_morsel.cpp
+        sp_path_ife_morsel.cpp
         msbfs_ife_morsel.cpp
         asp_ife_morsel.cpp
         varlen_ife_morsel.cpp
         gds.cpp
         gds_task.cpp
         nT1S_parallel_sp_length.cpp
+        nT1S_parallel_sp_path.cpp
         nT1S_parallel_msbfs_length.cpp
         nTkS_parallel_sp_length.cpp
+        nTkS_parallel_sp_path.cpp
         nTkS_parallel_msbfs_length.cpp
         page_rank.cpp
         parallel_utils.cpp

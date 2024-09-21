@@ -34,7 +34,7 @@ void Planner::appendGDSCall(const binder::BoundReadingClause& readingClause, Log
         appendScanNodeTable(srcNodeExpr->getInternalID(), gdsInfo.graphEntry.nodeTableIDs,
             properties, plan);
         auto logicalCSRBuild = std::make_shared<LogicalCSRBuild>(gdsInfo.srcNodeIDExpression,
-            gdsInfo.graphEntry.relTableIDs, plan.getLastOperator());
+            gdsInfo.graphEntry.relTableIDs, gdsInfo.hasOutputPath(), plan.getLastOperator());
         logicalCSRBuild->computeFactorizedSchema();
         auto logicalGDS = std::make_shared<LogicalGDSCall>(call.getInfo().copy(), logicalCSRBuild);
         logicalGDS->computeFactorizedSchema();

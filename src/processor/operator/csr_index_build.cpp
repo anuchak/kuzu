@@ -13,6 +13,7 @@ void CSRIndexBuild::initGlobalStateInternal(kuzu::processor::ExecutionContext* c
         child = child->getChild(0);
     }
     auto scanNodeID = (ScanNodeTable*)child;
+    KU_ASSERT(scanNodeID != nullptr);
     auto nodeTable = scanNodeID->getSharedState(0).getNodeTable();
     auto maxNodeOffset = nodeTable->getMaxNodeOffset(context->clientContext->getTx());
     size_t totalSize = std::ceil((double)(maxNodeOffset + 1) / MORSEL_SIZE);
@@ -25,16 +26,25 @@ void CSRIndexBuild::initLocalStateInternal(kuzu::processor::ResultSet* resultSet
     nbrNodeVector = std::make_unique<common::ValueVector>(common::LogicalType::INTERNAL_ID(),
         context->clientContext->getMemoryManager());
     nbrNodeVector->state = std::make_shared<common::DataChunkState>();
+    if (csrSharedState->scanRelVector) {
+        relIDVector = std::make_unique<common::ValueVector>(common::LogicalType::INTERNAL_ID(),
+            context->clientContext->getMemoryManager());
+        relIDVector->state = nbrNodeVector->state;
+        columnIDs.push_back(storage::REL_ID_COLUMN_ID);
+    }
     fwdReadState = std::make_unique<storage::RelTableScanState>(columnIDs, direction);
     fwdReadState->nodeIDVector = boundNodeVector;
     fwdReadState->outputVectors.push_back(nbrNodeVector.get());
+    if (relIDVector) {
+        fwdReadState->outputVectors.push_back(relIDVector.get());
+    }
 }
 
 uint64_t CSRIndexBuild::calculateDegree(ExecutionContext *context) {
     uint64_t totalSize = 0u;
     auto relReadState = common::ku_dynamic_cast<storage::TableDataScanState*,
         storage::RelDataReadState*>(fwdReadState->dataScanState.get());
-    relTable->initializeScanState(context->clientContext->getTx(), *fwdReadState.get());
+    relTable->initializeScanState(context->clientContext->getTx(), *fwdReadState);
     auto firstNode = boundNodeVector->getValue<common::nodeID_t>(0);
     auto prevNGIdx = storage::StorageUtils::getNodeGroupIdx(firstNode.offset);
     for (auto i = 0u; i < boundNodeVector->state->getSelVector().getSelSize(); i++) {
@@ -42,7 +52,7 @@ uint64_t CSRIndexBuild::calculateDegree(ExecutionContext *context) {
         auto nextNGIdx = storage::StorageUtils::getNodeGroupIdx(nodeID.offset);
         if (prevNGIdx != nextNGIdx) {
             boundNodeVector->setValue(0, nodeID);
-            relTable->initializeScanState(context->clientContext->getTx(), *fwdReadState.get());
+            relTable->initializeScanState(context->clientContext->getTx(), *fwdReadState);
             prevNGIdx = nextNGIdx;
         }
         relReadState->currentNodeOffset = nodeID.offset;
@@ -77,7 +87,7 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
             // Encountering a new group for the 1st time, calculate degree of morsel and allot memory.
             if (!morselCSR) {
                 auto totalSize = calculateDegree(context);
-                auto newEntry = new graph::MorselCSR(totalSize);
+                auto newEntry = new graph::MorselCSR(totalSize, csrSharedState->scanRelVector);
                 __atomic_store_n(&csr[csrPos], newEntry, __ATOMIC_RELEASE);
                 // Sum up the cs_v array to get the range of neighbours for each offset.
                 if (lastMorselCSRHandled) {
@@ -90,15 +100,28 @@ void CSRIndexBuild::executeInternal(kuzu::processor::ExecutionContext* context) 
             }
             // add reading the actual nbrs code here later
             boundNodeVector->setValue(0, boundNode);
-            relTable->initializeScanState(txn, *fwdReadState.get());
+            relTable->initializeScanState(txn, *fwdReadState);
             while (fwdReadState->hasMoreToRead(txn)) {
                 relTable->scan(txn, *fwdReadState);
                 auto totalNbrs = nbrNodeVector->state->getSelVector().getSelSize();
-                for (auto idx = 0u; idx < totalNbrs; idx++) {
-                    auto nbrIdPos = nbrNodeVector->state->getSelVectorUnsafe().getSelectedPositions()[idx];
-                    auto nbrNode = nbrNodeVector->getValue<common::nodeID_t>(nbrIdPos);
-                    morselCSR->nbrNodeOffsets[currBlockSizeUsed] = nbrNode.offset;
-                    currBlockSizeUsed++;
+                if (morselCSR->relOffsets) {
+                    for (auto idx = 0u; idx < totalNbrs; idx++) {
+                        auto nbrIdPos =
+                            nbrNodeVector->state->getSelVectorUnsafe().getSelectedPositions()[idx];
+                        auto nbrNode = nbrNodeVector->getValue<common::nodeID_t>(nbrIdPos);
+                        auto relID = relIDVector->getValue<common::relID_t>(nbrIdPos);
+                        morselCSR->nbrNodeOffsets[currBlockSizeUsed] = nbrNode.offset;
+                        morselCSR->relOffsets[currBlockSizeUsed] = relID.offset;
+                        currBlockSizeUsed++;
+                    }
+                } else {
+                    for (auto idx = 0u; idx < totalNbrs; idx++) {
+                        auto nbrIdPos =
+                            nbrNodeVector->state->getSelVectorUnsafe().getSelectedPositions()[idx];
+                        auto nbrNode = nbrNodeVector->getValue<common::nodeID_t>(nbrIdPos);
+                        morselCSR->nbrNodeOffsets[currBlockSizeUsed] = nbrNode.offset;
+                        currBlockSizeUsed++;
+                    }
                 }
                 morselCSR->csr_v[(boundNode.offset & OFFSET_DIV) + 1] += totalNbrs;
                 totalNbrsHandled += totalNbrs;

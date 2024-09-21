@@ -14,6 +14,10 @@ public:
 
     common::table_id_t getNodeTableID() override { return nodeTable->getTableID(); }
 
+    common::table_id_t getRelTableID() override {
+        return relTable->getTableID();
+    }
+
     common::offset_t getNumNodes() override;
 
     common::offset_t getNumEdges() override;

@@ -28,7 +28,8 @@ struct ParallelShortestPathBindData final : public GDSBindData {
 
 class ParallelShortestPathLocalState : public GDSLocalState {
 public:
-    ParallelShortestPathLocalState() : GDSLocalState(), ifeMorsel{nullptr} {}
+    explicit ParallelShortestPathLocalState(bool isReturningPath = false) : GDSLocalState(),
+          isReturningPath{isReturningPath}, ifeMorsel{nullptr} {}
 
     void init(main::ClientContext* clientContext) override {
         auto mm = clientContext->getMemoryManager();
@@ -41,7 +42,14 @@ public:
         outputVectors.push_back(srcNodeIDVector.get());
         outputVectors.push_back(dstNodeIDVector.get());
         outputVectors.push_back(lengthVector.get());
-        nbrScanState = std::make_unique<graph::NbrScanState>(mm);
+        if (isReturningPath) {
+            pathVector = std::make_unique<ValueVector>(LogicalType::LIST(LogicalType::INTERNAL_ID()), mm);
+            pathVector->state = dstNodeIDVector->state;
+            ListVector::getDataVector(pathVector.get())->state =
+                std::make_shared<DataChunkState>();
+            outputVectors.push_back(pathVector.get());
+        }
+        nbrScanState = std::make_unique<graph::NbrScanState>(mm, isReturningPath);
     }
 
     /*
@@ -56,7 +64,7 @@ public:
     }
 
     std::unique_ptr<GDSLocalState> copy() override {
-        auto localState = std::make_unique<ParallelShortestPathLocalState>();
+        auto localState = std::make_unique<ParallelShortestPathLocalState>(isReturningPath);
         localState->ifeMorsel = ifeMorsel;
         return localState;
     }
@@ -65,6 +73,8 @@ public:
     std::unique_ptr<ValueVector> srcNodeIDVector;
     std::unique_ptr<ValueVector> dstNodeIDVector;
     std::unique_ptr<ValueVector> lengthVector;
+    bool isReturningPath;
+    std::unique_ptr<ValueVector> pathVector;
     IFEMorsel* ifeMorsel;
 };
 

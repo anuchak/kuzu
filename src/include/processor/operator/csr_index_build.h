@@ -45,6 +45,7 @@ private:
     DataPos boundNodeVectorPos;           // constructor
     common::ValueVector* boundNodeVector; // initLocalStateInternal
     std::unique_ptr<common::ValueVector> nbrNodeVector;   // initLocalStateInternal
+    std::unique_ptr<common::ValueVector> relIDVector;
 };
 
 } // namespace processor

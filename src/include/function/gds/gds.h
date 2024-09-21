@@ -32,7 +32,7 @@ struct GDSBindData {
     GDSBindData() = default;
     explicit GDSBindData(std::shared_ptr<binder::Expression> nodeInput)
         : nodeInput{std::move(nodeInput)} {}
-    GDSBindData(const GDSBindData& other) : nodeInput{other.nodeInput} {}
+    GDSBindData(const GDSBindData& other) = default;
     virtual ~GDSBindData() = default;
 
     bool hasNodeInput() const { return nodeInput != nullptr; }
@@ -90,7 +90,9 @@ public:
         bindData = std::make_unique<GDSBindData>();
     }
     GDSBindData* getBindData() const { return bindData.get(); }
-
+    inline virtual bool hasPathOutput() const {
+        return false;
+    }
     void init(processor::GDSCallSharedState* sharedState, main::ClientContext* context);
 
     inline void setParallelUtils(std::shared_ptr<ParallelUtils>& parallelUtils_) {

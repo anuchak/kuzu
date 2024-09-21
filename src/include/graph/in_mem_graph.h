@@ -17,17 +17,23 @@ namespace graph {
 struct MorselCSR {
     uint64_t csr_v[MORSEL_SIZE + 1]{0};
     common::offset_t* nbrNodeOffsets;
+    common::offset_t* relOffsets;
     uint64_t blockSize;
 
-    explicit MorselCSR(uint64_t size) {
+    explicit MorselCSR(uint64_t size, bool initializeRelVector) {
         nbrNodeOffsets = new common::offset_t[size];
+        relOffsets = initializeRelVector ? new common::offset_t [size] : nullptr;
         blockSize = size;
     }
 
-    ~MorselCSR() { delete[] nbrNodeOffsets; }
+    ~MorselCSR() {
+        delete[] nbrNodeOffsets;
+        delete [] relOffsets;
+    }
 };
 
 struct CSRIndexSharedState {
+    bool scanRelVector;
     std::vector<MorselCSR*> csr; // stores a pointer to the CSREntry struct
 
     ~CSRIndexSharedState() {
@@ -53,6 +59,10 @@ public:
     }
 
     common::table_id_t getNodeTableID() override { return nodeTable->getTableID(); }
+
+    common::table_id_t getRelTableID() override {
+        return relTable->getTableID();
+    }
 
     common::offset_t getNumNodes() override;
 

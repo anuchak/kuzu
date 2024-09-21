@@ -68,7 +68,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapGDSCall(LogicalOperator* logica
             std::move(info), sharedState, std::move(child), getOperatorID(), std::move(printInfo));
         auto ftableScan =
             createFTableScanAligned(columns, outSchema, table, 1u, std::move(algorithm));
-        binder::Expression& expr = *srcInternalIDExpr.get();
+        binder::Expression& expr = *srcInternalIDExpr;
         auto flattenPrintInfo = std::make_unique<OPPrintInfo>(expr.getUniqueName());
         auto flattensOperator = make_unique<Flatten>(outSchema->getGroupPos(expr),
             std::move(ftableScan), getOperatorID(), std::move(flattenPrintInfo));
@@ -83,7 +83,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapGDSCall(LogicalOperator* logica
             std::move(info), sharedState, getOperatorID(), std::move(printInfo));
         auto ftableScan =
             createFTableScanAligned(columns, outSchema, table, 1u, std::move(algorithm));
-        binder::Expression& expr = *srcInternalIDExpr.get();
+        binder::Expression& expr = *srcInternalIDExpr;
         auto flattenPrintInfo = std::make_unique<OPPrintInfo>(expr.getUniqueName());
         auto flattensOperator = make_unique<Flatten>(outSchema->getGroupPos(expr),
             std::move(ftableScan), getOperatorID(), std::move(flattenPrintInfo));

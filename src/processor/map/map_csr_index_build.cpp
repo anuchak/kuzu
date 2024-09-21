@@ -23,6 +23,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapCSRIndexBuild(
     auto boundNodeVectorPos =
         DataPos(schema->getExpressionPos(*srcNodeExpression->getInternalID()));
     auto sharedState = std::make_shared<graph::CSRIndexSharedState>();
+    sharedState->scanRelVector = logicalCSRBuild->isOutputPath();
     auto relTableID = logicalCSRBuild->getSingleRelTableID();
     auto relTable = clientContext->getStorageManager()->getTable(relTableID)->ptrCast<RelTable>();
     auto printInfo = std::make_unique<OPPrintInfo>("");

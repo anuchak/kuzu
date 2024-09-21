@@ -10,14 +10,16 @@ namespace graph {
 struct NbrScanState {
     std::shared_ptr<common::DataChunkState> srcNodeIDVectorState;
     std::shared_ptr<common::DataChunkState> dstNodeIDVectorState;
+    std::shared_ptr<common::DataChunkState> relIDVectorState;
     std::unique_ptr<common::ValueVector> srcNodeIDVector;
     std::unique_ptr<common::ValueVector> dstNodeIDVector;
+    std::unique_ptr<common::ValueVector> relIDVector;
 
     static constexpr common::RelDataDirection direction = common::RelDataDirection::FWD;
     std::vector<common::column_id_t> columnIDs;
     std::unique_ptr<storage::RelTableScanState> fwdReadState;
 
-    explicit NbrScanState(storage::MemoryManager* mm);
+    explicit NbrScanState(storage::MemoryManager* mm, bool isRelIDOutput = false);
 };
 
 class Graph {
@@ -26,6 +28,8 @@ public:
     virtual ~Graph() = default;
 
     virtual common::table_id_t getNodeTableID() = 0;
+
+    virtual common::table_id_t getRelTableID() = 0;
 
     virtual common::offset_t getNumNodes() = 0;
 

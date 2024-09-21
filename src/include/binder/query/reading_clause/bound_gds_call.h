@@ -26,6 +26,7 @@ struct BoundGDSCallInfo {
 
     const function::GDSAlgorithm* getGDS() const;
     const function::GDSBindData* getBindData() const;
+    bool hasOutputPath() const;
 
 private:
     BoundGDSCallInfo(const BoundGDSCallInfo& other)

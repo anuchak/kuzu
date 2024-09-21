@@ -15,5 +15,9 @@ const function::GDSBindData* BoundGDSCallInfo::getBindData() const {
     return getGDS()->getBindData();
 }
 
+bool BoundGDSCallInfo::hasOutputPath() const {
+    return getGDS()->hasPathOutput();
+}
+
 } // namespace binder
 } // namespace kuzu

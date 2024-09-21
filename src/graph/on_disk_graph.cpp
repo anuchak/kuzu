@@ -11,16 +11,26 @@ using namespace kuzu::common;
 namespace kuzu {
 namespace graph {
 
-NbrScanState::NbrScanState(MemoryManager* mm) {
+NbrScanState::NbrScanState(MemoryManager* mm, bool isRelIDOutput) {
     srcNodeIDVectorState = DataChunkState::getSingleValueDataChunkState();
     dstNodeIDVectorState = std::make_shared<DataChunkState>();
     srcNodeIDVector = std::make_unique<ValueVector>(LogicalType::INTERNAL_ID(), mm);
     srcNodeIDVector->state = srcNodeIDVectorState;
     dstNodeIDVector = std::make_unique<ValueVector>(LogicalType::INTERNAL_ID(), mm);
     dstNodeIDVector->state = dstNodeIDVectorState;
-    fwdReadState = std::make_unique<RelTableScanState>(columnIDs, direction);
-    fwdReadState->nodeIDVector = srcNodeIDVector.get();
-    fwdReadState->outputVectors.push_back(dstNodeIDVector.get());
+    if (isRelIDOutput) {
+        relIDVector = std::make_unique<ValueVector>(LogicalType::INTERNAL_ID(), mm);
+        relIDVector->state = dstNodeIDVectorState;
+        columnIDs.push_back(REL_ID_COLUMN_ID);
+        fwdReadState = std::make_unique<RelTableScanState>(columnIDs, direction);
+        fwdReadState->nodeIDVector = srcNodeIDVector.get();
+        fwdReadState->outputVectors.push_back(dstNodeIDVector.get());
+        fwdReadState->outputVectors.push_back(relIDVector.get());
+    } else {
+        fwdReadState = std::make_unique<RelTableScanState>(columnIDs, direction);
+        fwdReadState->nodeIDVector = srcNodeIDVector.get();
+        fwdReadState->outputVectors.push_back(dstNodeIDVector.get());
+    }
 }
 
 OnDiskGraph::OnDiskGraph(ClientContext* context, common::table_id_t nodeTableID,

@@ -461,3 +461,35 @@ Hubert Blaine Wolfeschlegelsteinhausenbergerdorff|300
 -STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMSBFSLength(PK, a, 30, '1T1S', 64) RETURN count(*);
 ---- 1
 43411
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMegaSPLength(PK, a, 2, 'nT1S', 4) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 10 CALL ParallelMegaSPLength(PK, a, 2, 'nT1S', 5) RETURN a.fName, count(*);
+---- 5
+Alice|4
+Bob|4
+Carol|7
+Dan|4
+Elizabeth|13
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID = 0 CALL ParallelMegaSPLength(PK, a, 2, 'nT1S', 4) RETURN a.fName, dst, length;
+---- 4
+Alice|0:1|1
+Alice|0:2|1
+Alice|0:3|1
+Alice|0:4|2
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 10 CALL ParallelMegaSPLength(PK, a, 2, 'nT1S', 5) RETURN a.fName, count(*);
+---- 5
+Alice|4
+Bob|4
+Carol|7
+Dan|4
+Elizabeth|13
+-STATEMENT PROJECT GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMegaSPLength(PK, a, 30, 'nT1S', 64) RETURN count(*);
+---- 1
+43411
+-STATEMENT PROJECT IN_MEM GRAPH PK (person, knows) MATCH (a:person) WHERE a.ID < 150 CALL ParallelMegaSPLength(PK, a, 30, 'nT1S', 64) RETURN count(*);
+---- 1
+43411

@@ -29,6 +29,18 @@ struct ParallelSPLengthsFunction {
     static function_set getFunctionSet();
 };
 
+struct ParallelMegaSPLengthsFunction {
+    static constexpr const char* name = "ParallelMegaSPLength";
+
+    static function_set getFunctionSet();
+};
+
+struct ParallelMegaSPPathsFunction {
+    static constexpr const char* name = "ParallelMegaSPPath";
+
+    static function_set getFunctionSet();
+};
+
 struct ParallelMSBFSLengthsFunction {
     static constexpr const char* name = "ParallelMSBFSLength";
 

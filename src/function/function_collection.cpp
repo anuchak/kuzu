@@ -229,6 +229,8 @@ FunctionCollection* FunctionCollection::getFunctions() {
         ALGORITHM_FUNCTION(ShortestPathsFunction), ALGORITHM_FUNCTION(PageRankFunction),*/
         ALGORITHM_FUNCTION(ParallelSPLengthsFunction),
         ALGORITHM_FUNCTION(ParallelSPPathsFunction),
+        ALGORITHM_FUNCTION(ParallelMegaSPLengthsFunction),
+        ALGORITHM_FUNCTION(ParallelMegaSPPathsFunction),
         ALGORITHM_FUNCTION(ParallelMSBFSLengthsFunction),
         ALGORITHM_FUNCTION(ParallelASPLengthsFunction),
         ALGORITHM_FUNCTION(ParallelVarlenLengthsFunction),

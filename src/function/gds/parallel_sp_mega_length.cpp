@@ -7,6 +7,7 @@
 #include "function/gds/gds_function_collection.h"
 #include "function/gds/nT1S_parallel_sp_mega_length.h"
 #include "function/gds/nTkS_parallel_sp_length.h"
+#include "function/gds/nTkS_parallel_sp_mega_length.h"
 #include "function/gds/parallel_msbfs_commons.h"
 #include "function/gds_function.h"
 #include "graph/in_mem_graph.h"
@@ -75,11 +76,11 @@ public:
             auto exec1T1SPolicy = std::make_unique<_1T1SParallelMegaShortestPath>(executionContext,
                 sharedState, bindData.get(), parallelUtils.get());
             exec1T1SPolicy->exec();
-        }/* else if (bfsPolicy == "nTkS") {
+        } else if (bfsPolicy == "nTkS") {
             auto execnTkSPolicy = std::make_unique<nTkSParallelMegaShortestPath>(executionContext,
                 sharedState, bindData.get(), parallelUtils.get());
             execnTkSPolicy->exec();
-        } */else {
+        } else {
             throw RuntimeException("Unidentified BFS Policy passed,"
                                    " supported policies: nT1S, 1T1S, nTkS\n");
         }

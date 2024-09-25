@@ -1,8 +1,25 @@
-//
-// Created by a8chakra on 22/09/24.
-//
+#pragma once
 
-#ifndef KUZU_NTKS_PARALLEL_SP_MEGA_LENGTH_H
-#define KUZU_NTKS_PARALLEL_SP_MEGA_LENGTH_H
+#include "processor/execution_context.h"
+#include "function/gds/gds.h"
+#include "function/gds/parallel_utils.h"
 
-#endif // KUZU_NTKS_PARALLEL_SP_MEGA_LENGTH_H
+namespace kuzu {
+namespace function {
+
+class nTkSParallelMegaShortestPath {
+public:
+    nTkSParallelMegaShortestPath(ExecutionContext *executionContext, GDSCallSharedState *sharedState,
+        GDSBindData *bindData, ParallelUtils *parallelUtils) : executionContext{executionContext},
+          sharedState{sharedState}, bindData{bindData}, parallelUtils{parallelUtils} {}
+
+    void exec();
+
+public:
+    ExecutionContext *executionContext;
+    GDSCallSharedState *sharedState;
+    GDSBindData *bindData;
+    ParallelUtils *parallelUtils;
+};
+} // namespace function
+} // namespace kuzu

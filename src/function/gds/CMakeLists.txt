@@ -18,6 +18,7 @@ add_library(kuzu_function_algorithm
         nT1S_parallel_sp_path.cpp
         nT1S_parallel_msbfs_length.cpp
         nTkS_parallel_sp_length.cpp
+        nTkS_parallel_sp_mega_length.cpp
         nTkS_parallel_sp_path.cpp
         nTkS_parallel_msbfs_length.cpp
         page_rank.cpp

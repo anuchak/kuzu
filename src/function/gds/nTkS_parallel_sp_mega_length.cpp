@@ -24,10 +24,10 @@ static void visitNbrs(SPIFEMegaMorsel* ifeMorsel, ValueVector& dstNodeIDVector,
     auto nbrNodes = (common::nodeID_t*)dstNodeIDVector.getData();
     common::nodeID_t dstNodeID;
     uint8_t state;
-    for (auto j = 0u; j < size; j++) {
-        dstNodeID = nbrNodes[j];
-        for (auto lane : activeLanes) {
-            auto& spIFEMorsel = ifeMorsel->spIFEMorsels[lane];
+    for (auto lane : activeLanes) {
+        auto& spIFEMorsel = ifeMorsel->spIFEMorsels[lane];
+        for (auto j = 0u; j < size; j++) {
+            dstNodeID = nbrNodes[j];
             state = spIFEMorsel->visitedNodes[dstNodeID.offset];
             if (state == NOT_VISITED_DST) {
                 if (__sync_bool_compare_and_swap(&spIFEMorsel->visitedNodes[dstNodeID.offset],

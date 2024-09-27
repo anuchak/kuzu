@@ -105,6 +105,9 @@ static uint64_t extendFrontierFunc(GDSCallSharedState* sharedState, GDSLocalStat
     while (frontierMorsel.hasMoreToOutput()) {
         for (auto offset = frontierMorsel.startOffset; offset < frontierMorsel.endOffset;
             offset++) {
+            // Cache inefficient, main reason for slowdown of this mega morsel approach
+            // Unlike MS-BFS, we have to jump from 1 SPIFEMorsel to another to see if a node
+            // is active. In MS-BFS, with 1 read we know whether a node is active or not.
             for (auto lane = 0; lane < ifeMorsel->totalActiveLanes; lane++) {
                 auto &spIFEMorsel = ifeMorsel->spIFEMorsels[lane];
                 if (spIFEMorsel->currentFrontier[offset]) {

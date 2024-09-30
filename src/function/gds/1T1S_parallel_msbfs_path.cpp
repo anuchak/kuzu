@@ -67,8 +67,8 @@ static uint64_t extendFrontierLane8Func(GDSCallSharedState* sharedState,
                         }
                     }
                 }
-                msbfsIFEMorsel->initializeNextFrontierNoLock();
             }
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     } else {
         auto& nbrScanState = shortestPathLocalState->nbrScanState;
@@ -147,8 +147,8 @@ static uint64_t extendFrontierLane16Func(GDSCallSharedState* sharedState,
                         }
                     }
                 }
-                msbfsIFEMorsel->initializeNextFrontierNoLock();
             }
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     } else {
         auto& nbrScanState = shortestPathLocalState->nbrScanState;
@@ -185,8 +185,8 @@ static uint64_t extendFrontierLane16Func(GDSCallSharedState* sharedState,
                         }
                     } while (graph->hasMoreFwdNbrs(nbrScanState.get()));
                 }
-                msbfsIFEMorsel->initializeNextFrontierNoLock();
             }
+            msbfsIFEMorsel->initializeNextFrontierNoLock();
         }
     }
     return 0u;

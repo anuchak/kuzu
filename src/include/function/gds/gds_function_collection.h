@@ -35,14 +35,14 @@ struct ParallelMegaSPLengthsFunction {
     static function_set getFunctionSet();
 };
 
-struct ParallelMegaSPPathsFunction {
-    static constexpr const char* name = "ParallelMegaSPPath";
+struct ParallelMSBFSLengthsFunction {
+    static constexpr const char* name = "ParallelMSBFSLength";
 
     static function_set getFunctionSet();
 };
 
-struct ParallelMSBFSLengthsFunction {
-    static constexpr const char* name = "ParallelMSBFSLength";
+struct ParallelMSBFSPathsFunction {
+    static constexpr const char* name = "ParallelMSBFSPath";
 
     static function_set getFunctionSet();
 };

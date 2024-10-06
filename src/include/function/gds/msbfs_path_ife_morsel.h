@@ -35,9 +35,17 @@ public:
 
     uint64_t getWork() override {
         if (isBFSCompleteNoLock()) {
-            return maxOffset - nextDstScanStartIdx.load(std::memory_order_acquire);
+            auto curIdx = nextDstScanStartIdx.load(std::memory_order_acquire);
+            if (curIdx > maxOffset) {
+                return 0;
+            }
+            return maxOffset - curIdx;
         }
-        return maxOffset - nextScanStartIdx.load(std::memory_order_acquire);
+        auto curIdx = nextScanStartIdx.load(std::memory_order_acquire);
+        if (curIdx > maxOffset) {
+            return 0;
+        }
+        return maxOffset - curIdx;
     }
 
     function::CallFuncMorsel getDstWriteMorsel(uint64_t morselSize) override {

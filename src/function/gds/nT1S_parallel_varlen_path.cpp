@@ -232,12 +232,14 @@ static uint64_t shortestPathOutputFunc(GDSCallSharedState* sharedState, GDSLocal
                 ifeMorsel->nodeIDEdgeListAndLevel[startIdx]->next;
         }
     } else {
-        auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
-        if (!morsel.hasMoreToOutput()) {
-            return 0u;
+        if (startIdx == endIdx) {
+            auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
+            if (!morsel.hasMoreToOutput()) {
+                return 0u;
+            }
+            varlenLocalState->prevDstMorselRange.first = morsel.startOffset;
+            varlenLocalState->prevDstMorselRange.second = morsel.endOffset;
         }
-        varlenLocalState->prevDstMorselRange.first = morsel.startOffset;
-        varlenLocalState->prevDstMorselRange.second = morsel.endOffset;
         while (startIdx < endIdx && pos < common::DEFAULT_VECTOR_CAPACITY) {
             if (ifeMorsel->visitedNodes[startIdx] == VISITED_DST &&
                 ifeMorsel->nodeIDEdgeListAndLevel[startIdx] &&

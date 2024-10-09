@@ -234,6 +234,7 @@ FunctionCollection* FunctionCollection::getFunctions() {
         ALGORITHM_FUNCTION(ParallelMSBFSPathsFunction),
         ALGORITHM_FUNCTION(ParallelASPLengthsFunction),
         ALGORITHM_FUNCTION(ParallelVarlenLengthsFunction),
+        ALGORITHM_FUNCTION(ParallelVarLenPathsFunction),
 
         // Export functions
         EXPORT_FUNCTION(ExportCSVFunction), EXPORT_FUNCTION(ExportParquetFunction),

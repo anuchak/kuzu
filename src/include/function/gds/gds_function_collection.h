@@ -59,6 +59,12 @@ struct ParallelVarlenLengthsFunction {
     static function_set getFunctionSet();
 };
 
+struct ParallelVarLenPathsFunction {
+    static constexpr const char* name = "ParallelVarLenPath";
+
+    static function_set getFunctionSet();
+};
+
 struct ParallelSPPathsFunction {
     static constexpr const char* name = "ParallelSPPath";
 

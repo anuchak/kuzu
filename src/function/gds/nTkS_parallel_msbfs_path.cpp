@@ -803,7 +803,7 @@ void nTkSParallelMSBFSPath::exec() {
                 if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
                     auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
                         ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
+                    delete processorTask->getSink();
                     ifeMorselTasks[i].second = nullptr;
                     numCompletedMorsels++;
                     ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
@@ -935,7 +935,7 @@ void nTkSParallelMSBFSPath::exec() {
                 if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
                     auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
                         ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
+                    delete processorTask->getSink();
                     ifeMorselTasks[i].second = nullptr;
                     numCompletedMorsels++;
                     ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
@@ -1067,7 +1067,7 @@ void nTkSParallelMSBFSPath::exec() {
                 if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
                     auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
                         ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
+                    delete processorTask->getSink();
                     ifeMorselTasks[i].second = nullptr;
                     numCompletedMorsels++;
                     ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
@@ -1199,7 +1199,7 @@ void nTkSParallelMSBFSPath::exec() {
                 if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
                     auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
                         ifeMorselTasks[i].second->task.get());
-                    free(processorTask->getSink());
+                    delete processorTask->getSink();
                     ifeMorselTasks[i].second = nullptr;
                     numCompletedMorsels++;
                     ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);

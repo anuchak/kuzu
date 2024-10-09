@@ -357,7 +357,7 @@ void _1T1SParallelVarlenPath::exec() {
                 ifeMorselTasks[i].first->srcOffset, millis);*/
             auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
                 ifeMorselTask.second->task.get());
-            free(processorTask->getSink());
+            delete processorTask->getSink();
             ifeMorselTask.second = nullptr;
             // printf("bfs source: %lu is completed\n", ifeMorselTasks[i].first->srcOffset);
             numCompletedTasks++;

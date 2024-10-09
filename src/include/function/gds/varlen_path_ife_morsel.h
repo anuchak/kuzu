@@ -102,7 +102,7 @@ public:
 
     void clearAllIntermediateResults() {
         for (auto edgeListSegment : allEdgeListSegments) {
-            free(edgeListSegment);
+            delete edgeListSegment;
         }
         allEdgeListSegments.clear();
     }

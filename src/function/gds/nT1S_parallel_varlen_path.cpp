@@ -311,7 +311,6 @@ static uint64_t shortestPathOutputFunc(GDSCallSharedState* sharedState, GDSLocal
 
 void nT1SParallelVarlenPath::exec() {
     auto maxThreads = executionContext->clientContext->getClientConfig()->numThreads;
-    auto morselSize = sharedState->graph->isInMemory ? 512LU : 256LU;
     auto extraData = bindData->ptrCast<ParallelVarlenBindData>();
     auto numNodes = sharedState->graph->getNumNodes();
     auto ifeMorsel = std::make_unique<VarlenPathIFEMorsel>(extraData->upperBound, 1, numNodes - 1,
@@ -346,10 +345,8 @@ void nT1SParallelVarlenPath::exec() {
         auto gdsLocalState =
             std::make_unique<ParallelVarLenLocalState>(true /* is returning path */);
         gdsLocalState->ifeMorsel = ifeMorsel.get();
-        auto maxTaskThreads =
-            std::min(maxThreads, (uint64_t)std::ceil(ifeMorsel->maxOffset / 2048));
         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
-            shortestPathOutputFunc, maxTaskThreads};
+            shortestPathOutputFunc, maxThreads};
         parallelUtils->submitParallelTaskAndWait(job);
         /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
         auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();

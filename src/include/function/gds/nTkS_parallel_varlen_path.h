@@ -13,9 +13,7 @@ public:
         GDSBindData *bindData, ParallelUtils *parallelUtils) : executionContext{executionContext},
           sharedState{sharedState}, bindData{bindData}, parallelUtils{parallelUtils} {}
 
-    void exec() {
-
-    }
+    void exec();
 
 public:
     ExecutionContext *executionContext;

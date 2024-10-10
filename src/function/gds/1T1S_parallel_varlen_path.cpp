@@ -125,7 +125,9 @@ static uint64_t extendFrontierFunc(GDSCallSharedState* sharedState, GDSLocalStat
             extendNode(graph.get(), ifeMorsel, offset, varlenLocalState->localEdgeListSegment,
                 nbrScanState.get());
         }
-        ifeMorsel->mergeResults(varlenLocalState->localEdgeListSegment);
+        if (!varlenLocalState->localEdgeListSegment.empty()) {
+            ifeMorsel->mergeResults(varlenLocalState->localEdgeListSegment);
+        }
         ifeMorsel->initializeNextFrontierNoLock();
     }
     return 0u;

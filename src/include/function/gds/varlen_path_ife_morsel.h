@@ -83,6 +83,15 @@ public:
         common::offset_t srcOffset)
         : IFEMorsel(upperBound_, lowerBound_, maxNodeOffset_, srcOffset), nextDstScanStartIdx{0u} {}
 
+    ~VarlenPathIFEMorsel() override {
+        if (!allEdgeListSegments.empty()) {
+            for (auto edgeListSegment : allEdgeListSegments) {
+                delete edgeListSegment;
+            }
+            allEdgeListSegments.clear();
+        }
+    }
+
     void init() override;
 
     uint64_t getWork() override;

@@ -1,12 +1,13 @@
+#include "function/gds/nTkS_parallel_sp_path.h"
+
 #include "binder/binder.h"
 #include "common/types/types.h"
-#include "function/gds/sp_path_ife_morsel.h"
 #include "function/gds/parallel_shortest_path_commons.h"
 #include "function/gds/parallel_utils.h"
+#include "function/gds/sp_path_ife_morsel.h"
 #include "function/gds_function.h"
 #include "graph/in_mem_graph.h"
 #include "processor/processor_task.h"
-#include "function/gds/nTkS_parallel_sp_path.h"
 
 using namespace kuzu::binder;
 using namespace kuzu::common;
@@ -28,26 +29,26 @@ static std::pair<uint64_t, uint64_t> visitNbrs(SPPathIFEMorsel* ifeMorsel,
         edgeID = relIDs[j];
         state = ifeMorsel->visitedNodes[dstNodeID.offset];
         if (state == NOT_VISITED_DST) {
-            if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state, VISITED_DST)) {
+            if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state,
+                    VISITED_DST)) {
                 numDstVisitedLocal++;
                 __atomic_store_n(&ifeMorsel->pathLength[dstNodeID.offset],
                     ifeMorsel->currentLevel + 1, __ATOMIC_RELEASE);
-                __atomic_store_n(&ifeMorsel->parentOffset[dstNodeID.offset],
-                    parentOffset, __ATOMIC_RELEASE);
-                __atomic_store_n(&ifeMorsel->edgeOffset[dstNodeID.offset],
-                    edgeID.offset, __ATOMIC_RELEASE);
-                __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u,
+                __atomic_store_n(&ifeMorsel->parentOffset[dstNodeID.offset], parentOffset,
                     __ATOMIC_RELEASE);
+                __atomic_store_n(&ifeMorsel->edgeOffset[dstNodeID.offset], edgeID.offset,
+                    __ATOMIC_RELEASE);
+                __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u, __ATOMIC_RELEASE);
             }
         } else if (state == NOT_VISITED) {
-            if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state, VISITED)) {
+            if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[dstNodeID.offset], state,
+                    VISITED)) {
                 numNonDstVisitedLocal++;
-                __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u,
+                __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u, __ATOMIC_RELEASE);
+                __atomic_store_n(&ifeMorsel->parentOffset[dstNodeID.offset], parentOffset,
                     __ATOMIC_RELEASE);
-                __atomic_store_n(&ifeMorsel->parentOffset[dstNodeID.offset],
-                    parentOffset, __ATOMIC_RELEASE);
-                __atomic_store_n(&ifeMorsel->edgeOffset[dstNodeID.offset],
-                    edgeID.offset, __ATOMIC_RELEASE);
+                __atomic_store_n(&ifeMorsel->edgeOffset[dstNodeID.offset], edgeID.offset,
+                    __ATOMIC_RELEASE);
             }
         }
     }
@@ -70,11 +71,13 @@ static std::pair<uint64_t, uint64_t> visitNbrs(common::offset_t frontierOffset,
         auto edgeOffset = csrEntry->relOffsets[nbrIdx];
         auto state = ifeMorsel->visitedNodes[nbrOffset];
         if (state == NOT_VISITED_DST) {
-            if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[nbrOffset], state, VISITED_DST)) {
+            if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[nbrOffset], state,
+                    VISITED_DST)) {
                 numDstVisitedLocal++;
                 __atomic_store_n(&ifeMorsel->pathLength[nbrOffset], ifeMorsel->currentLevel + 1,
                     __ATOMIC_RELEASE);
-                __atomic_store_n(&ifeMorsel->parentOffset[nbrOffset], frontierOffset, __ATOMIC_RELEASE);
+                __atomic_store_n(&ifeMorsel->parentOffset[nbrOffset], frontierOffset,
+                    __ATOMIC_RELEASE);
                 __atomic_store_n(&ifeMorsel->edgeOffset[nbrOffset], edgeOffset, __ATOMIC_RELEASE);
                 __atomic_store_n(&ifeMorsel->nextFrontier[nbrOffset], 1u, __ATOMIC_RELEASE);
             }
@@ -82,7 +85,8 @@ static std::pair<uint64_t, uint64_t> visitNbrs(common::offset_t frontierOffset,
             if (__sync_bool_compare_and_swap(&ifeMorsel->visitedNodes[nbrOffset], state, VISITED)) {
                 numNonDstVisitedLocal++;
                 __atomic_store_n(&ifeMorsel->nextFrontier[nbrOffset], 1u, __ATOMIC_RELEASE);
-                __atomic_store_n(&ifeMorsel->parentOffset[nbrOffset], frontierOffset, __ATOMIC_RELEASE);
+                __atomic_store_n(&ifeMorsel->parentOffset[nbrOffset], frontierOffset,
+                    __ATOMIC_RELEASE);
                 __atomic_store_n(&ifeMorsel->edgeOffset[nbrOffset], edgeOffset, __ATOMIC_RELEASE);
             }
         }
@@ -90,8 +94,8 @@ static std::pair<uint64_t, uint64_t> visitNbrs(common::offset_t frontierOffset,
     return {numDstVisitedLocal, numNonDstVisitedLocal};
 }
 
-static void extendNode(graph::Graph* graph, SPPathIFEMorsel* ifeMorsel, const common::offset_t offset,
-    uint64_t& numDstVisitedLocal, uint64_t& numNonDstVisitedLocal,
+static void extendNode(graph::Graph* graph, SPPathIFEMorsel* ifeMorsel,
+    const common::offset_t offset, uint64_t& numDstVisitedLocal, uint64_t& numNonDstVisitedLocal,
     graph::NbrScanState* nbrScanState) {
     std::pair<uint64_t, uint64_t> retVal;
     if (graph->isInMemory) {
@@ -103,7 +107,7 @@ static void extendNode(graph::Graph* graph, SPPathIFEMorsel* ifeMorsel, const co
         do {
             graph->getFwdNbrs(nbrScanState);
             retVal = visitNbrs(ifeMorsel, *nbrScanState->dstNodeIDVector,
-                *nbrScanState->relIDVector,offset);
+                *nbrScanState->relIDVector, offset);
             numDstVisitedLocal += retVal.first;
             numNonDstVisitedLocal += retVal.second;
         } while (graph->hasMoreFwdNbrs(nbrScanState));
@@ -115,7 +119,7 @@ static uint64_t extendSparseFrontierFunc(GDSCallSharedState* sharedState,
     auto& graph = sharedState->graph;
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
-    auto ifeMorsel = (SPPathIFEMorsel *) shortestPathLocalState->ifeMorsel;
+    auto ifeMorsel = (SPPathIFEMorsel*)shortestPathLocalState->ifeMorsel;
     if (!ifeMorsel->initializedIFEMorsel) {
         ifeMorsel->init();
     }
@@ -142,7 +146,7 @@ static uint64_t extendDenseFrontierFunc(GDSCallSharedState* sharedState,
     auto& graph = sharedState->graph;
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
-    auto ifeMorsel = (SPPathIFEMorsel *) shortestPathLocalState->ifeMorsel;
+    auto ifeMorsel = (SPPathIFEMorsel*)shortestPathLocalState->ifeMorsel;
     auto morselSize = graph->isInMemory ? 512LU : 256LU;
     auto frontierMorsel = ifeMorsel->getMorsel(morselSize);
     if (!frontierMorsel.hasMoreToOutput()) {
@@ -156,8 +160,8 @@ static uint64_t extendDenseFrontierFunc(GDSCallSharedState* sharedState,
             if (!ifeMorsel->currentFrontier[offset]) {
                 continue;
             }
-            extendNode(graph.get(), ifeMorsel, offset, numDstVisitedLocal,
-                numNonDstVisitedLocal, nbrScanState.get());
+            extendNode(graph.get(), ifeMorsel, offset, numDstVisitedLocal, numNonDstVisitedLocal,
+                nbrScanState.get());
         }
         frontierMorsel = ifeMorsel->getMorsel(morselSize);
     }
@@ -165,11 +169,10 @@ static uint64_t extendDenseFrontierFunc(GDSCallSharedState* sharedState,
     return 0u;
 }
 
-static uint64_t shortestPathOutputFunc(GDSCallSharedState* sharedState,
-    GDSLocalState* localState) {
+static uint64_t shortestPathOutputFunc(GDSCallSharedState* sharedState, GDSLocalState* localState) {
     auto shortestPathLocalState =
         common::ku_dynamic_cast<GDSLocalState*, ParallelShortestPathLocalState*>(localState);
-    auto ifeMorsel = (SPPathIFEMorsel *) shortestPathLocalState->ifeMorsel;
+    auto ifeMorsel = (SPPathIFEMorsel*)shortestPathLocalState->ifeMorsel;
     auto morsel = ifeMorsel->getDstWriteMorsel(DEFAULT_VECTOR_CAPACITY);
     if (!morsel.hasMoreToOutput()) {
         return 0;
@@ -193,7 +196,7 @@ static uint64_t shortestPathOutputFunc(GDSCallSharedState* sharedState,
             pathLengthVector->setValue<int64_t>(pos, pathLength);
             // Max length of intermediate path can be (2 * upper_bound - 1)
             // There can be (upper_bound) no. of edges and (upper_bound - 1) no. of nodes
-            auto listEntry = ListVector::addList(pathVector.get(), 2*pathLength - 1);
+            auto listEntry = ListVector::addList(pathVector.get(), 2 * pathLength - 1);
             pathVector->setValue<list_entry_t>(pos, listEntry);
             pos++;
             auto parentOffset = ifeMorsel->parentOffset[offset],
@@ -225,14 +228,14 @@ void nTkSParallelSPPath::exec() {
     auto extraData = bindData->ptrCast<ParallelShortestPathBindData>();
     auto concurrentBFS = executionContext->clientContext->getClientConfig()->maxConcurrentBFS;
     auto maxConcurrentBFS = std::max(1LU, concurrentBFS);
-    printf("max concurrent bfs setting: %lu, launching maxConcurrentBFS as: %lu\n",
-        concurrentBFS, maxConcurrentBFS);
+    printf("max concurrent bfs setting: %lu, launching maxConcurrentBFS as: %lu\n", concurrentBFS,
+        maxConcurrentBFS);
     auto maxNodeOffset = sharedState->graph->getNumNodes() - 1;
     auto lowerBound = 1u;
     auto& inputMask = sharedState->inputNodeOffsetMasks[sharedState->graph->getNodeTableID()];
     scheduledTaskMap ifeMorselTasks = scheduledTaskMap();
-    std::vector<ParallelUtilsJob> jobs; // stores the next batch of jobs to submit
-    std::vector<unsigned int> jobIdxInMap;       // stores the scheduledTaskMap idx <-> job mapping
+    std::vector<ParallelUtilsJob> jobs;    // stores the next batch of jobs to submit
+    std::vector<unsigned int> jobIdxInMap; // stores the scheduledTaskMap idx <-> job mapping
     auto srcOffset = 0LU, numCompletedTasks = 0LU, totalBFSSources = 0LU;
     /*
      * We need to seed `maxConcurrentBFS` no. of tasks into the queue first. And then we reuse
@@ -287,11 +290,11 @@ void nTkSParallelSPPath::exec() {
                 runLoop = false;
                 break;
             }
+            auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
+                ifeMorselTasks[i].second->task.get());
+            delete processorTask->getSink();
+            ifeMorselTasks[i].second = nullptr;
             if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
-                auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
-                    ifeMorselTasks[i].second->task.get());
-                delete processorTask->getSink();
-                ifeMorselTasks[i].second = nullptr;
                 numCompletedTasks++;
                 // printf("bfs source: %lu is completed\n", ifeMorselTasks[i].first->srcOffset);
                 while (srcOffset <= maxNodeOffset) {

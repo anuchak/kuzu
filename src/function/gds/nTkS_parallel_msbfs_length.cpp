@@ -636,11 +636,11 @@ void nTkSParallelMSBFSLength::exec() {
                     runLoop = false;
                     break;
                 }
+                auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
+                    ifeMorselTasks[i].second->task.get());
+                delete processorTask->getSink();
+                ifeMorselTasks[i].second = nullptr;
                 if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
-                    auto processorTask = common::ku_dynamic_cast<Task*, ProcessorTask*>(
-                        ifeMorselTasks[i].second->task.get());
-                    delete processorTask->getSink();
-                    ifeMorselTasks[i].second = nullptr;
                     numCompletedMorsels++;
                     ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
                     ifeMorselTasks[i].first->srcOffsets.clear();

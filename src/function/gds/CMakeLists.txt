@@ -6,12 +6,14 @@ add_library(kuzu_function_algorithm
         1T1S_parallel_msbfs_length.cpp
         1T1S_parallel_msbfs_path.cpp
         1T1S_parallel_varlen_path.cpp
+        1T1S_parallel_varlen_msbfs_path.cpp
         ife_morsel.cpp
         sp_ife_morsel.cpp
         sp_ife_mega_morsel.cpp
         sp_path_ife_morsel.cpp
         msbfs_ife_morsel.cpp
         msbfs_path_ife_morsel.cpp
+        msbfs_varlen_path_ife_morsel.cpp
         asp_ife_morsel.cpp
         varlen_ife_morsel.cpp
         gds.cpp
@@ -22,12 +24,14 @@ add_library(kuzu_function_algorithm
         nT1S_parallel_msbfs_length.cpp
         nT1S_parallel_msbfs_path.cpp
         nT1S_parallel_varlen_path.cpp
+        nT1S_parallel_varlen_msbfs_path.cpp
         nTkS_parallel_sp_length.cpp
         nTkS_parallel_sp_mega_length.cpp
         nTkS_parallel_sp_path.cpp
         nTkS_parallel_msbfs_length.cpp
         nTkS_parallel_msbfs_path.cpp
         nTkS_parallel_varlen_path.cpp
+        nTkS_parallel_varlen_msbfs_path.cpp
         page_rank.cpp
         parallel_utils.cpp
         parallel_sp_length.cpp
@@ -39,6 +43,7 @@ add_library(kuzu_function_algorithm
         parallel_asp_path.cpp
         parallel_varlen_length.cpp
         parallel_varlen_path.cpp
+        parallel_varlen_msbfs_path.cpp
         shortest_paths.cpp
         gds_utils.cpp
         varlen_ife_morsel.cpp

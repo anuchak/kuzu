@@ -49,10 +49,7 @@ bool VarlenPathIFEMorsel::isBFSCompleteNoLock() {
     if (currentLevel == upperBound) {
         return true;
     }
-    if (currentFrontierSize == 0u) {
-        return true;
-    }
-    return false;
+    return isBFSActive;
 }
 
 bool VarlenPathIFEMorsel::isIFEMorselCompleteNoLock() {
@@ -67,8 +64,17 @@ void VarlenPathIFEMorsel::initializeNextFrontierNoLock() {
         auto temp = currentFrontier;
         currentFrontier = nextFrontier;
         nextFrontier = temp;
+        std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
+        isBFSActive = false;
+        for (auto offset = 0u; offset <= maxOffset; offset++) {
+            if (currentFrontier[offset]) {
+                isBFSActive = true;
+                break;
+            }
+        }
+    } else {
+        isBFSActive = false;
     }
-    std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
 }
 
 } // namespace function

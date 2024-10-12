@@ -30,13 +30,16 @@ static void visitNbrs(VarlenPathIFEMorsel* ifeMorsel,
     for (auto j = 0u; j < size; j++) {
         auto dstNodeID = nbrNodes[j];
         auto edgeID = relIDs[j];
+        auto isNextFrontier = ifeMorsel->nextFrontier[dstNodeID.offset];
         auto state = ifeMorsel->visitedNodes[dstNodeID.offset];
-        if (state == NOT_VISITED_DST || state == VISITED_DST) {
+        if (!isNextFrontier && state == NOT_VISITED_DST)  {
             __atomic_store_n(&ifeMorsel->visitedNodes[dstNodeID.offset], VISITED_DST,
                 __ATOMIC_RELAXED);
             __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u, __ATOMIC_RELAXED);
-        } else if (state == NOT_VISITED || state == VISITED) {
+        } else if (!isNextFrontier && state == NOT_VISITED) {
             __atomic_store_n(&ifeMorsel->visitedNodes[dstNodeID.offset], VISITED, __ATOMIC_RELAXED);
+            __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u, __ATOMIC_RELAXED);
+        } else if (!isNextFrontier) {
             __atomic_store_n(&ifeMorsel->nextFrontier[dstNodeID.offset], 1u, __ATOMIC_RELAXED);
         }
         auto topEntry = ifeMorsel->nodeIDEdgeListAndLevel[dstNodeID.offset];
@@ -53,7 +56,7 @@ static void visitNbrs(VarlenPathIFEMorsel* ifeMorsel,
                 // TODO: There is an optimization here, of reusing memory by not deleting this
                 // edgeListAndLevel object, keeping it in a (doubly-ended) local queue. This way we
                 // reduce the no. of memory allocations, we queue failed CAS objects at the end and
-                // dequeue objects from the
+                // dequeue objects from the front
                 delete newEntry;
             }
         }
@@ -111,7 +114,7 @@ static void visitNbrs(VarlenPathIFEMorsel* ifeMorsel, graph::Graph* graph,
                 // TODO: There is an optimization here, of reusing memory by not deleting this
                 // edgeListAndLevel object, keeping it in a (doubly-ended) local queue. This way we
                 // reduce the no. of memory allocations, we queue failed CAS objects at the end and
-                // dequeue objects from the
+                // dequeue objects from the front
                 delete newEntry;
             }
         }

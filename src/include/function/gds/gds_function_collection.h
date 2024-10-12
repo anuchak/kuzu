@@ -65,6 +65,12 @@ struct ParallelVarLenPathsFunction {
     static function_set getFunctionSet();
 };
 
+struct ParallelMSBFSVarLenPathsFunction {
+    static constexpr const char* name = "ParallelMSBFSVarLenPath";
+
+    static function_set getFunctionSet();
+};
+
 struct ParallelSPPathsFunction {
     static constexpr const char* name = "ParallelSPPath";
 

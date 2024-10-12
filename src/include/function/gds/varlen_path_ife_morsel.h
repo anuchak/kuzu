@@ -81,7 +81,8 @@ struct VarlenPathIFEMorsel : public IFEMorsel {
 public:
     VarlenPathIFEMorsel(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_,
         common::offset_t srcOffset)
-        : IFEMorsel(upperBound_, lowerBound_, maxNodeOffset_, srcOffset), nextDstScanStartIdx{0u} {}
+        : IFEMorsel(upperBound_, lowerBound_, maxNodeOffset_, srcOffset), isBFSActive {true},
+          nextDstScanStartIdx{0u} {}
 
     ~VarlenPathIFEMorsel() override {
         if (!allEdgeListSegments.empty()) {
@@ -121,6 +122,7 @@ public:
 public:
     // Track visited / not visited
     std::vector<uint8_t> visitedNodes;
+    bool isBFSActive;
 
     // Returning Variable length + track path
     std::vector<edgeListAndLevel*> nodeIDEdgeListAndLevel;

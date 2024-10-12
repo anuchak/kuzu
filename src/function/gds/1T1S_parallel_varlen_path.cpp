@@ -30,12 +30,15 @@ static void visitNbrs(VarlenPathIFEMorsel* ifeMorsel, ValueVector& dstNodeIDVect
     for (auto j = 0u; j < size; j++) {
         auto dstNodeID = nbrNodes[j];
         auto edgeID = relIDs[j];
+        auto isNextFrontier = ifeMorsel->nextFrontier[dstNodeID.offset];
         auto state = ifeMorsel->visitedNodes[dstNodeID.offset];
-        if (state == NOT_VISITED_DST || state == VISITED_DST) {
+        if (!isNextFrontier && state == NOT_VISITED_DST)  {
             ifeMorsel->visitedNodes[dstNodeID.offset] = VISITED_DST;
             ifeMorsel->nextFrontier[dstNodeID.offset] = 1u;
-        } else if (state == NOT_VISITED || state == VISITED) {
+        } else if (!isNextFrontier && state == NOT_VISITED) {
             ifeMorsel->visitedNodes[dstNodeID.offset] = VISITED;
+            ifeMorsel->nextFrontier[dstNodeID.offset] = 1u;
+        } else if (!isNextFrontier) {
             ifeMorsel->nextFrontier[dstNodeID.offset] = 1u;
         }
         auto topEntry = ifeMorsel->nodeIDEdgeListAndLevel[dstNodeID.offset];

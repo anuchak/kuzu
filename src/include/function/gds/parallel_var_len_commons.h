@@ -31,7 +31,7 @@ class ParallelVarLenLocalState : public GDSLocalState {
 public:
     explicit ParallelVarLenLocalState(bool isReturningPath = false)
         : GDSLocalState(), isReturningPath{isReturningPath},
-          localEdgeListSegment{std::vector<edgeListSegment*>()},
+          localEdgeListSegment{std::vector<edgeListSegment*>()}, currentDstLane{UINT8_MAX},
           prevDstMorselRange{std::pair<common::offset_t, common::offset_t>{UINT64_MAX, UINT64_MAX}},
           hasMorePathToWrite{false}, nodeBuffer{std::vector<edgeListAndLevel*>(32u, nullptr)},
           edgeBuffer{std::vector<edgeList*>(30u, nullptr)}, ifeMorsel{nullptr} {}
@@ -81,6 +81,7 @@ public:
     bool isReturningPath;
     std::unique_ptr<ValueVector> pathVector;
     std::vector<edgeListSegment*> localEdgeListSegment;
+    uint8_t currentDstLane; // NOTE: Used only for MS-BFS Variable Length Path query
     std::pair<common::offset_t, common::offset_t> prevDstMorselRange;
     bool hasMorePathToWrite;
     std::vector<edgeListAndLevel*> nodeBuffer;

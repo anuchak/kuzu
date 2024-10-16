@@ -265,6 +265,9 @@ void nTkSParallelSPPath::exec() {
             extendSparseFrontierFunc, 1 /* maxTaskThreads */});
         ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
     }
+    if (totalBFSSources == 0) {
+        return;
+    }
     auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
     // place the right scheduled task corresponding to its ife morsel
     for (auto i = 0u; i < scheduledTasks.size(); i++) {

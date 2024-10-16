@@ -611,6 +611,9 @@ void nTkSParallelMSBFSLength::exec() {
                 extendFrontierLane8Func, maxThreads});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
         }
+        if (totalMorsels == 0) {
+            return;
+        }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
         // place the right scheduled task corresponding to its ife morsel
         for (auto i = 0u; i < scheduledTasks.size(); i++) {
@@ -742,6 +745,9 @@ void nTkSParallelMSBFSLength::exec() {
             jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                 extendFrontierLane16Func, maxThreads});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
+        }
+        if (totalMorsels == 0) {
+            return;
         }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
         // place the right scheduled task corresponding to its ife morsel
@@ -875,6 +881,9 @@ void nTkSParallelMSBFSLength::exec() {
                 extendFrontierLane32Func, maxThreads});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
         }
+        if (totalMorsels == 0) {
+            return;
+        }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
         // place the right scheduled task corresponding to its ife morsel
         for (auto i = 0u; i < scheduledTasks.size(); i++) {
@@ -1006,6 +1015,9 @@ void nTkSParallelMSBFSLength::exec() {
             jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
                 extendFrontierLane64Func, maxThreads});
             ifeMorselTasks.emplace_back(std::move(ifeMorsel), nullptr);
+        }
+        if (totalMorsels == 0) {
+            return;
         }
         auto scheduledTasks = parallelUtils->submitTasksAndReturn(jobs);
         // place the right scheduled task corresponding to its ife morsel

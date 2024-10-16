@@ -20,6 +20,7 @@ void VarlenPathIFEMorsel::init() {
     isSparseFrontier = false;
     currentFrontier[srcOffset] = 1u;
     bfsFrontier.clear();
+    isBFSActive = true;
     auto srcEdgeListSegment = new edgeListSegment(0u);
     srcEdgeListSegment->edgeListAndLevelBlock.push_back(
         new edgeListAndLevel(0u, srcOffset, nullptr));

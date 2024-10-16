@@ -49,7 +49,7 @@ bool VarlenPathIFEMorsel::isBFSCompleteNoLock() {
     if (currentLevel == upperBound) {
         return true;
     }
-    return isBFSActive;
+    return !isBFSActive;
 }
 
 bool VarlenPathIFEMorsel::isIFEMorselCompleteNoLock() {

@@ -1049,6 +1049,9 @@ void nTkSParallelMSBFSLength::exec() {
                 delete processorTask->getSink();
                 ifeMorselTasks[i].second = nullptr;
                 if (ifeMorselTasks[i].first->isIFEMorselCompleteNoLock()) {
+                    auto duration = std::chrono::system_clock::now().time_since_epoch();
+                    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                    printf("output writing ends at %lu ms for source: %lu\n", millis, ifeMorselTasks[i].first->srcOffsets[0]);
                     numCompletedMorsels++;
                     ifeMorselTasks[i].first->resetNoLock(common::INVALID_OFFSET);
                     ifeMorselTasks[i].first->srcOffsets.clear();
@@ -1077,6 +1080,9 @@ void nTkSParallelMSBFSLength::exec() {
                 }
                 bool isBFSComplete = ifeMorselTasks[i].first->isBFSCompleteNoLock();
                 if (isBFSComplete) {
+                    auto duration = std::chrono::system_clock::now().time_since_epoch();
+                    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                    printf("output writing start at %lu ms for source: %lu\n", millis, ifeMorselTasks[i].first->srcOffsets[0]);
                     auto gdsLocalState = std::make_unique<ParallelMSBFSLocalState>();
                     gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
                     jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),

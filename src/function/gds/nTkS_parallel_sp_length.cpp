@@ -178,7 +178,7 @@ static uint64_t shortestPathOutputFunc(GDSCallSharedState* sharedState,
     return pos; // return the no. of output values written to the value vectors
 }
 
-void nTkSParallelShortestPath::exec() {
+void nTkSParallelSPLength::exec() {
     auto maxThreads = executionContext->clientContext->getClientConfig()->numThreads;
     auto morselSize = sharedState->graph->isInMemory ? 512LU : 256LU;
     auto extraData = bindData->ptrCast<ParallelShortestPathBindData>();
@@ -214,6 +214,8 @@ void nTkSParallelShortestPath::exec() {
         // printf("starting bfs source: %lu\n", srcOffset);
         auto ifeMorsel = std::make_unique<SPIFEMorsel>(extraData->upperBound, lowerBound,
             maxNodeOffset, srcOffset);
+        ifeMorsel->resetNoLock(srcOffset);
+        ifeMorsel->init();
         srcOffset++;
         auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
         gdsLocalState->ifeMorsel = ifeMorsel.get();
@@ -269,6 +271,7 @@ void nTkSParallelShortestPath::exec() {
                 }
                 totalBFSSources++;
                 ifeMorselTasks[i].first->resetNoLock(srcOffset);
+                ifeMorselTasks[i].first->init();
                 srcOffset++;
                 auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
@@ -277,22 +280,21 @@ void nTkSParallelShortestPath::exec() {
                 jobIdxInMap.push_back(i);
                 continue;
             }
-            bool isBFSComplete = ifeMorselTasks[i].first->isBFSCompleteNoLock();
-            if (isBFSComplete) {
+            ifeMorselTasks[i].first->initializeNextFrontierNoLock();
+            if (ifeMorselTasks[i].first->isBFSCompleteNoLock()) {
                 auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                auto maxTaskThreads = std::min(maxThreads,
-                    (uint64_t)std::ceil(ifeMorselTasks[i].first->maxOffset / 2048));
+                auto minThreads = (uint64_t) std::ceil((double) ifeMorselTasks[i].first->maxOffset / (double) 2048);
+                auto maxTaskThreads = std::min(maxThreads, minThreads);
                 jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                     sharedState, shortestPathOutputFunc, maxTaskThreads});
                 jobIdxInMap.push_back(i);
                 continue;
             } else {
-                ifeMorselTasks[i].first->initializeNextFrontierNoLock();
                 auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
                 gdsLocalState->ifeMorsel = ifeMorselTasks[i].first.get();
-                auto maxTaskThreads = std::min(maxThreads,
-                    (uint64_t)std::ceil(ifeMorselTasks[i].first->currentFrontierSize / morselSize));
+                auto minThreads = (uint64_t) std::ceil((double) ifeMorselTasks[i].first->currentFrontierSize / (double) morselSize);
+                auto maxTaskThreads = std::min(maxThreads, minThreads);
                 if (gdsLocalState->ifeMorsel->isSparseFrontier) {
                     jobs.push_back(ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                         sharedState, extendSparseFrontierFunc, maxTaskThreads});

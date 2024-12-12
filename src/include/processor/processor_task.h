@@ -21,8 +21,9 @@ public:
         maxNumThreads = threads;
     }
 
-    inline uint64_t getWorkNoLock() override {
-        return sink->getWork() / numThreadsRegistered;
+    uint64_t getWorkNoLock() override {
+        const auto numThreads = numThreadsRegistered ? numThreadsRegistered : 1;
+        return sink->getWork() / numThreads;
     }
 
     inline Sink* getSink() { return sink; }

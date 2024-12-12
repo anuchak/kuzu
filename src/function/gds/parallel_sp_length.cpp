@@ -73,7 +73,7 @@ public:
                 sharedState, bindData.get(), parallelUtils.get());
             exec1T1SPolicy->exec();
         } else if (bfsPolicy == "nTkS") {
-            auto execnTkSPolicy = std::make_unique<nTkSParallelShortestPath>(executionContext,
+            auto execnTkSPolicy = std::make_unique<nTkSParallelSPLength>(executionContext,
                 sharedState, bindData.get(), parallelUtils.get());
             execnTkSPolicy->exec();
         } else {

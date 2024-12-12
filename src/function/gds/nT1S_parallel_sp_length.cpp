@@ -195,8 +195,9 @@ void nT1SParallelShortestPath::exec() {
             // printf("starting bfs level: %d\n", ifeMorsel->currentLevel);
             auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
             gdsLocalState->ifeMorsel = ifeMorsel.get();
-            auto maxTaskThreads = std::min(maxThreads,
-                (uint64_t)std::ceil(ifeMorsel->currentFrontierSize / morselSize));
+            auto minThreads = (uint64_t) std::ceil((double) ifeMorsel->currentFrontierSize /
+                (double) morselSize);
+            auto maxTaskThreads = std::min(maxThreads, minThreads);
             if (ifeMorsel->isSparseFrontier) {
                 auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState),
                     sharedState, extendSparseFrontierFunc, maxTaskThreads};
@@ -217,8 +218,9 @@ void nT1SParallelShortestPath::exec() {
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
         auto gdsLocalState = std::make_unique<ParallelShortestPathLocalState>();
         gdsLocalState->ifeMorsel = ifeMorsel.get();
-        auto maxTaskThreads =
-            std::min(maxThreads, (uint64_t)std::ceil(ifeMorsel->maxOffset / 2048));
+        auto minThreads = (uint64_t) std::ceil((double) ifeMorsel->maxOffset /
+                (double) 2048);
+        auto maxTaskThreads = std::min(maxThreads, minThreads);
         auto job = ParallelUtilsJob{executionContext, std::move(gdsLocalState), sharedState,
             shortestPathOutputFunc, maxTaskThreads};
         parallelUtils->submitParallelTaskAndWait(job);

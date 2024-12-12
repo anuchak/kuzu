@@ -7,9 +7,9 @@
 namespace kuzu {
 namespace function {
 
-class nTkSParallelShortestPath {
+class nTkSParallelSPLength {
 public:
-    nTkSParallelShortestPath(ExecutionContext *executionContext, GDSCallSharedState *sharedState,
+    nTkSParallelSPLength(ExecutionContext *executionContext, GDSCallSharedState *sharedState,
         GDSBindData *bindData, ParallelUtils *parallelUtils) : executionContext{executionContext},
           sharedState{sharedState}, bindData{bindData}, parallelUtils{parallelUtils} {}
 

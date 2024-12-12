@@ -3,6 +3,7 @@
 #include "common/types/value/value.h"
 #include "main/client_context.h"
 #include "main/db_config.h"
+#include <common/task_system/task_scheduler.h>
 
 namespace kuzu {
 namespace main {
@@ -28,6 +29,18 @@ struct ConcurrentBFSSetting {
     }
     static common::Value getSetting(ClientContext* context) {
         return common::Value(context->getClientConfig()->maxConcurrentBFS);
+    }
+};
+
+struct SchedulerPolicy {
+    static constexpr const char* name = "scheduler_policy";
+    static constexpr const common::LogicalTypeID inputType = common::LogicalTypeID::STRING;
+    static void setContext(ClientContext* context, const common::Value& parameter) {
+        parameter.validateType(inputType);
+        context->getTaskScheduler()->setSchedulerPolicy(parameter.getValue<std::string>());
+    }
+    static common::Value getSetting(ClientContext* context) {
+        return common::Value(context->getTaskScheduler()->getSchedulerPolicy());
     }
 };
 

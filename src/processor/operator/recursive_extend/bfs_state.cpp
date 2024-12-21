@@ -102,9 +102,8 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel) {
         if (nextDstScanStartIdx < visitedNodes.size()) {
             bfsMorsel->bfsSharedState = this;
             return PATH_LENGTH_WRITE_IN_PROGRESS;
-        } else {
-            return NO_WORK_TO_SHARE;
         }
+        return NO_WORK_TO_SHARE;
     }
     case EXTEND_IN_PROGRESS: {
         if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
@@ -115,9 +114,8 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel) {
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
             return EXTEND_IN_PROGRESS;
-        } else {
-            return NO_WORK_TO_SHARE;
         }
+        return NO_WORK_TO_SHARE;
     }
     default:
         throw common::RuntimeException(

@@ -102,7 +102,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(LogicalOperator
         colIndicesToScan.push_back(i);
     }
     return std::make_unique<RecursiveJoin>(std::move(info), sharedState, outDataPoses,
-        colIndicesToScan, std::move(prevOperator), getOperatorID(), std::move(recursiveRoot),
+        colIndicesToScan, std::move(resultCollector), getOperatorID(), std::move(recursiveRoot),
         std::move(printInfo));
 }
 

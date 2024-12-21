@@ -246,9 +246,8 @@ bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
         }
         computeBFSOneThreadOneMorsel(context);
         return true;
-    } else {
-        return doBFSnThreadkMorsel(context);
     }
+    return doBFSnThreadkMorsel(context);
 }
 
 bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* context) {

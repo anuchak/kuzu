@@ -38,8 +38,7 @@ struct ScheduledTask {
  */
 class TaskScheduler {
 public:
-    explicit TaskScheduler(uint64_t numWorkerThreads,
-        std::string schedulerPolicy = "ljf_policy");
+    explicit TaskScheduler(uint64_t numWorkerThreads);
     ~TaskScheduler();
 
     inline int64_t getWorkerPoolSize() const {
@@ -47,14 +46,6 @@ public:
     }
 
     void setWorkerPoolSize(uint64_t newSize);
-
-    inline std::string getSchedulerPolicy() const {
-        return schedulerPolicy;
-    }
-
-    void setSchedulerPolicy(const std::string& scheduler_policy) {
-        schedulerPolicy = scheduler_policy;
-    }
 
     // Schedules the dependencies of the given task and finally the task one after another (so
     // not concurrently), and throws an exception if any of the tasks errors. Regardless of
@@ -84,12 +75,6 @@ private:
 private:
     std::deque<std::shared_ptr<ScheduledTask>> taskQueue;
     bool stopWorkerThreads;
-    /**
-    * Decides the scheduling type policy to use:
-    * (1) unassigned first policy: bind thread to 1st job with no thread assigned, then to task with most work
-    * (2) longest job first policy: bind thread to job with most work, ignore a task even if no thread executing on it
-    */
-    std::string schedulerPolicy;
     std::vector<std::thread> workerThreads;
     std::mutex mtx;
     std::condition_variable cv;

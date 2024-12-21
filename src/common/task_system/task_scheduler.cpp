@@ -5,8 +5,8 @@ using namespace kuzu::common;
 namespace kuzu {
 namespace common {
 
-TaskScheduler::TaskScheduler(uint64_t numWorkerThreads, std::string schedulerPolicy)
-    : stopWorkerThreads{false}, nextScheduledTaskID{0}, schedulerPolicy{std::move(schedulerPolicy)} {
+TaskScheduler::TaskScheduler(uint64_t numWorkerThreads)
+    : stopWorkerThreads{false}, nextScheduledTaskID{0} {
     for (auto n = 0u; n < numWorkerThreads; ++n) {
         workerThreads.emplace_back([&] { runWorkerThread(); });
     }
@@ -150,9 +150,7 @@ std::shared_ptr<ScheduledTask> TaskScheduler::getTaskAndRegister() {
     while (it != taskQueue.end()) {
         auto task = (*it)->task;
         task->mtx.lock();
-        // If unassigned first policy, grab the task with no thread registered.
-        // Else, scan all tasks and only then pick a task (with most work).
-        if (schedulerPolicy == "uf_policy" && task->numThreadsRegistered == 0) {
+        if (task->numThreadsRegistered == 0) {
             task->numThreadsRegistered++;
             task->mtx.unlock();
             return *it;

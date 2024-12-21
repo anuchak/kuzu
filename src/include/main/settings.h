@@ -3,6 +3,7 @@
 #include "common/types/value/value.h"
 #include "main/client_context.h"
 #include "main/db_config.h"
+#include <common/exception/runtime.h>
 #include <common/task_system/task_scheduler.h>
 
 namespace kuzu {
@@ -32,15 +33,48 @@ struct ConcurrentBFSSetting {
     }
 };
 
+struct RJBFSMorselSizeSetting {
+    static constexpr const char* name = "bfs_morsel";
+    static constexpr const common::LogicalTypeID inputType = common::LogicalTypeID::INT64;
+    static void setContext(ClientContext* context, const common::Value& parameter) {
+        parameter.validateType(inputType);
+        context->getClientConfigUnsafe()->recursiveJoinBFSMorselSize =
+            parameter.getValue<int64_t>();
+    }
+    static common::Value getSetting(ClientContext* context) {
+        return common::Value(context->getClientConfig()->recursiveJoinBFSMorselSize);
+    }
+};
+
 struct SchedulerPolicy {
     static constexpr const char* name = "scheduler_policy";
     static constexpr const common::LogicalTypeID inputType = common::LogicalTypeID::STRING;
     static void setContext(ClientContext* context, const common::Value& parameter) {
         parameter.validateType(inputType);
-        context->getTaskScheduler()->setSchedulerPolicy(parameter.getValue<std::string>());
+        auto schedulerPolicy = parameter.getValue<std::string>();
+        if (schedulerPolicy == "1T1S") {
+            context->getClientConfigUnsafe()->bfsSchedulerType = common::OneThreadOneMorsel;
+        } else if (schedulerPolicy == "nTkS") {
+            context->getClientConfigUnsafe()->bfsSchedulerType = common::nThreadkMorsel;
+        } else if (schedulerPolicy == "nTkSAdaptive") {
+            context->getClientConfigUnsafe()->bfsSchedulerType = common::nThreadkMorselAdaptive;
+        } else {
+            throw common::RuntimeException(
+                common::stringFormat("Invalid scheduler policy %s", schedulerPolicy));
+        }
     }
     static common::Value getSetting(ClientContext* context) {
-        return common::Value(context->getTaskScheduler()->getSchedulerPolicy());
+        auto schedulerPolicy = context->getClientConfig()->bfsSchedulerType;
+        if (schedulerPolicy == common::OneThreadOneMorsel) {
+            return common::Value("1T1S");
+        }
+        if (schedulerPolicy == common::nThreadkMorsel) {
+            return common::Value("nTkS");
+        }
+        if (schedulerPolicy == common::nThreadkMorselAdaptive) {
+            return common::Value("nTkSAdaptive");
+        }
+        return common::Value("no policy set");
     }
 };
 

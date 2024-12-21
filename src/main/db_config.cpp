@@ -14,12 +14,12 @@ namespace main {
 
 static ConfigurationOption options[] = { // NOLINT(cert-err58-cpp):
     GET_CONFIGURATION(ThreadsSetting), GET_CONFIGURATION(ConcurrentBFSSetting),
-    GET_CONFIGURATION(WorkerPoolSetting), GET_CONFIGURATION(TimeoutSetting),
-    GET_CONFIGURATION(SchedulerPolicy), GET_CONFIGURATION(VarLengthExtendMaxDepthSetting),
-    GET_CONFIGURATION(EnableSemiMaskSetting), GET_CONFIGURATION(EnableZoneMapSetting),
-    GET_CONFIGURATION(HomeDirectorySetting), GET_CONFIGURATION(FileSearchPathSetting),
-    GET_CONFIGURATION(ProgressBarSetting), GET_CONFIGURATION(ProgressBarTimerSetting),
-    GET_CONFIGURATION(RecursivePatternSemanticSetting),
+    GET_CONFIGURATION(RJBFSMorselSizeSetting), GET_CONFIGURATION(WorkerPoolSetting),
+    GET_CONFIGURATION(TimeoutSetting), GET_CONFIGURATION(SchedulerPolicy),
+    GET_CONFIGURATION(VarLengthExtendMaxDepthSetting), GET_CONFIGURATION(EnableSemiMaskSetting),
+    GET_CONFIGURATION(EnableZoneMapSetting), GET_CONFIGURATION(HomeDirectorySetting),
+    GET_CONFIGURATION(FileSearchPathSetting), GET_CONFIGURATION(ProgressBarSetting),
+    GET_CONFIGURATION(ProgressBarTimerSetting), GET_CONFIGURATION(RecursivePatternSemanticSetting),
     GET_CONFIGURATION(RecursivePatternFactorSetting), GET_CONFIGURATION(EnableMVCCSetting)};
 
 DBConfig::DBConfig(SystemConfig& systemConfig) {

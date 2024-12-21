@@ -3,9 +3,40 @@
 #include "function/function.h"
 #include "function/table/bind_data.h"
 #include "processor/result/factorized_table.h"
+#include <function/table/scan_functions.h>
 
 namespace kuzu {
 namespace processor {
+
+struct FTableScanMorsel {
+    uint64_t startTupleIdx;
+    uint64_t numTuples;
+
+    FTableScanMorsel(uint64_t startTupleIdx, uint64_t numTuples)
+        : startTupleIdx{startTupleIdx}, numTuples{numTuples} {}
+};
+
+struct FTableScanSharedState final : public function::BaseScanSharedState {
+    std::shared_ptr<FactorizedTable> table;
+    uint64_t morselSize;
+    common::offset_t nextTupleIdx;
+
+    FTableScanSharedState(std::shared_ptr<FactorizedTable> table, uint64_t morselSize)
+        : BaseScanSharedState{}, table{std::move(table)}, morselSize{morselSize}, nextTupleIdx{0} {}
+
+    FTableScanMorsel getMorsel() {
+        std::unique_lock lck{lock};
+        auto numTuplesToScan = std::min(morselSize, table->getNumTuples() - nextTupleIdx);
+        auto morsel = FTableScanMorsel(nextTupleIdx, numTuplesToScan);
+        nextTupleIdx += numTuplesToScan;
+        return morsel;
+    }
+
+    uint64_t getNumRows() const override {
+        KU_ASSERT(table->getNumTuples() == table->getTotalNumFlatTuples());
+        return table->getNumTuples();
+    }
+};
 
 struct FTableScanBindData : public function::TableFuncBindData {
     std::shared_ptr<FactorizedTable> table;

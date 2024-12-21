@@ -56,6 +56,10 @@ public:
     bool isReadOnly() const { return readOnly; }
     bool compressionEnabled() const { return enableCompression; }
 
+    uint64_t getNodeTableMaxNodes(common::table_id_t nodeTableID, transaction::Transaction *txn) {
+        return tables[nodeTableID]->getNumTuples(txn);
+    }
+
 private:
     BMFileHandle* initFileHandle(const std::string& filename, common::VirtualFileSystem* vfs,
         main::ClientContext* context);

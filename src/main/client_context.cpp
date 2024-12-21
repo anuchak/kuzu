@@ -57,7 +57,7 @@ ClientContext::ClientContext(Database* database)
     clientConfig.enableSemiMask = ClientConfigDefault::ENABLE_SEMI_MASK;
     clientConfig.enableZoneMap = ClientConfigDefault::ENABLE_ZONE_MAP;
     clientConfig.numThreads = database->dbConfig.maxNumThreads;
-    clientConfig.maxConcurrentBFS = database->dbConfig.maxConcurrentBFS;
+    clientConfig.maxConcurrentBFS = database->dbConfig.maxNumThreads;
     clientConfig.timeoutInMS = ClientConfigDefault::TIMEOUT_IN_MS;
     clientConfig.varLengthMaxDepth = ClientConfigDefault::VAR_LENGTH_MAX_DEPTH;
     clientConfig.enableProgressBar = ClientConfigDefault::ENABLE_PROGRESS_BAR;
@@ -65,6 +65,8 @@ ClientContext::ClientContext(Database* database)
     clientConfig.recursivePatternSemantic = ClientConfigDefault::RECURSIVE_PATTERN_SEMANTIC;
     clientConfig.recursivePatternCardinalityScaleFactor =
         ClientConfigDefault::RECURSIVE_PATTERN_FACTOR;
+    clientConfig.bfsSchedulerType = SchedulerType::OneThreadOneMorsel;
+    clientConfig.recursiveJoinBFSMorselSize = 256lu;
 }
 
 ClientContext::~ClientContext() = default;

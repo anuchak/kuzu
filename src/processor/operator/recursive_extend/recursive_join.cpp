@@ -19,6 +19,21 @@ std::vector<NodeSemiMask*> RecursiveJoin::getSemiMask() const {
     return result;
 }
 
+// User's setting of scheduler policy is given preference. If user changes policy to 1T1S then
+// before operator begins execution we change the policy globally here.
+void RecursiveJoin::initGlobalStateInternal(kuzu::processor::ExecutionContext* context) {
+    auto schedulerPolicy = context->clientContext->getClientConfigUnsafe()->bfsSchedulerType;
+    if (schedulerPolicy == OneThreadOneMorsel) {
+        sharedState->morselDispatcher->setSchedulerType(OneThreadOneMorsel);
+        return;
+    }
+    if (sharedState->morselDispatcher->getSchedulerType() == nThreadkMorsel) {
+        auto maxConcurrentBFS = context->clientContext->getClientConfigUnsafe()->maxConcurrentBFS;
+        printf("Setting max active bfs at any given point to: %lu\n", maxConcurrentBFS);
+        sharedState->morselDispatcher->initActiveBFSSharedState(maxConcurrentBFS);
+    }
+}
+
 void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context) {
     auto& dataInfo = info.dataInfo;
     populateTargetDstNodes(context);
@@ -33,6 +48,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
     auto lowerBound = info.lowerBound;
     auto upperBound = info.upperBound;
     auto extendInBWD = info.direction == ExtendDirection::BWD;
+    auto bfsMorselSize = context->clientContext->getClientConfig()->recursiveJoinBFSMorselSize;
     switch (info.queryRelType) {
     case QueryRelType::VARIABLE_LENGTH: {
         switch (info.joinType) {
@@ -49,7 +65,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
             }
             vectors->pathVector = resultSet->getValueVector(dataInfo.pathPos).get();
             bfsState = std::make_unique<VariableLengthState<true /* TRACK_PATH */>>(upperBound,
-                targetDstNodes.get());
+                lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(std::make_unique<PathScanner>(targetDstNodes.get(), i,
                     dataInfo.tableIDToName, semanticCheck, extendInBWD));
@@ -61,7 +77,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
                                        "implemented. Try WALK semantic.");
             }
             bfsState = std::make_unique<VariableLengthState<false /* TRACK_PATH */>>(upperBound,
-                targetDstNodes.get());
+                lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(
                     std::make_unique<DstNodeWithMultiplicityScanner>(targetDstNodes.get(), i));
@@ -80,7 +96,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
         case planner::RecursiveJoinType::TRACK_PATH: {
             vectors->pathVector = resultSet->getValueVector(dataInfo.pathPos).get();
             bfsState = std::make_unique<ShortestPathState<true /* TRACK_PATH */>>(upperBound,
-                targetDstNodes.get());
+                lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(std::make_unique<PathScanner>(targetDstNodes.get(), i,
                     dataInfo.tableIDToName, nullptr, extendInBWD));
@@ -88,7 +104,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
         } break;
         case planner::RecursiveJoinType::TRACK_NONE: {
             bfsState = std::make_unique<ShortestPathState<false /* TRACK_PATH */>>(upperBound,
-                targetDstNodes.get());
+                lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(
                     std::make_unique<DstNodeWithMultiplicityScanner>(targetDstNodes.get(), i));
@@ -107,7 +123,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
         case planner::RecursiveJoinType::TRACK_PATH: {
             vectors->pathVector = resultSet->getValueVector(dataInfo.pathPos).get();
             bfsState = std::make_unique<AllShortestPathState<true /* TRACK_PATH */>>(upperBound,
-                targetDstNodes.get());
+                lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(std::make_unique<PathScanner>(targetDstNodes.get(), i,
                     dataInfo.tableIDToName, nullptr, extendInBWD));
@@ -115,7 +131,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
         } break;
         case planner::RecursiveJoinType::TRACK_NONE: {
             bfsState = std::make_unique<AllShortestPathState<false /* TRACK_PATH */>>(upperBound,
-                targetDstNodes.get());
+                lowerBound, targetDstNodes.get(), bfsMorselSize);
             for (auto i = lowerBound; i <= upperBound; ++i) {
                 scanners.push_back(
                     std::make_unique<DstNodeWithMultiplicityScanner>(targetDstNodes.get(), i));
@@ -172,47 +188,122 @@ bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
     if (targetDstNodes->getNumNodes() == 0) {
         return false;
     }
-    // There are two high level steps.
-    //
-    // (1) BFS Computation phase: Grab a new source to do a BFS and compute an entire BFS starting
-    // from a single source;
-    //
-    // (2) Outputting phase: Once a BFS from a single source finishes, we output the results in
-    // pieces of vectors to the parent operator.
-    //
-    // These 2 steps are repeated iteratively until all sources to do a BFS are exhausted. The first
-    // if statement checks if we are in the outputting phase and if so, scans a vector to output and
-    // returns true. Otherwise, we compute a new BFS.
     while (true) {
         if (scanOutput()) { // Phase 2
             return true;
         }
-        if (!children[0]->getNextTuple(context)) {
+        if (!computeBFS(context)) {
             return false;
         }
-        bfsState->resetState();
-        computeBFS(context); // Phase 1
         frontiersScanner->resetState(*bfsState);
     }
 }
 
 bool RecursiveJoin::scanOutput() {
-    sel_t offsetVectorSize = 0u;
-    sel_t nodeIDDataVectorSize = 0u;
-    sel_t relIDDataVectorSize = 0u;
-    if (vectors->pathVector != nullptr) {
-        vectors->pathVector->resetAuxiliaryBuffer();
+    if (sharedState->getSchedulerType() == SchedulerType::OneThreadOneMorsel) {
+        sel_t offsetVectorSize = 0u;
+        sel_t nodeIDDataVectorSize = 0u;
+        sel_t relIDDataVectorSize = 0u;
+        if (vectors->pathVector != nullptr) {
+            vectors->pathVector->resetAuxiliaryBuffer();
+        }
+        frontiersScanner->scan(vectors.get(), offsetVectorSize, nodeIDDataVectorSize,
+            relIDDataVectorSize);
+        if (offsetVectorSize == 0) {
+            return false;
+        }
+        vectors->dstNodeIDVector->state->initOriginalAndSelectedSize(offsetVectorSize);
+        return true;
+    } else {
+        while (true) {
+            if (!bfsState->hasBFSSharedState()) {
+                return false;
+            }
+            auto tableID = *std::begin(info.dataInfo.dstNodeTableIDs);
+            auto ret = sharedState->writeDstNodeIDAndPathLength(
+                vectorsToScan, colIndicesToScan, tableID, bfsState, vectors.get());
+            /**
+             * ret > 0: non-zero path lengths were written to vector, return to parent op
+             * ret < 0: path length writing is complete, proceed to computeBFS for another morsel
+             * ret = 0: the distance morsel received was empty, go back to get another morsel
+             */
+            if (ret > 0) {
+                return true;
+            }
+            if (ret < 0) {
+                return false;
+            }
+        }
     }
-    frontiersScanner->scan(vectors.get(), offsetVectorSize, nodeIDDataVectorSize,
-        relIDDataVectorSize);
-    if (offsetVectorSize == 0) {
-        return false;
-    }
-    vectors->dstNodeIDVector->state->initOriginalAndSelectedSize(offsetVectorSize);
-    return true;
 }
 
-void RecursiveJoin::computeBFS(ExecutionContext* context) {
+bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
+    if (sharedState->getSchedulerType() == SchedulerType::OneThreadOneMorsel) {
+        auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
+            vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
+        if (state.first == COMPLETE) {
+            return false;
+        }
+        computeBFSOneThreadOneMorsel(context);
+        return true;
+    } else {
+        return doBFSnThreadkMorsel(context);
+    }
+}
+
+bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* context) {
+    while (true) {
+        if (bfsState->hasBFSSharedState()) {
+            auto state = bfsState->getBFSMorsel();
+            if (state == EXTEND_IN_PROGRESS) {
+                computeBFSnThreadkMorsel(context);
+                if (bfsState->finishBFSMorsel(info.queryRelType)) {
+                    return true;
+                }
+                continue;
+            }
+            if (state == PATH_LENGTH_WRITE_IN_PROGRESS) {
+                return true;
+            }
+        }
+        auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
+            vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
+        if (state.first == COMPLETE) {
+            return false;
+        }
+        if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
+            return true;
+        }
+        if (state.second == EXTEND_IN_PROGRESS) {
+            computeBFSnThreadkMorsel(context);
+            if (bfsState->finishBFSMorsel(info.queryRelType)) {
+                return true;
+            }
+        } else {
+            std::this_thread::sleep_for(
+                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+            if (context->clientContext->interrupted()) {
+                throw common::RuntimeException("Encountered Interrupt exception ...\n ");
+            }
+        }
+    }
+}
+
+void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
+    // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
+    // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
+    common::offset_t nodeOffset = bfsState->getNextNodeOffset();
+    while (nodeOffset != common::INVALID_OFFSET) {
+        uint64_t boundNodeMultiplicity = bfsState->getBoundNodeMultiplicity(nodeOffset);
+        recursiveSource->init(common::nodeID_t{nodeOffset, *std::begin(info.dataInfo.dstNodeTableIDs)});
+        while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
+            bfsState->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
+        }
+        nodeOffset = bfsState->getNextNodeOffset();
+    }
+}
+
+void RecursiveJoin::computeBFSOneThreadOneMorsel(ExecutionContext* context) {
     auto nodeID = vectors->srcNodeIDVector->getValue<nodeID_t>(
         vectors->srcNodeIDVector->state->getSelVector()[0]);
     bfsState->markSrc(nodeID);

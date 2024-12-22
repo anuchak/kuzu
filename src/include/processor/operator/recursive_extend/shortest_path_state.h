@@ -10,8 +10,9 @@ template<bool TRACK_PATH>
 class ShortestPathState : public BaseBFSState {
 public:
     ShortestPathState(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes,
-        uint64_t bfsMorselSize)
-        : BaseBFSState{upperBound, lowerBound, targetDstNodes, bfsMorselSize},
+        uint64_t bfsMorselSize,
+        const std::unordered_map<common::table_id_t, std::string>& tableIDToName)
+        : BaseBFSState{upperBound, lowerBound, targetDstNodes, bfsMorselSize, tableIDToName},
           numVisitedDstNodes{0}, startScanIdx{0u}, endScanIdx{0u} {}
 
     ~ShortestPathState() override = default;

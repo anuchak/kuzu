@@ -110,9 +110,7 @@ public:
 
     inline uint64_t getNumNodes() const { return numNodes; }
 
-    inline common::node_id_set_t getNodeIDs() const {
-        return nodeIDs;
-    }
+    inline common::node_id_set_t getNodeIDs() const { return nodeIDs; }
 
 private:
     uint64_t numNodes;
@@ -330,9 +328,11 @@ public:
 class BaseBFSState {
 public:
     explicit BaseBFSState(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes,
-        uint64_t bfsMorselSize)
+        uint64_t bfsMorselSize,
+        const std::unordered_map<common::table_id_t, std::string>& tableIDToName)
         : upperBound{upperBound}, lowerBound{lowerBound}, currentLevel{0}, nextNodeIdxToExtend{0},
-    targetDstNodes{targetDstNodes}, bfsSharedState{nullptr}, bfsMorselSize{bfsMorselSize} {}
+          targetDstNodes{targetDstNodes}, tableIDToName{tableIDToName}, bfsSharedState{nullptr},
+          bfsMorselSize{bfsMorselSize} {}
 
     virtual ~BaseBFSState() = default;
 
@@ -431,6 +431,7 @@ protected:
 public:
     // Target information.
     TargetDstNodes* targetDstNodes;
+    std::unordered_map<common::table_id_t, std::string> tableIDToName;
     BFSSharedState* bfsSharedState;
     uint64_t bfsMorselSize;
 };

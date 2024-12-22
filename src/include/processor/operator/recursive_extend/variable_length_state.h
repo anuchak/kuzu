@@ -8,8 +8,8 @@ namespace processor {
 template<bool TRACK_PATH>
 struct VariableLengthState : public BaseBFSState {
     VariableLengthState(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes,
-        uint64_t bfsMorselSize)
-        : BaseBFSState{upperBound, lowerBound, targetDstNodes, bfsMorselSize},
+        uint64_t bfsMorselSize, const std::unordered_map<common::table_id_t, std::string>& tableIDToName)
+        : BaseBFSState{upperBound, lowerBound, targetDstNodes, bfsMorselSize, tableIDToName},
           localEdgeListSegment{std::vector<edgeListSegment*>()}, hasMorePathToWrite{false} {}
 
     ~VariableLengthState() override = default;

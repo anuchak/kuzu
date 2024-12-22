@@ -65,7 +65,7 @@ ClientContext::ClientContext(Database* database)
     clientConfig.recursivePatternSemantic = ClientConfigDefault::RECURSIVE_PATTERN_SEMANTIC;
     clientConfig.recursivePatternCardinalityScaleFactor =
         ClientConfigDefault::RECURSIVE_PATTERN_FACTOR;
-    clientConfig.bfsSchedulerType = SchedulerType::nThreadkMorsel;
+    clientConfig.bfsSchedulerType = SchedulerType::nThreadkMorselAdaptive;
     clientConfig.recursiveJoinBFSMorselSize = 256lu;
 }
 

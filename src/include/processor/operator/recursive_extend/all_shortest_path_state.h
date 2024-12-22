@@ -9,8 +9,8 @@ template<bool TRACK_PATH>
 class AllShortestPathState : public BaseBFSState {
 public:
     AllShortestPathState(uint8_t upperBound, uint8_t lowerBound, TargetDstNodes* targetDstNodes,
-        uint64_t bfsMorselSize)
-        : BaseBFSState{upperBound, lowerBound, targetDstNodes, bfsMorselSize}, minDistance{0},
+        uint64_t bfsMorselSize, const std::unordered_map<common::table_id_t, std::string>& tableIDToName)
+        : BaseBFSState{upperBound, lowerBound, targetDstNodes, bfsMorselSize, tableIDToName}, minDistance{0},
           numVisitedDstNodes{0}, prevDistMorselStartEndIdx{0u, 0u},
           localEdgeListSegment{std::vector<edgeListSegment*>()}, hasMorePathToWrite{false} {}
 

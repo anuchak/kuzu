@@ -1,5 +1,9 @@
 #include "processor/operator/recursive_extend/shortest_path_state.h"
 
+#include <snappy/snappy-stubs-public.h>
+
+using namespace kuzu::common;
+
 namespace kuzu {
 namespace processor {
 
@@ -118,6 +122,11 @@ int64_t ShortestPathState<true>::writeToVector(
     uint8_t pathLength;
     auto nodeBuffer = std::vector<common::offset_t>(31u);
     auto relBuffer = std::vector<common::offset_t>(31u);
+    std::string nodeLabelName, relLabelName;
+    nodeLabelName = tableIDToName.at(tableID);
+    if (bfsSharedState->edgeTableID != UINT64_MAX) {
+        relLabelName = tableIDToName.at(bfsSharedState->edgeTableID);
+    }
     while (startScanIdxAndSize.first < endIdx) {
         if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
                 bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
@@ -140,14 +149,18 @@ int64_t ShortestPathState<true>::writeToVector(
                 entry = bfsSharedState->srcNodeOffsetAndEdgeOffset[entry.first];
             }
             for (auto i = 1u; i < pathLength; i++) {
-                vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(nodeIDDataVectorPos++,
+                vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(nodeIDDataVectorPos,
                     common::nodeID_t{nodeBuffer[i], tableID});
+                common::StringVector::addString(vectors->pathNodesLabelDataVector,
+                    nodeIDDataVectorPos++, nodeLabelName.data(), nodeLabelName.length());
             }
             for (auto i = 0u; i < pathLength; i++) {
                 vectors->pathRelsSrcIDDataVector->setValue<common::nodeID_t>(relIDDataVectorPos,
                     common::nodeID_t{nodeBuffer[i], tableID});
                 vectors->pathRelsIDDataVector->setValue<common::relID_t>(relIDDataVectorPos,
                     common::relID_t{relBuffer[i], bfsSharedState->edgeTableID});
+                StringVector::addString(vectors->pathRelsLabelDataVector, relIDDataVectorPos,
+                    relLabelName.data(), relLabelName.length());
                 vectors->pathRelsDstIDDataVector->setValue<common::nodeID_t>(relIDDataVectorPos++,
                     common::nodeID_t{nodeBuffer[i + 1], tableID});
             }

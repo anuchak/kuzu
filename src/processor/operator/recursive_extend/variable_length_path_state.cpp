@@ -193,6 +193,11 @@ int64_t VariableLengthState<true>::writeToVector(
         nodeBuffer = std::vector<edgeListAndLevel*>(31u, nullptr);
         relBuffer = std::vector<edgeList*>(31u, nullptr);
     }
+    std::string nodeLabelName, relLabelName;
+    nodeLabelName = tableIDToName.at(tableID);
+    if (bfsSharedState->edgeTableID != UINT64_MAX) {
+        relLabelName = tableIDToName.at(bfsSharedState->edgeTableID);
+    }
     if (hasMorePathToWrite) {
         bool exitLoop = true;
         auto edgeListAndLevel = bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first];
@@ -208,13 +213,17 @@ int64_t VariableLengthState<true>::writeToVector(
             vectors->pathLengthVector->setValue<int64_t>(size, pathLength);
             for (auto i = 1u; i < pathLength; i++) {
                 vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(
-                    nodeIDDataVectorPos++, common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
+                    nodeIDDataVectorPos, common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
+                common::StringVector::addString(vectors->pathNodesLabelDataVector,
+                    nodeIDDataVectorPos++, nodeLabelName.data(), nodeLabelName.length());
             }
             for (auto i = 0u; i < pathLength; i++) {
                 vectors->pathRelsSrcIDDataVector->setValue<common::nodeID_t>(
                     relIDDataVectorPos, common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
                 vectors->pathRelsIDDataVector->setValue<common::relID_t>(relIDDataVectorPos,
                     common::relID_t{relBuffer[i]->edgeOffset, bfsSharedState->edgeTableID});
+                common::StringVector::addString(vectors->pathRelsLabelDataVector, relIDDataVectorPos,
+                    relLabelName.data(), relLabelName.length());
                 vectors->pathRelsDstIDDataVector->setValue<common::nodeID_t>(
                     relIDDataVectorPos++, common::nodeID_t{nodeBuffer[i + 1]->nodeOffset, tableID});
             }
@@ -273,8 +282,10 @@ int64_t VariableLengthState<true>::writeToVector(
                     vectors->pathLengthVector->setValue<int64_t>(size, pathLength);
                     for (auto i = 1u; i < pathLength; i++) {
                         vectors->pathNodesIDDataVector->setValue<common::nodeID_t>(
-                            nodeIDDataVectorPos++,
+                            nodeIDDataVectorPos,
                             common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
+                        common::StringVector::addString(vectors->pathNodesLabelDataVector,
+                            nodeIDDataVectorPos++, nodeLabelName.data(), nodeLabelName.length());
                     }
                     for (auto i = 0u; i < pathLength; i++) {
                         vectors->pathRelsSrcIDDataVector->setValue<common::nodeID_t>(
@@ -282,6 +293,8 @@ int64_t VariableLengthState<true>::writeToVector(
                             common::nodeID_t{nodeBuffer[i]->nodeOffset, tableID});
                         vectors->pathRelsIDDataVector->setValue<common::relID_t>(relIDDataVectorPos,
                             common::relID_t{relBuffer[i]->edgeOffset, bfsSharedState->edgeTableID});
+                        common::StringVector::addString(vectors->pathRelsLabelDataVector, relIDDataVectorPos,
+                            relLabelName.data(), relLabelName.length());
                         vectors->pathRelsDstIDDataVector->setValue<common::nodeID_t>(
                             relIDDataVectorPos++,
                             common::nodeID_t{nodeBuffer[i + 1]->nodeOffset, tableID});

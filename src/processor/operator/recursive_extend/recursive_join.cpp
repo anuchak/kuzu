@@ -35,6 +35,9 @@ void RecursiveJoin::initGlobalStateInternal(kuzu::processor::ExecutionContext* c
 }
 
 void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context) {
+    for (auto& dataPos : vectorsToScanPos) {
+        vectorsToScan.push_back(resultSet->getValueVector(dataPos).get());
+    }
     auto& dataInfo = info.dataInfo;
     populateTargetDstNodes(context);
     vectors = std::make_unique<RecursiveJoinVectors>();

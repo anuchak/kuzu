@@ -255,7 +255,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
     }
     auto duration1 = std::chrono::system_clock::now().time_since_epoch();
     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
-    printf("time taken to move level %d is %lu ms", currentLevel, millis1 - millis);
+    printf("time taken to move level %d is %lu ms\n", currentLevel, millis1 - millis);
 }
 
 /**

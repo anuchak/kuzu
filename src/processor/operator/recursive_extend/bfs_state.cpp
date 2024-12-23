@@ -175,6 +175,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
         cv.notify_all();
         return true;
     }
+    cv.notify_all();
     return false;
 }
 

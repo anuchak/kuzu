@@ -159,7 +159,9 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
             ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
             return true;
         }
-        moveNextLevelAsCurrentLevel();
+        if (nextScanStartIdx == bfsLevelNodeOffsets.size()) {
+            moveNextLevelAsCurrentLevel();
+        }
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
             auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();

@@ -93,42 +93,33 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
  * BFSSharedState & if MORSEL_pathLength_WRITING_IN_PROGRESS then help in this task.
  */
 SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel) {
-    std::unique_lock<std::mutex> lck{mutex, std::defer_lock};
-    while (true) {
-        switch (ssspLocalState) {
-        case MORSEL_COMPLETE: {
-            return NO_WORK_TO_SHARE;
-        }
-        case PATH_LENGTH_WRITE_IN_PROGRESS: {
-            if (nextDstScanStartIdx < visitedNodes.size()) {
-                lck.lock();
-                bfsMorsel->bfsSharedState = this;
-                lck.unlock();
-                return PATH_LENGTH_WRITE_IN_PROGRESS;
-            }
-            cv.wait(lck);
-            lck.unlock();
-        } break;
-        case EXTEND_IN_PROGRESS: {
-            lck.lock();
-            if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
-                numThreadsBFSActive++;
-                auto bfsMorselSize =
-                    std::min(bfsMorsel->bfsMorselSize, bfsLevelNodeOffsets.size() - nextScanStartIdx);
-                auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
-                bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
-                nextScanStartIdx += bfsMorselSize;
-                lck.unlock();
-                return EXTEND_IN_PROGRESS;
-            }
-            cv.wait(lck);
-            lck.unlock();
-        } break;
-        default:
-            throw common::RuntimeException(
-                &"Unknown local state encountered inside BFSSharedState: "[ssspLocalState]);
-        }
+    std::unique_lock lck{mutex};
+    switch (ssspLocalState) {
+    case MORSEL_COMPLETE: {
+        return NO_WORK_TO_SHARE;
     }
+    case PATH_LENGTH_WRITE_IN_PROGRESS: {
+        if (nextDstScanStartIdx < visitedNodes.size()) {
+            bfsMorsel->bfsSharedState = this;
+            return PATH_LENGTH_WRITE_IN_PROGRESS;
+        }
+    } break;
+    case EXTEND_IN_PROGRESS: {
+        if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
+            numThreadsBFSActive++;
+            auto bfsMorselSize =
+                std::min(bfsMorsel->bfsMorselSize, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+            auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
+            bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
+            nextScanStartIdx += bfsMorselSize;
+            return EXTEND_IN_PROGRESS;
+        }
+    } break;
+    default:
+        throw common::RuntimeException(
+            &"Unknown local state encountered inside BFSSharedState: "[ssspLocalState]);
+    }
+    return NO_WORK_TO_SHARE;
 }
 
 bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType) {
@@ -160,22 +151,24 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
             localEdgeListSegment.resize(0);
         }
     }
-    if (numThreadsBFSActive == 0 && nextScanStartIdx == bfsLevelNodeOffsets.size()) {
+    if (numThreadsBFSActive == 0) {
+        if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            startTimeInMillis2 = millis;
+            ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
+            return true;
+        }
         moveNextLevelAsCurrentLevel();
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
             auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             startTimeInMillis2 = millis;
             ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
-            cv.notify_all();
             return true;
         }
-    } else if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
-        ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
-        cv.notify_all();
-        return true;
+        return false;
     }
-    cv.notify_all();
     return false;
 }
 
@@ -242,6 +235,8 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
 }
 
 void BFSSharedState::moveNextLevelAsCurrentLevel() {
+    auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
     currentLevel++;
     nextScanStartIdx = 0u;
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
@@ -258,6 +253,9 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
             }
         }
     }
+    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+    auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
+    printf("time taken to move level %d is %lu ms", currentLevel, millis1 - millis);
 }
 
 /**

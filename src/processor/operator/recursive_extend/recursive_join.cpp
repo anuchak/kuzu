@@ -223,8 +223,8 @@ bool RecursiveJoin::scanOutput() {
                 return false;
             }
             auto tableID = *std::begin(info.dataInfo.dstNodeTableIDs);
-            auto ret = sharedState->writeDstNodeIDAndPathLength(
-                vectorsToScan, colIndicesToScan, tableID, bfsState, vectors.get());
+            auto ret = sharedState->writeDstNodeIDAndPathLength(vectorsToScan, colIndicesToScan,
+                tableID, bfsState, vectors.get());
             /**
              * ret > 0: non-zero path lengths were written to vector, return to parent op
              * ret < 0: path length writing is complete, proceed to computeBFS for another morsel
@@ -268,6 +268,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
                 return true;
             }
         }
+        printf("Thread came here, bfs shared state is: %d \n", bfsState->hasBFSSharedState());
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
             vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
         if (state.first == COMPLETE) {
@@ -277,11 +278,16 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
             return true;
         }
         if (state.second == EXTEND_IN_PROGRESS) {
+            printf("got work from central coordinator, working ...\n");
             computeBFSnThreadkMorsel(context);
             if (bfsState->finishBFSMorsel(info.queryRelType)) {
                 return true;
             }
         } else {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            printf("going to sleep again at time: %lu ms, failed to get work ...\n",
+                millis);
             std::this_thread::sleep_for(
                 std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
             if (context->clientContext->interrupted()) {
@@ -297,7 +303,8 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     common::offset_t nodeOffset = bfsState->getNextNodeOffset();
     while (nodeOffset != common::INVALID_OFFSET) {
         uint64_t boundNodeMultiplicity = bfsState->getBoundNodeMultiplicity(nodeOffset);
-        recursiveSource->init(common::nodeID_t{nodeOffset, *std::begin(info.dataInfo.dstNodeTableIDs)});
+        recursiveSource->init(
+            common::nodeID_t{nodeOffset, *std::begin(info.dataInfo.dstNodeTableIDs)});
         while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
             bfsState->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
         }

@@ -296,11 +296,11 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
         bfsSharedState->ssspLocalState = MORSEL_COMPLETE;
         auto duration = std::chrono::system_clock::now().time_since_epoch();
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        /*printf("Source: %lu | BFS time taken: %lu millis | Path / Path-Len write time taken: %lu "
+        printf("Source: %lu | BFS time taken: %lu millis | Path / Path-Len write time taken: %lu "
                "millis\n",
             bfsSharedState->srcOffset,
             bfsSharedState->startTimeInMillis2 - bfsSharedState->startTimeInMillis1,
-            millis - bfsSharedState->startTimeInMillis2);*/
+            millis - bfsSharedState->startTimeInMillis2);
         bfsSharedState->mutex.unlock();
         // If all SSSP have been completed indicated by count (numActiveBFSSharedState == 0) and no
         // more SSSP are available indicated by state IN_PROGRESS_ALL_SRC_SCANNED then global state

@@ -169,7 +169,6 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
             ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
             return true;
         }
-        return false;
     }
     return false;
 }

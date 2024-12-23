@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -286,7 +285,6 @@ public:
 
 public:
     std::mutex mutex;
-    std::condition_variable cv;
     SSSPLocalState ssspLocalState;
     uint64_t startTimeInMillis1;
     uint64_t startTimeInMillis2;

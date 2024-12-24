@@ -8,6 +8,7 @@
 #include "planner/operator/extend/recursive_join_type.h"
 #include "processor/operator/mask.h"
 #include "processor/operator/physical_operator.h"
+#include <graph/on_disk_graph.h>
 
 namespace kuzu {
 namespace processor {
@@ -18,13 +19,15 @@ struct RecursiveJoinSharedState {
     std::shared_ptr<MorselDispatcher> morselDispatcher;
     std::shared_ptr<FTableScanSharedState> inputFTableSharedState;
     std::vector<std::unique_ptr<NodeOffsetLevelSemiMask>> semiMasks;
+    std::unique_ptr<graph::OnDiskGraph> diskGraph;
 
     explicit RecursiveJoinSharedState(std::shared_ptr<MorselDispatcher> morselDispatcher,
         std::shared_ptr<FTableScanSharedState> inputFTableSharedState,
-        std::vector<std::unique_ptr<NodeOffsetLevelSemiMask>> semiMasks)
+        std::vector<std::unique_ptr<NodeOffsetLevelSemiMask>> semiMasks,
+        std::unique_ptr<graph::OnDiskGraph> diskGraph)
         : morselDispatcher{std::move(morselDispatcher)},
           inputFTableSharedState{std::move(inputFTableSharedState)},
-          semiMasks{std::move(semiMasks)} {}
+          semiMasks{std::move(semiMasks)}, diskGraph{std::move(diskGraph)} {}
 
     inline common::SchedulerType getSchedulerType() { return morselDispatcher->getSchedulerType(); }
 
@@ -131,8 +134,7 @@ public:
 
     std::unique_ptr<PhysicalOperator> clone() final {
         return std::make_unique<RecursiveJoin>(info.copy(), sharedState, vectorsToScanPos,
-            colIndicesToScan, children[0]->clone(), id,
-            recursiveRoot->clone(), printInfo->copy());
+            colIndicesToScan, children[0]->clone(), id, recursiveRoot->clone(), printInfo->copy());
     }
 
 private:
@@ -158,6 +160,8 @@ private:
     std::shared_ptr<RecursiveJoinSharedState> sharedState;
 
     // Local recursive plan
+    std::unique_ptr<graph::NbrScanState> nbrScanState;
+
     std::unique_ptr<ResultSet> localResultSet;
     std::unique_ptr<PhysicalOperator> recursiveRoot;
     OffsetScanNodeTable* recursiveSource;

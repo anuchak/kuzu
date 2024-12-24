@@ -28,7 +28,6 @@ struct RecursiveJoinVectors {
     common::ValueVector* pathRelsLabelDataVector = nullptr;  // STRING
 
     common::ValueVector* recursiveEdgeIDVector = nullptr;
-    common::ValueVector* recursiveSrcNodeIDVector = nullptr;
     common::ValueVector* recursiveDstNodeIDVector = nullptr;
     common::ValueVector* recursiveNodePredicateExecFlagVector = nullptr;
 };

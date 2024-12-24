@@ -39,8 +39,10 @@ static std::shared_ptr<RecursiveJoinSharedState> createSharedState(const NodeExp
                 rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
     }
 #endif
+    auto diskGraph = std::make_unique<graph::OnDiskGraph>(context, nbrNode.getSingleTableID(),
+        rel.getSingleTableID());
     return std::make_shared<RecursiveJoinSharedState>(morselDispatcher, fTableSharedState,
-        std::move(semiMasks));
+        std::move(semiMasks), std::move(diskGraph));
 }
 
 std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(LogicalOperator* logicalOperator) {

@@ -185,6 +185,8 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
             StructVector::getFieldVector(pathRelsDataVector, pathRelsLabelFieldIdx).get();
     }
     frontiersScanner = std::make_unique<FrontiersScanner>(std::move(scanners));
+    nbrScanState = std::make_unique<graph::NbrScanState>(context->clientContext->getMemoryManager(),
+        bfsState->getRecursiveJoinType());
     initLocalRecursivePlan(context);
 }
 
@@ -302,13 +304,13 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
     // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
     common::offset_t nodeOffset = bfsState->getNextNodeOffset();
-    auto nodeTableID = *std::begin(info.dataInfo.dstNodeTableIDs);
     while (nodeOffset != common::INVALID_OFFSET) {
         uint64_t boundNodeMultiplicity = bfsState->getBoundNodeMultiplicity(nodeOffset);
-        recursiveSource->init(nodeID_t{nodeOffset, nodeTableID});
-        while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
+        sharedState->diskGraph->initializeStateFwdNbrs(nodeOffset, nbrScanState.get());
+        do {
+            sharedState->diskGraph->getFwdNbrs(nbrScanState.get());
             bfsState->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
-        }
+        } while (sharedState->diskGraph->hasMoreFwdNbrs(nbrScanState.get()));
         nodeOffset = bfsState->getNextNodeOffset();
     }
 }
@@ -357,15 +359,9 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
     auto& dataInfo = info.dataInfo;
     localResultSet = std::make_unique<ResultSet>(dataInfo.localResultSetDescriptor.get(),
         context->clientContext->getMemoryManager());
-    vectors->recursiveSrcNodeIDVector =
-        localResultSet->getValueVector(dataInfo.recursiveSrcNodeIDPos).get();
-    vectors->recursiveDstNodeIDVector =
-        localResultSet->getValueVector(dataInfo.recursiveDstNodeIDPos).get();
-    vectors->recursiveNodePredicateExecFlagVector =
-        localResultSet->getValueVector(dataInfo.recursiveNodePredicateExecFlagPos).get();
-    vectors->recursiveEdgeIDVector =
-        localResultSet->getValueVector(dataInfo.recursiveEdgeIDPos).get();
-    auto isTrackPath = bfsState->getRecursiveJoinType();
+    vectors->recursiveDstNodeIDVector = nbrScanState->dstNodeIDVector.get();
+    vectors->recursiveEdgeIDVector = nbrScanState->relIDVector.get();
+    /*auto isTrackPath = bfsState->getRecursiveJoinType();
     if (!isTrackPath) {
         auto temp = recursiveRoot.get();
         while (temp->getOperatorType() != PhysicalOperatorType::SCAN_REL_TABLE) {
@@ -375,7 +371,7 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
         scanRelTable->relInfo.columnIDs.clear();
     }
     recursiveRoot->initLocalState(localResultSet.get(), context);
-    recursiveSource = getSource(recursiveRoot.get())->ptrCast<OffsetScanNodeTable>();
+    recursiveSource = getSource(recursiveRoot.get())->ptrCast<OffsetScanNodeTable>();*/
 }
 
 void RecursiveJoin::populateTargetDstNodes(ExecutionContext*) {

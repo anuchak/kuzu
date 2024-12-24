@@ -116,8 +116,8 @@ public:
         std::unique_ptr<PhysicalOperator> recursiveRoot, std::unique_ptr<OPPrintInfo> printInfo)
         : PhysicalOperator{type_, std::move(child), id, std::move(printInfo)},
           info{std::move(info)}, sharedState{std::move(sharedState)},
-          vectorsToScanPos{vectorsToScanPos}, colIndicesToScan{colIndicesToScan},
-          recursiveRoot{std::move(recursiveRoot)} {}
+          recursiveRoot{std::move(recursiveRoot)}, vectorsToScanPos{vectorsToScanPos},
+          colIndicesToScan{colIndicesToScan} {}
 
     std::vector<NodeSemiMask*> getSemiMask() const;
 

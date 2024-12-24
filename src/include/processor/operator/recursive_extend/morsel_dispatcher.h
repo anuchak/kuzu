@@ -10,8 +10,8 @@ struct MorselDispatcher {
 public:
     MorselDispatcher(common::SchedulerType schedulerType, uint64_t lowerBound, uint64_t upperBound,
         uint64_t maxOffset)
-        : schedulerType{schedulerType}, numActiveBFSSharedState{0u}, globalState{IN_PROGRESS},
-          maxOffset{maxOffset}, lowerBound{lowerBound}, upperBound{upperBound} {}
+        : schedulerType{schedulerType}, maxOffset{maxOffset}, upperBound{upperBound},
+          lowerBound{lowerBound}, numActiveBFSSharedState{0u}, globalState{IN_PROGRESS} {}
 
     inline void initActiveBFSSharedState(uint32_t numThreads) {
         activeBFSSharedState = std::vector<std::shared_ptr<BFSSharedState>>(numThreads, nullptr);

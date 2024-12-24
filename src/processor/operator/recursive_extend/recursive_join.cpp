@@ -4,6 +4,7 @@
 #include "processor/operator/recursive_extend/shortest_path_state.h"
 #include "processor/operator/recursive_extend/variable_length_state.h"
 #include "processor/operator/scan/offset_scan_node_table.h"
+#include <processor/operator/scan/scan_rel_table.h>
 
 using namespace kuzu::common;
 using namespace kuzu::planner;
@@ -301,10 +302,10 @@ void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
     // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
     // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
     common::offset_t nodeOffset = bfsState->getNextNodeOffset();
+    auto nodeTableID = *std::begin(info.dataInfo.dstNodeTableIDs);
     while (nodeOffset != common::INVALID_OFFSET) {
         uint64_t boundNodeMultiplicity = bfsState->getBoundNodeMultiplicity(nodeOffset);
-        recursiveSource->init(
-            common::nodeID_t{nodeOffset, *std::begin(info.dataInfo.dstNodeTableIDs)});
+        recursiveSource->init(nodeID_t{nodeOffset, nodeTableID});
         while (recursiveRoot->getNextTuple(context)) { // Exhaust recursive plan.
             bfsState->addToLocalNextBFSLevel(vectors.get(), boundNodeMultiplicity, nodeOffset);
         }
@@ -364,6 +365,15 @@ void RecursiveJoin::initLocalRecursivePlan(ExecutionContext* context) {
         localResultSet->getValueVector(dataInfo.recursiveNodePredicateExecFlagPos).get();
     vectors->recursiveEdgeIDVector =
         localResultSet->getValueVector(dataInfo.recursiveEdgeIDPos).get();
+    auto isTrackPath = bfsState->getRecursiveJoinType();
+    if (!isTrackPath) {
+        auto temp = recursiveRoot.get();
+        while (temp->getOperatorType() != PhysicalOperatorType::SCAN_REL_TABLE) {
+            temp = recursiveRoot->getChild(0);
+        }
+        auto *scanRelTable = dynamic_cast<ScanRelTable *>(temp);
+        scanRelTable->relInfo.columnIDs.clear();
+    }
     recursiveRoot->initLocalState(localResultSet.get(), context);
     recursiveSource = getSource(recursiveRoot.get())->ptrCast<OffsetScanNodeTable>();
 }

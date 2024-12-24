@@ -49,7 +49,6 @@ public:
             printInfo->copy());
     }
 
-protected:
     ScanRelTableInfo relInfo;
 };
 

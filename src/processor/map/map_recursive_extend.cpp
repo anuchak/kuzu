@@ -3,6 +3,7 @@
 #include "processor/plan_mapper.h"
 #include "storage/storage_manager.h"
 #include "storage/store/node_table.h"
+#include <graph/on_disk_graph.h>
 
 using namespace kuzu::binder;
 using namespace kuzu::planner;
@@ -12,18 +13,19 @@ namespace processor {
 
 static std::shared_ptr<RecursiveJoinSharedState> createSharedState(const NodeExpression& nbrNode,
     const NodeExpression& boundNode, const RelExpression& rel, RecursiveJoinDataInfo* dataInfo,
-    std::shared_ptr<FTableScanSharedState>& fTableSharedState, const main::ClientContext& context) {
+    std::shared_ptr<FTableScanSharedState>& fTableSharedState, main::ClientContext* context) {
     std::vector<std::unique_ptr<NodeOffsetLevelSemiMask>> semiMasks;
     for (auto tableID : nbrNode.getTableIDs()) {
-        auto table = context.getStorageManager()->getTable(tableID)->ptrCast<storage::NodeTable>();
+        auto table = context->getStorageManager()->getTable(tableID)->ptrCast<storage::NodeTable>();
         semiMasks.push_back(std::make_unique<NodeOffsetLevelSemiMask>(tableID,
-            table->getMaxNodeOffset(context.getTx())));
+            table->getMaxNodeOffset(context->getTx())));
     }
     std::shared_ptr<MorselDispatcher> morselDispatcher;
     bool isSingleLabel = boundNode.getTableIDs().size() == 1 && nbrNode.getTableIDs().size() == 1 &&
                          dataInfo->recursiveDstNodeTableIDs.size() == 1;
-    auto maxNodeOffset = context.getStorageManager()->getNodeTableMaxNodes(nbrNode.getTableIDs()[0],
-        context.getTx()) - 1;
+    auto maxNodeOffset = context->getStorageManager()->getNodeTableMaxNodes(
+                             nbrNode.getTableIDs()[0], context->getTx()) -
+                         1;
 #if defined(_MSC_VER)
     morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::OneThreadOneMorsel,
         rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
@@ -85,7 +87,7 @@ std::unique_ptr<PhysicalOperator> PlanMapper::mapRecursiveExtend(LogicalOperator
     auto sharedFTable = ((ResultCollector*)resultCollector.get())->getResultFactorizedTable();
     auto fTableSharedState = std::make_shared<FTableScanSharedState>(sharedFTable, 1u);
     auto sharedState =
-        createSharedState(*nbrNode, *boundNode, *rel, &dataInfo, fTableSharedState, *clientContext);
+        createSharedState(*nbrNode, *boundNode, *rel, &dataInfo, fTableSharedState, clientContext);
     // Info
     auto info = RecursiveJoinInfo();
     info.dataInfo = std::move(dataInfo);

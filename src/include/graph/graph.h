@@ -15,11 +15,11 @@ struct NbrScanState {
     std::unique_ptr<common::ValueVector> dstNodeIDVector;
     std::unique_ptr<common::ValueVector> relIDVector;
 
-    static constexpr common::RelDataDirection direction = common::RelDataDirection::FWD;
     std::vector<common::column_id_t> columnIDs;
     std::unique_ptr<storage::RelTableScanState> fwdReadState;
 
-    explicit NbrScanState(storage::MemoryManager* mm, bool isRelIDOutput = false);
+    explicit NbrScanState(storage::MemoryManager* mm, bool isRelIDOutput = false,
+        common::RelDataDirection direction = common::RelDataDirection::FWD);
 };
 
 class Graph {

@@ -11,7 +11,7 @@ using namespace kuzu::common;
 namespace kuzu {
 namespace graph {
 
-NbrScanState::NbrScanState(MemoryManager* mm, bool isRelIDOutput) {
+NbrScanState::NbrScanState(MemoryManager* mm, bool isRelIDOutput, RelDataDirection direction) {
     srcNodeIDVectorState = DataChunkState::getSingleValueDataChunkState();
     dstNodeIDVectorState = std::make_shared<DataChunkState>();
     srcNodeIDVector = std::make_unique<ValueVector>(LogicalType::INTERNAL_ID(), mm);

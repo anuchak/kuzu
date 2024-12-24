@@ -186,7 +186,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
     }
     frontiersScanner = std::make_unique<FrontiersScanner>(std::move(scanners));
     nbrScanState = std::make_unique<graph::NbrScanState>(context->clientContext->getMemoryManager(),
-        bfsState->getRecursiveJoinType());
+        bfsState->getRecursiveJoinType(), ExtendDirectionUtil::getRelDataDirection(info.direction));
     initLocalRecursivePlan(context);
 }
 
@@ -289,8 +289,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
         } else {
             auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            printf("going to sleep again at time: %lu ms, failed to get work ...\n",
-                millis);
+            printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);
             std::this_thread::sleep_for(
                 std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
             if (context->clientContext->interrupted()) {

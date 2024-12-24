@@ -192,7 +192,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
 
 bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
     if (targetDstNodes->getNumNodes() == 0) {
-        return false;
+         return false;
     }
     while (true) {
         if (scanOutput()) { // Phase 2

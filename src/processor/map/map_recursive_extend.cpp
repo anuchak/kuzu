@@ -31,8 +31,9 @@ static std::shared_ptr<RecursiveJoinSharedState> createSharedState(const NodeExp
         rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
 #else
     if (isSingleLabel) {
-        morselDispatcher = std::make_shared<MorselDispatcher>(common::SchedulerType::nThreadkMorsel,
-            rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
+        morselDispatcher =
+            std::make_shared<MorselDispatcher>(context->getClientConfig()->bfsSchedulerType,
+                rel.getLowerBound(), rel.getUpperBound(), maxNodeOffset);
     } else {
         morselDispatcher =
             std::make_shared<MorselDispatcher>(common::SchedulerType::OneThreadOneMorsel,

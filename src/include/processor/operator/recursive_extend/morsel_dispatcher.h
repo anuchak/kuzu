@@ -13,8 +13,8 @@ public:
         : schedulerType{schedulerType}, maxOffset{maxOffset}, upperBound{upperBound},
           lowerBound{lowerBound}, numActiveBFSSharedState{0u}, globalState{IN_PROGRESS} {}
 
-    inline void initActiveBFSSharedState(uint32_t numThreads) {
-        activeBFSSharedState = std::vector<std::shared_ptr<BFSSharedState>>(numThreads, nullptr);
+    inline void initActiveBFSSharedState(uint32_t maxConcurrentBFS) {
+        activeBFSSharedState = std::vector<std::shared_ptr<BFSSharedState>>(maxConcurrentBFS, nullptr);
     }
 
     std::pair<GlobalSSSPState, SSSPLocalState> getBFSMorsel(

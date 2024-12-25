@@ -28,7 +28,8 @@ void RecursiveJoin::initGlobalStateInternal(kuzu::processor::ExecutionContext* c
         sharedState->morselDispatcher->setSchedulerType(OneThreadOneMorsel);
         return;
     }
-    if (sharedState->morselDispatcher->getSchedulerType() == nThreadkMorsel) {
+    if (sharedState->morselDispatcher->getSchedulerType() == nThreadkMorsel ||
+        sharedState->morselDispatcher->getSchedulerType() == nThreadkMorselAdaptive) {
         auto maxConcurrentBFS = context->clientContext->getClientConfigUnsafe()->maxConcurrentBFS;
         printf("Setting max active bfs at any given point to: %lu\n", maxConcurrentBFS);
         sharedState->morselDispatcher->initActiveBFSSharedState(maxConcurrentBFS);
@@ -192,7 +193,7 @@ void RecursiveJoin::initLocalStateInternal(ResultSet*, ExecutionContext* context
 
 bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
     if (targetDstNodes->getNumNodes() == 0) {
-         return false;
+        return false;
     }
     while (true) {
         if (scanOutput()) { // Phase 2
@@ -253,7 +254,10 @@ bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
         computeBFSOneThreadOneMorsel(context);
         return true;
     }
-    return doBFSnThreadkMorsel(context);
+    if (sharedState->getSchedulerType() == SchedulerType::nThreadkMorsel) {
+        return doBFSnThreadkMorsel(context);
+    }
+    return doBFSnThreadkMorselAdaptive(context);
 }
 
 bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* context) {
@@ -271,6 +275,36 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
                 return true;
             }
         }
+        // printf("Thread came here, bfs shared state is: %d \n", bfsState->hasBFSSharedState());
+        auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
+            vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
+        if (state.first == COMPLETE) {
+            return false;
+        }
+        if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
+            return true;
+        }
+        if (state.second == EXTEND_IN_PROGRESS) {
+            // printf("got work from central coordinator, working ...\n");
+            computeBFSnThreadkMorsel(context);
+            if (bfsState->finishBFSMorsel(info.queryRelType)) {
+                return true;
+            }
+        } else {
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);*/
+            std::this_thread::sleep_for(
+                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+            if (context->clientContext->interrupted()) {
+                throw common::RuntimeException("Encountered Interrupt exception ...\n ");
+            }
+        }
+    }
+}
+
+bool RecursiveJoin::doBFSnThreadkMorselAdaptive(kuzu::processor::ExecutionContext* context) {
+    while (true) {
         // printf("Thread came here, bfs shared state is: %d \n", bfsState->hasBFSSharedState());
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
             vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);

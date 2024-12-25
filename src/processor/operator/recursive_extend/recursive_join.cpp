@@ -271,7 +271,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
                 return true;
             }
         }
-        printf("Thread came here, bfs shared state is: %d \n", bfsState->hasBFSSharedState());
+        // printf("Thread came here, bfs shared state is: %d \n", bfsState->hasBFSSharedState());
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
             vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
         if (state.first == COMPLETE) {
@@ -281,15 +281,15 @@ bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* conte
             return true;
         }
         if (state.second == EXTEND_IN_PROGRESS) {
-            printf("got work from central coordinator, working ...\n");
+            // printf("got work from central coordinator, working ...\n");
             computeBFSnThreadkMorsel(context);
             if (bfsState->finishBFSMorsel(info.queryRelType)) {
                 return true;
             }
         } else {
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);
+            printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);*/
             std::this_thread::sleep_for(
                 std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
             if (context->clientContext->interrupted()) {

@@ -236,8 +236,8 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
 }
 
 void BFSSharedState::moveNextLevelAsCurrentLevel() {
-    auto duration = std::chrono::system_clock::now().time_since_epoch();
-    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
     currentLevel++;
     nextScanStartIdx = 0u;
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
@@ -254,9 +254,9 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
             }
         }
     }
-    auto duration1 = std::chrono::system_clock::now().time_since_epoch();
+    /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
-    printf("time taken to move level %d is %lu ms\n", currentLevel, millis1 - millis);
+    printf("time taken to move level %d is %lu ms\n", currentLevel, millis1 - millis);*/
 }
 
 /**

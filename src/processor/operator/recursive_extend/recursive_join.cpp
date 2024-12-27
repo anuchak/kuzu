@@ -314,20 +314,30 @@ bool RecursiveJoin::doBFSnThreadkMorselAdaptive(kuzu::processor::ExecutionContex
         if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
             return true;
         }
-        if (state.second == EXTEND_IN_PROGRESS) {
+        if (state.second == NO_WORK_TO_SHARE) {
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);*/
+            std::this_thread::sleep_for(
+                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+            if (context->clientContext->interrupted()) {
+                throw common::RuntimeException("Encountered Interrupt exception ...\n ");
+            }
+            continue;
+        }
+        const auto prevBFSLevel = bfsState->bfsSharedState->currentLevel;
+        while (state.second == EXTEND_IN_PROGRESS) {
             // printf("got work from central coordinator, working ...\n");
             computeBFSnThreadkMorsel(context);
             if (bfsState->finishBFSMorsel(info.queryRelType)) {
                 return true;
             }
-        } else {
-            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);*/
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
-            if (context->clientContext->interrupted()) {
-                throw common::RuntimeException("Encountered Interrupt exception ...\n ");
+            if (prevBFSLevel != bfsState->bfsSharedState->currentLevel) {
+                break;
+            }
+            state.second = bfsState->getBFSMorsel();
+            if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
+                return true;
             }
         }
     }

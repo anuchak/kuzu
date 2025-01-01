@@ -217,12 +217,12 @@ uint32_t MorselDispatcher::getNextAvailableSSSPWork() const {
              maxPathLenWriteID = UINT64_MAX;
     for (auto i = 0u; i < activeBFSSharedState.size(); i++) {
         if (activeBFSSharedState[i]) {
-            activeBFSSharedState[i]->mutex.lock();
+            // activeBFSSharedState[i]->mutex.lock();
             auto bfsSharedState = activeBFSSharedState[i];
             if (bfsSharedState->ssspLocalState == EXTEND_IN_PROGRESS &&
-                bfsSharedState->nextScanStartIdx < bfsSharedState->bfsLevelNodeOffsets.size()) {
+                bfsSharedState->nextScanStartIdx < bfsSharedState->currentFrontierSize) {
                 auto frontierSize =
-                    bfsSharedState->bfsLevelNodeOffsets.size() - bfsSharedState->nextScanStartIdx;
+                    bfsSharedState->currentFrontierSize - bfsSharedState->nextScanStartIdx;
                 auto threadsActive =
                     bfsSharedState->numThreadsBFSActive ? bfsSharedState->numThreadsBFSActive : 1;
                 auto work = frontierSize / threadsActive;
@@ -230,12 +230,14 @@ uint32_t MorselDispatcher::getNextAvailableSSSPWork() const {
                     maxBFSWork = work;
                     maxBfsID = i;
                 }
-                activeBFSSharedState[i]->mutex.unlock();
+                // activeBFSSharedState[i]->mutex.unlock();
                 continue;
-            } else if (bfsSharedState->ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
-                       bfsSharedState->nextDstScanStartIdx < bfsSharedState->visitedNodes.size()) {
+            }
+            if (bfsSharedState->ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
+                bfsSharedState->nextDstScanStartIdx < bfsSharedState->maxOffset) {
+                bfsSharedState->mutex.lock();
                 auto totalOffsets =
-                    bfsSharedState->visitedNodes.size() - bfsSharedState->nextDstScanStartIdx;
+                    bfsSharedState->maxOffset - bfsSharedState->nextDstScanStartIdx;
                 auto threadsActive = !bfsSharedState->pathLengthThreadWriters.empty() ?
                                          bfsSharedState->pathLengthThreadWriters.size() :
                                          1;
@@ -244,10 +246,8 @@ uint32_t MorselDispatcher::getNextAvailableSSSPWork() const {
                     maxPathLenWriteWork = work;
                     maxPathLenWriteID = i;
                 }
-                activeBFSSharedState[i]->mutex.unlock();
-                continue;
+                bfsSharedState->mutex.unlock();
             }
-            activeBFSSharedState[i]->mutex.unlock();
         }
     }
     if (maxBFSWork > 0) {

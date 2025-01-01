@@ -105,10 +105,10 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel) {
         }
     } break;
     case EXTEND_IN_PROGRESS: {
-        if (nextScanStartIdx < bfsLevelNodeOffsets.size()) {
+        if (nextScanStartIdx < currentFrontierSize) {
             numThreadsBFSActive++;
             auto bfsMorselSize =
-                std::min(bfsMorsel->bfsMorselSize, bfsLevelNodeOffsets.size() - nextScanStartIdx);
+                std::min(bfsMorsel->bfsMorselSize, currentFrontierSize - nextScanStartIdx);
             auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
             bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
             nextScanStartIdx += bfsMorselSize;
@@ -159,7 +159,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
             ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
             return true;
         }
-        if (nextScanStartIdx == bfsLevelNodeOffsets.size()) {
+        if (nextScanStartIdx == currentFrontierSize) {
             moveNextLevelAsCurrentLevel();
         }
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
@@ -174,7 +174,7 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
 }
 
 bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType) {
-    if (bfsLevelNodeOffsets.empty()) { // no more to extend.
+    if (currentFrontierSize == 0u) { // no more to extend.
         return true;
     }
     if (currentLevel == upperBound) { // upper limit reached.
@@ -190,6 +190,7 @@ bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRel
 }
 
 void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRelType) {
+    currentFrontierSize = 1u;
     if (isSrcDestination) {
         visitedNodes[srcOffset] = VISITED_DST;
         numVisitedNodes++;
@@ -240,6 +241,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();*/
     currentLevel++;
     nextScanStartIdx = 0u;
+    currentFrontierSize = 0u;
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
         /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
         /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
@@ -253,6 +255,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
                 bfsLevelNodeOffsets.push_back(i);
             }
         }
+        currentFrontierSize = bfsLevelNodeOffsets.size();
     }
     /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();

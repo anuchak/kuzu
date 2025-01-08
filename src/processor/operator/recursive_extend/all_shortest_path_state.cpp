@@ -15,13 +15,14 @@ void AllShortestPathState<false>::addToLocalNextBFSLevel(
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
-                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST)) {
                 /// NOTE: This write is safe to do here without a CAS, because we have a full
                 /// memory barrier once each thread merges its results (they have to hold a lock).
                 /// A CAS would be required if a read had occurred before this full memory barrier
                 /// - such as visitedNodes state. Those states are being written to and read from
                 /// even before each thread holds the lock.
                 bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
                 numVisitedDstNodes++;
                 auto minDistance_ = bfsSharedState->minDistance;
                 if (minDistance_ < bfsSharedState->currentLevel) {
@@ -29,12 +30,14 @@ void AllShortestPathState<false>::addToLocalNextBFSLevel(
                         &bfsSharedState->minDistance, minDistance_, bfsSharedState->currentLevel);
                 }
             }
+            __atomic_fetch_add(&bfsSharedState->nodeIDToMultiplicity[nodeID.offset],
+                boundNodeMultiplicity, __ATOMIC_RELAXED);
         } else if (state == NOT_VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
-        }
-        state = bfsSharedState->visitedNodes[nodeID.offset];
-        if (state == VISITED_NEW || state == VISITED_DST_NEW) {
+            if (__sync_bool_compare_and_swap(
+                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED)) {
+                numVisitedNonDstNodes++;
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
+            }
             __atomic_fetch_add(&bfsSharedState->nodeIDToMultiplicity[nodeID.offset],
                 boundNodeMultiplicity, __ATOMIC_RELAXED);
         }
@@ -58,8 +61,9 @@ void AllShortestPathState<true>::addToLocalNextBFSLevel(
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(
-                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST_NEW)) {
+                    &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_DST)) {
                 bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
                 numVisitedDstNodes++;
                 auto minDistance_ = bfsSharedState->minDistance;
                 if (minDistance_ < bfsSharedState->currentLevel) {
@@ -67,14 +71,45 @@ void AllShortestPathState<true>::addToLocalNextBFSLevel(
                         &bfsSharedState->minDistance, minDistance_, bfsSharedState->currentLevel);
                 }
             }
-        } else if (state == NOT_VISITED) {
-            __sync_bool_compare_and_swap(
-                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED_NEW);
-        }
-        state = bfsSharedState->visitedNodes[nodeID.offset];
-        if (state == VISITED_DST_NEW || state == VISITED_NEW) {
             auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
-            if (!entry || (entry->bfsLevel <= bfsSharedState->currentLevel)) {
+            if (!entry) {
+                auto newEntry =
+                    new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
+                if (__sync_bool_compare_and_swap(
+                        &bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset], entry, newEntry)) {
+                    // This thread was successful in doing the CAS operation at the top.
+                    newEdgeListSegment->edgeListAndLevelBlock.push_back(newEntry);
+                } else {
+                    // This thread was NOT successful in doing the CAS operation, hence free the
+                    // memory right here since it has no use.
+                    delete newEntry;
+                }
+            }
+            auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);
+            /// TEMP - to keep the edge table ID saved later for writing to the ValueVector
+            if (bfsSharedState->edgeTableID == UINT64_MAX) {
+                bfsSharedState->edgeTableID = edgeID.tableID;
+            }
+            newEdgeListSegment->edgeListBlockPtr[i].edgeOffset = edgeID.offset;
+            newEdgeListSegment->edgeListBlockPtr[i].src = srcNodeEdgeListAndLevel;
+            auto currTopEdgeList = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset]->top;
+            newEdgeListSegment->edgeListBlockPtr[i].next = currTopEdgeList;
+            // Keep trying to add until successful, if failed then read the new value.
+            while (!__sync_bool_compare_and_swap(
+                &bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset]->top, currTopEdgeList,
+                &newEdgeListSegment->edgeListBlockPtr[i])) {
+                // Failed to do the CAS operation, reread the top pointer and retry.
+                currTopEdgeList = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset]->top;
+                newEdgeListSegment->edgeListBlockPtr[i].next = currTopEdgeList;
+            }
+        } else if (state == NOT_VISITED) {
+            if (__sync_bool_compare_and_swap(
+                &bfsSharedState->visitedNodes[nodeID.offset], state, VISITED)) {
+                numVisitedNonDstNodes++;
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
+            }
+            auto entry = bfsSharedState->nodeIDEdgeListAndLevel[nodeID.offset];
+            if (!entry) {
                 auto newEntry =
                     new edgeListAndLevel(bfsSharedState->currentLevel + 1, nodeID.offset, entry);
                 if (__sync_bool_compare_and_swap(
@@ -119,9 +154,7 @@ int64_t AllShortestPathState<false>::writeToVector(
     auto dstNodeIDVector = vectors->dstNodeIDVector;
     auto pathLengthVector = vectors->pathLengthVector;
     while (startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
-        if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
-                bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
-            bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
+        if (bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
             auto multiplicity = bfsSharedState->nodeIDToMultiplicity[startScanIdxAndSize.first];
             do {
                 dstNodeIDVector->setValue<common::nodeID_t>(
@@ -228,9 +261,7 @@ int64_t AllShortestPathState<true>::writeToVector(
         }
     } else {
         while (startScanIdxAndSize.first < endIdx && size < common::DEFAULT_VECTOR_CAPACITY) {
-            if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW ||
-                    bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST) &&
-                bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first] &&
+            if (bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first] &&
                 bfsSharedState->nodeIDEdgeListAndLevel[startScanIdxAndSize.first]->bfsLevel >=
                     lowerBound) {
                 auto edgeListAndLevel =

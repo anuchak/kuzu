@@ -18,18 +18,22 @@ void ShortestPathState<false>::addToLocalNextBFSLevel(RecursiveJoinVectors* vect
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(&bfsSharedState->visitedNodes[nodeID.offset], state,
-                    VISITED_DST_NEW)) {
+                    VISITED_DST)) {
                 /// NOTE: This write is safe to do here without a CAS, because we have a full
                 /// memory barrier once each thread merges its results (they have to hold a lock).
                 /// A CAS would be required if a read had occurred before this full memory barrier
                 /// - such as visitedNodes state. Those states are being written to and read from
                 /// even before each thread holds the lock.
                 bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
                 numVisitedDstNodes++;
             }
         } else if (state == NOT_VISITED) {
-            __sync_bool_compare_and_swap(&bfsSharedState->visitedNodes[nodeID.offset], state,
-                VISITED_NEW);
+            if (__sync_bool_compare_and_swap(&bfsSharedState->visitedNodes[nodeID.offset], state,
+                VISITED)) {
+                numVisitedNonDstNodes++;
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
+            }
         }
     }
 }
@@ -46,13 +50,14 @@ void ShortestPathState<true>::addToLocalNextBFSLevel(RecursiveJoinVectors* vecto
         auto state = bfsSharedState->visitedNodes[nodeID.offset];
         if (state == NOT_VISITED_DST) {
             if (__sync_bool_compare_and_swap(&bfsSharedState->visitedNodes[nodeID.offset], state,
-                    VISITED_DST_NEW)) {
+                    VISITED_DST)) {
                 numVisitedDstNodes++;
                 auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);
                 // TODO: Do we even need this ? Because once we track back the path to the source
                 // we know the length of the path, so a separate vector to have the bfsLevel is not
                 // needed. Remove this later if speed is slow.
                 bfsSharedState->pathLength[nodeID.offset] = bfsSharedState->currentLevel + 1;
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
                 bfsSharedState->srcNodeOffsetAndEdgeOffset[nodeID.offset] = {boundNodeOffset,
                     edgeID.offset};
                 /// TEMP - to keep the edge table ID saved later for writing to the ValueVector
@@ -62,10 +67,12 @@ void ShortestPathState<true>::addToLocalNextBFSLevel(RecursiveJoinVectors* vecto
             }
         } else if (state == NOT_VISITED) {
             if (__sync_bool_compare_and_swap(&bfsSharedState->visitedNodes[nodeID.offset], state,
-                    VISITED_NEW)) {
+                    VISITED)) {
                 auto edgeID = recursiveEdgeIDVector->getValue<common::relID_t>(pos);
                 bfsSharedState->srcNodeOffsetAndEdgeOffset[nodeID.offset] = {boundNodeOffset,
                     edgeID.offset};
+                bfsSharedState->nextFrontier[nodeID.offset] = 1u;
+                numVisitedNonDstNodes++;
             }
         }
     }
@@ -82,9 +89,7 @@ int64_t ShortestPathState<false>::writeToVector(
     auto dstNodeIDVector = vectors->dstNodeIDVector;
     auto pathLengthVector = vectors->pathLengthVector;
     while (startScanIdxAndSize.first < endIdx) {
-        if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
-                bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
-            bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
+        if (bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
             dstNodeIDVector->setValue<common::nodeID_t>(size,
                 common::nodeID_t{startScanIdxAndSize.first, tableID});
             pathLengthVector->setValue<int64_t>(size,
@@ -128,9 +133,7 @@ int64_t ShortestPathState<true>::writeToVector(
         relLabelName = tableIDToName.at(bfsSharedState->edgeTableID);
     }
     while (startScanIdxAndSize.first < endIdx) {
-        if ((bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST ||
-                bfsSharedState->visitedNodes[startScanIdxAndSize.first] == VISITED_DST_NEW) &&
-            bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
+        if (bfsSharedState->pathLength[startScanIdxAndSize.first] >= bfsSharedState->lowerBound) {
             pathLength = bfsSharedState->pathLength[startScanIdxAndSize.first];
             auto nodeEntry = common::ListVector::addList(vectors->pathNodesVector, pathLength - 1);
             auto relEntry = common::ListVector::addList(vectors->pathRelsVector, pathLength);

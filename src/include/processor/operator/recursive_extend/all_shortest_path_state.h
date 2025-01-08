@@ -62,13 +62,14 @@ public:
 
     /// Following functions added for nTkS scheduler
     inline uint64_t getNumVisitedDstNodes() { return numVisitedDstNodes; }
-
+    inline uint64_t getNumVisitedNonDstNodes() { return numVisitedNonDstNodes; }
     inline void reset(
         uint64_t startScanIdx_, uint64_t endScanIdx_, BFSSharedState* bfsSharedState_) override {
         startScanIdx = startScanIdx_;
         endScanIdx = endScanIdx_;
         bfsSharedState = bfsSharedState_;
         numVisitedDstNodes = 0u;
+        numVisitedNonDstNodes = 0;
         if (TRACK_PATH && nodeBuffer.empty()) {
             nodeBuffer = std::vector<edgeListAndLevel*>(31u, nullptr);
             relBuffer = std::vector<edgeList*>(31u, nullptr);
@@ -87,7 +88,11 @@ public:
         if (startScanIdx == endScanIdx) {
             return common::INVALID_OFFSET;
         }
-        return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
+        if (bfsSharedState->isSparseFrontier) {
+            return bfsSharedState->sparseFrontier[startScanIdx++];
+        }
+        return bfsSharedState->denseFrontier[startScanIdx++];
+        // return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 
     void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,
@@ -120,6 +125,7 @@ private:
 private:
     uint32_t minDistance; // Min distance to add dst nodes that have been reached.
     uint64_t numVisitedDstNodes;
+    uint64_t numVisitedNonDstNodes;
     common::node_id_map_t<int64_t> visitedNodeToDistance;
 
     /// NEW ADDITION for [Single Label, Track None] to track start, end index of morsel.

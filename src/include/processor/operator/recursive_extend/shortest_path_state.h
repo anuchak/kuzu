@@ -54,7 +54,7 @@ public:
     }
 
     inline uint64_t getNumVisitedDstNodes() { return numVisitedDstNodes; }
-
+    inline uint64_t getNumVisitedNonDstNodes() { return numVisitedNonDstNodes; }
     /// This is used for nTkSCAS scheduler case (no tracking of path + single label case)
     inline void reset(uint64_t startScanIdx_, uint64_t endScanIdx_,
         BFSSharedState* bfsSharedState_) override {
@@ -62,6 +62,7 @@ public:
         endScanIdx = endScanIdx_;
         bfsSharedState = bfsSharedState_;
         numVisitedDstNodes = 0u;
+        numVisitedNonDstNodes = 0;
     }
 
     // For Shortest Path, multiplicity is always 0
@@ -71,7 +72,11 @@ public:
         if (startScanIdx == endScanIdx) {
             return common::INVALID_OFFSET;
         }
-        return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
+        if (bfsSharedState->isSparseFrontier) {
+            return bfsSharedState->sparseFrontier[startScanIdx++];
+        }
+        return bfsSharedState->denseFrontier[startScanIdx++];
+        // return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 
     void addToLocalNextBFSLevel(RecursiveJoinVectors* vectors, uint64_t boundNodeMultiplicity,
@@ -97,6 +102,7 @@ private:
 
 private:
     uint64_t numVisitedDstNodes;
+    uint64_t numVisitedNonDstNodes;
     common::node_id_set_t visited;
 
     /// These will be used for [Single Label, Track None] to track starting, ending index of morsel.

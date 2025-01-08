@@ -16,6 +16,9 @@ struct VariableLengthState : public BaseBFSState {
 
     inline bool getRecursiveJoinType() final { return TRACK_PATH; }
 
+    inline uint64_t getNumVisitedDstNodes() const { return numVisitedDstNodes; }
+    inline uint64_t getNumVisitedNonDstNodes() const { return numVisitedNonDstNodes; }
+
     inline void resetState() final { BaseBFSState::resetState(); }
     inline bool isComplete() final { return isCurrentFrontierEmpty() || isUpperBoundReached(); }
 
@@ -37,6 +40,8 @@ struct VariableLengthState : public BaseBFSState {
         startScanIdx = startScanIdx_;
         endScanIdx = endScanIdx_;
         bfsSharedState = bfsSharedState_;
+        numVisitedDstNodes = 0u;
+        numVisitedNonDstNodes = 0u;
         if (TRACK_PATH && nodeBuffer.empty()) {
             nodeBuffer = std::vector<edgeListAndLevel*>(31u, nullptr);
             relBuffer = std::vector<edgeList*>(31u, nullptr);
@@ -61,7 +66,11 @@ struct VariableLengthState : public BaseBFSState {
         if (startScanIdx == endScanIdx) {
             return common::INVALID_OFFSET;
         }
-        return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
+        if (bfsSharedState->isSparseFrontier) {
+            return bfsSharedState->sparseFrontier[startScanIdx++];
+        }
+        return bfsSharedState->denseFrontier[startScanIdx++];
+        // return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 
     inline bool hasMoreToWrite() override {
@@ -87,6 +96,8 @@ private:
     uint64_t endScanIdx;
     std::pair<uint64_t, uint64_t> prevDistMorselStartEndIdx;
     /// For [Single Label, Track Path] case only.
+    uint64_t numVisitedDstNodes;
+    uint64_t numVisitedNonDstNodes;
     std::vector<edgeListSegment*> localEdgeListSegment;
     std::vector<edgeListAndLevel*> nodeBuffer;
     std::vector<edgeList*> relBuffer;

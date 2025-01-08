@@ -43,8 +43,6 @@ enum VisitedState : uint8_t {
     VISITED_DST = 1,
     NOT_VISITED = 2,
     VISITED = 3,
-    VISITED_NEW = 4,
-    VISITED_DST_NEW = 5,
 };
 
 /**
@@ -219,8 +217,8 @@ public:
           nextScanStartIdx{0u}, numVisitedNodes{0u},
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
-          currentFrontierSize{0u}, bfsLevelNodeOffsets{std::vector<common::offset_t>()},
-          srcOffset{0u}, maxOffset{maxNodeOffset_}, upperBound{upperBound_},
+          currentFrontierSize{0u}, /*bfsLevelNodeOffsets{std::vector<common::offset_t>()},*/
+          nextFrontierSize{0u}, srcOffset{0u}, maxOffset{maxNodeOffset_}, upperBound{upperBound_},
           lowerBound{lowerBound_}, numThreadsBFSActive{0u}, nextDstScanStartIdx{0u},
           inputFTableTupleIdx{0u}, pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
 
@@ -294,8 +292,17 @@ public:
     uint64_t numVisitedNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<uint8_t> pathLength;
+
     uint64_t currentFrontierSize;
-    std::vector<common::offset_t> bfsLevelNodeOffsets;
+    uint64_t nextFrontierSize;
+    bool isSparseFrontier;
+    // sparse frontier
+    std::vector<common::offset_t> sparseFrontier;
+    // dense frontier
+    std::vector<uint8_t> denseFrontier;
+    // next frontier
+    std::vector<uint8_t> nextFrontier;
+
     // Offset of src node.
     common::offset_t srcOffset;
     // Maximum offset of dst nodes.

@@ -1,8 +1,11 @@
 #include "processor/operator/recursive_extend/bfs_state.h"
 
+#include <cmath>
+
 #include "processor/operator/recursive_extend/all_shortest_path_state.h"
 #include "processor/operator/recursive_extend/variable_length_state.h"
 #include "processor/operator/table_scan/ftable_scan_function.h"
+#include <immintrin.h>
 #include <processor/operator/recursive_extend/shortest_path_state.h>
 
 namespace kuzu {
@@ -27,7 +30,19 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
         }
     }
     std::fill(pathLength.begin(), pathLength.end(), 0u);
-    bfsLevelNodeOffsets.clear();
+    // bfsLevelNodeOffsets.clear();
+    isSparseFrontier = true;
+    nextFrontierSize = 0u;
+    if (nextFrontier.empty()) {
+        sparseFrontier = std::vector<common::offset_t>();
+        sparseFrontier.reserve(maxOffset + 1);
+        denseFrontier = std::vector<uint8_t>(maxOffset + 1, 0u);
+        nextFrontier = std::vector<uint8_t>(maxOffset + 1, 0u);
+    } else {
+        sparseFrontier.clear();
+        std::fill(denseFrontier.begin(), denseFrontier.end(), 0);
+        std::fill(nextFrontier.begin(), nextFrontier.end(), 0u);
+    }
     srcOffset = 0u;
     numThreadsBFSActive = 0u;
     nextDstScanStartIdx = 0u;
@@ -62,8 +77,8 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
                 nodeIDMultiplicityToLevel =
                     std::vector<multiplicityAndLevel*>(visitedNodes.size(), nullptr);
             } else {
-                std::fill(
-                    nodeIDMultiplicityToLevel.begin(), nodeIDMultiplicityToLevel.end(), nullptr);
+                std::fill(nodeIDMultiplicityToLevel.begin(), nodeIDMultiplicityToLevel.end(),
+                    nullptr);
             }
         } else {
             edgeTableID = UINT64_MAX;
@@ -131,11 +146,15 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
     // Update the destinations visited, used to check for termination condition.
     // ONLY for shortest path and all shortest path recursive join.
     if (queryRelType == common::QueryRelType::SHORTEST) {
-        auto shortestPathMorsel = (reinterpret_cast<ShortestPathState<false>*>(bfsMorsel));
+        auto shortestPathMorsel = reinterpret_cast<ShortestPathState<false>*>(bfsMorsel);
         numVisitedNodes += shortestPathMorsel->getNumVisitedDstNodes();
+        nextFrontierSize += shortestPathMorsel->getNumVisitedDstNodes() +
+                            shortestPathMorsel->getNumVisitedNonDstNodes();
     } else if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         auto allShortestPathMorsel = (reinterpret_cast<AllShortestPathState<false>*>(bfsMorsel));
         numVisitedNodes += allShortestPathMorsel->getNumVisitedDstNodes();
+        nextFrontierSize += allShortestPathMorsel->getNumVisitedDstNodes() +
+                            allShortestPathMorsel->getNumVisitedNonDstNodes();
         if (!allShortestPathMorsel->getLocalEdgeListSegments().empty()) {
             auto& localEdgeListSegment = allShortestPathMorsel->getLocalEdgeListSegments();
             allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
@@ -144,6 +163,8 @@ bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
         }
     } else {
         auto varLenPathMorsel = (reinterpret_cast<VariableLengthState<false>*>(bfsMorsel));
+        nextFrontierSize += varLenPathMorsel->getNumVisitedDstNodes() +
+                            varLenPathMorsel->getNumVisitedNonDstNodes();
         if (!varLenPathMorsel->getLocalEdgeListSegments().empty()) {
             auto& localEdgeListSegment = varLenPathMorsel->getLocalEdgeListSegments();
             allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
@@ -198,7 +219,9 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
     } else {
         visitedNodes[srcOffset] = VISITED;
     }
-    bfsLevelNodeOffsets.push_back(srcOffset);
+    // bfsLevelNodeOffsets.push_back(srcOffset);
+    isSparseFrontier = true;
+    sparseFrontier.push_back(srcOffset);
     if (queryRelType == common::QueryRelType::SHORTEST && !srcNodeOffsetAndEdgeOffset.empty()) {
         srcNodeOffsetAndEdgeOffset[srcOffset] = {UINT64_MAX, UINT64_MAX};
     }
@@ -245,7 +268,39 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
     if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
         /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
         /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
-        bfsLevelNodeOffsets.clear();
+        currentFrontierSize = nextFrontierSize;
+        nextFrontierSize = 0u;
+        if (currentFrontierSize < (uint64_t)std::ceil(maxOffset / 8)) {
+            isSparseFrontier = true;
+            sparseFrontier.clear();
+            auto simdWidth = 16u, i = 0u, pos = 0u;
+            // SSE2 vector with all elements set to 1
+            __m128i ones = _mm_set1_epi8(1);
+            for (; i + simdWidth < maxOffset + 1; i += simdWidth) {
+                __m128i vec = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&nextFrontier[i]));
+                __m128i cmp = _mm_cmpeq_epi8(vec, ones);
+                int mask = _mm_movemask_epi8(cmp);
+                while (mask != 0) {
+                    int index = __builtin_ctz(mask);
+                    sparseFrontier[pos++] = i + index;
+                    mask &= ~(1 << index);
+                }
+            }
+
+            // Process any remaining elements
+            for (; i < maxOffset + 1; ++i) {
+                if (nextFrontier[i]) {
+                    sparseFrontier[pos++] = i;
+                }
+            }
+        } else {
+            isSparseFrontier = false;
+            auto temp = denseFrontier;
+            denseFrontier = nextFrontier;
+            nextFrontier = temp;
+        }
+        std::fill(nextFrontier.begin(), nextFrontier.end(), 0u);
+        /*bfsLevelNodeOffsets.clear();
         for (auto i = 0u; i < visitedNodes.size(); i++) {
             if (visitedNodes[i] == VISITED_NEW) {
                 visitedNodes[i] = VISITED;
@@ -255,7 +310,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
                 bfsLevelNodeOffsets.push_back(i);
             }
         }
-        currentFrontierSize = bfsLevelNodeOffsets.size();
+        currentFrontierSize = bfsLevelNodeOffsets.size();*/
     }
     /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
@@ -266,9 +321,10 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
  * All the plausible cases:
  *
  * (1) thread comes in, gets a morsel
- * (2) thread comes in, doesn't get a morsel, deletes its thread id, exits <--- // thread should NOT come back again
- * (3) thread comes in, doesn't get a morsel, thread id already deleted, exits <--- // this should NOT happen at all
- * (4) thread comes in, doesn't get a morsel, delete its thread id, marks it as complete, exits
+ * (2) thread comes in, doesn't get a morsel, deletes its thread id, exits <--- // thread should NOT
+ * come back again (3) thread comes in, doesn't get a morsel, thread id already deleted, exits <---
+ * // this should NOT happen at all (4) thread comes in, doesn't get a morsel, delete its thread id,
+ * marks it as complete, exits
  */
 std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
     std::unique_lock lck{mutex};

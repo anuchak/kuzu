@@ -75,7 +75,13 @@ public:
         if (bfsSharedState->isSparseFrontier) {
             return bfsSharedState->sparseFrontier[startScanIdx++];
         }
-        return bfsSharedState->denseFrontier[startScanIdx++];
+        while (startScanIdx != endScanIdx && !bfsSharedState->denseFrontier[startScanIdx]) {
+            startScanIdx++;
+        }
+        if (startScanIdx == endScanIdx) {
+            return common::INVALID_OFFSET;
+        }
+        return startScanIdx++;
         // return bfsSharedState->bfsLevelNodeOffsets[startScanIdx++];
     }
 

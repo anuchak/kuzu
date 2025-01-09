@@ -38,6 +38,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
         sparseFrontier.reserve(maxOffset + 1);
         // skip allocating dense frontier unless required
         nextFrontier = new uint8_t[maxOffset + 1];
+        std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
     } else {
         sparseFrontier.clear();
         if (denseFrontier) {
@@ -300,6 +301,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
             isSparseFrontier = false;
             if (!denseFrontier) {
                 denseFrontier = new uint8_t [currentFrontierSize];
+                std::fill(denseFrontier, denseFrontier + maxOffset + 1, 0u);
             }
             auto temp = denseFrontier;
             denseFrontier = nextFrontier;

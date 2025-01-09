@@ -218,7 +218,7 @@ public:
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
           currentFrontierSize{0u}, /*bfsLevelNodeOffsets{std::vector<common::offset_t>()},*/
-          denseFrontier{nullptr}, nextFrontier{nullptr}, nextFrontierSize{0u}, srcOffset{0u},
+          nextFrontierSize{0u}, denseFrontier{nullptr}, nextFrontier{nullptr}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
           numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
           pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}

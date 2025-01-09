@@ -33,15 +33,17 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
     // bfsLevelNodeOffsets.clear();
     isSparseFrontier = true;
     nextFrontierSize = 0u;
-    if (nextFrontier.empty()) {
+    if (!nextFrontier) {
         sparseFrontier = std::vector<common::offset_t>();
         sparseFrontier.reserve(maxOffset + 1);
-        denseFrontier = std::vector<uint8_t>(maxOffset + 1, 0u);
-        nextFrontier = std::vector<uint8_t>(maxOffset + 1, 0u);
+        // skip allocating dense frontier unless required
+        nextFrontier = new uint8_t[maxOffset + 1];
     } else {
         sparseFrontier.clear();
-        std::fill(denseFrontier.begin(), denseFrontier.end(), 0);
-        std::fill(nextFrontier.begin(), nextFrontier.end(), 0u);
+        if (denseFrontier) {
+            std::fill(denseFrontier, denseFrontier + maxOffset + 1, 0u);
+        }
+        std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
     }
     srcOffset = 0u;
     numThreadsBFSActive = 0u;
@@ -294,12 +296,16 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
                 }
             }
         } else {
+            currentFrontierSize = maxOffset + 1;
             isSparseFrontier = false;
+            if (!denseFrontier) {
+                denseFrontier = new uint8_t [currentFrontierSize];
+            }
             auto temp = denseFrontier;
             denseFrontier = nextFrontier;
             nextFrontier = temp;
         }
-        std::fill(nextFrontier.begin(), nextFrontier.end(), 0u);
+        std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
         /*bfsLevelNodeOffsets.clear();
         for (auto i = 0u; i < visitedNodes.size(); i++) {
             if (visitedNodes[i] == VISITED_NEW) {

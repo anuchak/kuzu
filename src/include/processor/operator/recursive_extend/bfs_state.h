@@ -218,9 +218,19 @@ public:
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
           currentFrontierSize{0u}, /*bfsLevelNodeOffsets{std::vector<common::offset_t>()},*/
-          nextFrontierSize{0u}, srcOffset{0u}, maxOffset{maxNodeOffset_}, upperBound{upperBound_},
-          lowerBound{lowerBound_}, numThreadsBFSActive{0u}, nextDstScanStartIdx{0u},
-          inputFTableTupleIdx{0u}, pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
+          denseFrontier{nullptr}, nextFrontier{nullptr}, nextFrontierSize{0u}, srcOffset{0u},
+          maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
+          numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
+          pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
+
+    ~BFSSharedState() {
+        if (nextFrontier) {
+            delete[] nextFrontier;
+        }
+        if (denseFrontier) {
+            delete[] denseFrontier;
+        }
+    }
 
     inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
 
@@ -299,9 +309,9 @@ public:
     // sparse frontier
     std::vector<common::offset_t> sparseFrontier;
     // dense frontier
-    std::vector<uint8_t> denseFrontier;
+    uint8_t* denseFrontier;
     // next frontier
-    std::vector<uint8_t> nextFrontier;
+    uint8_t* nextFrontier;
 
     // Offset of src node.
     common::offset_t srcOffset;

@@ -279,7 +279,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
             auto simdWidth = 16u, i = 0u, pos = 0u;
             // SSE2 vector with all elements set to 1
             __m128i ones = _mm_set1_epi8(1);
-            for (; i + simdWidth < maxOffset + 1; i += simdWidth) {
+            for (; i + simdWidth < maxOffset + 1 && pos < currentFrontierSize; i += simdWidth) {
                 __m128i vec = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&nextFrontier[i]));
                 __m128i cmp = _mm_cmpeq_epi8(vec, ones);
                 int mask = _mm_movemask_epi8(cmp);
@@ -291,7 +291,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
             }
 
             // Process any remaining elements
-            for (; i < maxOffset + 1; ++i) {
+            for (; i < maxOffset + 1 && pos < currentFrontierSize; ++i) {
                 if (nextFrontier[i]) {
                     sparseFrontier[pos++] = i;
                 }

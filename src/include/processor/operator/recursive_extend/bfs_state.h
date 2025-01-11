@@ -285,6 +285,8 @@ public:
 
     SSSPLocalState getBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
 
+    SSSPLocalState getBFSMorselAdaptive(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
+
     void finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
 
     // If BFS has completed.
@@ -394,6 +396,10 @@ public:
 
     inline SSSPLocalState getBFSMorsel(common::QueryRelType queryRelType) {
         return bfsSharedState->getBFSMorsel(this, queryRelType);
+    }
+
+    inline SSSPLocalState getBFSMorselAdaptive(common::QueryRelType queryRelType) {
+        return bfsSharedState->getBFSMorselAdaptive(this, queryRelType);
     }
 
     inline void finishBFSMorsel(common::QueryRelType queryRelType) {

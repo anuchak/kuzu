@@ -146,9 +146,9 @@ private:
 
     bool computeBFS(ExecutionContext* context);
 
-    bool doBFSnThreadkMorsel(ExecutionContext* context);
+    bool doBFSnThreadkMorsel(ExecutionContext* context) const;
 
-    bool doBFSnThreadkMorselAdaptive(ExecutionContext* context);
+    bool doBFSnThreadkMorselAdaptive(ExecutionContext* context) const;
 
     void computeBFSnThreadkMorsel(ExecutionContext* context) const;
 

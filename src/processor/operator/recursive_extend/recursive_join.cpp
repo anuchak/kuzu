@@ -259,7 +259,7 @@ bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
     return doBFSnThreadkMorselAdaptive(context);
 }
 
-bool RecursiveJoin::doBFSnThreadkMorsel(ExecutionContext* context) {
+bool RecursiveJoin::doBFSnThreadkMorsel(ExecutionContext* context) const {
     while (true) {
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
             vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
@@ -291,7 +291,7 @@ bool RecursiveJoin::doBFSnThreadkMorsel(ExecutionContext* context) {
     }
 }
 
-bool RecursiveJoin::doBFSnThreadkMorselAdaptive(ExecutionContext* context) {
+bool RecursiveJoin::doBFSnThreadkMorselAdaptive(ExecutionContext* context) const {
     while (true) {
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
             vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
@@ -310,7 +310,7 @@ bool RecursiveJoin::doBFSnThreadkMorselAdaptive(ExecutionContext* context) {
             continue;
         }
         while (true) {
-            state.second = bfsState->getBFSMorsel(info.queryRelType);
+            state.second = bfsState->getBFSMorselAdaptive(info.queryRelType);
             if (state.second == NO_WORK_TO_SHARE) {
                 break;
             }

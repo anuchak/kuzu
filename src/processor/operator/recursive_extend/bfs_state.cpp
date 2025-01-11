@@ -151,6 +151,49 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel,
     return EXTEND_IN_PROGRESS;
 }
 
+SSSPLocalState BFSSharedState::getBFSMorselAdaptive(BaseBFSState* bfsMorsel,
+    common::QueryRelType queryRelType) {
+    auto morselStartIdx =
+        nextScanStartIdx.fetch_add(bfsMorsel->bfsMorselSize, std::memory_order_acq_rel);
+    if (morselStartIdx >= currentFrontierSize ||
+        isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+        mutex.lock();
+        numThreadsBFSFinished++;
+        if (numThreadsBFSRegistered != numThreadsBFSFinished) {
+            mutex.unlock();
+            bfsMorsel->bfsSharedState = nullptr;
+            return NO_WORK_TO_SHARE;
+        }
+        if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            startTimeInMillis2 = millis;
+            ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
+            numThreadsOutputRegistered++;
+            mutex.unlock();
+            return PATH_LENGTH_WRITE_IN_PROGRESS;
+        }
+        moveNextLevelAsCurrentLevel();
+        numThreadsBFSRegistered = 0, numThreadsBFSFinished = 0;
+        if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            startTimeInMillis2 = millis;
+            ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
+            numThreadsOutputRegistered++;
+            mutex.unlock();
+            return PATH_LENGTH_WRITE_IN_PROGRESS;
+        }
+        mutex.unlock();
+        bfsMorsel->bfsSharedState = nullptr;
+        return NO_WORK_TO_SHARE;
+    }
+    uint64_t morselEndIdx =
+        std::min(morselStartIdx + bfsMorsel->bfsMorselSize, currentFrontierSize);
+    bfsMorsel->reset(morselStartIdx, morselEndIdx, this);
+    return EXTEND_IN_PROGRESS;
+}
+
 void BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType) {
     if (queryRelType == common::QueryRelType::SHORTEST) {
         auto shortestPathMorsel = reinterpret_cast<ShortestPathState<false>*>(bfsMorsel);

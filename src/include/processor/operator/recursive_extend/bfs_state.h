@@ -216,12 +216,11 @@ public:
         : mutex{std::mutex()}, ssspLocalState{EXTEND_IN_PROGRESS}, currentLevel{0u},
           nextScanStartIdx{0u}, numVisitedNodes{0u},
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
-          pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)},
-          currentFrontierSize{0u}, /*bfsLevelNodeOffsets{std::vector<common::offset_t>()},*/
+          pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)}, currentFrontierSize{0u},
           nextFrontierSize{0u}, denseFrontier{nullptr}, nextFrontier{nullptr}, srcOffset{0u},
           maxOffset{maxNodeOffset_}, upperBound{upperBound_}, lowerBound{lowerBound_},
-          numThreadsBFSActive{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u},
-          pathLengthThreadWriters{std::unordered_set<std::thread::id>()} {}
+          numThreadsBFSRegistered{0u}, numThreadsBFSFinished{0u}, numThreadsOutputRegistered{0u},
+          numThreadsOutputFinished{0u}, nextDstScanStartIdx{0u}, inputFTableTupleIdx{0u} {}
 
     ~BFSSharedState() {
         if (nextFrontier) {
@@ -232,38 +231,45 @@ public:
         }
     }
 
-    inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
-
-    /** This is a barrier condition to prevent Threads from unintentionally marking a BFSSharedState
-     * as MORSEL_COMPLETE. There are 2 conditions being checked:
-     *
-     * i) If the thread trying to complete the BFSSharedState was involved in its path length
-     *    writing stage. If its ID is not in the set pathLengthThreadWriters, it CANNOT mark the
-     *    shared state as MORSEL_COMPLETE. This is because there can be multiple threads trying to
-     *    fetch a path length morsel leading to duplicate decrements of numActiveBFSSharedState
-     *    global count.
-     *
-     * ii) If numThreadsBFSActive is 0. If not, it means some thread which did BFS extension is
-     *     still waiting to hold the lock for the BFSSharedState (waiting to enter the
-     *     finishBFSMorsel function). Until it has decremented the count, this shared state can't
-     *     be reused to launch another BFSSharedState.
-     *     Main reason for this is to prevent the ABA problem, where if we ignore
-     *     numThreadsBFSActive and mark it as MORSEL_COMPLETE and the morsel dispatcher decides to
-     *     reuse it and resets the state back to EXTEND_IN_PROGRESS. Now the previous thread waiting
-     *     would enter finishBFSMorsel and merge its local results to the new BFSSharedState.
-     *
-     *  Overall the purpose of this function is to prevent ABA problem and duplicate decrements of
-     *  global active BFSSharedState count.
-     */
-    inline bool canThreadCompleteSharedState(std::thread::id threadID) const {
-        if (!pathLengthThreadWriters.contains(threadID)) {
+    bool registerThreadForBFS() {
+        std::unique_lock lock(mutex);
+        if (ssspLocalState == MORSEL_COMPLETE || numThreadsBFSFinished != 0u) {
             return false;
         }
-        if (numThreadsBFSActive > 0) {
+        if (ssspLocalState == EXTEND_IN_PROGRESS &&
+            nextScanStartIdx.load(std::memory_order::acq_rel) >= currentFrontierSize) {
             return false;
         }
+        if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS) {
+            return false;
+        }
+        numThreadsBFSRegistered++;
         return true;
     }
+
+    bool registerThreadForPathOutput() {
+        std::unique_lock lock(mutex);
+        if (ssspLocalState == MORSEL_COMPLETE || numThreadsOutputFinished != 0u) {
+            return false;
+        }
+        if (ssspLocalState == EXTEND_IN_PROGRESS) {
+            return false;
+        }
+        if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
+            nextDstScanStartIdx.load(std::memory_order::acq_rel) >= visitedNodes.size()) {
+            return false;
+        }
+        numThreadsOutputRegistered++;
+        return true;
+    }
+
+    bool deregisterThreadFromPathOutput() {
+        std::unique_lock lock(mutex);
+        numThreadsOutputFinished++;
+        return (numThreadsOutputRegistered == numThreadsOutputFinished);
+    }
+
+    inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
 
     inline void freeIntermediatePathData() {
         std::unique_lock lck{mutex};
@@ -277,9 +283,9 @@ public:
     void reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType,
         planner::RecursiveJoinType joinType);
 
-    SSSPLocalState getBFSMorsel(BaseBFSState* bfsMorsel);
+    SSSPLocalState getBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
 
-    bool finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
+    void finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
 
     // If BFS has completed.
     bool isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType);
@@ -296,15 +302,15 @@ public:
     uint64_t startTimeInMillis1;
     uint64_t startTimeInMillis2;
     uint8_t currentLevel;
-    uint64_t nextScanStartIdx;
+    std::atomic<uint64_t> nextScanStartIdx;
 
     // Visited state
-    uint64_t numVisitedNodes;
+    std::atomic<uint64_t> numVisitedNodes;
     std::vector<uint8_t> visitedNodes;
     std::vector<uint8_t> pathLength;
 
     uint64_t currentFrontierSize;
-    uint64_t nextFrontierSize;
+    std::atomic<uint64_t> nextFrontierSize;
     bool isSparseFrontier;
     // sparse frontier
     std::vector<common::offset_t> sparseFrontier;
@@ -319,11 +325,12 @@ public:
     common::offset_t maxOffset;
     uint64_t upperBound;
     uint64_t lowerBound;
-    uint32_t numThreadsBFSActive;
-    uint64_t nextDstScanStartIdx;
+    uint32_t numThreadsBFSRegistered;
+    uint32_t numThreadsBFSFinished;
+    uint32_t numThreadsOutputRegistered;
+    uint32_t numThreadsOutputFinished;
+    std::atomic<uint64_t> nextDstScanStartIdx;
     uint64_t inputFTableTupleIdx;
-    // To track which threads are writing path lengths to their ValueVectors
-    std::unordered_set<std::thread::id> pathLengthThreadWriters;
 
     // FOR ALL_SHORTEST_PATH only
     uint8_t minDistance;
@@ -385,10 +392,12 @@ public:
     inline size_t getNumFrontiers() const { return frontiers.size(); }
     inline Frontier* getFrontier(common::idx_t idx) const { return frontiers[idx].get(); }
 
-    inline SSSPLocalState getBFSMorsel() { return bfsSharedState->getBFSMorsel(this); }
+    inline SSSPLocalState getBFSMorsel(common::QueryRelType queryRelType) {
+        return bfsSharedState->getBFSMorsel(this, queryRelType);
+    }
 
-    inline bool finishBFSMorsel(common::QueryRelType queryRelType) {
-        return bfsSharedState->finishBFSMorsel(this, queryRelType);
+    inline void finishBFSMorsel(common::QueryRelType queryRelType) {
+        bfsSharedState->finishBFSMorsel(this, queryRelType);
     }
 
     /// This is used for nTkSCAS scheduler case (no tracking of path + single label case)

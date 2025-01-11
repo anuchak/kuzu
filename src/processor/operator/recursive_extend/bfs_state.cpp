@@ -47,10 +47,12 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
         std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
     }
     srcOffset = 0u;
-    numThreadsBFSActive = 0u;
+    numThreadsBFSRegistered = 0u;
+    numThreadsOutputRegistered = 0u;
+    numThreadsBFSFinished = 0u;
+    numThreadsOutputFinished = 0u;
     nextDstScanStartIdx = 0u;
     inputFTableTupleIdx = 0u;
-    pathLengthThreadWriters = std::unordered_set<std::thread::id>();
     if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         minDistance = 0u;
         if (joinType == planner::RecursiveJoinType::TRACK_NONE) {
@@ -105,96 +107,83 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
     }
 }
 
-/*
- * Returning the state here because if BFSSharedState is complete / in pathLength writing stage
- * then depending on state we need to take next step. If MORSEL_COMPLETE then proceed to get a new
- * BFSSharedState & if MORSEL_pathLength_WRITING_IN_PROGRESS then help in this task.
- */
-SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel) {
-    std::unique_lock lck{mutex};
-    switch (ssspLocalState) {
-    case MORSEL_COMPLETE: {
-        return NO_WORK_TO_SHARE;
-    }
-    case PATH_LENGTH_WRITE_IN_PROGRESS: {
-        if (nextDstScanStartIdx < visitedNodes.size()) {
-            bfsMorsel->bfsSharedState = this;
+SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel,
+    common::QueryRelType queryRelType) {
+    auto morselStartIdx =
+        nextScanStartIdx.fetch_add(bfsMorsel->bfsMorselSize, std::memory_order_acq_rel);
+    if (morselStartIdx >= currentFrontierSize ||
+        isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+        mutex.lock();
+        numThreadsBFSFinished++;
+        if (numThreadsBFSRegistered != numThreadsBFSFinished) {
+            mutex.unlock();
+            bfsMorsel->bfsSharedState = nullptr;
+            return NO_WORK_TO_SHARE;
+        }
+        if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            startTimeInMillis2 = millis;
+            ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
+            numThreadsOutputRegistered++;
+            mutex.unlock();
             return PATH_LENGTH_WRITE_IN_PROGRESS;
         }
-    } break;
-    case EXTEND_IN_PROGRESS: {
-        if (nextScanStartIdx < currentFrontierSize) {
-            numThreadsBFSActive++;
-            auto bfsMorselSize =
-                std::min(bfsMorsel->bfsMorselSize, currentFrontierSize - nextScanStartIdx);
-            auto morselScanEndIdx = nextScanStartIdx + bfsMorselSize;
-            bfsMorsel->reset(nextScanStartIdx, morselScanEndIdx, this);
-            nextScanStartIdx += bfsMorselSize;
-            return EXTEND_IN_PROGRESS;
+        moveNextLevelAsCurrentLevel();
+        numThreadsBFSRegistered = 0, numThreadsBFSFinished = 0;
+        if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            startTimeInMillis2 = millis;
+            ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
+            numThreadsOutputRegistered++;
+            mutex.unlock();
+            return PATH_LENGTH_WRITE_IN_PROGRESS;
         }
-    } break;
-    default:
-        throw common::RuntimeException(
-            &"Unknown local state encountered inside BFSSharedState: "[ssspLocalState]);
+        numThreadsBFSRegistered++;
+        morselStartIdx =
+            nextScanStartIdx.fetch_add(bfsMorsel->bfsMorselSize, std::memory_order_acq_rel);
+        mutex.unlock();
     }
-    return NO_WORK_TO_SHARE;
+    uint64_t morselEndIdx =
+        std::min(morselStartIdx + bfsMorsel->bfsMorselSize, currentFrontierSize);
+    bfsMorsel->reset(morselStartIdx, morselEndIdx, this);
+    return EXTEND_IN_PROGRESS;
 }
 
-bool BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType) {
-    std::unique_lock lck{mutex};
-    numThreadsBFSActive--;
-    if (ssspLocalState != EXTEND_IN_PROGRESS) {
-        return true;
-    }
-    // Update the destinations visited, used to check for termination condition.
-    // ONLY for shortest path and all shortest path recursive join.
+void BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType) {
     if (queryRelType == common::QueryRelType::SHORTEST) {
         auto shortestPathMorsel = reinterpret_cast<ShortestPathState<false>*>(bfsMorsel);
-        numVisitedNodes += shortestPathMorsel->getNumVisitedDstNodes();
-        nextFrontierSize += shortestPathMorsel->getNumVisitedDstNodes() +
-                            shortestPathMorsel->getNumVisitedNonDstNodes();
+        numVisitedNodes.fetch_add(shortestPathMorsel->getNumVisitedDstNodes(),
+            std::memory_order_acq_rel);
+        nextFrontierSize.fetch_add(shortestPathMorsel->getNumVisitedDstNodes() +
+                                   shortestPathMorsel->getNumVisitedNonDstNodes());
     } else if (queryRelType == common::QueryRelType::ALL_SHORTEST) {
         auto allShortestPathMorsel = (reinterpret_cast<AllShortestPathState<false>*>(bfsMorsel));
-        numVisitedNodes += allShortestPathMorsel->getNumVisitedDstNodes();
-        nextFrontierSize += allShortestPathMorsel->getNumVisitedDstNodes() +
-                            allShortestPathMorsel->getNumVisitedNonDstNodes();
+        numVisitedNodes.fetch_add(allShortestPathMorsel->getNumVisitedDstNodes());
+        nextFrontierSize.fetch_add(allShortestPathMorsel->getNumVisitedDstNodes() +
+                                   allShortestPathMorsel->getNumVisitedNonDstNodes());
         if (!allShortestPathMorsel->getLocalEdgeListSegments().empty()) {
+            mutex.lock();
             auto& localEdgeListSegment = allShortestPathMorsel->getLocalEdgeListSegments();
             allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
                 localEdgeListSegment.end());
             localEdgeListSegment.resize(0);
+            mutex.unlock();
         }
     } else {
         auto varLenPathMorsel = (reinterpret_cast<VariableLengthState<false>*>(bfsMorsel));
-        nextFrontierSize += varLenPathMorsel->getNumVisitedDstNodes() +
-                            varLenPathMorsel->getNumVisitedNonDstNodes();
+        nextFrontierSize.fetch_add(varLenPathMorsel->getNumVisitedDstNodes() +
+                                   varLenPathMorsel->getNumVisitedNonDstNodes());
         if (!varLenPathMorsel->getLocalEdgeListSegments().empty()) {
+            mutex.lock();
             auto& localEdgeListSegment = varLenPathMorsel->getLocalEdgeListSegments();
             allEdgeListSegments.insert(allEdgeListSegments.end(), localEdgeListSegment.begin(),
                 localEdgeListSegment.end());
             localEdgeListSegment.resize(0);
+            mutex.unlock();
         }
     }
-    if (numThreadsBFSActive == 0) {
-        if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            startTimeInMillis2 = millis;
-            ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
-            return true;
-        }
-        if (nextScanStartIdx == currentFrontierSize) {
-            moveNextLevelAsCurrentLevel();
-        }
-        if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            startTimeInMillis2 = millis;
-            ssspLocalState = PATH_LENGTH_WRITE_IN_PROGRESS;
-            return true;
-        }
-    }
-    return false;
 }
 
 bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType) {
@@ -222,7 +211,6 @@ void BFSSharedState::markSrc(bool isSrcDestination, common::QueryRelType queryRe
     } else {
         visitedNodes[srcOffset] = VISITED;
     }
-    // bfsLevelNodeOffsets.push_back(srcOffset);
     isSparseFrontier = true;
     sparseFrontier.push_back(srcOffset);
     if (queryRelType == common::QueryRelType::SHORTEST && !srcNodeOffsetAndEdgeOffset.empty()) {
@@ -268,9 +256,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
     currentLevel++;
     nextScanStartIdx = 0u;
     currentFrontierSize = 0u;
-    if (currentLevel < upperBound) { // No need to prepare this vector if we won't extend.
-        /// TODO: This is a bottleneck, optimize this by directly giving out morsels from
-        /// visitedNodes instead of putting it into bfsLevelNodeOffsets.
+    if (currentLevel < upperBound) {
         currentFrontierSize = nextFrontierSize;
         nextFrontierSize = 0u;
         if (currentFrontierSize < (uint64_t)std::ceil(maxOffset / 8)) {
@@ -300,7 +286,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
             currentFrontierSize = maxOffset + 1;
             isSparseFrontier = false;
             if (!denseFrontier) {
-                denseFrontier = new uint8_t [currentFrontierSize];
+                denseFrontier = new uint8_t[currentFrontierSize];
                 std::fill(denseFrontier, denseFrontier + maxOffset + 1, 0u);
             }
             auto temp = denseFrontier;
@@ -308,56 +294,21 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
             nextFrontier = temp;
         }
         std::fill(nextFrontier, nextFrontier + maxOffset + 1, 0u);
-        /*bfsLevelNodeOffsets.clear();
-        for (auto i = 0u; i < visitedNodes.size(); i++) {
-            if (visitedNodes[i] == VISITED_NEW) {
-                visitedNodes[i] = VISITED;
-                bfsLevelNodeOffsets.push_back(i);
-            } else if (visitedNodes[i] == VISITED_DST_NEW) {
-                visitedNodes[i] = VISITED_DST;
-                bfsLevelNodeOffsets.push_back(i);
-            }
-        }
-        currentFrontierSize = bfsLevelNodeOffsets.size();*/
     }
     /*auto duration1 = std::chrono::system_clock::now().time_since_epoch();
     auto millis1 = std::chrono::duration_cast<std::chrono::milliseconds>(duration1).count();
     printf("time taken to move level %d is %lu ms\n", currentLevel, millis1 - millis);*/
 }
 
-/**
- * All the plausible cases:
- *
- * (1) thread comes in, gets a morsel
- * (2) thread comes in, doesn't get a morsel, deletes its thread id, exits <--- // thread should NOT
- * come back again (3) thread comes in, doesn't get a morsel, thread id already deleted, exits <---
- * // this should NOT happen at all (4) thread comes in, doesn't get a morsel, delete its thread id,
- * marks it as complete, exits
- */
 std::pair<uint64_t, int64_t> BFSSharedState::getDstPathLengthMorsel() {
-    std::unique_lock lck{mutex};
-    if (ssspLocalState != PATH_LENGTH_WRITE_IN_PROGRESS) {
+    auto morselStartIdx =
+        nextDstScanStartIdx.fetch_add(common::DEFAULT_VECTOR_CAPACITY, std::memory_order_acq_rel);
+    if (morselStartIdx >= visitedNodes.size()) {
         return {UINT64_MAX, INT64_MAX};
     }
-    auto threadID = std::this_thread::get_id();
-    if (nextDstScanStartIdx == visitedNodes.size()) {
-        if (!canThreadCompleteSharedState(threadID)) {
-            return {UINT64_MAX, INT64_MAX};
-        }
-        pathLengthThreadWriters.erase(threadID);
-        /// Last Thread to exit will be responsible for doing state change to MORSEL_COMPLETE
-        /// Along with state change it will also decrement numActiveBFSSharedState by 1
-        if (pathLengthThreadWriters.empty()) {
-            return {0, -1};
-        }
-        return {UINT64_MAX, INT64_MAX};
-    }
-    auto sizeToScan =
-        std::min(common::DEFAULT_VECTOR_CAPACITY, visitedNodes.size() - nextDstScanStartIdx);
-    std::pair<uint64_t, uint32_t> startScanIdxAndSize = {nextDstScanStartIdx, sizeToScan};
-    nextDstScanStartIdx += sizeToScan;
-    pathLengthThreadWriters.insert(threadID);
-    return startScanIdxAndSize;
+    uint64_t morselSize =
+        std::min(common::DEFAULT_VECTOR_CAPACITY, visitedNodes.size() - morselStartIdx);
+    return {morselStartIdx, morselSize};
 }
 
 } // namespace processor

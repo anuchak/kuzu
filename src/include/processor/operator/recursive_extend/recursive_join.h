@@ -150,7 +150,7 @@ private:
 
     bool doBFSnThreadkMorselAdaptive(ExecutionContext* context);
 
-    void computeBFSnThreadkMorsel(ExecutionContext* context);
+    void computeBFSnThreadkMorsel(ExecutionContext* context) const;
 
     // Compute BFS for a given src node.
     void computeBFSOneThreadOneMorsel(ExecutionContext* context);

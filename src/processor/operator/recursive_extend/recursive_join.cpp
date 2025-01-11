@@ -207,7 +207,7 @@ bool RecursiveJoin::getNextTuplesInternal(ExecutionContext* context) {
 }
 
 bool RecursiveJoin::scanOutput() {
-    if (sharedState->getSchedulerType() == SchedulerType::OneThreadOneMorsel) {
+    if (sharedState->getSchedulerType() == OneThreadOneMorsel) {
         sel_t offsetVectorSize = 0u;
         sel_t nodeIDDataVectorSize = 0u;
         sel_t relIDDataVectorSize = 0u;
@@ -221,25 +221,24 @@ bool RecursiveJoin::scanOutput() {
         }
         vectors->dstNodeIDVector->state->initOriginalAndSelectedSize(offsetVectorSize);
         return true;
-    } else {
-        while (true) {
-            if (!bfsState->hasBFSSharedState()) {
-                return false;
-            }
-            auto tableID = *std::begin(info.dataInfo.dstNodeTableIDs);
-            auto ret = sharedState->writeDstNodeIDAndPathLength(vectorsToScan, colIndicesToScan,
-                tableID, bfsState, vectors.get());
-            /**
-             * ret > 0: non-zero path lengths were written to vector, return to parent op
-             * ret < 0: path length writing is complete, proceed to computeBFS for another morsel
-             * ret = 0: the distance morsel received was empty, go back to get another morsel
-             */
-            if (ret > 0) {
-                return true;
-            }
-            if (ret < 0) {
-                return false;
-            }
+    }
+    while (true) {
+        if (!bfsState->hasBFSSharedState()) {
+            return false;
+        }
+        auto tableID = *std::begin(info.dataInfo.dstNodeTableIDs);
+        auto ret = sharedState->writeDstNodeIDAndPathLength(vectorsToScan, colIndicesToScan,
+            tableID, bfsState, vectors.get());
+        /**
+         * ret > 0: non-zero path lengths were written to vector, return to parent op
+         * ret < 0: path length writing is complete, proceed to computeBFS for another morsel
+         * ret = 0: the distance morsel received was empty, go back to get another morsel
+         */
+        if (ret > 0) {
+            return true;
+        }
+        if (ret < 0) {
+            return false;
         }
     }
 }
@@ -260,52 +259,8 @@ bool RecursiveJoin::computeBFS(kuzu::processor::ExecutionContext* context) {
     return doBFSnThreadkMorselAdaptive(context);
 }
 
-bool RecursiveJoin::doBFSnThreadkMorsel(kuzu::processor::ExecutionContext* context) {
+bool RecursiveJoin::doBFSnThreadkMorsel(ExecutionContext* context) {
     while (true) {
-        if (bfsState->hasBFSSharedState()) {
-            auto state = bfsState->getBFSMorsel();
-            if (state == EXTEND_IN_PROGRESS) {
-                computeBFSnThreadkMorsel(context);
-                if (bfsState->finishBFSMorsel(info.queryRelType)) {
-                    return true;
-                }
-                continue;
-            }
-            if (state == PATH_LENGTH_WRITE_IN_PROGRESS) {
-                return true;
-            }
-        }
-        // printf("Thread came here, bfs shared state is: %d \n", bfsState->hasBFSSharedState());
-        auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
-            vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
-        if (state.first == COMPLETE) {
-            return false;
-        }
-        if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
-            return true;
-        }
-        if (state.second == EXTEND_IN_PROGRESS) {
-            // printf("got work from central coordinator, working ...\n");
-            computeBFSnThreadkMorsel(context);
-            if (bfsState->finishBFSMorsel(info.queryRelType)) {
-                return true;
-            }
-        } else {
-            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
-            auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-            printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);*/
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
-            if (context->clientContext->interrupted()) {
-                throw common::RuntimeException("Encountered Interrupt exception ...\n ");
-            }
-        }
-    }
-}
-
-bool RecursiveJoin::doBFSnThreadkMorselAdaptive(kuzu::processor::ExecutionContext* context) {
-    while (true) {
-        // printf("Thread came here, bfs shared state is: %d \n", bfsState->hasBFSSharedState());
         auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
             vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
         if (state.first == COMPLETE) {
@@ -315,35 +270,60 @@ bool RecursiveJoin::doBFSnThreadkMorselAdaptive(kuzu::processor::ExecutionContex
             return true;
         }
         if (state.second == NO_WORK_TO_SHARE) {
-            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
-        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        printf("going to sleep again at time: %lu ms, failed to get work ...\n", millis);*/
             std::this_thread::sleep_for(
-                std::chrono::microseconds(common::THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+                std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
             if (context->clientContext->interrupted()) {
-                throw common::RuntimeException("Encountered Interrupt exception ...\n ");
+                throw RuntimeException("Encountered Interrupt exception ...\n ");
             }
             continue;
         }
-        const auto prevBFSLevel = bfsState->bfsSharedState->currentLevel;
-        while (state.second == EXTEND_IN_PROGRESS) {
-            // printf("got work from central coordinator, working ...\n");
-            computeBFSnThreadkMorsel(context);
-            if (bfsState->finishBFSMorsel(info.queryRelType)) {
-                return true;
-            }
-            if (prevBFSLevel != bfsState->bfsSharedState->currentLevel) {
+        while (true) {
+            state.second = bfsState->getBFSMorsel(info.queryRelType);
+            if (state.second == NO_WORK_TO_SHARE) {
                 break;
             }
-            state.second = bfsState->getBFSMorsel();
             if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
                 return true;
             }
+            computeBFSnThreadkMorsel(context);
+            bfsState->finishBFSMorsel(info.queryRelType);
         }
     }
 }
 
-void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* context) {
+bool RecursiveJoin::doBFSnThreadkMorselAdaptive(ExecutionContext* context) {
+    while (true) {
+        auto state = sharedState->getBFSMorsel(vectorsToScan, colIndicesToScan,
+            vectors->srcNodeIDVector, bfsState.get(), info.queryRelType, info.joinType);
+        if (state.first == COMPLETE) {
+            return false;
+        }
+        if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
+            return true;
+        }
+        if (state.second == NO_WORK_TO_SHARE) {
+            std::this_thread::sleep_for(
+                std::chrono::microseconds(THREAD_SLEEP_TIME_WHEN_WAITING_IN_MICROS));
+            if (context->clientContext->interrupted()) {
+                throw RuntimeException("Encountered Interrupt exception ...\n ");
+            }
+            continue;
+        }
+        while (true) {
+            state.second = bfsState->getBFSMorsel(info.queryRelType);
+            if (state.second == NO_WORK_TO_SHARE) {
+                break;
+            }
+            if (state.second == PATH_LENGTH_WRITE_IN_PROGRESS) {
+                return true;
+            }
+            computeBFSnThreadkMorsel(context);
+            bfsState->finishBFSMorsel(info.queryRelType);
+        }
+    }
+}
+
+void RecursiveJoin::computeBFSnThreadkMorsel(ExecutionContext* /*context*/) const {
     // Cast the BaseBFSMorsel to ShortestPathMorsel, the TRACK_NONE RecursiveJoin is the case it is
     // applicable for. If true, indicates TRACK_PATH is true else TRACK_PATH is false.
     common::offset_t nodeOffset = bfsState->getNextNodeOffset();

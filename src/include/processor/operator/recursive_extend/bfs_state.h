@@ -304,15 +304,20 @@ public:
     uint64_t startTimeInMillis1;
     uint64_t startTimeInMillis2;
     uint8_t currentLevel;
+    char padding0[64];
     std::atomic<uint64_t> nextScanStartIdx;
+    char padding1[64];
 
     // Visited state
     std::atomic<uint64_t> numVisitedNodes;
+    char padding2[64];
     std::vector<uint8_t> visitedNodes;
     std::vector<uint8_t> pathLength;
 
     uint64_t currentFrontierSize;
+    char padding3[64];
     std::atomic<uint64_t> nextFrontierSize;
+    char padding4[64];
     bool isSparseFrontier;
     // sparse frontier
     std::vector<common::offset_t> sparseFrontier;
@@ -331,7 +336,9 @@ public:
     uint32_t numThreadsBFSFinished;
     uint32_t numThreadsOutputRegistered;
     uint32_t numThreadsOutputFinished;
+    char padding5[64];
     std::atomic<uint64_t> nextDstScanStartIdx;
+    char padding6[64];
     uint64_t inputFTableTupleIdx;
 
     // FOR ALL_SHORTEST_PATH only

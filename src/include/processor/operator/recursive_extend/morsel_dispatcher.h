@@ -29,9 +29,10 @@ public:
         common::nodeID_t nodeID, common::QueryRelType queryRelType,
         planner::RecursiveJoinType recursiveJoinType);
 
-    uint32_t getNextAvailableSSSPWork() const;
+    uint32_t getNextAvailableSSSPWork(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType) const;
 
-    std::pair<GlobalSSSPState, SSSPLocalState> findAvailableSSSP(BaseBFSState* bfsMorsel);
+    std::pair<GlobalSSSPState, SSSPLocalState> findAvailableSSSP(BaseBFSState* bfsMorsel,
+        common::QueryRelType queryRelType);
 
     int64_t writeDstNodeIDAndPathLength(
         const std::shared_ptr<FTableScanSharedState>& inputFTableSharedState,

@@ -231,43 +231,11 @@ public:
         }
     }
 
-    bool registerThreadForBFS() {
-        std::unique_lock lock(mutex);
-        if (ssspLocalState == MORSEL_COMPLETE || numThreadsBFSFinished != 0u) {
-            return false;
-        }
-        if (ssspLocalState == EXTEND_IN_PROGRESS &&
-            nextScanStartIdx.load(std::memory_order::acq_rel) >= currentFrontierSize) {
-            return false;
-        }
-        if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS) {
-            return false;
-        }
-        numThreadsBFSRegistered++;
-        return true;
-    }
+    bool registerThreadForBFS(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
 
-    bool registerThreadForPathOutput() {
-        std::unique_lock lock(mutex);
-        if (ssspLocalState == MORSEL_COMPLETE || numThreadsOutputFinished != 0u) {
-            return false;
-        }
-        if (ssspLocalState == EXTEND_IN_PROGRESS) {
-            return false;
-        }
-        if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS &&
-            nextDstScanStartIdx.load(std::memory_order::acq_rel) >= visitedNodes.size()) {
-            return false;
-        }
-        numThreadsOutputRegistered++;
-        return true;
-    }
+    bool registerThreadForPathOutput();
 
-    bool deregisterThreadFromPathOutput() {
-        std::unique_lock lock(mutex);
-        numThreadsOutputFinished++;
-        return (numThreadsOutputRegistered == numThreadsOutputFinished);
-    }
+    bool deregisterThreadFromPathOutput();
 
     inline bool isComplete() const { return ssspLocalState == MORSEL_COMPLETE; }
 
@@ -290,7 +258,7 @@ public:
     void finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelType queryRelType);
 
     // If BFS has completed.
-    bool isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType);
+    bool isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType) const;
     // Mark src as visited.
     void markSrc(bool isSrcDestination, common::QueryRelType queryRelType);
 

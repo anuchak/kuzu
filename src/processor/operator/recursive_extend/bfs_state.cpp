@@ -11,6 +11,43 @@
 namespace kuzu {
 namespace processor {
 
+bool BFSSharedState::registerThreadForBFS(BaseBFSState* bfsMorsel,
+    common::QueryRelType queryRelType) {
+    std::unique_lock lock(mutex);
+    if (ssspLocalState == MORSEL_COMPLETE) {
+        return false;
+    }
+    if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+        return false;
+    }
+    if (ssspLocalState == PATH_LENGTH_WRITE_IN_PROGRESS) {
+        return false;
+    }
+    numThreadsBFSRegistered++;
+    return true;
+}
+
+bool BFSSharedState::registerThreadForPathOutput() {
+    std::unique_lock lock(mutex);
+    if (ssspLocalState == MORSEL_COMPLETE || numThreadsOutputFinished != 0u) {
+        return false;
+    }
+    if (ssspLocalState == EXTEND_IN_PROGRESS) {
+        return false;
+    }
+    if (nextDstScanStartIdx.load(std::memory_order::acq_rel) >= visitedNodes.size()) {
+        return false;
+    }
+    numThreadsOutputRegistered++;
+    return true;
+}
+
+bool BFSSharedState::deregisterThreadFromPathOutput() {
+    std::unique_lock lock(mutex);
+    numThreadsOutputFinished++;
+    return (numThreadsOutputRegistered == numThreadsOutputFinished);
+}
+
 void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType queryRelType,
     planner::RecursiveJoinType joinType) {
     ssspLocalState = EXTEND_IN_PROGRESS;
@@ -121,6 +158,7 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel,
             return NO_WORK_TO_SHARE;
         }
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            numThreadsBFSRegistered = 0, numThreadsBFSFinished = 0;
             auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             startTimeInMillis2 = millis;
@@ -165,6 +203,7 @@ SSSPLocalState BFSSharedState::getBFSMorselAdaptive(BaseBFSState* bfsMorsel,
             return NO_WORK_TO_SHARE;
         }
         if (isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
+            numThreadsBFSRegistered = 0, numThreadsBFSFinished = 0;
             auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             startTimeInMillis2 = millis;
@@ -229,7 +268,8 @@ void BFSSharedState::finishBFSMorsel(BaseBFSState* bfsMorsel, common::QueryRelTy
     }
 }
 
-bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit, common::QueryRelType queryRelType) {
+bool BFSSharedState::isBFSComplete(uint64_t numDstNodesToVisit,
+    common::QueryRelType queryRelType) const {
     if (currentFrontierSize == 0u) { // no more to extend.
         return true;
     }

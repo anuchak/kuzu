@@ -43,14 +43,14 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
             return {COMPLETE, NO_WORK_TO_SHARE};
         }
         case IN_PROGRESS_ALL_SRC_SCANNED: {
-            return findAvailableSSSP(bfsMorsel);
+            return findAvailableSSSP(bfsMorsel, queryRelType);
         }
         case IN_PROGRESS: {
             if (numActiveBFSSharedState < activeBFSSharedState.size()) {
                 mutex.lock();
                 if (numActiveBFSSharedState >= activeBFSSharedState.size()) {
                     mutex.unlock();
-                    return findAvailableSSSP(bfsMorsel);
+                    return findAvailableSSSP(bfsMorsel, queryRelType);
                 }
                 auto inputFTableMorsel = inputFTableSharedState->getMorsel();
                 if (inputFTableMorsel.numTuples == 0) {
@@ -108,7 +108,7 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                 mutex.unlock();
                 return {IN_PROGRESS, EXTEND_IN_PROGRESS};
             } else {
-                return findAvailableSSSP(bfsMorsel);
+                return findAvailableSSSP(bfsMorsel, queryRelType);
             }
         }
         }
@@ -119,10 +119,10 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
             return {COMPLETE, NO_WORK_TO_SHARE};
         }
         case IN_PROGRESS_ALL_SRC_SCANNED: {
-            return findAvailableSSSP(bfsMorsel);
+            return findAvailableSSSP(bfsMorsel, queryRelType);
         }
         case IN_PROGRESS: {
-            auto state = findAvailableSSSP(bfsMorsel);
+            auto state = findAvailableSSSP(bfsMorsel, queryRelType);
             if (state.second != NO_WORK_TO_SHARE) {
                 return state;
             }
@@ -130,7 +130,7 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                 mutex.lock();
                 if (numActiveBFSSharedState >= activeBFSSharedState.size()) {
                     mutex.unlock();
-                    return findAvailableSSSP(bfsMorsel);
+                    return findAvailableSSSP(bfsMorsel, queryRelType);
                 }
                 auto inputFTableMorsel = inputFTableSharedState->getMorsel();
                 if (inputFTableMorsel.numTuples == 0) {
@@ -188,7 +188,7 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                 mutex.unlock();
                 return {IN_PROGRESS, EXTEND_IN_PROGRESS};
             } else {
-                return findAvailableSSSP(bfsMorsel);
+                return findAvailableSSSP(bfsMorsel, queryRelType);
             }
         }
         }
@@ -207,7 +207,8 @@ void MorselDispatcher::setUpNewBFSSharedState(std::shared_ptr<BFSSharedState>& n
     bfsMorsel->bfsSharedState = newBFSSharedState.get();
 }
 
-uint32_t MorselDispatcher::getNextAvailableSSSPWork() const {
+uint32_t MorselDispatcher::getNextAvailableSSSPWork(BaseBFSState* bfsMorsel,
+    common::QueryRelType queryRelType) const {
     uint64_t maxBFSWork = 0u, maxBfsID = UINT64_MAX, maxPathLenWriteWork = 0,
              maxPathLenWriteID = UINT64_MAX;
     for (auto i = 0u; i < activeBFSSharedState.size(); i++) {
@@ -244,7 +245,8 @@ uint32_t MorselDispatcher::getNextAvailableSSSPWork() const {
             }
         }
     }
-    if (maxBFSWork > 0 && activeBFSSharedState[maxBfsID]->registerThreadForBFS()) {
+    if (maxBFSWork > 0 &&
+        activeBFSSharedState[maxBfsID]->registerThreadForBFS(bfsMorsel, queryRelType)) {
         return maxBfsID;
     }
     if (maxPathLenWriteWork > 0 &&
@@ -259,9 +261,9 @@ uint32_t MorselDispatcher::getNextAvailableSSSPWork() const {
  * writing path lengths then the localState value will be PATH_LENGTH_WRITE_IN_PROGRESS.
  */
 std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::findAvailableSSSP(
-    BaseBFSState* bfsMorsel) {
+    BaseBFSState* bfsMorsel, common::QueryRelType queryRelType) {
     std::pair state{globalState, NO_WORK_TO_SHARE};
-    auto availableSSSPIdx = getNextAvailableSSSPWork();
+    auto availableSSSPIdx = getNextAvailableSSSPWork(bfsMorsel, queryRelType);
     if (availableSSSPIdx == UINT32_MAX) {
         return state;
     }

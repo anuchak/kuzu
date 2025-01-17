@@ -213,8 +213,8 @@ struct multiplicityAndLevel {
 struct BFSSharedState {
 public:
     BFSSharedState(uint64_t upperBound_, uint64_t lowerBound_, uint64_t maxNodeOffset_)
-        : mutex{std::mutex()}, ssspLocalState{EXTEND_IN_PROGRESS}, currentLevel{0u},
-          nextScanStartIdx{0u}, numVisitedNodes{0u},
+        : mutex{std::mutex()}, ssspLocalState{EXTEND_IN_PROGRESS}, sparseFactor{1u},
+          currentLevel{0u}, nextScanStartIdx{0u}, numVisitedNodes{0u},
           visitedNodes{std::vector<uint8_t>(maxNodeOffset_ + 1, NOT_VISITED)},
           pathLength{std::vector<uint8_t>(maxNodeOffset_ + 1, 0u)}, currentFrontierSize{0u},
           nextFrontierSize{0u}, denseFrontier{nullptr}, nextFrontier{nullptr}, srcOffset{0u},
@@ -271,6 +271,7 @@ public:
     SSSPLocalState ssspLocalState;
     uint64_t startTimeInMillis1;
     uint64_t startTimeInMillis2;
+    uint64_t sparseFactor;
     uint8_t currentLevel;
     char padding0[64];
     std::atomic<uint64_t> nextScanStartIdx;

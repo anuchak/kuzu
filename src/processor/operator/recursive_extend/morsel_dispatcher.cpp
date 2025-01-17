@@ -68,8 +68,8 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                 srcNodeIDVector->state->setToFlat();
                 auto selectedPos = srcNodeIDVector->state->getSelVector().getSelectedPositions();
                 auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(selectedPos[0]);
-                printf("starting a new bfs source, total: %d | src: %lu\n", numActiveBFSSharedState,
-                    nodeID.offset);
+                /*printf("starting a new bfs source, total: %d | src: %lu\n", numActiveBFSSharedState,
+                    nodeID.offset);*/
                 uint32_t newSharedStateIdx = UINT32_MAX;
                 // Find a position for the new SSSP in the list, there are 2 candidates:
                 // 1) the position has a nullptr, add the shared state there
@@ -148,8 +148,8 @@ std::pair<GlobalSSSPState, SSSPLocalState> MorselDispatcher::getBFSMorsel(
                 srcNodeIDVector->state->setToFlat();
                 auto selectedPos = srcNodeIDVector->state->getSelVector().getSelectedPositions();
                 auto nodeID = srcNodeIDVector->getValue<common::nodeID_t>(selectedPos[0]);
-                printf("starting a new bfs source, total: %d | src: %lu\n", numActiveBFSSharedState,
-                    nodeID.offset);
+                /*printf("starting a new bfs source, total: %d | src: %lu\n", numActiveBFSSharedState,
+                    nodeID.offset);*/
                 uint32_t newSharedStateIdx = UINT32_MAX;
                 // Find a position for the new SSSP in the list, there are 2 candidates:
                 // 1) the position has a nullptr, add the shared state there
@@ -298,14 +298,14 @@ int64_t MorselDispatcher::writeDstNodeIDAndPathLength(
             bfsSharedState->mutex.lock();
             numActiveBFSSharedState--;
             bfsSharedState->ssspLocalState = MORSEL_COMPLETE;
-            auto duration = std::chrono::system_clock::now().time_since_epoch();
+            /*auto duration = std::chrono::system_clock::now().time_since_epoch();
             auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
             printf(
                 "Source: %lu | BFS time taken: %lu millis | Path / Path-Len write time taken: %lu "
                 "millis | Total Active BFS: %d\n",
                 bfsSharedState->srcOffset,
                 bfsSharedState->startTimeInMillis2 - bfsSharedState->startTimeInMillis1,
-                millis - bfsSharedState->startTimeInMillis2, numActiveBFSSharedState);
+                millis - bfsSharedState->startTimeInMillis2, numActiveBFSSharedState);*/
             bfsSharedState->mutex.unlock();
             if (numActiveBFSSharedState == 0 && globalState == IN_PROGRESS_ALL_SRC_SCANNED) {
                 globalState = COMPLETE;

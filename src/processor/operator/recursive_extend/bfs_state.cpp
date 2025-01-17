@@ -147,7 +147,7 @@ void BFSSharedState::reset(TargetDstNodes* targetDstNodes, common::QueryRelType 
 SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel,
     common::QueryRelType queryRelType) {
     auto morselStartIdx =
-        nextScanStartIdx.fetch_add(bfsMorsel->bfsMorselSize, std::memory_order_acq_rel);
+        nextScanStartIdx.fetch_add(bfsMorsel->bfsMorselSize * sparseFactor, std::memory_order_acq_rel);
     if (morselStartIdx >= currentFrontierSize ||
         isBFSComplete(bfsMorsel->targetDstNodes->getNumNodes(), queryRelType)) {
         mutex.lock();
@@ -180,11 +180,11 @@ SSSPLocalState BFSSharedState::getBFSMorsel(BaseBFSState* bfsMorsel,
         }
         numThreadsBFSRegistered++;
         morselStartIdx =
-            nextScanStartIdx.fetch_add(bfsMorsel->bfsMorselSize, std::memory_order_acq_rel);
+            nextScanStartIdx.fetch_add(bfsMorsel->bfsMorselSize * sparseFactor, std::memory_order_acq_rel);
         mutex.unlock();
     }
     uint64_t morselEndIdx =
-        std::min(morselStartIdx + bfsMorsel->bfsMorselSize, currentFrontierSize);
+        std::min(morselStartIdx + bfsMorsel->bfsMorselSize * sparseFactor, currentFrontierSize);
     bfsMorsel->reset(morselStartIdx, morselEndIdx, this);
     return EXTEND_IN_PROGRESS;
 }
@@ -344,6 +344,7 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
         nextFrontierSize = 0u;
         if (currentFrontierSize < (uint64_t)std::ceil(maxOffset / 8)) {
             isSparseFrontier = true;
+            sparseFactor = 1u;
             sparseFrontier.clear();
             auto simdWidth = 16u, i = 0u, pos = 0u;
             // SSE2 vector with all elements set to 1
@@ -366,7 +367,10 @@ void BFSSharedState::moveNextLevelAsCurrentLevel() {
                 }
             }
         } else {
+            auto actualFrontierSize = currentFrontierSize;
             currentFrontierSize = maxOffset + 1;
+            sparseFactor =
+                std::ceil( (double) currentFrontierSize / (double) actualFrontierSize);
             isSparseFrontier = false;
             if (!denseFrontier) {
                 denseFrontier = new uint8_t[currentFrontierSize];

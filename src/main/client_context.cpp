@@ -66,7 +66,7 @@ ClientContext::ClientContext(Database* database)
     clientConfig.recursivePatternCardinalityScaleFactor =
         ClientConfigDefault::RECURSIVE_PATTERN_FACTOR;
     clientConfig.bfsSchedulerType = SchedulerType::nThreadkMorsel;
-    clientConfig.recursiveJoinBFSMorselSize = 256lu;
+    clientConfig.recursiveJoinBFSMorselSize = 64lu;
 }
 
 ClientContext::~ClientContext() = default;

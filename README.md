@@ -8,9 +8,9 @@
 
 # Overview
 
-# Build-Steps
+# Build Steps
 
-# Executing-Queries
+# Executing Queries
 
 # Contact
 

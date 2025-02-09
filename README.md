@@ -1,19 +1,19 @@
-<div align="center">
-  <img src="https://kuzudb.com/img/kuzu-logo.png" height="100">
-</div>
+# Robust Recursive Query Parallelism in Graph Database
+Management System
 
-<br>
+# Table of Contents
+1. [Overview](#Overview)
+2. [Build Steps](#Build-Steps)
+3. [Executing Queries](#Executing-Queries)
+4. [Contact](#Contact)
 
-<p align="center">
-  <a href="https://github.com/kuzudb/kuzu/actions">
-    <img src="https://github.com/kuzudb/kuzu/actions/workflows/ci-workflow.yml/badge.svg?branch=master" alt="Github Actions Badge"></a>
-  <a href="https://codecov.io/gh/kuzudb/kuzu" >
-    <img src="https://codecov.io/github/kuzudb/kuzu/branch/master/graph/badge.svg?token=N1AT6H79LM"/></a>
-  <a href="https://discord.gg/VtX2gw9Rug">
-    <img src="https://img.shields.io/discord/1196510116388806837?logo=discord" alt="discord" /></a>
-  <a href="https://twitter.com/kuzudb">
-    <img src="https://img.shields.io/badge/follow-@kuzudb-1DA1F2?logo=twitter" alt="twitter"></a>
-</p>
+#Overview
+
+#Build-Steps
+
+#Executing-Queries
+
+#Contact
 
 # Kùzu
 Kùzu is an embedded graph database built for query speed and scalability. Kùzu is optimized for handling complex join-heavy analytical workloads on very large databases, with the following core feature set:

@@ -8,93 +8,85 @@
 
 # Overview
 
-For an overview of our one-time subgraph matching optimizer, check our paper.
-We study the problem of optimizing subgraph queries using the new worst-case optimal join plans. Worst-case optimal plans evaluate queries by matching one query vertex 
-at a time using multi-way intersections. The core problem in optimizing worst-case optimal plans is to pick an ordering of the query vertices to match. We design a cost-
-based optimizer that (i) picks efficient query vertex orderings for worst-case optimal plans; and (ii) generates hybrid plans that mix traditional binary joins with 
-worst-case optimal style multiway intersections. Our cost metric combines the cost of binary joins with a new cost metric called intersection-cost. The plan space of our 
-optimizer contains plans that are not in the plan spaces based on tree decompositions from prior work.
+Efficient multi-core parallel processing of recursive path queries is critical for achieving good performance in graph database management systems (GDBMSs). Prior work 
+adopts two broad approaches. First is the state of the art morsel-driven parallelism, whose vanilla application in GDBMSs parallelizes computations at the source
+node level. Second is to parallelize each iteration of the computation at the frontier level. 
+
+We show that these approaches can be seen as part of a design space of morsel dispatching policies based on picking different granularities of morsels. We then 
+empirically study the question of which policies parallelize better in practice under a variety of datasets and query workloads that contain one to over hundreds of 
+source nodes. We show that the policy of issuing source morsels alone can limit parallelism, as it can assign the entire work of some queries to a single thread. On the 
+other hand, issuing only frontier-level morsels limits parallelism due to sparse frontiers in computations. We show that these two policies can be combined in a hybrid 
+policy that issues morsels both at the source node and frontier levels. 
+
+We then show that the multi-source breadth-first search optimization from prior work can also be modeled as a morsel dispatching policy that packs multiple source nodes 
+into multi-source morsels. We implement these policies inside a single system, the Kùzu GDBMS, and evaluate them both within Kùzu and across other systems. We show that 
+the hybrid policy captures the behavior of both source morsel-only and frontier morsel-only policies in cases when these approaches parallelize well, and outperform them 
+on queries when they are limited, and propose it as a robust approach to parallelizing recursive queries. We further show that assigning multi-sources is beneficial, as 
+it reduces the amount of scans, but only when there is enough sources in the query.
 
 # Build Steps
 
-
-    To do a full clean build: ./gradlew clean build installDist
-    All subsequent builds: ./gradlew build installDist
-
+To do a full clean build: ./gradlew clean build installDist
+All subsequent builds: ./gradlew build installDist
 
 # Executing Queries
 
+Getting Started
+
+After building, run the following command in the project root directory:
+
+. ./env.sh
+
+You can now move into the scripts folder to load a dataset and execute queries:
+
+cd scripts
+
+Dataset Preperation
+
+A dataset may consist of two files: (i) a vertex file, where IDs are from 0 to N and each line is of the format (ID,LABEL); and (ii) an edge file where each line is of the format (FROM,TO,LABEL). If the vertex file is omitted, all vertices are assigned the same label. We mainly used datasets from SNAP. The serialize_dataset.py script lets you load datasets from csv files and serialize them to the appropriate format for quick subsequent loading.
+
+To load and serialize a dataset from a single edges files, run the following command in the scripts folder:
+
+python3 serialize_dataset.py /absolute/path/edges.csv /absolute/path/data
+
+The system will assume that all vertices have the same label in this case. The serialized graph will be stored in the data directory. If the dataset consists of an edges file and a vertices file, the following command can be used instead:
+
+python3 serialize_dataset.py /absolute/path/edges.csv /absolute/path/data -v /absolute/path/vertices.csv
+
+After running one of the commands above, a catalog can be generated for the optimizer using the serialize_catalog.py script.
+
+python3 serialize_catalog.py /absolute/path/data  
+
+Executing Queries
+
+Once a dataset has been prepared, executing a query is as follows:
+
+python3 execute_query.py "(a)->(b),(b)->(c),(c)->(d)" /absolute/path/data
+
+An output example on the dataset of Amazon0601 from SNAP with 1 edge label and 1 verte label is shown below. The dataset loading time, the opimizer run time, the quey execution run time and the query plan with the number of output and intermediate tuples are logged.
+
+Dataset loading run time: 626.713398 (ms)
+Optimizer run time: 9.745375 (ms)
+Plan initialization before exec run time: 9.745375 (ms)
+Query execution run time: 2334.2977 (ms)
+Number output tuples: 118175329
+Number intermediate tuples: 34971362
+Plan: SCAN (a)->(c), Single-Edge-Extend TO (b) From (a[Fwd]), Multi-Edge-Extend TO (d) From (b[Fwd]-c[Fwd])
+
+In order to invoke a multi-threaded execution, one can execute the query above with the following command to use 2 threads.
+
+python3 execute_query.py "(a)->(b),(b)->(c),(c)->(d)" /absolute/path/data -t 2
+
+The query above assigns an arbitrary edge and vertex labels to (a), (b), (c), (a)->(b), and (b)->(c). Use it with unlabeled datasets only. When the dataset has labels, assign labels to each vertex and edge as follows:
+
+python3 execute_query.py "(a:person)-[friendof]->(b:person), (b:person)-[likes]->(c:movie)" /absolute/path/data
+
+Requiring More Memory
+
+Note that the JVM heap by default is allocated a max of 2GB of memory. Changing the JVM heap maximum size can be done by prepending JAVA_OPTS='-Xmx500G' when calling the python scripts:
+
+JAVA_OPTS='-Xmx500G' python3 serialize_catalog.py /absolute/path/data  
+
 # Contact
 
-# Kùzu
-Kùzu is an embedded graph database built for query speed and scalability. Kùzu is optimized for handling complex join-heavy analytical workloads on very large databases, with the following core feature set:
-
-- Flexible Property Graph Data Model and Cypher query language
-- Embeddable, serverless integration into applications 
-- Columnar disk-based storage
-- Columnar sparse row-based (CSR) adjacency list/join indices
-- Vectorized and factorized query processor
-- Novel and very fast join algorithms
-- Multi-core query parallelism
-- Serializable ACID transactions
-
-Kùzu started as a research project at University of Waterloo and is now being 
-developed primarily by [Kùzu Inc.](https://kuzudb.com/), a spinoff company from University of Waterloo. 
-Kùzu is available under a permissible license. So try it out and help us make it better! We welcome your feedback and feature requests.
-
-## Installation
-
-| Language | Installation                                                           |
-| -------- |------------------------------------------------------------------------|
-| Python | `pip install kuzu`                                                     |
-| NodeJS | `npm install kuzu`                                                     |
-| Rust   | `cargo add kuzu`                                                       |
-| Java   | [jar file](https://github.com/kuzudb/kuzu/releases/latest)             |
-| C/C++  | [precompiled binaries](https://github.com/kuzudb/kuzu/releases/latest) |
-| CLI    | [precompiled binaries](https://github.com/kuzudb/kuzu/releases/latest) |
-
-To learn more about installation, see our [Installation](https://docs.kuzudb.com/installation) page.
-
-## Getting Started
-
-Refer to our [Getting Started](https://docs.kuzudb.com/get-started/) page for your first example.
-
-## Build from Source
-
-You can build from source using the instructions provided in the [developer guide](https://docs.kuzudb.com/developer-guide).
-
-## Contributing
-We welcome contributions to Kùzu. If you are interested in contributing to Kùzu, please read our [Contributing Guide](CONTRIBUTING.md).
-
-## License
-By contributing to Kùzu, you agree that your contributions will be licensed under the [MIT License](LICENSE).
-
-## Citing Kùzu
-If you are a researcher and use Kùzu in your work, we encourage you to cite our work.
-You can use the following BibTeX citation:
-```
-@inproceedings{kuzu:cidr,
-  author =  {Xiyang Feng and
-             Guodong Jin and
-             Ziyi Chen and
-             Chang Liu and
-             Semih Saliho\u{g}lu},
-  title={K\`uzu Graph Database Management System},
-  booktitle={CIDR},
-  year={2023}
-}
-@misc{kuzu-github,
-  author =  {Xiyang Feng and
-             Guodong Jin and
-             Ziyi Chen and
-             Chang Liu and
-             Semih Saliho\u{g}lu},
-  title = {{K\`uzu Database Management System Source Code}},
-  howpublished = {\url{https://github.com/kuzudb/kuzu}},
-  month        = nov,
-  year         = 2022
-}
-```
-
-## Contact Us
-You can contact us at [contact@kuzudb.com](mailto:contact@kuzudb.com) or [join our Discord community](https://discord.gg/VtX2gw9Rug).
+Contact email address: [Anurag Chakraborty](mailto:a8chakra@uwaterloo.ca).

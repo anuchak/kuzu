@@ -8,7 +8,19 @@
 
 # Overview
 
+For an overview of our one-time subgraph matching optimizer, check our paper.
+We study the problem of optimizing subgraph queries using the new worst-case optimal join plans. Worst-case optimal plans evaluate queries by matching one query vertex 
+at a time using multi-way intersections. The core problem in optimizing worst-case optimal plans is to pick an ordering of the query vertices to match. We design a cost-
+based optimizer that (i) picks efficient query vertex orderings for worst-case optimal plans; and (ii) generates hybrid plans that mix traditional binary joins with 
+worst-case optimal style multiway intersections. Our cost metric combines the cost of binary joins with a new cost metric called intersection-cost. The plan space of our 
+optimizer contains plans that are not in the plan spaces based on tree decompositions from prior work.
+
 # Build Steps
+
+
+    To do a full clean build: ./gradlew clean build installDist
+    All subsequent builds: ./gradlew build installDist
+
 
 # Executing Queries
 

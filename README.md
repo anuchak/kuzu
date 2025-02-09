@@ -1,5 +1,4 @@
-# Robust Recursive Query Parallelism in Graph Database
-Management System
+# Robust Recursive Query Parallelism in Graph Database Management System
 
 # Table of Contents
 1. [Overview](#Overview)
@@ -7,13 +6,13 @@ Management System
 3. [Executing Queries](#Executing-Queries)
 4. [Contact](#Contact)
 
-#Overview
+# Overview
 
-#Build-Steps
+# Build-Steps
 
-#Executing-Queries
+# Executing-Queries
 
-#Contact
+# Contact
 
 # Kùzu
 Kùzu is an embedded graph database built for query speed and scalability. Kùzu is optimized for handling complex join-heavy analytical workloads on very large databases, with the following core feature set:

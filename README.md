@@ -26,23 +26,20 @@ it reduces the amount of scans, but only when there is enough sources in the que
 
 # Build Steps
 
- To do a full clean build: ./gradlew clean build installDist
- All subsequent builds: ./gradlew build installDist
-
+release: make clean release NUM_THREADS=32  
 
 # Executing Queries
 
-Getting Started
+## Getting Started
 
 After building, run the following command in the project root directory:
 
-. ./env.sh
 
 You can now move into the scripts folder to load a dataset and execute queries:
 
 cd scripts
 
-Dataset Preperation
+## Dataset Preperation
 
 A dataset may consist of two files: (i) a vertex file, where IDs are from 0 to N and each line is of the format (ID,LABEL); and (ii) an edge file where each line is of the format (FROM,TO,LABEL). If the vertex file is omitted, all vertices are assigned the same label. We mainly used datasets from SNAP. The serialize_dataset.py script lets you load datasets from csv files and serialize them to the appropriate format for quick subsequent loading.
 
@@ -58,7 +55,7 @@ After running one of the commands above, a catalog can be generated for the opti
 
 python3 serialize_catalog.py /absolute/path/data  
 
-Executing Queries
+## Executing Queries
 
 Once a dataset has been prepared, executing a query is as follows:
 
@@ -91,7 +88,4 @@ JAVA_OPTS='-Xmx500G' python3 serialize_catalog.py /absolute/path/data
 
 # Contact
 
-
-
-## Contact Us
-You can contact us at [contact@kuzudb.com](mailto:contact@kuzudb.com) or [join our Discord community](https://discord.gg/VtX2gw9Rug).
+Contact email address: [a8chakra@uwaterloo.ca](mailto:a8chakra@uwaterloo.ca)

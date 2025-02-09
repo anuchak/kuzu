@@ -26,7 +26,7 @@ it reduces the amount of scans, but only when there is enough sources in the que
 
 # Build Steps
 
-release: make clean release NUM_THREADS=32  
+release: `make release NUM_THREADS=$(nproc --all)`
 
 # Executing Queries
 
